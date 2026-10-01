@@ -3,7 +3,7 @@
 | ID | Driver arquitectónico | Origen | Decisión arquitectónica que provoca |
 |---|---|---|---|
 | DA01 | Las nueve licencias deben poder cambiar cuando cambie el TUPA, sin reprogramar. | AC01 – Modificabilidad / RC01 – TUPA | Un solo motor de trámites y un **catálogo versionado de recetas** que todos los módulos consultan. |
-| DA02 | El sistema debe soportar 1,000 usuarios simultáneos en campañas. | AC03 – Escalabilidad / AC02 – Rendimiento | Backend sin estado con **réplicas detrás de un balanceador**, **caché Redis** para catálogo y estados, y **cola de tareas** para PDF, QR y correos. |
+| DA02 | El sistema debe soportar de 1,000 a 10,000 usuarios simultáneos en campañas y renovaciones del ITSE. | AC03 – Escalabilidad / AC02 – Rendimiento / AC11 – Elasticidad | Backend sin estado con **autoescalado horizontal** detrás de un **balanceador**; **Redis** para caché, sesiones y límite de solicitudes; **PostgreSQL primaria con réplicas de lectura** y **pool de conexiones**; **workers con cola de mensajes** para PDF, QR y correos; **CDN** y **carga directa de documentos** al almacén. |
 | DA03 | Los datos personales y las operaciones deben estar protegidos. | AC05 – Seguridad / RC05 – Ley 29733 | Autenticación con **OTP**, control de acceso por **roles**, cifrado **TLS 1.3** y **AES-256**, y QR público con datos mínimos. |
 | DA04 | Un reintento de pago no debe cobrar dos veces. | AC06 – Confiabilidad / RC10 – Pasarela | Cada pago lleva un **identificador único (idempotencia)** antes de enviarse a la pasarela. |
 | DA05 | Toda acción debe quedar registrada y no editable. | AC07 – Auditabilidad / RC04 – Ley 27444 | **Bitácora de auditoría** de solo escritura, usada por todos los módulos. |
