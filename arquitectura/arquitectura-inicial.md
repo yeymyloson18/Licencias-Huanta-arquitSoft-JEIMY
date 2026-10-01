@@ -134,7 +134,103 @@ Fuente: TUPA 2024 de la Municipalidad Provincial de Huanta. Plazos en días háb
 |---|---|---|---|
 | Catálogo versionado de recetas | Programar 9 procesos distintos | Un cambio del TUPA se carga como una versión nueva, sin tocar el código. | DA01 |
 | Monolito modular | Microservicios | Más simple de construir, probar y mantener; permite separar módulos más adelante. | DA09 |
-| Réplicas, balanceador, Redis y cola de tareas | Un solo servidor grande | Permite crecer agregando copias según la demanda. | DA02 |
+| Autoescalado, balanceador, Redis, réplicas de lectura y workers | Un solo servidor grande | Permite pasar de 1,000 a 10,000 usuarios agregando copias según la demanda y reducirlas cuando baja, pagando solo lo que se usa. | DA02 |
 | Identificador único por pago | Confiar en la pasarela | Evita cobros dobles ante reintentos. | DA04 |
 | PWA sin conexión para inspectores | App nativa | Una sola base de código y funciona sin señal. | DA07 |
 | Chatbot que lee el catálogo | Chatbot con respuestas libres | Responde con datos oficiales y no inventa requisitos ni costos. | DA08 |
+
+## Arquitectura de despliegue (1,000 a 10,000 usuarios simultáneos)
+
+La vista lógica no cambia: sigue siendo un monolito modular en tres capas.
+La escalabilidad se resuelve en el despliegue, porque el backend no guarda estado
+y puede replicarse.
+
+```mermaid
+flowchart TD
+    Usuarios["Usuarios: web, celular e inspectores"]
+
+    subgraph BORDE["BORDE"]
+        CDN["CDN - portal y archivos estáticos"]
+        WAF["Firewall web y límite de solicitudes"]
+        Espera["Sala de espera virtual - solo picos"]
+        LB["Balanceador de carga"]
+    end
+
+    subgraph APP["BACKEND - autoescalado de 2 a N instancias"]
+        I1["Instancia 1 - monolito modular"]
+        I2["Instancia 2 - monolito modular"]
+        IN["Instancia N - se crea según la carga"]
+    end
+
+    subgraph ASYNC["PROCESAMIENTO ASÍNCRONO"]
+        Cola["Cola de mensajes"]
+        Workers["Workers: PDF, QR, correos y SMS"]
+    end
+
+    subgraph DATOS["DATOS"]
+        Redis[("Redis - caché, sesiones y límites")]
+        Pool["Pool de conexiones - PgBouncer"]
+        Primaria[("PostgreSQL primaria - escrituras")]
+        Replicas[("Réplicas de lectura - consultas y reportes")]
+        Objetos[("Almacén de documentos y fotos")]
+    end
+
+    subgraph OBS["OBSERVABILIDAD"]
+        Monitoreo["Métricas, logs y alertas"]
+    end
+
+    Usuarios --> CDN
+    Usuarios --> WAF
+    WAF --> Espera
+    Espera --> LB
+    LB --> I1
+    LB --> I2
+    LB --> IN
+
+    APP --> Redis
+    APP --> Pool
+    Pool --> Primaria
+    Pool --> Replicas
+    Primaria -->|"replicación"| Replicas
+    APP -->|"tareas lentas"| Cola
+    Cola --> Workers
+    Usuarios -->|"carga directa con URL firmada"| Objetos
+
+    APP -.-> Monitoreo
+    Workers -.-> Monitoreo
+```
+
+### Escalamiento por etapas
+
+| Etapa | Usuarios simultáneos | Configuración |
+|---|---|---|
+| Normal | Hasta 1,000 | 2 instancias, Redis, PostgreSQL primaria con 1 réplica |
+| Campaña | 1,000 a 5,000 | El autoescalado agrega instancias; las consultas y reportes van a las réplicas de lectura |
+| Pico máximo | 5,000 a 10,000 | Más instancias y workers, más réplicas de lectura; si se supera la capacidad, se activa la sala de espera virtual |
+| Después del pico | Baja la demanda | El autoescalado vuelve a 2 instancias para reducir costos |
+
+Las cifras de cada etapa son referenciales y se confirman con pruebas de carga.
+
+### Infraestructura sugerida
+
+| Componente | Dimensionamiento sugerido (referencial) |
+|---|---|
+| Servidor de aplicación | 2 vCPU / 4 GB por instancia; mínimo 2, máximo definido por pruebas de carga |
+| Balanceador de carga | Servicio administrado del proveedor cloud |
+| PostgreSQL primaria | 4 a 8 vCPU / 16 a 32 GB, disco SSD |
+| Réplicas de lectura | 1 en operación normal y 2 o más en picos |
+| Pool de conexiones | PgBouncer |
+| Redis | Obligatorio, con réplica |
+| Cola y workers | Cola de mensajes y workers con autoescalado propio |
+| Almacén de documentos | Almacenamiento de objetos con URL firmadas |
+| CDN y firewall web | Servicio del proveedor cloud |
+| Observabilidad | Métricas, logs centralizados y alertas |
+
+### Validación con pruebas de carga
+
+| Escenario | Usuarios simultáneos | Qué se mide |
+|---|---|---|
+| Operación normal | 1,000 | Tiempos de respuesta y uso de CPU y memoria |
+| Campaña | 5,000 | Que el autoescalado cree instancias a tiempo |
+| Pico máximo | 10,000 | Que se cumplan AC02 y AC04 y que la tasa de errores sea menor al 1 % |
+| Reintento de pagos | Variable | Que no haya cobros dobles bajo carga |
