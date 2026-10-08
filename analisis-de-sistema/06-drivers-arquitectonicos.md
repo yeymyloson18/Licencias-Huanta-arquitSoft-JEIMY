@@ -11,3 +11,20 @@
 | DA07 | El inspector debe trabajar sin señal. | AC09 – Operación sin conexión | **App web instalable (PWA)** con almacenamiento local y sincronización posterior. |
 | DA08 | La Fase 2 debe agregarse sin rehacer la Fase 1. | RC14 – Dos fases | El chatbot es **un canal más** que consume la misma API y **lee el catálogo**, así no inventa requisitos ni costos. |
 | DA09 | El sistema debe ser simple de construir y mantener. | AC10 – Mantenibilidad / RC09 – PostgreSQL | **Monolito modular** con una sola base de datos, en lugar de microservicios. |
+| DA10 | Las reglas del trámite (catálogo, rutas, tasas y plazos) deben poder modificarse y probarse sin depender de frameworks, base de datos ni proveedores externos (pasarela, validación DNI/RUC, correo/SMS, WhatsApp). | AC10 – Mantenibilidad / AC01 – Modificabilidad | **Clean Architecture**: dominio en el centro, contratos (puertos) definidos por el núcleo y adaptadores intercambiables en la infraestructura. |
+
+
+## Relación entre drivers y decisiones
+
+| Driver | Problema que plantea | Decisión que responde | ADR |
+|---|---|---|---|
+| DA01 - Modificabilidad del catálogo | El TUPA cambia y hay 9 licencias distintas | Motor único + catálogo versionado de recetas | ADR-002 |
+| DA02 - Escalabilidad y rendimiento | De 1,000 a 10,000 usuarios simultáneos en campañas | Autoescalado, caché Redis, réplicas de lectura y cola de tareas | ADR-005 |
+| DA03 - Seguridad y datos personales | Datos sensibles y Ley N.° 29733 | Autenticación con OTP, roles, cifrado TLS 1.3 y AES-256 | ADR-007 |
+| DA04 - Pagos sin cobro doble | Reintentos por fallas de red | Pago idempotente a través de un puerto de pagos | ADR-004 |
+| DA05 - Auditabilidad | Toda acción debe quedar registrada | Bitácora de solo escritura | ADR-007 |
+| DA06 - Plazos en días hábiles | Riesgo de silencio positivo | Reloj de plazos como tarea programada | ADR-006 |
+| DA07 - Trabajo sin conexión | Inspectores sin señal en campo | App web instalable (PWA) con sincronización | ADR-008 |
+| DA08 - Fase 2 sin rehacer | El chatbot se agrega después | El chatbot es un adaptador más de la misma API | ADR-003 |
+| DA09 - Simplicidad | Equipo de TI municipal pequeño | Monolito modular | ADR-001 |
+| DA10 - Independencia del negocio | Las reglas no deben depender de la tecnología | Clean Architecture | ADR-003 |
