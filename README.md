@@ -18,3 +18,16 @@ nueve licencias (requisitos, tasa, plazo, calificación, orden del ITSE y vigenc
 
 ## Curso
 Arquitectura de Software – UNSCH 2026
+
+
+## Entregables del proceso de arquitectura (Guía 03)
+
+| # | Entregable | Archivo |
+|---|---|---|
+| 1 | Necesidad del negocio | `analisis-de-sistema/00-necesidad-del-negocio.md` |
+| 2 | Requisitos | `analisis-de-sistema/01-actores.md`, `02-historias-de-usuario.md`, `03-requisitos-funcionales.md`, `05-restricciones.md` |
+| 3 | Atributos de calidad | `analisis-de-sistema/04-atributos-de-calidad.md` |
+| 4 | Drivers arquitectónicos | `analisis-de-sistema/06-drivers-arquitectonicos.md` |
+| 5 | Decisiones arquitectónicas | `arquitectura/decisiones-arquitectonicas.md` |
+| 6 | Estilo arquitectónico | `arquitectura/estilo-arquitectonico.md` |
+| + | Enfoque: Clean Architecture | `arquitectura/enfoque/enfoque-arquitectonico.md` |
