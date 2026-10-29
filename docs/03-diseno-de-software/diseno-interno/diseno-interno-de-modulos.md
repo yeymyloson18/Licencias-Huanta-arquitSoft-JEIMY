@@ -20,7 +20,7 @@ src/modulos/<modulo>/
 | Módulo | Dominio (entidades, objetos de valor, reglas) | Aplicación (casos de uso) | Puertos (contratos) | Adaptadores |
 |---|---|---|---|---|
 | **Seguridad y Usuarios** | `Usuario`, `Rol`, `CodigoOTP`. | `IniciarSesion`, `VerificarOTP`, `GestionarUsuario`, `AsignarRol` | `RepositorioUsuarios`, `EnviadorOTP` | `RepositorioUsuariosPostgres`, `EnviadorOtpSms` (envío directo, sin cola: es la única excepción porque el usuario espera el código para entrar) |
-| **Catálogo y Asistente de ruta** | `Receta`, `Requisito`, `Ruta` (A, B, C), `Tasa`, `PlazoDiasHabiles`. | `ProponerLicencia`, `ConsultarReceta`, `ActualizarReceta` (administrador) | `RepositorioCatalogo` | `RepositorioCatalogoPostgres` + `RepositorioCatalogoConCache` (Redis) |
+| **Catálogo y Asistente de ruta** | `Receta`, `Requisito`, `Ruta` (A, B, C), `Tasa`, `PlazoDiasHabiles`. | `ProponerLicencia`, `ConsultarReceta`, `ActualizarReceta` (administrador) | `RepositorioCatalogo` | `RepositorioCatalogoPostgres` + `RepositorioCatalogoConCache` (Redis, patrón Decorator) |
 | **Trámites** | `Expediente`, `Documento`, `EstadoExpediente`, `NumeroExpediente`, `DniRuc`. Regla: el administrado consulta solo con número de expediente **y** DNI/RUC. | `RegistrarSolicitud`, `ObservarExpediente`, `SubsanarObservacion`, `ConfirmarNivelRiesgo`, `AprobarEvaluacion`, `DenegarExpediente`, `ConsultarEstado` | `RepositorioExpedientes`, `ValidadorIdentidad`, `AlmacenDocumentos` | `RepositorioExpedientesPostgres`, `AdaptadorValidacionDniRuc`, `AlmacenObjetos` |
 | **Pagos en caja** | `Esquela`, `CodigoEsquela`, `Monto`, `NumeroRecibo`. Regla: una esquela solo se paga una vez. | `GenerarEsquela`, `RegistrarPagoEnCaja` | `RepositorioEsquelas` (con `siguienteSecuencial` y `guardarPago` atómicos), `ConsultaTasa`, `GeneradorDocumentos`, `PublicadorEventos` | `RepositorioEsquelasPostgres`, `ConsultaTasaCatalogo`, `GeneradorPdf` (worker), `PublicadorEventosNest` |
 | **Inspecciones** | `Inspeccion`, `ResultadoITSE`, `Foto`. Regla: una inspección tiene un solo inspector. | `AsignarInspeccion`, `RegistrarResultadoITSE` | `RepositorioInspecciones`, `AlmacenDocumentos` | `RepositorioInspeccionesPostgres`, `AlmacenObjetos` |
@@ -57,14 +57,17 @@ stateDiagram-v2
     EnInspeccion --> Aprobado: ITSE favorable
     EnInspeccion --> Denegado: ITSE desfavorable
     Aprobado --> LicenciaEmitida: emisión en 1 día hábil
-    LicenciaProvisional --> LicenciaEmitida: ITSE dentro de 6 meses y definitiva a los 12 meses
+    LicenciaProvisional --> LicenciaEmitida: ITSE favorable dentro de 6 meses y definitiva a los 12 meses
+    LicenciaProvisional --> DerivadoAFiscalizacion: ITSE desfavorable
+    LicenciaEmitida --> DerivadoAFiscalizacion: ruta A, ITSE posterior desfavorable
     LicenciaEmitida --> [*]
+    DerivadoAFiscalizacion --> [*]
     Denegado --> [*]
 ```
 
-- **Ruta A:** después de emitir la licencia, Inspecciones programa la **ITSE posterior** (hasta 9 días hábiles); el certificado se renueva cada 2 años.
+- **Ruta A:** después de emitir la licencia, Inspecciones programa la **ITSE posterior** (hasta 9 días hábiles); el certificado se renueva cada 2 años. Si la ITSE posterior es **desfavorable**, el sistema registra el resultado, avisa a la jefatura y deriva el caso a fiscalización (fuera del alcance del sistema).
 - **Ruta B:** primero la evaluación previa (el evaluador confirma o corrige el riesgo), luego la esquela y el pago, después la ITSE previa. Si el evaluador corrige el riesgo, el expediente toma la receta del nuevo nivel **antes** de generar la esquela, así el monto pagado siempre coincide. Todo esto está dentro de los 8 días hábiles del TUPA.
-- **Ruta C:** licencia provisional gratuita de 12 meses; la ITSE se realiza dentro de los primeros 6 meses.
+- **Ruta C:** licencia provisional gratuita de 12 meses; la ITSE se realiza dentro de los primeros 6 meses. Si es desfavorable, se deriva a fiscalización igual que en la ruta A.
 
 ## Ejemplo de flujo interno: pago en caja
 
@@ -83,3 +86,8 @@ stateDiagram-v2
      → RepositorioEsquelas.guardarPago(esquela)  // atómico: falla si otro cajero la pagó al mismo tiempo
      → PublicadorEventos.publicar(PagoRegistrado) → Trámites avanza el expediente
 ```
+
+**Para que el evento no se pierda:** el pago y el evento `PagoRegistrado` se guardan **en la misma transacción**
+de PostgreSQL (el evento queda en una tabla `eventos_pendientes`). Un proceso los entrega a Trámites después; si la
+entrega falla, lo vuelve a intentar. Así nunca hay un pago registrado con el expediente detenido. A esta técnica se le
+llama **outbox**.
