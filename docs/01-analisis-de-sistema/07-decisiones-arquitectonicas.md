@@ -12,7 +12,7 @@ las alternativas evaluadas y sus consecuencias.
 | ADR-003 | Clean Architecture | DA08 | Separar las reglas del trámite de los detalles tecnológicos. | Capas Dominio, Aplicación, Infraestructura y Presentación. |
 | ADR-004 | Pago presencial con esquela | DA04 | El TUPA indica el pago en la caja de la Municipalidad. | El sistema genera la esquela y el personal de caja registra el pago. |
 | ADR-005 | Escalamiento horizontal con caché y cola | DA02, DA06 | Soportar de 1,000 a 10,000 usuarios y seguir operando si falla un servidor. | Varias instancias, balanceador, Redis, réplica de base de datos y workers. |
-| ADR-006 | Reloj de plazos como tarea programada | DA05 | Contar días hábiles y alertar antes del vencimiento. | Proceso diario con calendario de feriados que registra el administrador (RF23). |
+| ADR-006 | Reloj de plazos como tarea programada | DA05 | Contar días hábiles y alertar antes del vencimiento. | Proceso diario con calendario de feriados (RF23) que se ejecuta una sola vez por día gracias a un bloqueo en PostgreSQL. |
 | ADR-007 | Seguridad por capas | DA03 | Proteger datos personales y operaciones del personal. | OTP, roles, TLS 1.3, AES-256 y QR público con datos mínimos. |
 
 ---
@@ -38,8 +38,8 @@ las alternativas evaluadas y sus consecuencias.
 ## ADR-004: Pago presencial con esquela
 - **Contexto:** el TUPA indica el pago en efectivo en la Caja de la Entidad; no se incluyen pagos digitales.
 - **Alternativas:** pasarela de pago digital (descartada por alcance y por el TUPA vigente).
-- **Decisión:** el sistema calcula la tasa desde el catálogo y genera una esquela en PDF con un código único (`ESQ-<expediente>-<secuencial>`, protegido con una restricción UNIQUE en la base de datos); el personal de caja cobra y registra el pago con ese código y el número de recibo.
-- **Consecuencias:** ✅ sin integraciones externas de pago, más simple y barato; ✅ una esquela solo puede pagarse una vez. ⚠️ el trámite avanza recién cuando caja registra el pago.
+- **Decisión:** cuando el nivel de riesgo ya está confirmado (verificación de requisitos en la ruta A; evaluación previa en la ruta B), el sistema calcula la tasa desde el catálogo y genera una esquela en PDF con un código único (`ESQ-<expediente>-<secuencial>`, protegido con una restricción UNIQUE en la base de datos); el personal de caja cobra y registra el pago con ese código y el número de recibo.
+- **Consecuencias:** ✅ sin integraciones externas de pago, más simple y barato; ✅ una esquela solo puede pagarse una vez; ✅ como el riesgo se confirma antes de generar la esquela, el monto pagado siempre coincide con la licencia. ⚠️ el trámite avanza recién cuando caja registra el pago.
 
 ## ADR-005: Escalamiento horizontal con caché y cola
 - **Contexto:** campañas de formalización y renovaciones del ITSE generan picos de 1,000 a 10,000 usuarios.
@@ -50,7 +50,7 @@ las alternativas evaluadas y sus consecuencias.
 ## ADR-006: Reloj de plazos como tarea programada
 - **Contexto:** los plazos del TUPA se cuentan en días hábiles y su vencimiento tiene efectos legales (Ley N.° 27444).
 - **Alternativas:** control manual del evaluador.
-- **Decisión:** un proceso diario que usa un calendario de feriados y alerta a la jefatura.
+- **Decisión:** un proceso diario que usa un calendario de feriados y alerta a la jefatura. Como el backend tiene de 2 a N instancias, la tarea se intenta cada hora en todas, pero solo la instancia que obtiene un **bloqueo en PostgreSQL** (pg_try_advisory_lock) la ejecuta, y antes revisa en la tabla ejecuciones_tareas si ya corrió ese día. Así corre **una sola vez al día** y, si esa instancia cae, otra la ejecuta en el siguiente intento. La misma regla se aplica al aviso de vencimiento del ITSE.
 - **Consecuencias:** ✅ ningún plazo pasa desapercibido; se comprueba con el escenario EQ-07. ⚠️ el administrador debe mantener actualizado el calendario de feriados (HU16, RF23).
 
 ## ADR-007: Seguridad por capas
