@@ -17,6 +17,8 @@ Se eligieron **cinco**, uno por cada problema principal del diseño.
 
 ## Ejemplo: Strategy para las rutas del trámite
 
+Cada ruta responde una sola pregunta: **¿cuál es el siguiente paso del expediente?** Todas terminan en `FINALIZADO`.
+
 ```typescript
 // modulos/tramites/dominio/RutaTramite.ts
 export interface RutaTramite {
@@ -26,27 +28,35 @@ export interface RutaTramite {
 // modulos/tramites/dominio/rutas/RutaA.ts – la licencia primero, ITSE posterior
 export class RutaA implements RutaTramite {
   siguientePaso(e: Expediente): PasoTramite {
+    if (!e.riesgoConfirmado()) return PasoTramite.VERIFICAR_REQUISITOS;
     if (!e.estaPagado()) return PasoTramite.ESPERAR_PAGO_EN_CAJA;
     if (!e.licenciaEmitida()) return PasoTramite.EMITIR_LICENCIA;
-    return PasoTramite.PROGRAMAR_ITSE_POSTERIOR;
+    if (!e.tieneResultadoITSE()) return PasoTramite.PROGRAMAR_ITSE_POSTERIOR;
+    return PasoTramite.FINALIZADO;
   }
 }
 
-// modulos/tramites/dominio/rutas/RutaB.ts – evaluación e inspección primero
+// modulos/tramites/dominio/rutas/RutaB.ts – evaluación primero, luego pago e ITSE previa
 export class RutaB implements RutaTramite {
   siguientePaso(e: Expediente): PasoTramite {
-    if (!e.estaPagado()) return PasoTramite.ESPERAR_PAGO_EN_CAJA;
     if (e.evaluacionDenegada()) return PasoTramite.DENEGAR;
-    if (!e.evaluacionAprobada()) return PasoTramite.EVALUAR;
+    if (!e.evaluacionAprobada()) return PasoTramite.EVALUAR;          // aquí se confirma el riesgo
+    if (!e.estaPagado()) return PasoTramite.ESPERAR_PAGO_EN_CAJA;    // la esquela ya tiene la tasa correcta
     if (!e.tieneResultadoITSE()) return PasoTramite.PROGRAMAR_ITSE;
-    return e.itseFavorable() ? PasoTramite.EMITIR_LICENCIA : PasoTramite.DENEGAR;
+    if (!e.itseFavorable()) return PasoTramite.DENEGAR;
+    if (!e.licenciaEmitida()) return PasoTramite.EMITIR_LICENCIA;
+    return PasoTramite.FINALIZADO;
   }
 }
 
 // modulos/tramites/dominio/rutas/RutaC.ts – bodega: gratuita, sin esquela
 export class RutaC implements RutaTramite {
   siguientePaso(e: Expediente): PasoTramite {
-    return e.licenciaEmitida() ? PasoTramite.PROGRAMAR_ITSE_EN_6_MESES : PasoTramite.EMITIR_LICENCIA_PROVISIONAL;
+    if (!e.licenciaEmitida()) return PasoTramite.EMITIR_LICENCIA_PROVISIONAL;
+    if (!e.tieneResultadoITSE()) return PasoTramite.PROGRAMAR_ITSE_EN_6_MESES;
+    if (!e.cumplio12Meses()) return PasoTramite.ESPERAR_12_MESES;
+    if (!e.licenciaDefinitivaEmitida()) return PasoTramite.EMITIR_LICENCIA_DEFINITIVA;
+    return PasoTramite.FINALIZADO;
   }
 }
 ```
