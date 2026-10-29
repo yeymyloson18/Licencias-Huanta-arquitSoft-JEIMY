@@ -19,15 +19,15 @@ src/modulos/<modulo>/
 
 | Módulo | Dominio (entidades, objetos de valor, reglas) | Aplicación (casos de uso) | Puertos (contratos) | Adaptadores |
 |---|---|---|---|---|
-| **Seguridad y Usuarios** | `Usuario`, `Rol`, `CodigoOTP`. | `IniciarSesion`, `VerificarOTP`, `GestionarUsuario`, `AsignarRol` | `RepositorioUsuarios`, `EnviadorOTP` | `RepositorioUsuariosPostgres`, `EnviadorOtpSms` |
+| **Seguridad y Usuarios** | `Usuario`, `Rol`, `CodigoOTP`. | `IniciarSesion`, `VerificarOTP`, `GestionarUsuario`, `AsignarRol` | `RepositorioUsuarios`, `EnviadorOTP` | `RepositorioUsuariosPostgres`, `EnviadorOtpSms` (envío directo, sin cola: es la única excepción porque el usuario espera el código para entrar) |
 | **Catálogo y Asistente de ruta** | `Receta`, `Requisito`, `Ruta` (A, B, C), `Tasa`, `PlazoDiasHabiles`. | `ProponerLicencia`, `ConsultarReceta`, `ActualizarReceta` (administrador) | `RepositorioCatalogo` | `RepositorioCatalogoPostgres` + `RepositorioCatalogoConCache` (Redis) |
 | **Trámites** | `Expediente`, `Documento`, `EstadoExpediente`, `NumeroExpediente`, `DniRuc`. Regla: el administrado consulta solo con número de expediente **y** DNI/RUC. | `RegistrarSolicitud`, `ObservarExpediente`, `SubsanarObservacion`, `ConfirmarNivelRiesgo`, `AprobarEvaluacion`, `DenegarExpediente`, `ConsultarEstado` | `RepositorioExpedientes`, `ValidadorIdentidad`, `AlmacenDocumentos` | `RepositorioExpedientesPostgres`, `AdaptadorValidacionDniRuc`, `AlmacenObjetos` |
-| **Pagos en caja** | `Esquela`, `CodigoEsquela`, `Monto`, `NumeroRecibo`. Regla: una esquela solo se paga una vez. | `GenerarEsquela`, `RegistrarPagoEnCaja` | `RepositorioEsquelas`, `ConsultaTasa`, `GeneradorDocumentos`, `PublicadorEventos` | `RepositorioEsquelasPostgres`, `ConsultaTasaCatalogo`, `GeneradorPdf` (worker), `PublicadorEventosNest` |
+| **Pagos en caja** | `Esquela`, `CodigoEsquela`, `Monto`, `NumeroRecibo`. Regla: una esquela solo se paga una vez. | `GenerarEsquela`, `RegistrarPagoEnCaja` | `RepositorioEsquelas` (con `siguienteSecuencial` y `guardarPago` atómicos), `ConsultaTasa`, `GeneradorDocumentos`, `PublicadorEventos` | `RepositorioEsquelasPostgres`, `ConsultaTasaCatalogo`, `GeneradorPdf` (worker), `PublicadorEventosNest` |
 | **Inspecciones** | `Inspeccion`, `ResultadoITSE`, `Foto`. Regla: una inspección tiene un solo inspector. | `AsignarInspeccion`, `RegistrarResultadoITSE` | `RepositorioInspecciones`, `AlmacenDocumentos` | `RepositorioInspeccionesPostgres`, `AlmacenObjetos` |
-| **Licencias** | `Licencia`, `CertificadoITSE`, `CodigoQR`, `Vigencia`. Regla: no se emite sin pago registrado, salvo la ruta C. | `EmitirLicencia`, `EmitirLicenciaProvisional`, `VerificarLicenciaPublica`, `AvisarVencimientoITSE` (tarea diaria) | `RepositorioLicencias`, `GeneradorDocumentos` | `RepositorioLicenciasPostgres`, `GeneradorPdfQr` (worker) |
-| **Reloj de plazos** | `Plazo`, `Feriado`. Regla: se cuentan solo días hábiles. | `VerificarPlazos` (tarea diaria), `RegistrarFeriado` (administrador) | `CalendarioHabil`, `ConsultaExpedientes` (solo lectura) | `CalendarioFeriadosPostgres`, `ConsultaExpedientesTramites` (usa la fachada de Trámites) |
+| **Licencias** | `Licencia`, `CertificadoITSE`, `CodigoQR`, `Vigencia`. Regla: no se emite sin pago registrado, salvo la ruta C. | `EmitirLicencia`, `EmitirLicenciaProvisional`, `VerificarLicenciaPublica`, `AvisarVencimientoITSE` (tarea diaria con bloqueo, ADR-006) | `RepositorioLicencias`, `GeneradorDocumentos` | `RepositorioLicenciasPostgres`, `GeneradorPdfQr` (worker) |
+| **Reloj de plazos** | `Plazo`, `Feriado`. Regla: se cuentan solo días hábiles. | `VerificarPlazos` (tarea diaria con bloqueo, ADR-006), `RegistrarFeriado` (administrador) | `CalendarioHabil`, `ConsultaExpedientes` (solo lectura) | `CalendarioFeriadosPostgres`, `ConsultaExpedientesTramites` (usa la fachada de Trámites) |
 | **Notificaciones** | `Mensaje`, `Canal`. | `NotificarCambioEstado`, `NotificarVencimiento` | `Notificador` | `NotificadorEnCola` (deja el mensaje en la cola; el worker lo envía con `NotificadorCorreoSMS`) |
-| **Reportes** | `Indicador`. | `GenerarTablero`, `GenerarReporte` | `ConsultaExpedientes`, `ConsultaPagos` (solo lectura) | Adaptadores que usan las fachadas de Trámites y Pagos |
+| **Reportes** | `Indicador`. | `GenerarTablero`, `GenerarReporte` | `ConsultaExpedientes`, `ConsultaPagos`, `ConsultaLicencias` (solo lectura) | Adaptadores que usan las fachadas de Trámites, Pagos en caja y Licencias |
 
 ## Comunicación entre módulos
 
@@ -45,13 +45,15 @@ stateDiagram-v2
     [*] --> Registrado: presentar solicitud
     Registrado --> Observado: faltan requisitos
     Observado --> Registrado: subsanar
-    Registrado --> PendientePago: rutas A y B, se genera la esquela
+    Registrado --> PendientePago: ruta A, riesgo confirmado, se genera la esquela
+    Registrado --> EnEvaluacion: ruta B, evaluación previa
     Registrado --> LicenciaProvisional: ruta C, bodega gratuita, sin esquela
+    EnEvaluacion --> Observado: evaluador observa
+    EnEvaluacion --> Denegado: evaluador deniega
+    EnEvaluacion --> PendientePago: evaluador confirma el riesgo y aprueba, se genera la esquela
     PendientePago --> Pagado: caja registra el pago
     Pagado --> LicenciaEmitida: ruta A, aprobación automática en 2 días
-    Pagado --> EnEvaluacion: ruta B, evaluación previa
-    EnEvaluacion --> EnInspeccion: evaluador aprueba, se programa ITSE previa
-    EnEvaluacion --> Denegado: evaluador deniega
+    Pagado --> EnInspeccion: ruta B, se programa ITSE previa
     EnInspeccion --> Aprobado: ITSE favorable
     EnInspeccion --> Denegado: ITSE desfavorable
     Aprobado --> LicenciaEmitida: emisión en 1 día hábil
@@ -61,21 +63,23 @@ stateDiagram-v2
 ```
 
 - **Ruta A:** después de emitir la licencia, Inspecciones programa la **ITSE posterior** (hasta 9 días hábiles); el certificado se renueva cada 2 años.
-- **Ruta B:** la licencia solo se emite con evaluación aprobada e ITSE favorable.
+- **Ruta B:** primero la evaluación previa (el evaluador confirma o corrige el riesgo), luego la esquela y el pago, después la ITSE previa. Si el evaluador corrige el riesgo, el expediente toma la receta del nuevo nivel **antes** de generar la esquela, así el monto pagado siempre coincide. Todo esto está dentro de los 8 días hábiles del TUPA.
 - **Ruta C:** licencia provisional gratuita de 12 meses; la ITSE se realiza dentro de los primeros 6 meses.
 
 ## Ejemplo de flujo interno: pago en caja
 
 ```
-1. tramites.controller → RegistrarSolicitud → requisitos completos (rutas A y B)
+1. Riesgo confirmado: verificación de requisitos (ruta A) o evaluación previa aprobada (ruta B)
 2. Trámites llama a ModuloPagos.generarEsquela(numeroExpediente, codigoReceta)
      → GenerarEsquela (aplicación)
      → ConsultaTasa.tasaDe(codigoReceta)          // la tasa sale del catálogo
+     → RepositorioEsquelas.siguienteSecuencial(expediente)   // atómico
      → CodigoEsquela: ESQ-<expediente>-<secuencial> (único)
      → GeneradorDocumentos: PDF de la esquela (worker)
 3. El administrado paga en la caja de la Municipalidad.
 4. pagos.controller (rol caja) → RegistrarPagoEnCaja (aplicación)
      → RepositorioEsquelas.buscarPorCodigo(codigo)
      → Esquela.registrarPago(numeroRecibo)   // falla si ya estaba pagada
+     → RepositorioEsquelas.guardarPago(esquela)  // atómico: falla si otro cajero la pagó al mismo tiempo
      → PublicadorEventos.publicar(PagoRegistrado) → Trámites avanza el expediente
 ```
