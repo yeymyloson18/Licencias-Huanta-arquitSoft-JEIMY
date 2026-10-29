@@ -41,7 +41,15 @@ y un único **motor de trámites** sigue la receta que corresponde (ADR-002).
 | El inspector trabaja siempre con internet desde su celular | Se elimina el modo sin conexión y la aplicación instalable. |
 | No hay pagos digitales | El TUPA indica el pago en la caja municipal; el sistema genera una esquela de pago y el personal de caja registra el pago. |
 | Atributos de calidad reducidos a seis | Rendimiento, seguridad, disponibilidad, escalabilidad, usabilidad y mantenibilidad. |
+| Sin integración con SIAF | Queda fuera de alcance. |
 | Sin recursos de reconsideración ni apelación | Quedan fuera del alcance del sistema. |
 | Sin bitácora ni versionado del catálogo | El administrador actualiza las recetas; cada esquela guarda el monto con el que se generó. |
+
+## Mejoras para la Fase 2 (fuera del Sprint 1)
+
+| Idea | Motivo para dejarla después |
+|---|---|
+| Asistente por chat y WhatsApp | Definido como Fase 2 desde el inicio (RC13). |
+| Bitácora y versionado del catálogo | Mejora útil, pero no es necesaria para el trámite básico. |
 
 ## Curso: Arquitectura de Software – UNSCH 2026
