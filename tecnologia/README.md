@@ -143,7 +143,7 @@ export class RegistrarPagoEnCaja {
     esquela.registrarPago(numeroRecibo);                         // 1.ª defensa: regla del dominio
     const guardado = await this.esquelas.guardarPago(esquela);   // 2.ª defensa: la base de datos
     if (!guardado) throw new Error('Esta esquela ya fue pagada');   // otro cajero la pagó al mismo tiempo
-    // En producción, guardarPago y publicar van en la MISMA transacción (outbox): el evento no se pierde
+    // Ejemplo simple: publica directo. En producción se usaría outbox (ver la nota de la sección 3)
     await this.eventos.publicar({                                // Trámites reacciona y avanza el expediente
       codigoEsquela: esquela.codigo,
       numeroExpediente: esquela.numeroExpediente,
@@ -220,9 +220,28 @@ RETURNING ultimo;
 UPDATE esquelas SET numero_recibo = $2, pagada_en = now()
 WHERE codigo = $1 AND numero_recibo IS NULL;
 -- 1 fila actualizada = pago registrado (true); 0 filas = ya estaba pagada (false)
+```
 
--- En la MISMA transacción se guarda el evento (outbox), así no se pierde si falla la publicación
-INSERT INTO eventos_pendientes (tipo, datos) VALUES ('PagoRegistrado', $3);
+### Nota para producción: outbox (no forma parte de este ejemplo)
+
+En el ejemplo, `RegistrarPagoEnCaja` guarda el pago y **después** llama a `publicar()`. Si la publicación fallara,
+el pago quedaría registrado pero el expediente no avanzaría. En producción se evitaría con un **outbox**:
+
+1. El pago y el evento se guardan **en una sola sentencia**, y el evento **solo** se guarda si el pago se registró.
+2. Los **workers** leen la tabla `eventos_pendientes` y entregan el evento a Trámites; si falla, lo reintentan.
+3. En ese diseño, el caso de uso **ya no llama a `publicar()`**, así el evento no se entrega dos veces.
+
+```sql
+-- Si el UPDATE no actualiza ninguna fila (ya estaba pagada), el INSERT no guarda nada
+WITH pago AS (
+  UPDATE esquelas SET numero_recibo = $2, pagada_en = now()
+  WHERE codigo = $1 AND numero_recibo IS NULL
+  RETURNING codigo, numero_expediente, numero_recibo
+)
+INSERT INTO eventos_pendientes (tipo, datos)
+SELECT 'PagoRegistrado',
+       json_build_object('codigoEsquela', codigo, 'numeroExpediente', numero_expediente, 'numeroRecibo', numero_recibo)
+FROM pago;
 ```
 
 ## 4. Composición (único lugar que elige los adaptadores)
@@ -268,5 +287,5 @@ console.log(leida?.estaPagada());                  // true: al leerla de nuevo s
 | Inversión de dependencias (DIP) | Los casos de uso reciben sus contratos por el constructor. |
 | Adaptadores intercambiables (LSP) | El contrato exige que `siguienteSecuencial` y `guardarPago` sean atómicos; el adaptador en memoria y el de PostgreSQL lo cumplen, por eso se cambian sin tocar los casos de uso. |
 | Límite entre módulos | Pagos no toca el `Expediente`: publica `PagoRegistrado` y Trámites reacciona. |
-| El evento no se pierde | En PostgreSQL, el pago y el evento se guardan en la misma transacción (outbox). |
+| Cómo evitar perder el evento | El ejemplo publica directo para ser simple; en producción se usaría outbox (nota de la sección 3). |
 | Se prueba sin base de datos | Todo el ejemplo funciona en memoria. |
