@@ -143,6 +143,7 @@ export class RegistrarPagoEnCaja {
     esquela.registrarPago(numeroRecibo);                         // 1.ª defensa: regla del dominio
     const guardado = await this.esquelas.guardarPago(esquela);   // 2.ª defensa: la base de datos
     if (!guardado) throw new Error('Esta esquela ya fue pagada');   // otro cajero la pagó al mismo tiempo
+    // En producción, guardarPago y publicar van en la MISMA transacción (outbox): el evento no se pierde
     await this.eventos.publicar({                                // Trámites reacciona y avanza el expediente
       codigoEsquela: esquela.codigo,
       numeroExpediente: esquela.numeroExpediente,
@@ -219,6 +220,9 @@ RETURNING ultimo;
 UPDATE esquelas SET numero_recibo = $2, pagada_en = now()
 WHERE codigo = $1 AND numero_recibo IS NULL;
 -- 1 fila actualizada = pago registrado (true); 0 filas = ya estaba pagada (false)
+
+-- En la MISMA transacción se guarda el evento (outbox), así no se pierde si falla la publicación
+INSERT INTO eventos_pendientes (tipo, datos) VALUES ('PagoRegistrado', $3);
 ```
 
 ## 4. Composición (único lugar que elige los adaptadores)
@@ -264,4 +268,5 @@ console.log(leida?.estaPagada());                  // true: al leerla de nuevo s
 | Inversión de dependencias (DIP) | Los casos de uso reciben sus contratos por el constructor. |
 | Adaptadores intercambiables (LSP) | El contrato exige que `siguienteSecuencial` y `guardarPago` sean atómicos; el adaptador en memoria y el de PostgreSQL lo cumplen, por eso se cambian sin tocar los casos de uso. |
 | Límite entre módulos | Pagos no toca el `Expediente`: publica `PagoRegistrado` y Trámites reacciona. |
+| El evento no se pierde | En PostgreSQL, el pago y el evento se guardan en la misma transacción (outbox). |
 | Se prueba sin base de datos | Todo el ejemplo funciona en memoria. |
