@@ -19,13 +19,13 @@
 |---|---|
 | RF07 | El sistema debe asignar automáticamente la ruta del trámite (A, B o C) según el tipo de licencia. |
 | RF08 | El sistema debe contar los plazos en días hábiles y alertar antes de su vencimiento. |
-| RF09 | El sistema debe permitir al evaluador confirmar o corregir el nivel de riesgo y aprobar u observar el expediente. |
+| RF09 | El sistema debe permitir al evaluador confirmar o corregir el nivel de riesgo y aprobar, observar o denegar el expediente. La esquela de pago se genera solo después de confirmar el nivel de riesgo. |
 | RF10 | El sistema debe asignar el inspector y permitirle registrar el resultado de la ITSE con fotos desde su celular. |
 
 ## Pago en caja y emisión
 | ID | Requisito funcional |
 |---|---|
-| RF11 | El sistema debe generar una esquela de pago con el número de expediente, el concepto, el monto de la tasa y un código único. |
+| RF11 | El sistema debe generar una esquela de pago con el número de expediente, el concepto, el monto de la tasa y un código único, una vez confirmado el nivel de riesgo. |
 | RF12 | El sistema debe permitir al personal de caja registrar el pago de una esquela con su código y el número de recibo. |
 | RF13 | El sistema debe emitir la licencia digital con un código QR verificable públicamente. |
 | RF14 | El sistema debe registrar el certificado ITSE con su fecha de vencimiento y avisar antes de que venza. |
@@ -39,7 +39,7 @@
 | RF18 | El sistema debe mostrar reportes de licencias vigentes, en trámite y con ITSE por vencer, por tipo, giro y zona. |
 | RF19 | El sistema debe mostrar un tablero con tiempos de atención comparados con el plazo del TUPA, e ingresos registrados en caja. |
 | RF20 | El sistema debe enviar notificaciones por correo y SMS en cada avance del trámite. |
-| RF21 | El sistema debe permitir al administrador actualizar las recetas del catálogo (requisitos, tasa, plazo y vigencia). |
+| RF21 | El sistema debe permitir al administrador actualizar las recetas del catálogo (requisitos, tasa, plazo, calificación, orden del ITSE y vigencia). |
 | RF22 | El sistema debe permitir al administrador crear, desactivar y asignar roles a los usuarios del personal. |
 | RF23 | El sistema debe permitir al administrador registrar el calendario de feriados usado para contar días hábiles. |
 
