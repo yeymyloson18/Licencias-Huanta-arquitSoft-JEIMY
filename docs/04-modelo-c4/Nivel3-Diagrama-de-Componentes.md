@@ -1,10 +1,9 @@
 # C4 – Nivel 3: Diagrama de componentes
 
-**Qué muestra:** los componentes que hay **dentro del contenedor Backend API** y cómo se relacionan.
-En este sistema, cada componente es un **módulo del monolito modular**.
+**Qué muestra:** los componentes que hay **dentro del contenedor Backend API**.
+Cada componente es un **módulo del monolito modular**.
 
-El diagrama completo, con la tabla de responsabilidades y la trazabilidad de cada componente hacia
-sus requisitos, drivers, decisiones y escenarios, está en:
+El diagrama completo, con la tabla de responsabilidades y la trazabilidad de cada componente, está en:
 
 ➡️ [`docs/02-arquitectura-software/componentes-arquitectonicos.md`](../02-arquitectura-software/componentes-arquitectonicos.md)
 
@@ -12,31 +11,29 @@ sus requisitos, drivers, decisiones y escenarios, está en:
 
 ```mermaid
 flowchart LR
-    Front["Portal Web y PWA"] -->|"HTTPS/JSON"| Rest["API REST<br/>autenticación, roles, validación"]
+    Front["Portal Web"] -->|"HTTPS/JSON"| Rest["API REST<br/>autenticación, roles, validación"]
 
     subgraph API["Backend API - monolito modular"]
         Rest --> Cat["Catálogo y Asistente de ruta"]
         Rest --> Tra["Trámites"]
-        Rest --> Pag["Pagos"]
+        Rest --> Pag["Pagos en caja"]
         Rest --> Ins["Inspecciones"]
         Rest --> Lic["Licencias"]
         Rest --> Rep["Reportes"]
         Pla["Reloj de plazos"]
         Not["Notificaciones"]
-        Bit["Bitácora"]
 
         Tra -->|"lee receta"| Cat
         Pag -->|"lee tasa"| Cat
-        Tra --> Pag
+        Tra -->|"solicita esquela"| Pag
+        Pag -.->|"pago registrado"| Tra
         Tra --> Ins
         Tra --> Lic
         Pla --> Tra
         Pla --> Not
         Tra -.->|"eventos"| Not
-        Tra -.-> Bit
     end
 
-    Pag --> Pasarela["Pasarela de pago"]
     Tra --> Ident["Validación DNI / RUC"]
     Not --> Msg["Correo y SMS"]
     API --> BD[("PostgreSQL")]
