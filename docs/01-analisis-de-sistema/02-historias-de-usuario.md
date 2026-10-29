@@ -17,6 +17,6 @@
 | HU11 | Como administrado, quiero recibir un aviso antes de que venza mi certificado ITSE, para renovarlo a tiempo. |
 | HU12 | Como administrado, quiero solicitar transferencia, cambio de giro o duplicado de mi licencia, para mantenerla actualizada. |
 | HU13 | Como personal de caja, quiero registrar el pago con el código de la esquela, para que el trámite continúe sin demoras. |
-| HU14 | Como administrador del sistema, quiero actualizar requisitos, tasas y plazos en el catálogo, para aplicar los cambios del TUPA sin programar. |
+| HU14 | Como administrador del sistema, quiero actualizar requisitos, tasa, plazo, calificación, orden del ITSE y vigencia de cada receta del catálogo, para aplicar los cambios del TUPA sin programar. |
 | HU15 | Como administrador del sistema, quiero crear usuarios y asignarles un rol, para que cada persona haga solo lo que le corresponde. |
 | HU16 | Como administrador del sistema, quiero registrar los feriados del año, para que los plazos se cuenten bien en días hábiles. |
