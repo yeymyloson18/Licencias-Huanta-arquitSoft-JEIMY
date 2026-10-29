@@ -1,6 +1,7 @@
 # Patrones de diseño
 
 Solo se aplican los patrones que **resuelven un problema real del sistema de licencias**.
+Se eligieron **cinco**, uno por cada problema principal del diseño.
 
 ## Patrones aplicados
 
@@ -8,12 +9,9 @@ Solo se aplican los patrones que **resuelven un problema real del sistema de lic
 |---|---|---|---|
 | **Strategy** (estrategia) | Las 9 licencias siguen una de **3 rutas** (A, B, C). Con `if/else` por tipo, cada ruta nueva obligaría a modificar el motor. | `RutaTramite` con las implementaciones `RutaA`, `RutaB` y `RutaC`. La receta indica qué estrategia usar. | DA01 · ADR-002 |
 | **Repository** (repositorio) | Los casos de uso no deben conocer SQL ni PostgreSQL. | `RepositorioExpedientes`, `RepositorioCatalogo`, `RepositorioEsquelas`… definidos en el dominio. | DA08 · ADR-003 |
-| **Adapter** (adaptador) | El servicio de DNI/RUC y el de correo/SMS tienen interfaces propias. | `AdaptadorValidacionDniRuc`, `NotificadorCorreoSMS` (usado por el worker), `ConsultaTasaCatalogo`, adaptador del chatbot (Fase 2). | DA08 · ADR-003 |
-| **Factory** (fábrica) | Crear un expediente exige copiar los requisitos y la ruta de la receta. | `FabricaExpediente.crearDesde(receta, solicitante)`. | DA01 · ADR-002 |
-| **Chain of Responsibility** | Una solicitud pasa varias validaciones en orden. | Requisitos completos → identidad DNI/RUC → documentos especiales del giro → zonificación (ruta C). | RF04, RF06 |
+| **Adapter** (adaptador) | El servicio de DNI/RUC, el de correo/SMS, Redis y los otros módulos tienen interfaces propias. | `AdaptadorValidacionDniRuc`, `NotificadorCorreoSMS` (usado por el worker), `ConsultaTasaCatalogo`, `RepositorioCatalogoConCache` (Redis), adaptador del chatbot (Fase 2). | DA08 · ADR-003 |
 | **Facade** (fachada de módulo) | Otros módulos no deben conocer el interior de un módulo. | Cada módulo expone una fachada pública, por ejemplo `ModuloPagos.generarEsquela()`. | DA07 · ADR-001 |
-| **Observer / Eventos de dominio** | Al cambiar el estado de un expediente, varias partes deben reaccionar sin acoplarse. | `PagoRegistrado` → Trámites; `ResultadoITSERegistrado` → Trámites; `EstadoExpedienteCambiado` → Notificaciones. | DA08 |
-| **Decorator** (decorador) | El catálogo se consulta mucho y casi no cambia. | `RepositorioCatalogoConCache` envuelve al repositorio real y guarda en Redis. | DA02 · ADR-005 |
+| **Observer / Eventos de dominio** | Cuando ocurre algo importante, otros módulos deben reaccionar sin acoplarse. | `PagoRegistrado` → Trámites; `ResultadoITSERegistrado` → Trámites; `EstadoExpedienteCambiado` → Notificaciones. | DA08 |
 
 **CORS** no es un patrón de diseño: es una configuración de seguridad; la API solo acepta peticiones del Portal Web oficial.
 
@@ -61,6 +59,9 @@ Si apareciera una cuarta ruta, se agrega una clase nueva **sin modificar el moto
 
 | Patrón | Por qué no |
 |---|---|
+| **Factory** | Crear un expediente es simple: el caso de uso `RegistrarSolicitud` copia los requisitos y la ruta de la receta. |
+| **Chain of Responsibility** | Las validaciones de la solicitud son pocas y fijas; se hacen en orden dentro de `RegistrarSolicitud`. |
+| **Decorator** | La caché del catálogo se resuelve con un adaptador de Redis (`RepositorioCatalogoConCache`); no hace falta nombrarla como otro patrón. |
 | **Saga** | Sirve para transacciones entre microservicios; aquí hay una sola base de datos. |
 | **CQRS completo** | Los reportes leen de la misma base; separar modelos añadiría complejidad sin beneficio. |
 | **Circuit Breaker** | No hay pasarela de pago; el único servicio externo crítico (DNI/RUC) puede validarse después por mesa de partes. |
