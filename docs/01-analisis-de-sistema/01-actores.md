@@ -4,20 +4,18 @@
 
 | Actor | ¿Qué necesita realizar? |
 |---|---|
-| Administrado (persona o empresa) | Saber qué licencia le corresponde, presentar la solicitud con sus documentos, pagar la tasa, consultar el estado del trámite y descargar su licencia digital. |
+| Administrado (persona o empresa) | Saber qué licencia le corresponde, presentar la solicitud con sus documentos, obtener la esquela de pago, consultar el estado del trámite y descargar su licencia digital. |
 | Personal de mesa de partes | Atender presencialmente, registrar solicitudes de quienes no usan internet y verificar documentos. |
-| Evaluador | Revisar expedientes, confirmar o corregir el nivel de riesgo, observar o aprobar solicitudes y atender recursos. |
-| Inspector ITSE | Consultar inspecciones asignadas y registrar el resultado con fotos desde el celular, incluso sin señal. |
+| Evaluador | Revisar expedientes, confirmar o corregir el nivel de riesgo y aprobar u observar solicitudes. |
+| Inspector ITSE | Consultar sus inspecciones asignadas y registrar el resultado con fotos desde su celular, con conexión a internet. |
+| Personal de caja | Cobrar la tasa presentada en la esquela de pago y registrar el pago en el sistema. |
 | Jefatura | Supervisar plazos, recibir alertas de vencimiento y revisar reportes e ingresos. |
-| Administrador funcional | Mantener el catálogo de licencias y sus versiones según el TUPA vigente, y gestionar usuarios y roles. |
+| Administrador del sistema | Gestionar usuarios y roles, y mantener actualizado el catálogo de licencias según el TUPA. |
 
 ## Sistemas externos
 
 | Actor | ¿Qué necesita realizar? |
 |---|---|
-| Pasarela de pago | Procesar pagos digitales (billetera digital, banca por internet o agente). |
 | Servicio de validación de DNI / RUC | Validar la identidad de personas y empresas. |
 | Servicio de correo y SMS | Enviar notificaciones de avance del trámite. |
-| Identidad digital del Estado | Permitir el ingreso del administrado cuando la Municipalidad lo habilite. |
-| SIAF-SP / Trámite documentario | Intercambiar información con otros sistemas municipales mediante API. |
-| WhatsApp Business API (Fase 2) | Canal de atención del asistente virtual por chat. |
+| WhatsApp Business API (Fase 2) | Canal del asistente virtual por chat. |
