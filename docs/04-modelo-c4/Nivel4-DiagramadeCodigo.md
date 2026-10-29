@@ -1,8 +1,8 @@
 # C4 – Nivel 4: Diagrama de código
 
-**Qué muestra:** las clases e interfaces de un componente. Se documenta solo el componente más
-crítico: **Pagos**, junto con su relación con **Trámites** y **Catálogo**, porque concentra las
-decisiones ADR-003 (Clean Architecture) y ADR-004 (pago idempotente).
+**Qué muestra:** las clases e interfaces de un componente. Se documenta el componente
+**Pagos en caja**, porque concentra la decisión ADR-004 (pago presencial con esquela) y muestra
+Clean Architecture (ADR-003).
 
 ```mermaid
 classDiagram
@@ -11,91 +11,85 @@ classDiagram
     class Expediente {
         -numero: NumeroExpediente
         -estado: EstadoExpediente
-        -versionReceta: VersionReceta
+        -receta: Receta
         +tasaAPagar() Monto
         +marcarPagado() void
         +estaPagado() boolean
     }
 
-    class VersionReceta {
+    class Receta {
         -tasa: Monto
         -plazo: PlazoDiasHabiles
         -ruta: RutaTramite
-        -vigenteDesde: Date
     }
 
-    class Pago {
-        -id: IdentificadorPago
+    class Esquela {
+        -codigo: CodigoEsquela
+        -numeroExpediente: NumeroExpediente
         -monto: Monto
-        -estado: EstadoPago
-        +confirmar() void
-        +estaConfirmado() boolean
+        -numeroRecibo: NumeroRecibo
+        -pagada: boolean
+        +registrarPago(recibo: NumeroRecibo) void
+        +estaPagada() boolean
     }
 
-    class PasarelaPago {
+    class RepositorioEsquelas {
         <<interface>>
-        +cobrar(id: IdentificadorPago, monto: Monto) ResultadoCobro
+        +buscarPorCodigo(codigo: CodigoEsquela) Esquela
+        +guardar(esquela: Esquela) void
     }
 
-    class RepositorioPagos {
+    class GeneradorDocumentos {
         <<interface>>
-        +buscarPorId(id: IdentificadorPago) Pago
-        +guardar(pago: Pago) void
+        +generarPdfEsquela(esquela: Esquela) Documento
     }
 
-    class RepositorioExpedientes {
-        <<interface>>
-        +buscar(numero: NumeroExpediente) Expediente
-        +guardar(expediente: Expediente) void
-    }
-
-    class PagarTasa {
+    class GenerarEsquela {
         <<caso de uso>>
-        +ejecutar(numero: NumeroExpediente, id: IdentificadorPago) ResultadoCobro
+        +ejecutar(numero: NumeroExpediente) Esquela
     }
 
-    class AdaptadorPasarelaPago {
+    class RegistrarPagoEnCaja {
+        <<caso de uso>>
+        +ejecutar(codigo: CodigoEsquela, recibo: NumeroRecibo) void
+    }
+
+    class RepositorioEsquelasPostgres {
         <<adaptador>>
-        +cobrar(id, monto) ResultadoCobro
     }
 
-    class PasarelaPagoSimulada {
-        <<adaptador de pruebas>>
-        +cobrar(id, monto) ResultadoCobro
-    }
-
-    class RepositorioPagosPostgres {
+    class GeneradorPdf {
         <<adaptador>>
     }
 
     class PagosController {
         <<presentación>>
-        +pagar(peticion) Respuesta
+        +generarEsquela(peticion) Respuesta
+        +registrarPago(peticion) Respuesta
     }
 
-    Expediente --> VersionReceta : usa la versión con la que empezó
-    PagosController --> PagarTasa : invoca
-    PagarTasa --> RepositorioExpedientes : usa
-    PagarTasa --> RepositorioPagos : usa
-    PagarTasa --> PasarelaPago : usa
-    PagarTasa ..> Pago : crea
-    PagarTasa ..> Expediente : obtiene la tasa
-    AdaptadorPasarelaPago ..|> PasarelaPago : implementa
-    PasarelaPagoSimulada ..|> PasarelaPago : implementa
-    RepositorioPagosPostgres ..|> RepositorioPagos : implementa
+    Expediente --> Receta : obtiene la tasa
+    PagosController --> GenerarEsquela : invoca
+    PagosController --> RegistrarPagoEnCaja : invoca
+    GenerarEsquela --> RepositorioEsquelas : usa
+    GenerarEsquela --> GeneradorDocumentos : usa
+    GenerarEsquela ..> Esquela : crea
+    GenerarEsquela ..> Expediente : lee la tasa
+    RegistrarPagoEnCaja --> RepositorioEsquelas : usa
+    RepositorioEsquelasPostgres ..|> RepositorioEsquelas : implementa
+    GeneradorPdf ..|> GeneradorDocumentos : implementa
 ```
 
 ## Cómo leer el diagrama
 
 | Capa | Clases |
 |---|---|
-| **Dominio** | `Expediente`, `VersionReceta`, `Pago` y los contratos `PasarelaPago`, `RepositorioPagos`, `RepositorioExpedientes` |
-| **Aplicación** | `PagarTasa` |
-| **Infraestructura** | `AdaptadorPasarelaPago`, `PasarelaPagoSimulada`, `RepositorioPagosPostgres` |
-| **Presentación** | `PagosController` |
+| **Dominio** | `Expediente`, `Receta`, `Esquela` y los contratos `RepositorioEsquelas` y `GeneradorDocumentos` |
+| **Aplicación** | `GenerarEsquela`, `RegistrarPagoEnCaja` |
+| **Infraestructura** | `RepositorioEsquelasPostgres`, `GeneradorPdf` |
+| **Presentación** | `PagosController` (solo el rol de caja puede registrar pagos) |
 
-**Regla de idempotencia:** antes de cobrar, `PagarTasa` busca el `IdentificadorPago`. Si ese pago ya
-existe, devuelve su resultado y **no vuelve a cobrar**.
+**Regla del dominio:** `Esquela.registrarPago()` rechaza el registro si la esquela ya fue pagada.
 
 Las flechas `..|>` muestran la **inversión de dependencias**: los adaptadores dependen de los contratos
 del dominio, nunca al revés. El código de ejemplo está en `tecnologia/README.md`.
