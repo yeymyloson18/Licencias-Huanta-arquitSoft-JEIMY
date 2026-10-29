@@ -2,6 +2,7 @@
 
 Cada escenario convierte un atributo de calidad en algo **medible**: fuente, estímulo, artefacto,
 entorno, respuesta y medida. Las medidas son **propuestas por validar** con la Municipalidad.
+
 > **Sprint 1:** todavía no hay sistema construido, así que **ninguna medida se ha ejecutado**. La fila *Herramienta* indica con qué se medirá cada escenario cuando exista el prototipo.
 
 ## EQ-01. Rendimiento: consulta del catálogo y del estado del trámite
@@ -17,15 +18,8 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | **Respuesta** | El sistema muestra la información sin errores. |
 | **Medida** | **Propuesta por validar:** el 95 % de las consultas responde en 2 segundos o menos, con menos del 1 % de errores técnicos (5xx). |
 | **Verificación** | Prueba de carga con 1,000 usuarios virtuales. |
+| **Herramienta** | **k6** (script de carga) y **Grafana + Prometheus** para ver el percentil 95 y los errores 5xx. |
 | **Estado** | Pendiente de validar la meta con la Municipalidad. |
-  | **Herramienta** | **k6** (script de carga) y **Grafana + Prometheus** para ver el percentil 95 y los errores 5xx. |
-    | **Herramienta** | **k6** con etapas (`stages`) y **Docker Compose** (`--scale api=N`) para agregar instancias. |
-      | **Herramienta** | **Docker** (`docker stop` de una instancia), **Nginx** como balanceador con chequeo de salud y **Uptime Kuma** para medir la disponibilidad mensual. |
-        | **Herramienta** | **Jest + Supertest** (pruebas automáticas por rol), **OWASP ZAP** (escaneo de vulnerabilidades) y **testssl.sh** (comprobar TLS 1.3). |
-          | **Herramienta** | Prueba con usuarios reales, **cronómetro** y cuestionario **SUS** en **Google Forms**; **Lighthouse** para revisar la vista en celular. |
-            | **Herramienta** | **Jest** (pruebas de regresión), **dependency-cruiser** (verifica que el dominio no importe infraestructura) y **GitHub Actions** (ejecuta todo en cada commit). |
-              | **Herramienta** | **Jest** con fechas simuladas y feriados de prueba, y **Docker Compose** con 2 instancias para comprobar que sale una sola alerta. |
-
 
 ## EQ-02. Escalabilidad: picos de campaña
 
@@ -40,6 +34,7 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | **Respuesta** | Se agregan instancias del backend y el sistema sigue atendiendo. |
 | **Medida** | **Propuesta por validar:** con 10,000 usuarios, el 95 % de las respuestas en 3 segundos o menos y menos del 1 % de errores. |
 | **Verificación** | Prueba de carga escalonada (1,000 → 5,000 → 10,000 usuarios). |
+| **Herramienta** | **k6** con etapas (`stages`) y **Docker Compose** (`--scale api=N`) para agregar instancias. |
 | **Estado** | Pendiente de confirmar la demanda real. |
 
 ## EQ-03. Disponibilidad: continuidad del servicio
@@ -55,6 +50,7 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | **Respuesta** | El balanceador envía el tráfico a la otra instancia; presentar solicitudes, generar esquelas y consultar estado siguen funcionando. |
 | **Medida** | **Propuesta por validar:** disponibilidad mensual de 99,5 %; recuperación en 5 minutos o menos. |
 | **Verificación** | Simulacro apagando una instancia; revisión mensual del monitoreo. |
+| **Herramienta** | **Docker** (`docker stop` de una instancia), **Nginx** como balanceador con chequeo de salud y **Uptime Kuma** para medir la disponibilidad mensual. |
 | **Estado** | Pendiente de definir las ventanas de mantenimiento. |
 
 ## EQ-04. Seguridad: acceso a operaciones protegidas
@@ -70,6 +66,7 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | **Respuesta** | El sistema rechaza la operación, no modifica datos y no expone información sensible. |
 | **Medida** | Rechazar el 100 % de los intentos no autorizados probados; ningún dato personal en mensajes de error ni en la página pública del QR. |
 | **Verificación** | Matriz de pruebas por rol (mesa de partes, evaluador, inspector, caja, jefatura y administrador) y prueba de consulta del administrado con un DNI/RUC que no corresponde al expediente. |
+| **Herramienta** | **Jest + Supertest** (pruebas automáticas por rol), **OWASP ZAP** (escaneo de vulnerabilidades) y **testssl.sh** (comprobar TLS 1.3). |
 | **Estado** | Pendiente de aprobar la matriz de permisos por rol. |
 
 ## EQ-05. Usabilidad: trámite desde el celular
@@ -85,6 +82,7 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | **Respuesta** | La persona identifica su licencia, presenta la solicitud y descarga su esquela de pago. |
 | **Medida** | **Propuesta por validar:** el 90 % de los participantes completa el proceso en 15 minutos o menos, sin ayuda. |
 | **Verificación** | Prueba de usabilidad con un grupo de administrados. |
+| **Herramienta** | Prueba con usuarios reales, **cronómetro** y cuestionario **SUS** en **Google Forms**; **Lighthouse** para revisar la vista en celular. |
 | **Estado** | Pendiente de organizar la prueba. |
 
 ## EQ-06. Mantenibilidad: cambio del TUPA y cambios por módulo
@@ -100,6 +98,7 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | **Respuesta** | El cambio de tasa o requisito se hace en el catálogo, sin programar; la corrección de un módulo no afecta a los demás. |
 | **Medida** | Ninguna línea de código modificada para cambiar una tasa; las pruebas de los demás módulos siguen aprobándose. |
 | **Verificación** | Cambiar una tasa de prueba y ejecutar las pruebas de regresión. |
+| **Herramienta** | **Jest** (pruebas de regresión), **dependency-cruiser** (verifica que el dominio no importe infraestructura) y **GitHub Actions** (ejecuta todo en cada commit). |
 | **Estado** | Pendiente de definir las pruebas obligatorias. |
 
 ## EQ-07. Disponibilidad del reloj de plazos: alertas a tiempo
@@ -113,8 +112,9 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | **Artefacto** | Reloj de plazos, calendario de feriados y Notificaciones |
 | **Entorno** | Operación normal, incluso si una instancia del backend está caída. |
 | **Respuesta** | Una sola instancia obtiene el bloqueo de la tarea (ADR-006), detecta el expediente y alerta a la jefatura una sola vez. |
-| **Medida** | **Propuesta por validar:** el 100 % de los expedientel 100 % de los expedientes próximos a vencer genera **una** alerta (ni cero ni duplicadas); ningún día hábil sin ejecutar la tarea en el mes. |
+| **Medida** | **Propuesta por validar:** el 100 % de los expedientes próximos a vencer genera **una** alerta (ni cero ni duplicadas); ningún día hábil sin ejecutar la tarea en el mes. |
 | **Verificación** | Prueba con expedientes de fechas simuladas y feriados registrados; revisión mensual del registro de ejecuciones. |
+| **Herramienta** | **Jest** con fechas simuladas y feriados de prueba, y **Docker Compose** con 2 instancias para comprobar que sale una sola alerta. |
 | **Estado** | Pendiente de definir con cuántos días de anticipación se alerta. |
 
 ---
