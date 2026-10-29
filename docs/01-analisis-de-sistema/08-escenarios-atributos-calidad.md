@@ -2,6 +2,7 @@
 
 Cada escenario convierte un atributo de calidad en algo **medible**: fuente, estímulo, artefacto,
 entorno, respuesta y medida. Las medidas son **propuestas por validar** con la Municipalidad.
+> **Sprint 1:** todavía no hay sistema construido, así que **ninguna medida se ha ejecutado**. La fila *Herramienta* indica con qué se medirá cada escenario cuando exista el prototipo.
 
 ## EQ-01. Rendimiento: consulta del catálogo y del estado del trámite
 
@@ -17,6 +18,14 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | **Medida** | **Propuesta por validar:** el 95 % de las consultas responde en 2 segundos o menos, con menos del 1 % de errores técnicos (5xx). |
 | **Verificación** | Prueba de carga con 1,000 usuarios virtuales. |
 | **Estado** | Pendiente de validar la meta con la Municipalidad. |
+  | **Herramienta** | **k6** (script de carga) y **Grafana + Prometheus** para ver el percentil 95 y los errores 5xx. |
+    | **Herramienta** | **k6** con etapas (`stages`) y **Docker Compose** (`--scale api=N`) para agregar instancias. |
+      | **Herramienta** | **Docker** (`docker stop` de una instancia), **Nginx** como balanceador con chequeo de salud y **Uptime Kuma** para medir la disponibilidad mensual. |
+        | **Herramienta** | **Jest + Supertest** (pruebas automáticas por rol), **OWASP ZAP** (escaneo de vulnerabilidades) y **testssl.sh** (comprobar TLS 1.3). |
+          | **Herramienta** | Prueba con usuarios reales, **cronómetro** y cuestionario **SUS** en **Google Forms**; **Lighthouse** para revisar la vista en celular. |
+            | **Herramienta** | **Jest** (pruebas de regresión), **dependency-cruiser** (verifica que el dominio no importe infraestructura) y **GitHub Actions** (ejecuta todo en cada commit). |
+              | **Herramienta** | **Jest** con fechas simuladas y feriados de prueba, y **Docker Compose** con 2 instancias para comprobar que sale una sola alerta. |
+
 
 ## EQ-02. Escalabilidad: picos de campaña
 
@@ -121,3 +130,22 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | EQ-05 | Usabilidad | Que el administrado haga su trámite solo, desde el celular. | AC05 |
 | EQ-06 | Mantenibilidad | Que un cambio del TUPA no exija programar. | AC06 · DA01 · DA08 |
 | EQ-07 | Disponibilidad | Que ningún plazo venza sin alerta. | AC03 · DA05 |
+
+## Herramientas de medición
+
+| Herramienta | Para qué se usa | Escenarios |
+|---|---|---|
+| k6 | Simular cientos o miles de usuarios y medir tiempos de respuesta y errores. | EQ-01, EQ-02 |
+| Grafana + Prometheus | Ver en gráficos el tiempo de respuesta, los errores y el uso de las instancias. | EQ-01, EQ-02 |
+| Docker / Docker Compose | Levantar varias instancias, apagar una a propósito y escalar. | EQ-02, EQ-03, EQ-07 |
+| Nginx | Balanceador que deja de enviar tráfico a una instancia caída. | EQ-03 |
+| Uptime Kuma | Revisar cada minuto si el sistema responde y calcular la disponibilidad mensual. | EQ-03 |
+| Jest + Supertest | Pruebas automáticas del backend NestJS (roles, reglas, plazos). | EQ-04, EQ-06, EQ-07 |
+| OWASP ZAP | Buscar vulnerabilidades comunes en la API y el Portal Web. | EQ-04 |
+| testssl.sh | Comprobar que el servidor usa TLS 1.3. | EQ-04 |
+| Cuestionario SUS + Google Forms | Medir la facilidad de uso con personas reales. | EQ-05 |
+| Lighthouse | Revisar la vista en celular y la accesibilidad del Portal Web. | EQ-05 |
+| dependency-cruiser | Verificar la regla de dependencia de Clean Architecture. | EQ-06 |
+| GitHub Actions | Ejecutar las pruebas automáticamente en cada commit. | EQ-04, EQ-06, EQ-07 |
+
+Todas son herramientas gratuitas o con versión gratuita.
