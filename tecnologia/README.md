@@ -1,8 +1,8 @@
 # Tecnología – Ejemplo de Clean Architecture
 
 Esta carpeta guarda los recursos tecnológicos del proyecto, separados de la documentación (`docs/`).
-Aquí se muestra **cómo se vería en código** el enfoque Clean Architecture para un flujo crítico:
-**pagar la tasa sin cobro doble** (ADR-003 y ADR-004).
+Aquí se muestra **cómo se vería en código** el enfoque Clean Architecture para el flujo de
+**pago en caja con esquela** (ADR-003 y ADR-004).
 
 > No es una funcionalidad terminada: es un ejemplo para comprobar que el diseño es implementable.
 
@@ -10,7 +10,7 @@ Aquí se muestra **cómo se vería en código** el enfoque Clean Architecture pa
 
 | Parte | Tecnología propuesta |
 |---|---|
-| Portal Web y PWA | React + TypeScript |
+| Portal Web (computadora y celular) | React + TypeScript |
 | Backend API | Node.js + NestJS (TypeScript) |
 | Base de datos | PostgreSQL |
 | Caché | Redis |
@@ -22,87 +22,87 @@ Aquí se muestra **cómo se vería en código** el enfoque Clean Architecture pa
 
 ```
 src/pagos/
-├── dominio/           Pago.ts, PasarelaPago.ts, RepositorioPagos.ts
-├── aplicacion/        PagarTasa.ts
-├── infraestructura/   PasarelaPagoSimulada.ts, RepositorioPagosEnMemoria.ts
+├── dominio/           Esquela.ts, RepositorioEsquelas.ts
+├── aplicacion/        GenerarEsquela.ts, RegistrarPagoEnCaja.ts
+├── infraestructura/   RepositorioEsquelasEnMemoria.ts
 └── composicion.ts     conecta contratos con adaptadores
 ```
 
 ## 1. Dominio (no importa nada externo)
 
 ```typescript
-// dominio/Pago.ts
-export type EstadoPago = 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
+// dominio/Esquela.ts
+export class Esquela {
+  private numeroRecibo: string | null = null;
 
-export class Pago {
   constructor(
-    readonly id: string,              // identificador único: evita cobros dobles
+    readonly codigo: string,              // código único impreso en la esquela
     readonly numeroExpediente: string,
     readonly monto: number,
-    public estado: EstadoPago = 'PENDIENTE',
   ) {
     if (monto < 0) throw new Error('El monto no puede ser negativo');
   }
+
+  registrarPago(numeroRecibo: string): void {
+    if (this.numeroRecibo) throw new Error('Esta esquela ya fue pagada');   // regla: se paga una sola vez
+    this.numeroRecibo = numeroRecibo;
+  }
+
+  estaPagada(): boolean { return this.numeroRecibo !== null; }
 }
 
-// dominio/PasarelaPago.ts  (puerto)
-export interface PasarelaPago {
-  cobrar(idPago: string, monto: number): Promise<'APROBADO' | 'RECHAZADO' | 'PENDIENTE'>;
-}
-
-// dominio/RepositorioPagos.ts  (puerto)
-export interface RepositorioPagos {
-  buscarPorId(idPago: string): Promise<Pago | null>;
-  guardar(pago: Pago): Promise<void>;
+// dominio/RepositorioEsquelas.ts  (puerto)
+export interface RepositorioEsquelas {
+  buscarPorCodigo(codigo: string): Promise<Esquela | null>;
+  guardar(esquela: Esquela): Promise<void>;
 }
 ```
 
-## 2. Aplicación (caso de uso)
+## 2. Aplicación (casos de uso)
 
 ```typescript
-// aplicacion/PagarTasa.ts
-import { Pago, EstadoPago } from '../dominio/Pago';
-import { PasarelaPago } from '../dominio/PasarelaPago';
-import { RepositorioPagos } from '../dominio/RepositorioPagos';
+// aplicacion/GenerarEsquela.ts
+import { Esquela } from '../dominio/Esquela';
+import { RepositorioEsquelas } from '../dominio/RepositorioEsquelas';
 
-export class PagarTasa {
-  constructor(
-    private readonly pasarela: PasarelaPago,     // DIP: depende de contratos
-    private readonly pagos: RepositorioPagos,
-  ) {}
+export class GenerarEsquela {
+  constructor(private readonly esquelas: RepositorioEsquelas) {}   // DIP: depende del contrato
 
-  async ejecutar(idPago: string, numeroExpediente: string, tasa: number): Promise<EstadoPago> {
-    const existente = await this.pagos.buscarPorId(idPago);
-    if (existente) return existente.estado;        // idempotencia: no se cobra dos veces
+  async ejecutar(numeroExpediente: string, tasa: number): Promise<Esquela> {
+    const codigo = `ESQ-${numeroExpediente}`;
+    const esquela = new Esquela(codigo, numeroExpediente, tasa);
+    await this.esquelas.guardar(esquela);
+    return esquela;   // luego un worker genera el PDF
+  }
+}
 
-    const pago = new Pago(idPago, numeroExpediente, tasa);
-    await this.pagos.guardar(pago);
-    pago.estado = await this.pasarela.cobrar(idPago, tasa);
-    await this.pagos.guardar(pago);
-    return pago.estado;
+// aplicacion/RegistrarPagoEnCaja.ts
+import { RepositorioEsquelas } from '../dominio/RepositorioEsquelas';
+
+export class RegistrarPagoEnCaja {
+  constructor(private readonly esquelas: RepositorioEsquelas) {}
+
+  async ejecutar(codigo: string, numeroRecibo: string): Promise<void> {
+    const esquela = await this.esquelas.buscarPorCodigo(codigo);
+    if (!esquela) throw new Error('Esquela no encontrada');
+    esquela.registrarPago(numeroRecibo);
+    await this.esquelas.guardar(esquela);
+    // aquí se publica el evento PagoRegistrado → Trámites avanza el expediente
   }
 }
 ```
 
-## 3. Infraestructura (adaptadores intercambiables)
+## 3. Infraestructura (adaptador intercambiable)
 
 ```typescript
-// infraestructura/PasarelaPagoSimulada.ts – para pruebas, sin internet
-import { PasarelaPago } from '../dominio/PasarelaPago';
+// infraestructura/RepositorioEsquelasEnMemoria.ts – en producción sería PostgreSQL
+import { Esquela } from '../dominio/Esquela';
+import { RepositorioEsquelas } from '../dominio/RepositorioEsquelas';
 
-export class PasarelaPagoSimulada implements PasarelaPago {
-  cobros = 0;
-  async cobrar(): Promise<'APROBADO'> { this.cobros++; return 'APROBADO'; }
-}
-
-// infraestructura/RepositorioPagosEnMemoria.ts – en producción sería PostgreSQL
-import { Pago } from '../dominio/Pago';
-import { RepositorioPagos } from '../dominio/RepositorioPagos';
-
-export class RepositorioPagosEnMemoria implements RepositorioPagos {
-  private datos = new Map<string, Pago>();
-  async buscarPorId(id: string) { return this.datos.get(id) ?? null; }
-  async guardar(p: Pago) { this.datos.set(p.id, p); }
+export class RepositorioEsquelasEnMemoria implements RepositorioEsquelas {
+  private datos = new Map<string, Esquela>();
+  async buscarPorCodigo(codigo: string) { return this.datos.get(codigo) ?? null; }
+  async guardar(e: Esquela) { this.datos.set(e.codigo, e); }
 }
 ```
 
@@ -110,26 +110,27 @@ export class RepositorioPagosEnMemoria implements RepositorioPagos {
 
 ```typescript
 // composicion.ts
-import { PagarTasa } from './aplicacion/PagarTasa';
-import { PasarelaPagoSimulada } from './infraestructura/PasarelaPagoSimulada';
-import { RepositorioPagosEnMemoria } from './infraestructura/RepositorioPagosEnMemoria';
+import { GenerarEsquela } from './aplicacion/GenerarEsquela';
+import { RegistrarPagoEnCaja } from './aplicacion/RegistrarPagoEnCaja';
+import { RepositorioEsquelasEnMemoria } from './infraestructura/RepositorioEsquelasEnMemoria';
 
-const pasarela = new PasarelaPagoSimulada();          // en producción: AdaptadorPasarelaPago
-const pagarTasa = new PagarTasa(pasarela, new RepositorioPagosEnMemoria());
+const repo = new RepositorioEsquelasEnMemoria();       // en producción: RepositorioEsquelasPostgres
+const generar = new GenerarEsquela(repo);
+const registrar = new RegistrarPagoEnCaja(repo);
 
-// El administrado reintenta el mismo pago tres veces:
-await pagarTasa.ejecutar('PAGO-001', 'EXP-2026-0001', 159.50);
-await pagarTasa.ejecutar('PAGO-001', 'EXP-2026-0001', 159.50);
-await pagarTasa.ejecutar('PAGO-001', 'EXP-2026-0001', 159.50);
-console.log(pasarela.cobros);   // 1 → un solo cobro (escenario EQ-05)
+const esquela = await generar.ejecutar('EXP-2026-0001', 159.50);   // licencia de riesgo bajo
+await registrar.ejecutar(esquela.codigo, 'REC-000123');            // caja registra el pago
+console.log(esquela.estaPagada());                                 // true
+
+await registrar.ejecutar(esquela.codigo, 'REC-000124');            // Error: Esta esquela ya fue pagada
 ```
 
 ## Qué demuestra este ejemplo
 
 | Idea | Dónde se ve |
 |---|---|
-| El dominio no depende de la tecnología | `Pago` y los contratos no importan nada externo. |
-| Inversión de dependencias (DIP) | `PagarTasa` recibe `PasarelaPago` y `RepositorioPagos` por el constructor. |
-| Adaptadores intercambiables (LSP) | `PasarelaPagoSimulada` se reemplaza por la pasarela real sin cambiar `PagarTasa`. |
-| Idempotencia (ADR-004, EQ-05) | El mismo `idPago` nunca genera un segundo cobro. |
-| Se prueba sin base de datos ni internet | Todo el ejemplo funciona en memoria. |
+| El dominio no depende de la tecnología | `Esquela` y el contrato no importan nada externo. |
+| Inversión de dependencias (DIP) | Los casos de uso reciben `RepositorioEsquelas` por el constructor. |
+| Adaptadores intercambiables (LSP) | El repositorio en memoria se reemplaza por PostgreSQL sin cambiar los casos de uso. |
+| Regla de negocio en el dominio | Una esquela solo puede pagarse una vez. |
+| Se prueba sin base de datos | Todo el ejemplo funciona en memoria. |
