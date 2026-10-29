@@ -8,11 +8,11 @@ Solo se aplican los patrones que **resuelven un problema real del sistema de lic
 |---|---|---|---|
 | **Strategy** (estrategia) | Las 9 licencias siguen una de **3 rutas** (A, B, C). Con `if/else` por tipo, cada ruta nueva obligaría a modificar el motor. | `RutaTramite` con las implementaciones `RutaA`, `RutaB` y `RutaC`. La receta indica qué estrategia usar. | DA01 · ADR-002 |
 | **Repository** (repositorio) | Los casos de uso no deben conocer SQL ni PostgreSQL. | `RepositorioExpedientes`, `RepositorioCatalogo`, `RepositorioEsquelas`… definidos en el dominio. | DA08 · ADR-003 |
-| **Adapter** (adaptador) | El servicio de DNI/RUC y el de correo/SMS tienen interfaces propias. | `AdaptadorValidacionDniRuc`, `NotificadorCorreoSMS`, adaptador del chatbot (Fase 2). | DA08 · ADR-003 |
+| **Adapter** (adaptador) | El servicio de DNI/RUC y el de correo/SMS tienen interfaces propias. | `AdaptadorValidacionDniRuc`, `NotificadorCorreoSMS` (usado por el worker), `ConsultaTasaCatalogo`, adaptador del chatbot (Fase 2). | DA08 · ADR-003 |
 | **Factory** (fábrica) | Crear un expediente exige copiar los requisitos y la ruta de la receta. | `FabricaExpediente.crearDesde(receta, solicitante)`. | DA01 · ADR-002 |
 | **Chain of Responsibility** | Una solicitud pasa varias validaciones en orden. | Requisitos completos → identidad DNI/RUC → documentos especiales del giro → zonificación (ruta C). | RF04, RF06 |
 | **Facade** (fachada de módulo) | Otros módulos no deben conocer el interior de un módulo. | Cada módulo expone una fachada pública, por ejemplo `ModuloPagos.generarEsquela()`. | DA07 · ADR-001 |
-| **Observer / Eventos de dominio** | Al cambiar el estado de un expediente, varias partes deben reaccionar sin acoplarse. | `PagoRegistrado`, `ResultadoITSERegistrado`, `EstadoExpedienteCambiado` → Notificaciones. | DA08 |
+| **Observer / Eventos de dominio** | Al cambiar el estado de un expediente, varias partes deben reaccionar sin acoplarse. | `PagoRegistrado` → Trámites; `ResultadoITSERegistrado` → Trámites; `EstadoExpedienteCambiado` → Notificaciones. | DA08 |
 | **Decorator** (decorador) | El catálogo se consulta mucho y casi no cambia. | `RepositorioCatalogoConCache` envuelve al repositorio real y guarda en Redis. | DA02 · ADR-005 |
 
 **CORS** no es un patrón de diseño: es una configuración de seguridad; la API solo acepta peticiones del Portal Web oficial.
@@ -20,26 +20,40 @@ Solo se aplican los patrones que **resuelven un problema real del sistema de lic
 ## Ejemplo: Strategy para las rutas del trámite
 
 ```typescript
-// dominio/RutaTramite.ts
+// modulos/tramites/dominio/RutaTramite.ts
 export interface RutaTramite {
   siguientePaso(expediente: Expediente): PasoTramite;
 }
 
-// dominio/rutas/RutaA.ts – la licencia primero, ITSE después
+// modulos/tramites/dominio/rutas/RutaA.ts – la licencia primero, ITSE posterior
 export class RutaA implements RutaTramite {
   siguientePaso(e: Expediente): PasoTramite {
-    return e.estaPagado() ? PasoTramite.EMITIR_LICENCIA : PasoTramite.ESPERAR_PAGO_EN_CAJA;
+    if (!e.estaPagado()) return PasoTramite.ESPERAR_PAGO_EN_CAJA;
+    if (!e.licenciaEmitida()) return PasoTramite.EMITIR_LICENCIA;
+    return PasoTramite.PROGRAMAR_ITSE_POSTERIOR;
   }
 }
 
-// dominio/rutas/RutaB.ts – la inspección primero
+// modulos/tramites/dominio/rutas/RutaB.ts – evaluación e inspección primero
 export class RutaB implements RutaTramite {
   siguientePaso(e: Expediente): PasoTramite {
     if (!e.estaPagado()) return PasoTramite.ESPERAR_PAGO_EN_CAJA;
-    return e.itseFavorable() ? PasoTramite.EMITIR_LICENCIA : PasoTramite.PROGRAMAR_ITSE;
+    if (e.evaluacionDenegada()) return PasoTramite.DENEGAR;
+    if (!e.evaluacionAprobada()) return PasoTramite.EVALUAR;
+    if (!e.tieneResultadoITSE()) return PasoTramite.PROGRAMAR_ITSE;
+    return e.itseFavorable() ? PasoTramite.EMITIR_LICENCIA : PasoTramite.DENEGAR;
+  }
+}
+
+// modulos/tramites/dominio/rutas/RutaC.ts – bodega: gratuita, sin esquela
+export class RutaC implements RutaTramite {
+  siguientePaso(e: Expediente): PasoTramite {
+    return e.licenciaEmitida() ? PasoTramite.PROGRAMAR_ITSE_EN_6_MESES : PasoTramite.EMITIR_LICENCIA_PROVISIONAL;
   }
 }
 ```
+
+`estaPagado()` es un dato del propio `Expediente` (módulo Trámites): se marca cuando llega el evento `PagoRegistrado`. Trámites nunca lee las tablas de Pagos.
 
 Si apareciera una cuarta ruta, se agrega una clase nueva **sin modificar el motor** (principio abierto/cerrado).
 
