@@ -103,8 +103,8 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | **Estímulo** | Un expediente abierto llega a 2 días hábiles de su vencimiento. |
 | **Artefacto** | Reloj de plazos, calendario de feriados y Notificaciones |
 | **Entorno** | Operación normal, incluso si una instancia del backend está caída. |
-| **Respuesta** | La tarea se ejecuta en otra instancia, detecta el expediente y alerta a la jefatura. |
-| **Medida** | **Propuesta por validar:** el 100 % de los expedientes próximos a vencer genera alerta; ningún día hábil sin ejecutar la tarea en el mes. |
+| **Respuesta** | Una sola instancia obtiene el bloqueo de la tarea (ADR-006), detecta el expediente y alerta a la jefatura una sola vez. |
+| **Medida** | **Propuesta por validar:** el 100 % de los expedientel 100 % de los expedientes próximos a vencer genera **una** alerta (ni cero ni duplicadas); ningún día hábil sin ejecutar la tarea en el mes. |
 | **Verificación** | Prueba con expedientes de fechas simuladas y feriados registrados; revisión mensual del registro de ejecuciones. |
 | **Estado** | Pendiente de definir con cuántos días de anticipación se alerta. |
 
