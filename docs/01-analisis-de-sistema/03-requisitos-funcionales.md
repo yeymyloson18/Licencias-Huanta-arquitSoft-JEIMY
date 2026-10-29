@@ -5,7 +5,7 @@
 |---|---|
 | RF01 | El sistema debe proponer el tipo de licencia mediante un asistente de tres preguntas basado en reglas. |
 | RF02 | El sistema debe mostrar los requisitos, la tasa y el plazo de la licencia propuesta, leídos del catálogo. |
-| RF03 | El sistema debe permitir consultar el estado del trámite con el número de expediente o con el DNI/RUC. |
+| RF03 | El sistema debe permitir consultar el estado del trámite ingresando juntos el número de expediente y el DNI/RUC del solicitante. |
 
 ## Solicitud digital
 | ID | Requisito funcional |
@@ -39,6 +39,9 @@
 | RF18 | El sistema debe mostrar reportes de licencias vigentes, en trámite y con ITSE por vencer, por tipo, giro y zona. |
 | RF19 | El sistema debe mostrar un tablero con tiempos de atención comparados con el plazo del TUPA, e ingresos registrados en caja. |
 | RF20 | El sistema debe enviar notificaciones por correo y SMS en cada avance del trámite. |
+| RF21 | El sistema debe permitir al administrador actualizar las recetas del catálogo (requisitos, tasa, plazo y vigencia). |
+| RF22 | El sistema debe permitir al administrador crear, desactivar y asignar roles a los usuarios del personal. |
+| RF23 | El sistema debe permitir al administrador registrar el calendario de feriados usado para contar días hábiles. |
 
 ## Relación entre historias de usuario y requisitos funcionales
 | Historia de usuario | Requisitos relacionados |
@@ -56,5 +59,8 @@
 | HU11 Aviso de vencimiento ITSE | RF14, RF20 |
 | HU12 Trámites conectados | RF15 |
 | HU13 Registrar pago en caja | RF12 |
+| HU14 Actualizar catálogo | RF21 |
+| HU15 Gestionar usuarios y roles | RF16, RF17, RF22 |
+| HU16 Calendario de feriados | RF08, RF23 |
 
-RF16 y RF17 provienen del atributo de seguridad (AC02) y de la Ley N.° 29733.
+RF16, RF17 y RF22 provienen del atributo de seguridad (AC02) y de la Ley N.° 29733.
