@@ -10,7 +10,7 @@ flowchart TB
     Insp(["Inspector ITSE<br/>[Persona]<br/>registra la ITSE desde su celular"])
     Caja(["Personal de caja<br/>[Persona]<br/>cobra y registra el pago"])
     Jef(["Jefatura<br/>[Persona]<br/>supervisa plazos e ingresos"])
-    AdmS(["Administrador del sistema<br/>[Persona]<br/>usuarios, roles y catálogo"])
+    AdmS(["Administrador del sistema<br/>[Persona]<br/>usuarios, roles, catálogo y feriados"])
 
     Sis["Sistema de Trámite de Licencias de Funcionamiento<br/>[Sistema de software]<br/>orienta, recibe solicitudes, genera la esquela de pago,<br/>gestiona la ITSE, emite licencias con QR y controla plazos"]
 
@@ -18,16 +18,16 @@ flowchart TB
     Msg["Servicio de correo y SMS<br/>[Sistema externo]"]
     WA["WhatsApp Business API<br/>[Sistema externo - Fase 2]"]
 
-    Adm -->|"consulta, presenta, descarga su esquela y su licencia"| Sis
+    Adm -->|"consulta con expediente + DNI/RUC, presenta, descarga su esquela y su licencia"| Sis
     Per -->|"registra solicitudes presenciales y evalúa expedientes"| Sis
     Insp -->|"registra el resultado de la ITSE"| Sis
     Caja -->|"registra el pago de la esquela"| Sis
     Jef -->|"revisa alertas, tiempos e ingresos"| Sis
-    AdmS -->|"gestiona usuarios y el catálogo"| Sis
+    AdmS -->|"gestiona usuarios, catálogo y feriados"| Sis
 
     Sis -->|"valida la identidad"| Ident
-    Sis -->|"envía avisos"| Msg
-    Sis -.->|"atiende consultas por chat"| WA
+    Sis -->|"envía avisos desde sus workers"| Msg
+    Sis -.->|"Fase 2: atiende consultas por chat"| WA
 ```
 
 ## Elementos
@@ -39,7 +39,7 @@ flowchart TB
 | Inspector ITSE | Persona | Registra la inspección con fotos desde su celular, con internet. |
 | Personal de caja | Persona | Cobra la tasa y registra el pago con el código de la esquela. |
 | Jefatura | Persona | Supervisa plazos, tiempos de atención e ingresos. |
-| Administrador del sistema | Persona | Gestiona usuarios, roles y el catálogo de recetas. |
+| Administrador del sistema | Persona | Gestiona usuarios, roles, el catálogo de recetas y el calendario de feriados. |
 | Validación DNI / RUC | Sistema externo | Valida la identidad del solicitante. |
 | Correo y SMS | Sistema externo | Envía las notificaciones. |
 | WhatsApp Business API | Sistema externo (Fase 2) | Canal del asistente virtual. |
