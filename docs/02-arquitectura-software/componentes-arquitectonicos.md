@@ -59,7 +59,9 @@ flowchart TB
     Pla -->|"alerta vencimientos"| Not
     Lic -->|"aviso de vencimiento ITSE"| Not
     Tra -.->|"publica: EstadoExpedienteCambiado"| Not
-    Rep -->|"lee datos - consultas de solo lectura"| Tra
+    Rep -->|"solo lectura: expedientes y tiempos"| Tra
+    Rep -->|"solo lectura: ingresos de caja"| Pag
+    Rep -->|"solo lectura: licencias e ITSE por vencer"| Lic
 
     Cat -->|"cachea recetas"| Redis
     Not -->|"encola mensajes"| Cola
@@ -71,6 +73,7 @@ flowchart TB
 
     Tra -->|"valida identidad - HTTPS/REST"| Ident
     Cola -->|"los workers envían - HTTPS/REST"| Msg
+    Seg -->|"OTP directo - HTTPS/REST"| Msg
 ```
 
 **Leyenda:** flecha continua = llamada directa a la fachada pública de otro módulo; flecha punteada = evento publicado.
@@ -80,22 +83,23 @@ flowchart TB
 2. Un módulo usa a otro **solo a través de su fachada pública** o de eventos; **nunca accede a sus tablas ni a sus repositorios**.
 3. Los módulos consultan el **Catálogo** para conocer las reglas del TUPA; la tasa existe **solo** en el catálogo.
 4. No hay pagos digitales: **Pagos en caja** genera la esquela (rutas A y B) y registra el pago que hace el personal de caja. La ruta C es gratuita y no genera esquela.
-5. **Notificaciones** no envía directamente: arma el mensaje y lo deja en la cola; los **workers** lo envían.
+5. **Notificaciones** no envía directamente: arma el mensaje y lo deja en la cola; los **workers** lo envían. **Excepción:** el código OTP lo envía Seguridad directamente, porque el usuario lo espera para entrar.
+6. Las tareas diarias (Reloj de plazos y aviso ITSE) corren **una sola vez al día** aunque haya varias instancias, gracias a un bloqueo en PostgreSQL (ADR-006).
 
 ## Responsabilidades y trazabilidad de cada componente
 
 | Componente | Responsabilidad | Historias / requisitos | Driver / ADR | Escenario |
 |---|---|---|---|---|
 | **API REST** | Única puerta de entrada; autentica, autoriza y valida solicitudes. | Todas las HU · RF16, RF17 | DA03 · ADR-007 | EQ-04 |
-| **Seguridad y Usuarios** | Cuentas, roles y segundo factor (OTP) del personal. | HU15 · RF16, RF17, RF22 | DA03 · ADR-007 | EQ-04 |
+| **Seguridad y Usuarios** | Cuentas, roles y segundo factor (OTP) del personal; envía el OTP directamente. | HU15 · RF16, RF17, RF22 | DA03 · ADR-007 | EQ-04 |
 | **Catálogo y Asistente de ruta** | Guarda las 9 recetas, propone la licencia con tres preguntas y permite al administrador actualizar las recetas. | HU01, HU03, HU14 · RF01, RF02, RF05, RF21 | DA01 · ADR-002 | EQ-05, EQ-06 |
 | **Trámites** | Registra la solicitud, valida documentos, asigna la ruta, controla el estado del expediente y atiende trámites conectados. | HU02, HU05, HU07, HU12 · RF03, RF04, RF06, RF07, RF09, RF15 | DA01, DA08 · ADR-002, ADR-003 | EQ-01, EQ-04 |
 | **Pagos en caja** | Genera la esquela con código único y registra el pago hecho en caja. | HU04, HU13 · RF11, RF12 | DA04 · ADR-004 | EQ-04 |
 | **Inspecciones** | Agenda la ITSE, asigna el inspector y guarda el resultado con fotos desde el celular. | HU08 · RF10 | DA01 · ADR-002 | EQ-03 |
-| **Licencias** | Emite la licencia con QR, controla vigencias y, con una tarea diaria, avisa la renovación del ITSE. | HU06, HU11 · RF13, RF14 | DA03 · ADR-007 | EQ-04 |
+| **Licencias** | Emite la licencia con QR, controla vigencias y, con una tarea diaria, avisa la renovación del ITSE. | HU06, HU11 · RF13, RF14 | DA01 · ADR-002 | EQ-04 |
 | **Reloj de plazos** | Cuenta días hábiles con el calendario de feriados y alerta antes de cada vencimiento. | HU09, HU16 · RF08, RF23 | DA05 · ADR-006 | EQ-07 |
 | **Notificaciones** | Arma los avisos y los encola; los workers envían correos y SMS. | HU05, HU09, HU11 · RF20 | DA02 · ADR-005 | EQ-02 |
-| **Reportes** | Tablero de jefatura: trámites, tiempos e ingresos registrados en caja. | HU10 · RF18, RF19 | DA02 · ADR-005 | EQ-01 |
+| **Reportes** | Tablero de jefatura: lee, sin modificar, expedientes (Trámites), ingresos (Pagos en caja) y licencias e ITSE por vencer (Licencias). | HU10 · RF18, RF19 | DA02 · ADR-005 | EQ-01 |
 
 ## Ejemplo de trazabilidad completa: componente Pagos en caja
 
