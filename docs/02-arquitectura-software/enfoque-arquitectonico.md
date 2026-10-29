@@ -21,7 +21,7 @@
 ## Reglas de negocio que viven en el dominio
 
 1. Una receta define requisitos, tasa, plazo, calificación, orden del ITSE y vigencia.
-2. La ruta A emite la licencia antes del ITSE (ITSE posterior); la ruta B exige evaluación previa e ITSE favorable antes de emitir (si es desfavorable, se deniega); la ruta C emite una provisional gratuita de 12 meses, sin esquela, con ITSE dentro de los 6 meses.
+2. La ruta A emite la licencia antes del ITSE (ITSE posterior); la ruta B exige evaluación previa e ITSE favorable antes de emitir (si es desfavorable, se deniega); la ruta C emite una provisional gratuita de 12 meses, sin esquela, con ITSE dentro de los 6 meses. En las rutas A y C, si la ITSE es desfavorable, el caso se deriva a fiscalización (fuera del alcance del sistema).
 3. Una esquela tiene un código único y **solo puede pagarse una vez**; su monto se toma **siempre** del catálogo.
 4. Una licencia no se emite si la esquela no está pagada (salvo la ruta C, que es gratuita).
 5. La esquela se genera solo cuando el nivel de riesgo está confirmado; si el evaluador lo corrige, el expediente toma la receta del nuevo nivel antes de generarla.
@@ -70,6 +70,7 @@ flowchart LR
             P6["«interface» CalendarioHabil"]
             P7["«interface» ConsultaTasa"]
             P8["«interface» ConsultaExpedientes"]
+            P9["«interface» PublicadorEventos"]
         end
     end
 
@@ -82,6 +83,7 @@ flowchart LR
         A6["CalendarioFeriadosPostgres"]
         A7["ConsultaTasaCatalogo<br/>usa la fachada del Catálogo"]
         A8["ConsultaExpedientesTramites<br/>usa la fachada de Trámites"]
+        A9["PublicadorEventosNest"]
     end
 
     Ctrl --> U1
@@ -103,6 +105,7 @@ flowchart LR
     U3 -.-> P3
     U3 -.-> P7
     U4 -.-> P3
+    U4 -.-> P9
     U5 -.-> P5
     U6 -.-> P6
     U6 -.-> P8
@@ -115,6 +118,7 @@ flowchart LR
     A6 -.->|"implementa"| P6
     A7 -.->|"implementa"| P7
     A8 -.->|"implementa"| P8
+    A9 -.->|"implementa"| P9
 ```
 
 **Leyenda:** flecha continua = llamada en tiempo de ejecución; flecha punteada = dependencia de código, siempre hacia el dominio; "implementa" = el adaptador cumple el contrato (inversión de dependencias).
@@ -125,4 +129,4 @@ flowchart LR
 |---|---|---|
 | Responde | ¿Cómo es el sistema globalmente? | ¿Cómo se organiza el código por dentro? |
 | Decisión | Monolito modular en capas | Clean Architecture |
-| Dependencias | De arriba hacia abajo | Hacia el dominio (invertidas) |
+| Dependencias | De arriba hacia abajo en tiempo de ejecución | Hacia el dominio en el código (invertidas) |
