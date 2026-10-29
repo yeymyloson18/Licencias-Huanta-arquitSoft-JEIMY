@@ -13,6 +13,8 @@ classDiagram
         -numeroExpediente: NumeroExpediente
         -monto: Monto
         -numeroRecibo: NumeroRecibo
+        +nueva(codigo, numeroExpediente, monto)$ Esquela
+        +reconstruir(datos)$ Esquela
         +registrarPago(recibo: NumeroRecibo) void
         +estaPagada() boolean
     }
@@ -32,8 +34,9 @@ classDiagram
     class RepositorioEsquelas {
         <<interface>>
         +buscarPorCodigo(codigo: CodigoEsquela) Esquela
-        +contarPorExpediente(numero: NumeroExpediente) number
-        +guardar(esquela: Esquela) void
+        +siguienteSecuencial(numero: NumeroExpediente) number
+        +guardarNueva(esquela: Esquela) void
+        +guardarPago(esquela: Esquela) boolean
     }
 
     class ConsultaTasa {
@@ -116,8 +119,11 @@ classDiagram
 
 **Reglas del dominio:**
 - `Esquela.registrarPago()` rechaza el registro si la esquela ya fue pagada.
+- `Esquela.reconstruir()` crea la esquela leída de la base **con su número de recibo**, así una esquela pagada sigue pagada.
+- `siguienteSecuencial()` y `guardarPago()` deben ser **atómicos**: si dos cajeros registran la misma esquela a la vez, solo uno lo logra (en PostgreSQL: `UPDATE ... WHERE numero_recibo IS NULL`).
 - El monto **no se recibe desde afuera**: `GenerarEsquela` lo pide al catálogo mediante `ConsultaTasa` (RF05, ADR-002).
-- El código es único: `ESQ-<expediente>-<secuencial>`, y la base de datos tiene una restricción UNIQUE sobre él.
+- El código es único: `ESQ-<expediente>-<secuencial>`, con un contador atómico y una restricción UNIQUE en la base de datos.
+- La esquela se genera solo con el nivel de riesgo confirmado, así el monto siempre coincide con la licencia.
 
 **Límite del módulo:** `Expediente` **no aparece** aquí porque pertenece al módulo Trámites. Pagos no lo
 modifica: solo publica `PagoRegistrado`, y Trámites reacciona marcando su expediente como pagado.
