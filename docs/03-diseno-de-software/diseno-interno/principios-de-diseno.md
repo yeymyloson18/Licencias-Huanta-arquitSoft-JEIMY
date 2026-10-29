@@ -57,7 +57,7 @@ Clean Architecture (ADR-003).
 | Principio | Aplicación en el sistema |
 |---|---|
 | **DRY** (no te repitas) | Las reglas del TUPA viven solo en el catálogo; ningún módulo las copia. |
-| **KISS** (mantenlo simple) | Monolito modular; pago en caja con esquela en lugar de pagos digitales; asistente de ruta con 3 reglas. |
+| **KISS** (mantenlo simple) | Monolito modular; pago en caja con esquela en lugar de pagos digitales; asistente de ruta con tres reglas. |
 | **YAGNI** (no lo construyas si no lo necesitas) | El chatbot se deja para la Fase 2; no se aplican Saga, CQRS ni Circuit Breaker. |
 | **Mínimo privilegio** | Cada rol accede solo a lo que necesita; solo caja registra pagos; la página pública del QR muestra datos mínimos. |
 | **Decisión humana** | El sistema propone el tipo de licencia y el nivel de riesgo; el evaluador decide. |
