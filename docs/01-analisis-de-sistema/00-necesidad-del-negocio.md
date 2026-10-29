@@ -1,4 +1,4 @@
- # Necesidad del negocio
+# Necesidad del negocio
 
 ## Contexto
 La Municipalidad Provincial de Huanta otorga **nueve tipos de licencias de funcionamiento**,
@@ -37,6 +37,7 @@ Decreto de Alcaldía N.° 009-2024-MPH/A). Hoy el trámite es mayormente presenc
 | Tasa correcta | Número de esquelas con monto equivocado |
 | Cumplir plazos | Porcentaje de expedientes atendidos dentro del plazo del TUPA |
 | Licencia digital | Tiempo promedio desde el pago en caja hasta la emisión de la licencia |
+| Datos protegidos | Número de accesos no autorizados a datos personales detectados (meta: cero) |
 
 ## Fuera de alcance
 - Pagos digitales (billetera, banca por internet o pasarela de pago): **el pago se hace solo en la caja** de la Municipalidad.
