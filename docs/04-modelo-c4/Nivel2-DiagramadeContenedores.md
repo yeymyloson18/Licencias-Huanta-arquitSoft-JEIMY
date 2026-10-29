@@ -43,8 +43,9 @@ flowchart TB
     Workers --> Obj
     Workers -->|"envía correos y SMS"| Msg
 
+    API -->|"HTTPS/REST"| Ident
     API -->|"solo el código OTP, directo"| Msg
-    ```
+```
 
 ## Contenedores
 
