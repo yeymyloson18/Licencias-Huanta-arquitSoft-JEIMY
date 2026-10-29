@@ -8,45 +8,52 @@ Clean Architecture (ADR-003).
 classDiagram
     direction LR
 
-    class Expediente {
-        -numero: NumeroExpediente
-        -estado: EstadoExpediente
-        -receta: Receta
-        +tasaAPagar() Monto
-        +marcarPagado() void
-        +estaPagado() boolean
-    }
-
-    class Receta {
-        -tasa: Monto
-        -plazo: PlazoDiasHabiles
-        -ruta: RutaTramite
-    }
-
     class Esquela {
         -codigo: CodigoEsquela
         -numeroExpediente: NumeroExpediente
         -monto: Monto
         -numeroRecibo: NumeroRecibo
-        -pagada: boolean
         +registrarPago(recibo: NumeroRecibo) void
         +estaPagada() boolean
+    }
+
+    class CodigoEsquela {
+        <<objeto de valor>>
+        +generar(numeroExpediente, secuencial) CodigoEsquela
+    }
+
+    class PagoRegistrado {
+        <<evento>>
+        +codigoEsquela
+        +numeroExpediente
+        +numeroRecibo
     }
 
     class RepositorioEsquelas {
         <<interface>>
         +buscarPorCodigo(codigo: CodigoEsquela) Esquela
+        +contarPorExpediente(numero: NumeroExpediente) number
         +guardar(esquela: Esquela) void
+    }
+
+    class ConsultaTasa {
+        <<interface>>
+        +tasaDe(codigoReceta: string) Monto
     }
 
     class GeneradorDocumentos {
         <<interface>>
-        +generarPdfEsquela(esquela: Esquela) Documento
+        +generarPdfEsquela(esquela: Esquela) void
+    }
+
+    class PublicadorEventos {
+        <<interface>>
+        +publicar(evento: PagoRegistrado) void
     }
 
     class GenerarEsquela {
         <<caso de uso>>
-        +ejecutar(numero: NumeroExpediente) Esquela
+        +ejecutar(numeroExpediente, codigoReceta) Esquela
     }
 
     class RegistrarPagoEnCaja {
@@ -58,38 +65,62 @@ classDiagram
         <<adaptador>>
     }
 
+    class ConsultaTasaCatalogo {
+        <<adaptador>>
+        usa la fachada del módulo Catálogo
+    }
+
     class GeneradorPdf {
+        <<adaptador>>
+        encola el PDF para el worker
+    }
+
+    class PublicadorEventosNest {
         <<adaptador>>
     }
 
     class PagosController {
         <<presentación>>
-        +generarEsquela(peticion) Respuesta
         +registrarPago(peticion) Respuesta
     }
 
-    Expediente --> Receta : obtiene la tasa
-    PagosController --> GenerarEsquela : invoca
+    class ModuloPagos {
+        <<fachada>>
+        +generarEsquela(numeroExpediente, codigoReceta) Esquela
+    }
+
+    ModuloPagos --> GenerarEsquela : invoca
     PagosController --> RegistrarPagoEnCaja : invoca
+    GenerarEsquela --> ConsultaTasa : usa
     GenerarEsquela --> RepositorioEsquelas : usa
     GenerarEsquela --> GeneradorDocumentos : usa
     GenerarEsquela ..> Esquela : crea
-    GenerarEsquela ..> Expediente : lee la tasa
+    GenerarEsquela ..> CodigoEsquela : usa
     RegistrarPagoEnCaja --> RepositorioEsquelas : usa
+    RegistrarPagoEnCaja --> PublicadorEventos : usa
+    RegistrarPagoEnCaja ..> PagoRegistrado : crea
     RepositorioEsquelasPostgres ..|> RepositorioEsquelas : implementa
+    ConsultaTasaCatalogo ..|> ConsultaTasa : implementa
     GeneradorPdf ..|> GeneradorDocumentos : implementa
+    PublicadorEventosNest ..|> PublicadorEventos : implementa
 ```
 
 ## Cómo leer el diagrama
 
 | Capa | Clases |
 |---|---|
-| **Dominio** | `Expediente`, `Receta`, `Esquela` y los contratos `RepositorioEsquelas` y `GeneradorDocumentos` |
-| **Aplicación** | `GenerarEsquela`, `RegistrarPagoEnCaja` |
-| **Infraestructura** | `RepositorioEsquelasPostgres`, `GeneradorPdf` |
+| **Dominio** | `Esquela`, `CodigoEsquela`, `PagoRegistrado` y los contratos `RepositorioEsquelas`, `ConsultaTasa`, `GeneradorDocumentos` y `PublicadorEventos` |
+| **Aplicación** | `GenerarEsquela`, `RegistrarPagoEnCaja` y la fachada `ModuloPagos` |
+| **Infraestructura** | `RepositorioEsquelasPostgres`, `ConsultaTasaCatalogo`, `GeneradorPdf`, `PublicadorEventosNest` |
 | **Presentación** | `PagosController` (solo el rol de caja puede registrar pagos) |
 
-**Regla del dominio:** `Esquela.registrarPago()` rechaza el registro si la esquela ya fue pagada.
+**Reglas del dominio:**
+- `Esquela.registrarPago()` rechaza el registro si la esquela ya fue pagada.
+- El monto **no se recibe desde afuera**: `GenerarEsquela` lo pide al catálogo mediante `ConsultaTasa` (RF05, ADR-002).
+- El código es único: `ESQ-<expediente>-<secuencial>`, y la base de datos tiene una restricción UNIQUE sobre él.
+
+**Límite del módulo:** `Expediente` **no aparece** aquí porque pertenece al módulo Trámites. Pagos no lo
+modifica: solo publica `PagoRegistrado`, y Trámites reacciona marcando su expediente como pagado.
 
 Las flechas `..|>` muestran la **inversión de dependencias**: los adaptadores dependen de los contratos
 del dominio, nunca al revés. El código de ejemplo está en `tecnologia/README.md`.
