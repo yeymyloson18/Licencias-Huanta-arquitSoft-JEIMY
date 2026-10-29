@@ -54,13 +54,13 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 |---|---|
 | **Atributo de calidad** | Seguridad |
 | **Origen** | AC02 · DA03 · ADR-007 · Ley N.° 29733 |
-| **Fuente** | Usuario sin sesión, sin código OTP o con un rol insuficiente |
-| **Estímulo** | Intenta aprobar un expediente, registrar un pago de caja o ver los datos de otra persona. |
-| **Artefacto** | Middleware de autenticación y roles; módulos Trámites, Pagos en caja y Licencias |
+| **Fuente** | Personal sin sesión, sin código OTP o con un rol insuficiente; o un administrado que no conoce el DNI/RUC del expediente |
+| **Estímulo** | Intenta aprobar un expediente, registrar un pago de caja, cambiar el catálogo o consultar el expediente de otra persona. |
+| **Artefacto** | API REST (autenticación y roles), Seguridad y Usuarios; módulos Trámites, Pagos en caja, Catálogo y Licencias |
 | **Entorno** | Pruebas de seguridad en el entorno de pruebas. |
 | **Respuesta** | El sistema rechaza la operación, no modifica datos y no expone información sensible. |
 | **Medida** | Rechazar el 100 % de los intentos no autorizados probados; ningún dato personal en mensajes de error ni en la página pública del QR. |
-| **Verificación** | Matriz de pruebas por rol (administrado, mesa de partes, evaluador, inspector, caja, jefatura y administrador). |
+| **Verificación** | Matriz de pruebas por rol (mesa de partes, evaluador, inspector, caja, jefatura y administrador) y prueba de consulta del administrado con un DNI/RUC que no corresponde al expediente. |
 | **Estado** | Pendiente de aprobar la matriz de permisos por rol. |
 
 ## EQ-05. Usabilidad: trámite desde el celular
@@ -93,6 +93,21 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | **Verificación** | Cambiar una tasa de prueba y ejecutar las pruebas de regresión. |
 | **Estado** | Pendiente de definir las pruebas obligatorias. |
 
+## EQ-07. Disponibilidad del reloj de plazos: alertas a tiempo
+
+| Elemento | Descripción |
+|---|---|
+| **Atributo de calidad** | Disponibilidad |
+| **Origen** | AC03 · DA05 · ADR-006 · RC04 (Ley N.° 27444) |
+| **Fuente** | Tarea programada diaria del Reloj de plazos |
+| **Estímulo** | Un expediente abierto llega a 2 días hábiles de su vencimiento. |
+| **Artefacto** | Reloj de plazos, calendario de feriados y Notificaciones |
+| **Entorno** | Operación normal, incluso si una instancia del backend está caída. |
+| **Respuesta** | La tarea se ejecuta en otra instancia, detecta el expediente y alerta a la jefatura. |
+| **Medida** | **Propuesta por validar:** el 100 % de los expedientes próximos a vencer genera alerta; ningún día hábil sin ejecutar la tarea en el mes. |
+| **Verificación** | Prueba con expedientes de fechas simuladas y feriados registrados; revisión mensual del registro de ejecuciones. |
+| **Estado** | Pendiente de definir con cuántos días de anticipación se alerta. |
+
 ---
 
 ## Resumen de escenarios
@@ -105,3 +120,4 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | EQ-04 | Seguridad | Que nadie haga operaciones ni vea datos sin autorización. | AC02 · DA03 |
 | EQ-05 | Usabilidad | Que el administrado haga su trámite solo, desde el celular. | AC05 |
 | EQ-06 | Mantenibilidad | Que un cambio del TUPA no exija programar. | AC06 · DA01 · DA08 |
+| EQ-07 | Disponibilidad | Que ningún plazo venza sin alerta. | AC03 · DA05 |
