@@ -7,12 +7,12 @@ las alternativas evaluadas y sus consecuencias.
 
 | ID | Decisión arquitectónica | Driver relacionado | Justificación | Resultado |
 |---|---|---|---|---|
-| ADR-001 | Monolito modular | DA07, DA02 | Una sola aplicación desplegable, organizada en módulos, simple de construir y operar para un equipo pequeño. | Módulos de Catálogo, Trámites, Pagos en caja, Inspecciones, Licencias, Notificaciones, Reloj de plazos, Reportes y Seguridad. |
+| ADR-001 | Monolito modular | DA07 | Una sola aplicación desplegable, organizada en módulos, simple de construir y operar para un equipo pequeño. | Módulos: Seguridad y Usuarios, Catálogo y Asistente de ruta, Trámites, Pagos en caja, Inspecciones, Licencias, Reloj de plazos, Notificaciones y Reportes. |
 | ADR-002 | Motor único + catálogo de recetas | DA01 | Las 9 licencias siguen los mismos pasos; lo que cambia se guarda como datos. | Un cambio de tasa, requisito o plazo del TUPA se actualiza en el catálogo, no en el código. |
 | ADR-003 | Clean Architecture | DA08 | Separar las reglas del trámite de los detalles tecnológicos. | Capas Dominio, Aplicación, Infraestructura y Presentación. |
 | ADR-004 | Pago presencial con esquela | DA04 | El TUPA indica el pago en la caja de la Municipalidad. | El sistema genera la esquela y el personal de caja registra el pago. |
 | ADR-005 | Escalamiento horizontal con caché y cola | DA02, DA06 | Soportar de 1,000 a 10,000 usuarios y seguir operando si falla un servidor. | Varias instancias, balanceador, Redis, réplica de base de datos y workers. |
-| ADR-006 | Reloj de plazos como tarea programada | DA05 | Contar días hábiles y alertar antes del vencimiento. | Proceso diario con calendario de feriados. |
+| ADR-006 | Reloj de plazos como tarea programada | DA05 | Contar días hábiles y alertar antes del vencimiento. | Proceso diario con calendario de feriados que registra el administrador (RF23). |
 | ADR-007 | Seguridad por capas | DA03 | Proteger datos personales y operaciones del personal. | OTP, roles, TLS 1.3, AES-256 y QR público con datos mínimos. |
 
 ---
@@ -38,7 +38,7 @@ las alternativas evaluadas y sus consecuencias.
 ## ADR-004: Pago presencial con esquela
 - **Contexto:** el TUPA indica el pago en efectivo en la Caja de la Entidad; no se incluyen pagos digitales.
 - **Alternativas:** pasarela de pago digital (descartada por alcance y por el TUPA vigente).
-- **Decisión:** el sistema calcula la tasa desde el catálogo y genera una esquela en PDF con un código único; el personal de caja cobra y registra el pago con ese código y el número de recibo.
+- **Decisión:** el sistema calcula la tasa desde el catálogo y genera una esquela en PDF con un código único (`ESQ-<expediente>-<secuencial>`, protegido con una restricción UNIQUE en la base de datos); el personal de caja cobra y registra el pago con ese código y el número de recibo.
 - **Consecuencias:** ✅ sin integraciones externas de pago, más simple y barato; ✅ una esquela solo puede pagarse una vez. ⚠️ el trámite avanza recién cuando caja registra el pago.
 
 ## ADR-005: Escalamiento horizontal con caché y cola
@@ -51,9 +51,9 @@ las alternativas evaluadas y sus consecuencias.
 - **Contexto:** los plazos del TUPA se cuentan en días hábiles y su vencimiento tiene efectos legales (Ley N.° 27444).
 - **Alternativas:** control manual del evaluador.
 - **Decisión:** un proceso diario que usa un calendario de feriados y alerta a la jefatura.
-- **Consecuencias:** ✅ ningún plazo pasa desapercibido. ⚠️ el calendario de feriados debe mantenerse actualizado.
+- **Consecuencias:** ✅ ningún plazo pasa desapercibido; se comprueba con el escenario EQ-07. ⚠️ el administrador debe mantener actualizado el calendario de feriados (HU16, RF23).
 
 ## ADR-007: Seguridad por capas
 - **Contexto:** se manejan datos personales (Ley N.° 29733) y decisiones administrativas.
-- **Decisión:** OTP para el personal, roles, TLS 1.3, AES-256 en reposo y QR público con datos mínimos.
+- **Decisión:** OTP para el personal, roles, TLS 1.3, AES-256 en reposo y QR público con datos mínimos. El administrado consulta su trámite solo con su número de expediente **y** su DNI/RUC juntos.
 - **Consecuencias:** ✅ cada rol solo hace lo suyo (por ejemplo, solo caja registra pagos). ⚠️ mayor gestión de credenciales.
