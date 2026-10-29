@@ -32,15 +32,28 @@ src/modulos/pagos/
 
 ```typescript
 // dominio/Esquela.ts
-export class Esquela {
-  private numeroRecibo: string | null = null;
+export interface DatosEsquela {           // forma en que la esquela se guarda y se lee
+  codigo: string;
+  numeroExpediente: string;
+  monto: number;
+  numeroRecibo: string | null;
+}
 
-  constructor(
-    readonly codigo: string,              // código único impreso en la esquela
+export class Esquela {
+  private constructor(
+    readonly codigo: string,
     readonly numeroExpediente: string,
     readonly monto: number,               // viene del catálogo, nunca se escribe a mano
-  ) {
+    private numeroRecibo: string | null,
+  ) {}
+
+  static nueva(codigo: string, numeroExpediente: string, monto: number): Esquela {
     if (monto <= 0) throw new Error('Una esquela debe tener un monto mayor que cero');
+    return new Esquela(codigo, numeroExpediente, monto, null);
+  }
+
+  static reconstruir(d: DatosEsquela): Esquela {        // al leerla de la base, conserva si ya fue pagada
+    return new Esquela(d.codigo, d.numeroExpediente, d.monto, d.numeroRecibo);
   }
 
   static generarCodigo(numeroExpediente: string, secuencial: number): string {
@@ -53,7 +66,10 @@ export class Esquela {
   }
 
   estaPagada(): boolean { return this.numeroRecibo !== null; }
-  recibo(): string | null { return this.numeroRecibo; }
+
+  aDatos(): DatosEsquela {
+    return { codigo: this.codigo, numeroExpediente: this.numeroExpediente, monto: this.monto, numeroRecibo: this.numeroRecibo };
+  }
 }
 
 // dominio/PagoRegistrado.ts  (evento de dominio)
@@ -69,8 +85,9 @@ import { PagoRegistrado } from './PagoRegistrado';
 
 export interface RepositorioEsquelas {
   buscarPorCodigo(codigo: string): Promise<Esquela | null>;
-  contarPorExpediente(numeroExpediente: string): Promise<number>;
-  guardar(esquela: Esquela): Promise<void>;
+  siguienteSecuencial(numeroExpediente: string): Promise<number>;   // ATÓMICO: nunca entrega el mismo número dos veces
+  guardarNueva(esquela: Esquela): Promise<void>;
+  guardarPago(esquela: Esquela): Promise<boolean>;  // ATÓMICO: false si en la base ya estaba pagada
 }
 
 export interface ConsultaTasa {            // la tasa vive solo en el catálogo (ADR-002)
@@ -100,13 +117,13 @@ export class GenerarEsquela {
     private readonly documentos: GeneradorDocumentos,
   ) {}
 
+  // Se llama solo cuando el nivel de riesgo ya está confirmado (ADR-004)
   async ejecutar(numeroExpediente: string, codigoReceta: string): Promise<Esquela> {
-    const monto = await this.catalogo.tasaDe(codigoReceta);              // RF05: tasa del TUPA
-    const secuencial = (await this.esquelas.contarPorExpediente(numeroExpediente)) + 1;
-    const codigo = Esquela.generarCodigo(numeroExpediente, secuencial);  // código único
-    const esquela = new Esquela(codigo, numeroExpediente, monto);
-    await this.esquelas.guardar(esquela);
-    await this.documentos.generarPdfEsquela(esquela);                    // el worker arma el PDF
+    const monto = await this.catalogo.tasaDe(codigoReceta);                  // RF05: tasa del TUPA
+    const secuencial = await this.esquelas.siguienteSecuencial(numeroExpediente);
+    const esquela = Esquela.nueva(Esquela.generarCodigo(numeroExpediente, secuencial), numeroExpediente, monto);
+    await this.esquelas.guardarNueva(esquela);
+    await this.documentos.generarPdfEsquela(esquela);                        // el worker arma el PDF
     return esquela;
   }
 }
@@ -123,9 +140,10 @@ export class RegistrarPagoEnCaja {
   async ejecutar(codigo: string, numeroRecibo: string): Promise<void> {
     const esquela = await this.esquelas.buscarPorCodigo(codigo);
     if (!esquela) throw new Error('Esquela no encontrada');
-    esquela.registrarPago(numeroRecibo);
-    await this.esquelas.guardar(esquela);
-    await this.eventos.publicar({                      // Trámites reacciona y avanza el expediente
+    esquela.registrarPago(numeroRecibo);                         // 1.ª defensa: regla del dominio
+    const guardado = await this.esquelas.guardarPago(esquela);   // 2.ª defensa: la base de datos
+    if (!guardado) throw new Error('Esta esquela ya fue pagada');   // otro cajero la pagó al mismo tiempo
+    await this.eventos.publicar({                                // Trámites reacciona y avanza el expediente
       codigoEsquela: esquela.codigo,
       numeroExpediente: esquela.numeroExpediente,
       numeroRecibo,
@@ -136,19 +154,38 @@ export class RegistrarPagoEnCaja {
 
 ## 3. Infraestructura (adaptadores intercambiables)
 
+El adaptador en memoria guarda **copias de los datos** (no el objeto), igual que una base de datos. Así el ejemplo
+se comporta como PostgreSQL: cada lectura crea un objeto nuevo con `Esquela.reconstruir()`.
+
 ```typescript
-// infraestructura/adaptadoresEnMemoria.ts – en producción: PostgreSQL, fachada del Catálogo, cola y NestJS
-import { Esquela } from '../dominio/Esquela';
+// infraestructura/adaptadoresEnMemoria.ts
+import { Esquela, DatosEsquela } from '../dominio/Esquela';
 import { PagoRegistrado } from '../dominio/PagoRegistrado';
 import { RepositorioEsquelas, ConsultaTasa, GeneradorDocumentos, PublicadorEventos } from '../dominio/contratos';
 
 export class RepositorioEsquelasEnMemoria implements RepositorioEsquelas {
-  private datos = new Map<string, Esquela>();
-  async buscarPorCodigo(codigo: string) { return this.datos.get(codigo) ?? null; }
-  async contarPorExpediente(numero: string) {
-    return [...this.datos.values()].filter(e => e.numeroExpediente === numero).length;
+  private filas = new Map<string, DatosEsquela>();
+  private contadores = new Map<string, number>();
+
+  async buscarPorCodigo(codigo: string) {
+    const fila = this.filas.get(codigo);
+    return fila ? Esquela.reconstruir({ ...fila }) : null;
   }
-  async guardar(e: Esquela) { this.datos.set(e.codigo, e); }
+  async siguienteSecuencial(numero: string) {
+    const siguiente = (this.contadores.get(numero) ?? 0) + 1;
+    this.contadores.set(numero, siguiente);
+    return siguiente;
+  }
+  async guardarNueva(e: Esquela) {
+    if (this.filas.has(e.codigo)) throw new Error('Código de esquela duplicado');
+    this.filas.set(e.codigo, e.aDatos());
+  }
+  async guardarPago(e: Esquela) {
+    const actual = this.filas.get(e.codigo);
+    if (!actual || actual.numeroRecibo !== null) return false;   // ya estaba pagada
+    this.filas.set(e.codigo, e.aDatos());
+    return true;
+  }
 }
 
 export class ConsultaTasaEnMemoria implements ConsultaTasa {
@@ -170,6 +207,20 @@ export class PublicadorEventosEnMemoria implements PublicadorEventos {
 }
 ```
 
+### Cómo lo cumple PostgreSQL (`RepositorioEsquelasPostgres`)
+
+```sql
+-- siguienteSecuencial: atómico, dos peticiones nunca reciben el mismo número
+INSERT INTO contador_esquelas (numero_expediente, ultimo) VALUES ($1, 1)
+ON CONFLICT (numero_expediente) DO UPDATE SET ultimo = contador_esquelas.ultimo + 1
+RETURNING ultimo;
+
+-- guardarPago: solo actualiza si la esquela sigue sin pagar
+UPDATE esquelas SET numero_recibo = $2, pagada_en = now()
+WHERE codigo = $1 AND numero_recibo IS NULL;
+-- 1 fila actualizada = pago registrado (true); 0 filas = ya estaba pagada (false)
+```
+
 ## 4. Composición (único lugar que elige los adaptadores)
 
 ```typescript
@@ -189,10 +240,16 @@ const registrar = new RegistrarPagoEnCaja(repo, eventos);
 const esquela = await generar.ejecutar('EXP-2026-0001', 'LIC-01');   // riesgo bajo: S/ 159.50 del catálogo
 console.log(esquela.codigo, esquela.monto);                          // ESQ-EXP-2026-0001-01 159.5
 
-await registrar.ejecutar(esquela.codigo, 'REC-000123');              // caja registra el pago
-console.log(esquela.estaPagada(), eventos.publicados.length);        // true 1
+// Dos cajeros registran la MISMA esquela al mismo tiempo
+const resultados = await Promise.allSettled([
+  registrar.ejecutar(esquela.codigo, 'REC-000123'),
+  registrar.ejecutar(esquela.codigo, 'REC-000124'),
+]);
+console.log(resultados.map(r => r.status));        // [ 'fulfilled', 'rejected' ] → solo un pago se registra
+console.log(eventos.publicados.length);            // 1
 
-await registrar.ejecutar(esquela.codigo, 'REC-000124');              // Error: Esta esquela ya fue pagada
+const leida = await repo.buscarPorCodigo(esquela.codigo);
+console.log(leida?.estaPagada());                  // true: al leerla de nuevo sigue pagada
 ```
 
 ## Qué demuestra este ejemplo
@@ -201,9 +258,10 @@ await registrar.ejecutar(esquela.codigo, 'REC-000124');              // Error: E
 |---|---|
 | El dominio no depende de la tecnología | `Esquela` y los contratos no importan nada externo. |
 | Una sola fuente de la tasa | `GenerarEsquela` pide el monto a `ConsultaTasa`; nadie lo escribe a mano. |
-| Código de esquela único | `ESQ-<expediente>-<secuencial>`; en PostgreSQL se refuerza con una restricción UNIQUE. |
+| La esquela pagada sigue pagada al leerla | `Esquela.reconstruir()` recibe el número de recibo guardado. |
+| Un solo pago aunque dos cajeros actúen a la vez | `guardarPago` es atómico: en PostgreSQL, `UPDATE ... WHERE numero_recibo IS NULL`. |
+| Código de esquela único | `siguienteSecuencial` es atómico; en PostgreSQL usa un contador con `ON CONFLICT`. |
 | Inversión de dependencias (DIP) | Los casos de uso reciben sus contratos por el constructor. |
-| Adaptadores intercambiables (LSP) | Los adaptadores en memoria se reemplazan por PostgreSQL, la fachada del Catálogo y la cola sin cambiar los casos de uso. |
+| Adaptadores intercambiables (LSP) | El contrato exige que `siguienteSecuencial` y `guardarPago` sean atómicos; el adaptador en memoria y el de PostgreSQL lo cumplen, por eso se cambian sin tocar los casos de uso. |
 | Límite entre módulos | Pagos no toca el `Expediente`: publica `PagoRegistrado` y Trámites reacciona. |
-| Regla de negocio en el dominio | Una esquela solo puede pagarse una vez. |
 | Se prueba sin base de datos | Todo el ejemplo funciona en memoria. |
