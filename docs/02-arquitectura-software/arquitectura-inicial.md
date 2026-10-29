@@ -50,10 +50,12 @@ flowchart TD
         Cache[("Caché Redis")]
     end
 
+    Workers["Cola y workers<br/>PDF, QR y correos"]
+
     subgraph EXTERNOS["SISTEMAS EXTERNOS"]
         Ident["Validación DNI / RUC"]
         Mensajeria["Correo y SMS"]
-        WA["WhatsApp Business API"]
+        WA["WhatsApp Business API - Fase 2"]
     end
 
     Adm --> Portal
@@ -66,6 +68,7 @@ flowchart TD
     Chat -.->|"Fase 2"| API
     WA -.-> Chat
 
+    API -->|"valida sesión y rol"| Seguridad
     API --> NEGOCIO
 
     Asistente --> Catalogo
@@ -73,31 +76,35 @@ flowchart TD
     Pagos --> Catalogo
     Inspecciones --> Catalogo
     Licencias --> Catalogo
+    Reloj --> Catalogo
+    Reloj -->|"consulta expedientes abiertos"| Tramites
 
     NEGOCIO --> DATOS
 
     Tramites -->|"valida identidad"| Ident
-    Notif -->|"avisos"| Mensajeria
+    Notif -->|"encola avisos"| Workers
+    Workers -->|"envía"| Mensajeria
 ```
 
 ## Rutas del trámite
 
 ```mermaid
 flowchart LR
-    S["Solicitud y esquela de pago"] --> A1
-    S --> B1
+    S["Solicitud con requisitos completos"] --> A0
+    S --> B0
     S --> C1
 
     subgraph RA["Ruta A - ITSE después: tipos 1, 2 y 6"]
-        A1["Pago en caja"] --> A2["Licencia en 2 días hábiles"] --> A3["ITSE hasta 9 días hábiles"]
+        A0["Esquela de pago"] --> A1["Pago en caja"] --> A2["Licencia en 2 días hábiles"] --> A3["ITSE posterior hasta 9 días hábiles"]
     end
 
     subgraph RB["Ruta B - ITSE antes: tipos 3, 4, 5, 7 y 8"]
-        B1["Pago en caja"] --> B2["ITSE previa hasta 7 días hábiles"] --> B3["Licencia en 1 día hábil"]
+        B0["Esquela de pago"] --> B1["Pago en caja"] --> BE["Evaluación previa"] --> B2["ITSE previa hasta 7 días hábiles"] --> B3["Licencia en 1 día hábil"]
+        B2 -->|"desfavorable"| BX["Denegada"]
     end
 
     subgraph RC["Ruta C - Bodega: tipo 9"]
-        C1["Provisional gratis en 5 días hábiles"] --> C2["ITSE dentro de 6 meses"] --> C3["Definitiva a los 12 meses"]
+        C1["Provisional gratis en 5 días hábiles<br/>sin esquela"] --> C2["ITSE dentro de 6 meses"] --> C3["Definitiva a los 12 meses"]
     end
 ```
 
@@ -121,7 +128,8 @@ Fuente: TUPA 2024 de la Municipalidad Provincial de Huanta. Plazos en días háb
 
 - **Presentación:** todos los usuarios entran por el Portal Web, desde computadora o celular con internet. El Portal se comunica con el backend mediante una API REST. En la Fase 2 se suma un chatbot que usa la misma API.
 - **Lógica de negocio:** una sola aplicación organizada en módulos. El **Catálogo de licencias** es el corazón: cada módulo lo consulta para saber qué requisitos pedir, qué tasa cobrar, qué ruta seguir y qué plazo controlar.
-- **Pago:** el sistema genera una **esquela de pago**; la persona paga en la caja de la Municipalidad y el personal de caja registra el pago.
+- **Pago:** en las rutas A y B el sistema genera una **esquela de pago** con la tasa del catálogo; la persona paga en la caja de la Municipalidad y el personal de caja registra el pago. La ruta C (bodega) es gratuita y no genera esquela.
+- **Notificaciones:** el módulo Notificaciones solo **encola** los avisos; los **workers** son los que envían los correos y SMS.
 - **Datos:** PostgreSQL guarda toda la información; los PDF, planos y fotos se guardan en un almacén aparte; Redis acelera el catálogo y el estado de los trámites.
 
 ## Despliegue
