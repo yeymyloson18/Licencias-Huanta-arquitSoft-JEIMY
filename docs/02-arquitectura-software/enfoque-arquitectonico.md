@@ -13,18 +13,19 @@
 
 | Capa | Qué contiene | Ejemplos en el sistema |
 |---|---|---|
-| **1. Dominio** (centro) | Entidades, objetos de valor, reglas y **contratos** | Entidades: `Expediente`, `Receta`, `Requisito`, `Esquela`, `Inspeccion`, `Licencia`, `CertificadoITSE`. Objetos de valor: `Tasa`, `PlazoDiasHabiles`, `Ruta` (A, B, C), `EstadoExpediente`, `DniRuc`, `CodigoEsquela`. Contratos: `RepositorioCatalogo`, `RepositorioExpedientes`, `RepositorioEsquelas`, `ValidadorIdentidad`, `Notificador`, `AlmacenDocumentos`, `CalendarioHabil`. |
+| **1. Dominio** (centro) | Entidades, objetos de valor, reglas y **contratos** | Entidades: `Expediente`, `Receta`, `Requisito`, `Esquela`, `Inspeccion`, `Licencia`, `CertificadoITSE`. Objetos de valor: `Tasa`, `PlazoDiasHabiles`, `Ruta` (A, B, C), `EstadoExpediente`, `DniRuc`, `CodigoEsquela`. Contratos: `RepositorioCatalogo`, `RepositorioExpedientes`, `RepositorioEsquelas`, `ConsultaTasa`, `ConsultaExpedientes`, `ValidadorIdentidad`, `Notificador`, `AlmacenDocumentos`, `CalendarioHabil`, `PublicadorEventos`. |
 | **2. Aplicación** | Casos de uso: orquestan el dominio usando contratos | `ProponerLicencia`, `RegistrarSolicitud`, `GenerarEsquela`, `RegistrarPagoEnCaja`, `AsignarInspeccion`, `RegistrarResultadoITSE`, `EmitirLicencia`, `VerificarPlazos` |
-| **3. Infraestructura** | Adaptadores que **implementan** los contratos | `RepositorioExpedientesPostgres`, `RepositorioEsquelasPostgres`, `RepositorioCatalogoConCache` (Redis), `AdaptadorValidacionDniRuc`, `NotificadorCorreoSMS`, `AlmacenObjetos`, `CalendarioFeriados` |
+| **3. Infraestructura** | Adaptadores que **implementan** los contratos | `RepositorioExpedientesPostgres`, `RepositorioEsquelasPostgres`, `RepositorioCatalogoConCache` (Redis), `ConsultaTasaCatalogo`, `ConsultaExpedientesTramites`, `AdaptadorValidacionDniRuc`, `NotificadorEnCola`, `AlmacenObjetos`, `CalendarioFeriadosPostgres` |
 | **4. Presentación** | Adaptadores de entrada | Controladores REST, tarea programada del reloj de plazos, chatbot (Fase 2) |
 
 ## Reglas de negocio que viven en el dominio
 
 1. Una receta define requisitos, tasa, plazo, calificación, orden del ITSE y vigencia.
-2. La ruta A emite la licencia antes del ITSE; la ruta B, después; la ruta C emite una provisional gratuita de 12 meses.
-3. Una esquela tiene un código único y **solo puede pagarse una vez**.
+2. La ruta A emite la licencia antes del ITSE (ITSE posterior); la ruta B exige evaluación previa e ITSE favorable antes de emitir (si es desfavorable, se deniega); la ruta C emite una provisional gratuita de 12 meses, sin esquela, con ITSE dentro de los 6 meses.
+3. Una esquela tiene un código único y **solo puede pagarse una vez**; su monto se toma **siempre** del catálogo.
 4. Una licencia no se emite si la esquela no está pagada (salvo la ruta C, que es gratuita).
 5. El plazo se cuenta en días hábiles desde la presentación completa.
+6. El administrado solo ve su expediente si ingresa el número de expediente **y** su DNI/RUC.
 
 ## Regla de dependencia
 
@@ -66,6 +67,8 @@ flowchart LR
             P4["«interface» ValidadorIdentidad"]
             P5["«interface» Notificador"]
             P6["«interface» CalendarioHabil"]
+            P7["«interface» ConsultaTasa"]
+            P8["«interface» ConsultaExpedientes"]
         end
     end
 
@@ -74,8 +77,10 @@ flowchart LR
         A2["RepositorioExpedientesPostgres"]
         A3["RepositorioEsquelasPostgres"]
         A4["AdaptadorValidacionDniRuc"]
-        A5["NotificadorCorreoSMS"]
-        A6["CalendarioFeriados"]
+        A5["NotificadorEnCola"]
+        A6["CalendarioFeriadosPostgres"]
+        A7["ConsultaTasaCatalogo<br/>usa la fachada del Catálogo"]
+        A8["ConsultaExpedientesTramites<br/>usa la fachada de Trámites"]
     end
 
     Ctrl --> U1
@@ -95,9 +100,11 @@ flowchart LR
     U2 -.-> P2
     U2 -.-> P4
     U3 -.-> P3
+    U3 -.-> P7
     U4 -.-> P3
     U5 -.-> P5
     U6 -.-> P6
+    U6 -.-> P8
 
     A1 -.->|"implementa"| P1
     A2 -.->|"implementa"| P2
@@ -105,6 +112,8 @@ flowchart LR
     A4 -.->|"implementa"| P4
     A5 -.->|"implementa"| P5
     A6 -.->|"implementa"| P6
+    A7 -.->|"implementa"| P7
+    A8 -.->|"implementa"| P8
 ```
 
 **Leyenda:** flecha continua = llamada en tiempo de ejecución; flecha punteada = dependencia de código, siempre hacia el dominio; "implementa" = el adaptador cumple el contrato (inversión de dependencias).
