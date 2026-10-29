@@ -96,7 +96,7 @@ flowchart TB
 | **Trámites** | Registra la solicitud, valida documentos, asigna la ruta, controla el estado del expediente y atiende trámites conectados. | HU02, HU05, HU07, HU12 · RF03, RF04, RF06, RF07, RF09, RF15 | DA01, DA08 · ADR-002, ADR-003 | EQ-01, EQ-04 |
 | **Pagos en caja** | Genera la esquela con código único y registra el pago hecho en caja. | HU04, HU13 · RF11, RF12 | DA04 · ADR-004 | EQ-04 |
 | **Inspecciones** | Agenda la ITSE, asigna el inspector y guarda el resultado con fotos desde el celular. | HU08 · RF10 | DA01 · ADR-002 | EQ-03 |
-| **Licencias** | Emite la licencia con QR, controla vigencias y, con una tarea diaria, avisa la renovación del ITSE. | HU06, HU11 · RF13, RF14 | DA01 · ADR-002 | EQ-04 |
+| **Licencias** | Emite la licencia con QR, controla vigencias y, con una tarea diaria, avisa la renovación del ITSE. | HU06, HU11 · RF13, RF14 | DA01 · ADR-002 | EQ-06 |
 | **Reloj de plazos** | Cuenta días hábiles con el calendario de feriados y alerta antes de cada vencimiento. | HU09, HU16 · RF08, RF23 | DA05 · ADR-006 | EQ-07 |
 | **Notificaciones** | Arma los avisos y los encola; los workers envían correos y SMS. | HU05, HU09, HU11 · RF20 | DA02 · ADR-005 | EQ-02 |
 | **Reportes** | Tablero de jefatura: lee, sin modificar, expedientes (Trámites), ingresos (Pagos en caja) y licencias e ITSE por vencer (Licencias). | HU10 · RF18, RF19 | DA02 · ADR-005 | EQ-01 |
