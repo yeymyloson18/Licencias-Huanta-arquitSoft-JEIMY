@@ -109,7 +109,10 @@ flowchart TD
     R --> BD
     R --> Cache
     R --> Obj
-    S7 -->|"encola"| Cola
+        S7 -->|"encola avisos"| Cola
+    S3 -->|"encola PDF de esquela"| Cola
+    S5 -->|"encola PDF y QR"| Cola
+    Seg -->|"OTP directo"| Msg
     Cola -->|"envía"| Msg
 
     S2 -->|"HTTPS / REST"| Ident
@@ -122,5 +125,6 @@ flowchart TD
 1. En tiempo de ejecución, la petición fluye Presentación → Lógica de negocio → Datos. En el código, la capa de Datos **depende** de la lógica de negocio porque implementa sus contratos (inversión de dependencias, ADR-003).
 2. Un módulo no accede a las tablas ni a los repositorios de otro módulo; lo hace a través de su fachada pública o de eventos.
 3. Los módulos consultan el **Catálogo** para conocer las reglas del TUPA.
-4. Las tareas lentas (PDF de esquelas y licencias, QR, correos y SMS) van a la cola; solo los workers envían mensajes.
-5. Todo corre como una sola aplicación, replicable, con una única base de datos principal.
+4. Las tareas lentas (PDF de esquelas y licencias, QR, correos y SMS) van a la cola; los workers envían los mensajes, **salvo el código OTP**, que Seguridad envía directo.
+5. Las tareas diarias corren una sola vez al día con un bloqueo en PostgreSQL, aunque haya varias instancias (ADR-006).
+6. Todo corre como una sola aplicación, replicable, con una única base de datos principal.
