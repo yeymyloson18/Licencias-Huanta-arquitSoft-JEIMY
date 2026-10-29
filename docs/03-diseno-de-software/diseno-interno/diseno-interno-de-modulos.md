@@ -87,7 +87,9 @@ stateDiagram-v2
      → PublicadorEventos.publicar(PagoRegistrado) → Trámites avanza el expediente
 ```
 
-**Para que el evento no se pierda:** el pago y el evento `PagoRegistrado` se guardan **en la misma transacción**
-de PostgreSQL (el evento queda en una tabla `eventos_pendientes`). Un proceso los entrega a Trámites después; si la
-entrega falla, lo vuelve a intentar. Así nunca hay un pago registrado con el expediente detenido. A esta técnica se le
-llama **outbox**.
+**Para que el evento no se pierda (en producción):** en lugar del paso `publicar()`, el pago y el evento
+`PagoRegistrado` se guardan **en una sola operación** de PostgreSQL, y el evento **solo** se guarda si el pago se
+registró (queda en la tabla `eventos_pendientes`). Los **workers** leen esa tabla y entregan el evento a Trámites;
+si la entrega falla, la reintentan. Así nunca hay un pago registrado con el expediente detenido, ni un evento de un
+pago que no ocurrió. A esta técnica se le llama **outbox**. El ejemplo de `tecnologia/README.md` publica directo
+para ser simple.
