@@ -8,7 +8,7 @@
 | HU02 | Como administrado, quiero llenar un formulario que solo me pida los documentos de mi licencia, para no presentar requisitos innecesarios. |
 | HU03 | Como administrado, quiero conocer automáticamente el monto de la tasa, para pagar lo correcto según el TUPA vigente. |
 | HU04 | Como administrado, quiero obtener una esquela de pago con el monto y el código de mi expediente, para pagar en la caja de la Municipalidad. |
-| HU05 | Como administrado, quiero consultar el estado de mi trámite con mi número de expediente o DNI/RUC desde el celular, para no hacer colas. |
+| HU05 | Como administrado, quiero consultar el estado de mi trámite ingresando mi número de expediente y mi DNI/RUC desde el celular, para no hacer colas y sin que otra persona vea mis datos. |
 | HU06 | Como administrado, quiero recibir mi licencia digital con código QR, para demostrar su validez en cualquier momento. |
 | HU07 | Como evaluador, quiero revisar el expediente y confirmar el nivel de riesgo, para aprobarlo u observarlo correctamente. |
 | HU08 | Como inspector ITSE, quiero registrar el resultado de la inspección con fotos desde mi celular, para que el expediente avance sin usar papel. |
@@ -17,3 +17,6 @@
 | HU11 | Como administrado, quiero recibir un aviso antes de que venza mi certificado ITSE, para renovarlo a tiempo. |
 | HU12 | Como administrado, quiero solicitar transferencia, cambio de giro o duplicado de mi licencia, para mantenerla actualizada. |
 | HU13 | Como personal de caja, quiero registrar el pago con el código de la esquela, para que el trámite continúe sin demoras. |
+| HU14 | Como administrador del sistema, quiero actualizar requisitos, tasas y plazos en el catálogo, para aplicar los cambios del TUPA sin programar. |
+| HU15 | Como administrador del sistema, quiero crear usuarios y asignarles un rol, para que cada persona haga solo lo que le corresponde. |
+| HU16 | Como administrador del sistema, quiero registrar los feriados del año, para que los plazos se cuenten bien en días hábiles. |
