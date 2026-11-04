@@ -33,6 +33,7 @@ y un único **motor de trámites** sigue la receta que corresponde (ADR-002).
 | 14 | Diseño interno (módulos, patrones y principios) | [`docs/03-diseno-de-software/diseno-interno/`](docs/03-diseno-de-software/diseno-interno/) |
 | 15 | Modelo C4 (niveles 1 a 4) | [`docs/04-modelo-c4/`](docs/04-modelo-c4/) |
 | 16 | Ejemplo de código (Clean Architecture) | [`tecnologia/README.md`](tecnologia/README.md) |
+| 17 | Validación del TUPA (fichas y diferencias encontradas) | [`docs/01-analisis-de-sistema/09-validacion-del-tupa.md`](docs/01-analisis-de-sistema/09-validacion-del-tupa.md) |
 
 ## Cambios de alcance (simplificación)
 
