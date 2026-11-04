@@ -127,13 +127,18 @@ flowchart LR
 
 Fuente: TUPA 2024 de la Municipalidad Provincial de Huanta. Plazos en días hábiles.
 
+**Trámites conectados (RF15):** la transferencia, el cambio de giro y el duplicado no son recetas nuevas. El catálogo guarda
+además, con su propio código, la tasa y los requisitos que el TUPA fija para cada uno. Cada trámite conectado es un expediente
+nuevo, con su propia esquela, y sigue un camino corto: verificación de requisitos, esquela, pago en caja y emisión, sin ITSE nueva. Si un cambio de giro cambia el nivel de riesgo,
+se tramita como una licencia nueva.
+
 **Regla para que la tasa siempre coincida:** la esquela se genera **después** de confirmar el nivel de riesgo
 (en la verificación de requisitos de la ruta A o al terminar la evaluación previa de la ruta B). Si el evaluador
 corrige el riesgo, el expediente toma la receta del nuevo nivel (tasa, plazo y ruta) **antes** de generar la esquela.
 
-**Plazo de la ruta A:** los 2 días hábiles del TUPA cubren la verificación de requisitos y la emisión. La licencia la emite
-el sistema automáticamente (calificación automática) en cuanto caja registra el pago, porque el riesgo ya fue verificado; no espera
-una decisión del evaluador.
+**Plazo de la ruta A:** los 2 días hábiles del TUPA cubren la verificación de requisitos y la emisión. El evaluador verifica los
+requisitos y confirma el nivel de riesgo; después, la licencia la emite el sistema automáticamente (calificación automática) en cuanto
+caja registra el pago, sin esperar otra decisión del evaluador.
 
 **Plazo de la ruta B:** los 8 días hábiles del TUPA cubren la evaluación previa, la ITSE previa y la emisión. Cuántos días toca a cada etapa es un punto **por validar con la Municipalidad**.
 

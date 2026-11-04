@@ -8,7 +8,7 @@ Meta de diseño: de 1,000 usuarios simultáneos en operación normal a 10,000 en
 | ID | Atributo | Descripción |
 |---|---|---|
 | AC01 | Rendimiento | La consulta del catálogo y del estado del trámite debe responder rápidamente aun con alta concurrencia. |
-| AC02 | Seguridad | El personal debe ingresar con segundo factor (OTP) y el administrado debe confirmar su identidad antes de presentar una solicitud; las consultas y los inicios de sesión tienen límite de intentos; las comunicaciones deben viajar cifradas con TLS 1.3 y los datos sensibles (DNI/RUC, celular, correo, dirección y documentos adjuntos) cifrados con AES-256; y debe quedar registrado quién hizo cada operación importante. |
+| AC02 | Seguridad | El personal debe ingresar con segundo factor (OTP) y el administrado debe confirmar su identidad antes de presentar una solicitud en línea; las consultas y los inicios de sesión tienen límite de intentos; las comunicaciones deben viajar cifradas con TLS 1.3 y los datos sensibles (DNI/RUC, celular, correo, dirección y documentos adjuntos) cifrados con AES-256; y debe quedar registrado quién hizo cada operación importante. |
 | AC03 | Disponibilidad | El sistema debe seguir operando si falla una instancia del servidor (mínimo dos instancias) o la base de datos principal (réplica con conmutación automática). |
 | AC04 | Escalabilidad | El sistema debe pasar de 1,000 a 10,000 usuarios simultáneos agregando instancias, sin rediseñarse. |
 | AC05 | Usabilidad | El administrado debe poder hacer su trámite desde el celular, guiado por el asistente de ruta, sin ayuda presencial. |

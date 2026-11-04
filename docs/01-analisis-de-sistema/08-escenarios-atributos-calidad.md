@@ -79,7 +79,7 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | **Estímulo** | Usa el asistente de ruta y presenta su solicitud desde el celular. |
 | **Artefacto** | Portal Web y módulo Catálogo y Asistente |
 | **Entorno** | Prueba de usabilidad con personas reales, sin ayuda del personal. |
-| **Respuesta** | La persona identifica su licencia, presenta la solicitud y descarga su esquela de pago. |
+| **Respuesta** | La persona identifica su licencia, confirma su identidad y presenta la solicitud (la esquela llega después, cuando se confirma el nivel de riesgo). |
 | **Medida** | **Propuesta por validar:** el 90 % de los participantes completa el proceso en 15 minutos o menos, sin ayuda. |
 | **Verificación** | Prueba de usabilidad con un grupo de administrados. |
 | **Herramienta** | Prueba con usuarios reales, **cronómetro** y cuestionario **SUS** en **Google Forms**; **Lighthouse** para revisar la vista en celular. |

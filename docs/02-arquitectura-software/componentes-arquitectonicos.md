@@ -100,8 +100,8 @@ flowchart TB
 | **Catálogo y Asistente de ruta** | Guarda las 9 recetas, propone la licencia con tres preguntas y permite al administrador actualizar las recetas. | HU01, HU03, HU14 · RF01, RF02, RF05, RF21 | DA01 · ADR-002 | EQ-05, EQ-06 |
 | **Trámites** | Registra la solicitud (con la identidad validada), valida documentos, asigna la ruta, controla el estado del expediente (cacheado en Redis), atiende trámites conectados y guarda la auditoría de las decisiones del evaluador. | HU02, HU05, HU07, HU12 · RF03, RF04, RF06, RF07, RF09, RF15, RF25 | DA01, DA08 · ADR-002, ADR-003 | EQ-01, EQ-04 |
 | **Pagos en caja** | Genera una sola esquela por expediente con código único, registra el pago hecho en caja, permite a la jefatura corregir un número de recibo y guarda la auditoría de los pagos. | HU04, HU13, HU17 · RF11, RF12, RF24, RF25 | DA04 · ADR-004 | EQ-04 |
-| **Inspecciones** | Agenda la ITSE, asigna el inspector, guarda el resultado con fotos desde el celular y su auditoría. | HU08 · RF10, RF25 | DA01 · ADR-002 | EQ-03 |
-| **Licencias** | Emite la licencia con QR (con auditoría), controla vigencias y, con una tarea diaria, avisa la renovación del ITSE. | HU06, HU11 · RF13, RF14, RF25 | DA01 · ADR-002 | EQ-06 |
+| **Inspecciones** | Agenda la ITSE, asigna el inspector, guarda el resultado con fotos desde el celular y su auditoría. | HU08 · RF10, RF25 | DA01 · ADR-002 | EQ-04 |
+| **Licencias** | Emite la licencia con QR (con auditoría), controla vigencias y, con una tarea diaria, avisa la renovación del ITSE. | HU06, HU11 · RF13, RF14, RF25 | DA01 · ADR-002 | EQ-04 |
 | **Reloj de plazos** | Cuenta días hábiles con el calendario de feriados y alerta antes de cada vencimiento. | HU09, HU16 · RF08, RF23 | DA05 · ADR-006 | EQ-07 |
 | **Notificaciones** | Arma los avisos y los encola; los workers envían correos y SMS. | HU05, HU09, HU11 · RF20 | DA02 · ADR-005 | EQ-02 |
 | **Reportes** | Tablero de jefatura: lee, sin modificar, expedientes (Trámites), ingresos (Pagos en caja) y licencias e ITSE por vencer (Licencias). | HU10 · RF18, RF19 | DA02 · ADR-005 | EQ-01 |
