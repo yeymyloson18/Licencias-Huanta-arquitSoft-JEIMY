@@ -10,10 +10,10 @@ las alternativas evaluadas y sus consecuencias.
 | ADR-001 | Monolito modular | DA07 | Una sola aplicación desplegable, organizada en módulos, simple de construir y operar para un equipo pequeño. | Módulos: Seguridad y Usuarios, Catálogo y Asistente de ruta, Trámites, Pagos en caja, Inspecciones, Licencias, Reloj de plazos, Notificaciones y Reportes. |
 | ADR-002 | Motor único + catálogo de recetas | DA01 | Las 9 licencias siguen los mismos pasos; lo que cambia se guarda como datos. | Un cambio de tasa, requisito o plazo del TUPA se actualiza en el catálogo, no en el código. |
 | ADR-003 | Clean Architecture | DA08 | Separar las reglas del trámite de los detalles tecnológicos. | Capas Dominio, Aplicación, Infraestructura y Presentación. |
-| ADR-004 | Pago presencial con esquela | DA04 | El TUPA indica el pago en la caja de la Municipalidad. | El sistema genera la esquela y el personal de caja registra el pago. |
-| ADR-005 | Escalamiento horizontal con caché y cola | DA02, DA06 | Soportar de 1,000 a 10,000 usuarios y seguir operando si falla un servidor. | Varias instancias, balanceador, Redis, réplica de base de datos y workers. |
+| ADR-004 | Pago presencial con esquela | DA04 | El TUPA indica el pago en la caja de la Municipalidad. | El sistema genera una sola esquela por expediente y el personal de caja registra el pago. |
+| ADR-005 | Escalamiento horizontal con caché y cola | DA02, DA06 | Soportar de 1,000 a 10,000 usuarios y seguir operando si falla un servidor. | Varias instancias, balanceador, Redis, réplica de base de datos con conmutación automática y workers. |
 | ADR-006 | Reloj de plazos como tarea programada | DA05 | Contar días hábiles y alertar antes del vencimiento. | Proceso diario con calendario de feriados (RF23) que se ejecuta una sola vez por día gracias a un bloqueo en PostgreSQL. |
-| ADR-007 | Seguridad por capas | DA03 | Proteger datos personales y operaciones del personal. | OTP, roles, TLS 1.3, AES-256 y QR público con datos mínimos. |
+| ADR-007 | Seguridad por capas | DA03 | Proteger datos personales y operaciones del personal. | OTP, identidad confirmada del administrado, límite de intentos, roles, TLS 1.3, AES-256, registro de auditoría y QR público con datos mínimos. |
 
 ---
 
@@ -38,14 +38,15 @@ las alternativas evaluadas y sus consecuencias.
 ## ADR-004: Pago presencial con esquela
 - **Contexto:** el TUPA indica el pago en efectivo en la Caja de la Entidad; no se incluyen pagos digitales.
 - **Alternativas:** pasarela de pago digital (descartada por alcance y por el TUPA vigente).
-- **Decisión:** cuando el nivel de riesgo ya está confirmado (verificación de requisitos en la ruta A; evaluación previa en la ruta B), el sistema calcula la tasa desde el catálogo y genera una esquela en PDF con un código único (`ESQ-<expediente>-<secuencial>`, protegido con una restricción UNIQUE en la base de datos); el personal de caja cobra y registra el pago con ese código y el número de recibo.
-- **Consecuencias:** ✅ sin integraciones externas de pago, más simple y barato; ✅ una esquela solo puede pagarse una vez; ✅ como el riesgo se confirma antes de generar la esquela, el monto pagado siempre coincide con la licencia. ⚠️ el trámite avanza recién cuando caja registra el pago.
+- **Decisión:** cuando el nivel de riesgo ya está confirmado (verificación de requisitos en la ruta A; evaluación previa en la ruta B), el sistema calcula la tasa desde el catálogo y genera **una sola esquela por expediente** en PDF, con el código `ESQ-<expediente>` (protegido con una restricción UNIQUE sobre el número de expediente en la base de datos; si se pide otra vez, se devuelve la misma esquela). El personal de caja ve el expediente, el titular y el monto, confirma, y registra el pago con ese código y el número de recibo. Un número de recibo mal digitado solo lo corrige la jefatura, con motivo y registro de auditoría.
+- **Consecuencias:** ✅ sin integraciones externas de pago, más simple y barato; ✅ una esquela solo puede pagarse una vez y un expediente no puede tener dos esquelas, así nadie paga dos veces; ✅ como el riesgo se confirma antes de generar la esquela, el monto pagado siempre coincide con la licencia. ⚠️ el trámite avanza recién cuando caja registra el pago; ⚠️ anular un pago ya registrado queda fuera del sistema (procedimiento de caja).
 
 ## ADR-005: Escalamiento horizontal con caché y cola
 - **Contexto:** campañas de formalización y renovaciones del ITSE generan picos de 1,000 a 10,000 usuarios.
 - **Alternativas:** un servidor grande; microservicios.
-- **Decisión:** backend sin estado con varias instancias detrás de un balanceador, Redis para el catálogo y los estados, réplica de PostgreSQL y workers para generar PDF, QR y correos.
-- **Consecuencias:** ✅ crece según la demanda; ✅ sigue operando si falla una instancia. ⚠️ infraestructura más compleja que un solo servidor.
+- **Decisión:** backend sin estado con varias instancias detrás de un balanceador; Redis para el catálogo, el estado de los trámites y los contadores de intentos (compartidos por todas las instancias); PostgreSQL primaria con una réplica en espera y **conmutación automática** (Patroni o el servicio administrado de PostgreSQL de la nube); y workers para generar PDF y QR, enviar correos y SMS, y entregar los eventos pendientes (outbox).
+- **Reglas de la caché:** al actualizar una receta, el catálogo borra esa receta de Redis; al cambiar el estado de un expediente, Trámites borra su clave. Además, cada clave vence sola a los 10 minutos como respaldo. Si Redis falla, el sistema lee directo de PostgreSQL.
+- **Consecuencias:** ✅ crece según la demanda; ✅ sigue operando si falla una instancia o la base de datos principal; ✅ la caché nunca muestra datos viejos después de un cambio. ⚠️ infraestructura más compleja que un solo servidor.
 
 ## ADR-006: Reloj de plazos como tarea programada
 - **Contexto:** los plazos del TUPA se cuentan en días hábiles y su vencimiento tiene efectos legales (Ley N.° 27444).
@@ -55,5 +56,12 @@ las alternativas evaluadas y sus consecuencias.
 
 ## ADR-007: Seguridad por capas
 - **Contexto:** se manejan datos personales (Ley N.° 29733) y decisiones administrativas.
-- **Decisión:** OTP para el personal, roles, TLS 1.3, AES-256 en reposo y QR público con datos mínimos. El administrado consulta su trámite solo con su número de expediente **y** su DNI/RUC juntos.
-- **Consecuencias:** ✅ cada rol solo hace lo suyo (por ejemplo, solo caja registra pagos). ⚠️ mayor gestión de credenciales.
+- **Decisión:**
+  - OTP para el personal y roles.
+  - Antes de presentar una solicitud en línea, el administrado confirma su identidad: el servicio externo valida su DNI con la fecha de emisión (o el RUC con el DNI de su representante legal) y el módulo Seguridad envía un código OTP a su celular. En mesa de partes, el personal verifica el DNI físico.
+  - El administrado consulta su trámite solo con su número de expediente **y** su DNI/RUC juntos.
+  - **Límite de intentos:** 5 intentos fallidos en 15 minutos, por IP y por número de expediente (o usuario), bloquean temporalmente la consulta, el inicio de sesión o el código OTP. Los contadores se guardan en Redis para que todas las instancias los compartan.
+  - TLS 1.3; AES-256 en reposo para DNI/RUC, celular, correo, dirección y documentos adjuntos.
+  - Registro de auditoría (RF25): cada módulo guarda en su propia tabla quién hizo cada operación importante y cuándo, en la misma transacción que la operación.
+  - QR público con datos mínimos.
+- **Consecuencias:** ✅ cada rol solo hace lo suyo (por ejemplo, solo caja registra pagos); ✅ nadie presenta un trámite a nombre de otra persona ni adivina expedientes por fuerza bruta; ✅ se sabe quién registró cada pago o decisión. ⚠️ mayor gestión de credenciales y un paso más para el administrado.

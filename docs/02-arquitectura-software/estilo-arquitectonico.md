@@ -38,7 +38,7 @@ flowchart TD
     LB["Balanceador de carga"]
 
     subgraph MONOLITO["MONOLITO MODULAR - Backend API REST - un solo despliegue, N instancias"]
-        MW["Middlewares transversales<br/>autenticación JWT + OTP - roles - validación"]
+        MW["Middlewares transversales<br/>autenticación JWT + OTP - roles - validación<br/>límite de intentos"]
 
         subgraph PRES["1. PRESENTACIÓN - controladores REST y tareas programadas"]
             C0["seguridad.controller"]
@@ -68,10 +68,10 @@ flowchart TD
         end
     end
 
-    BD[("PostgreSQL<br/>primaria + réplica")]
+    BD[("PostgreSQL<br/>primaria + réplica<br/>conmutación automática")]
     Cache[("Redis")]
     Obj[("Almacén de documentos y fotos")]
-    Cola["Cola + workers<br/>PDF, QR, correos y SMS"]
+    Cola["Cola + workers<br/>PDF, QR, correos, SMS<br/>y eventos pendientes"]
 
     Ident["Validación DNI / RUC"]
     Msg["Correo y SMS"]
@@ -87,6 +87,7 @@ flowchart TD
     LB --> MW
     MW -->|"valida sesión y rol"| Seg
     MW --> PRES
+    MW -->|"contadores de intentos"| Cache
 
     C0 --> Seg
     C1 --> Cat
@@ -109,7 +110,8 @@ flowchart TD
     R --> BD
     R --> Cache
     R --> Obj
-        S7 -->|"encola avisos"| Cola
+    S7 -->|"encola avisos"| Cola
+    Cola -->|"lee eventos pendientes"| BD
     S3 -->|"encola PDF de esquela"| Cola
     S5 -->|"encola PDF y QR"| Cola
     Seg -->|"OTP directo"| Msg

@@ -44,6 +44,7 @@ Decreto de Alcaldía N.° 009-2024-MPH/A). Hoy el trámite es mayormente presenc
 - Cambiar o reescribir el TUPA: el sistema lo lee, no lo define.
 - Definir la matriz de riesgo: la aplica la Municipalidad.
 - Recursos de reconsideración y apelación.
+- Anular un pago ya registrado: se resuelve con el procedimiento de caja de la Municipalidad. El sistema solo permite corregir un número de recibo mal digitado (RF24).
 - Otros trámites del TUPA no conectados a la licencia de funcionamiento.
 - La fiscalización posterior en campo.
 - Integración con otros sistemas municipales (SIAF-SP, trámite documentario).

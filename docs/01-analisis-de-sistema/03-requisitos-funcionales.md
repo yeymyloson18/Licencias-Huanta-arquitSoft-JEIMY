@@ -5,14 +5,14 @@
 |---|---|
 | RF01 | El sistema debe proponer el tipo de licencia mediante un asistente de tres preguntas basado en reglas. |
 | RF02 | El sistema debe mostrar los requisitos, la tasa y el plazo de la licencia propuesta, leídos del catálogo. |
-| RF03 | El sistema debe permitir consultar el estado del trámite ingresando juntos el número de expediente y el DNI/RUC del solicitante. |
+| RF03 | El sistema debe permitir consultar el estado del trámite ingresando juntos el número de expediente y el DNI/RUC del solicitante, con un límite de intentos fallidos. |
 
 ## Solicitud digital
 | ID | Requisito funcional |
 |---|---|
 | RF04 | El sistema debe mostrar un formulario dinámico que solicite solo los documentos de la licencia elegida, incluidos los documentos especiales según el giro. |
 | RF05 | El sistema debe calcular automáticamente la tasa según el TUPA vigente. |
-| RF06 | El sistema debe validar el DNI o RUC del solicitante con un servicio externo. |
+| RF06 | El sistema debe validar la identidad del solicitante con un servicio externo (DNI con su fecha de emisión; RUC con el DNI de su representante legal) y confirmar su celular con un código OTP antes de presentar la solicitud en línea. |
 
 ## Evaluación e inspección
 | ID | Requisito funcional |
@@ -25,8 +25,8 @@
 ## Pago en caja y emisión
 | ID | Requisito funcional |
 |---|---|
-| RF11 | El sistema debe generar una esquela de pago con el número de expediente, el concepto, el monto de la tasa y un código único, una vez confirmado el nivel de riesgo. |
-| RF12 | El sistema debe permitir al personal de caja registrar el pago de una esquela con su código y el número de recibo. |
+| RF11 | El sistema debe generar una sola esquela de pago por expediente, con el número de expediente, el concepto, el monto de la tasa y un código único, una vez confirmado el nivel de riesgo. |
+| RF12 | El sistema debe permitir al personal de caja registrar el pago de una esquela con su código y el número de recibo; antes de guardar, muestra el expediente, el titular y el monto para que el cajero confirme. |
 | RF13 | El sistema debe emitir la licencia digital con un código QR verificable públicamente. |
 | RF14 | El sistema debe registrar el certificado ITSE con su fecha de vencimiento y avisar antes de que venza. |
 | RF15 | El sistema debe gestionar los trámites conectados: transferencia, cambio de giro y duplicado. |
@@ -42,6 +42,8 @@
 | RF21 | El sistema debe permitir al administrador actualizar las recetas del catálogo (requisitos, tasa, plazo, calificación, orden del ITSE y vigencia). |
 | RF22 | El sistema debe permitir al administrador crear, desactivar y asignar roles a los usuarios del personal. |
 | RF23 | El sistema debe permitir al administrador registrar el calendario de feriados usado para contar días hábiles. |
+| RF24 | El sistema debe permitir a la jefatura corregir el número de recibo de un pago mal digitado, indicando el motivo. |
+| RF25 | El sistema debe guardar un registro de auditoría (usuario, acción, fecha y hora) del registro y la corrección de pagos, de las decisiones del evaluador, de los resultados ITSE y de la emisión de licencias. |
 
 ## Relación entre historias de usuario y requisitos funcionales
 | Historia de usuario | Requisitos relacionados |
@@ -62,5 +64,6 @@
 | HU14 Actualizar catálogo | RF21 |
 | HU15 Gestionar usuarios y roles | RF16, RF17, RF22 |
 | HU16 Calendario de feriados | RF08, RF23 |
+| HU17 Corrección de recibo y auditoría | RF24, RF25 |
 
-RF16, RF17 y RF22 provienen del atributo de seguridad (AC02) y de la Ley N.° 29733.
+RF16, RF17, RF22 y RF25 provienen del atributo de seguridad (AC02) y de la Ley N.° 29733.

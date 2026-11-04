@@ -56,8 +56,8 @@ export class Esquela {
     return new Esquela(d.codigo, d.numeroExpediente, d.monto, d.numeroRecibo);
   }
 
-  static generarCodigo(numeroExpediente: string, secuencial: number): string {
-    return `ESQ-${numeroExpediente}-${String(secuencial).padStart(2, '0')}`;   // ej.: ESQ-EXP-2026-0001-01
+  static generarCodigo(numeroExpediente: string): string {
+    return `ESQ-${numeroExpediente}`;      // una sola esquela por expediente, ej.: ESQ-EXP-2026-0001
   }
 
   registrarPago(numeroRecibo: string): void {
@@ -85,8 +85,8 @@ import { PagoRegistrado } from './PagoRegistrado';
 
 export interface RepositorioEsquelas {
   buscarPorCodigo(codigo: string): Promise<Esquela | null>;
-  siguienteSecuencial(numeroExpediente: string): Promise<number>;   // ATÓMICO: nunca entrega el mismo número dos veces
-  guardarNueva(esquela: Esquela): Promise<void>;
+  buscarPorExpediente(numeroExpediente: string): Promise<Esquela | null>;
+  guardarNueva(esquela: Esquela): Promise<boolean>; // ATÓMICO: false si el expediente ya tiene esquela
   guardarPago(esquela: Esquela): Promise<boolean>;  // ATÓMICO: false si en la base ya estaba pagada
 }
 
@@ -119,10 +119,16 @@ export class GenerarEsquela {
 
   // Se llama solo cuando el nivel de riesgo ya está confirmado (ADR-004)
   async ejecutar(numeroExpediente: string, codigoReceta: string): Promise<Esquela> {
+    const existente = await this.esquelas.buscarPorExpediente(numeroExpediente);
+    if (existente) return existente;                                         // una sola esquela por expediente
     const monto = await this.catalogo.tasaDe(codigoReceta);                  // RF05: tasa del TUPA
-    const secuencial = await this.esquelas.siguienteSecuencial(numeroExpediente);
-    const esquela = Esquela.nueva(Esquela.generarCodigo(numeroExpediente, secuencial), numeroExpediente, monto);
-    await this.esquelas.guardarNueva(esquela);
+    const esquela = Esquela.nueva(Esquela.generarCodigo(numeroExpediente), numeroExpediente, monto);
+    const creada = await this.esquelas.guardarNueva(esquela);
+    if (!creada) {                                                           // otra petición la creó al mismo tiempo
+      const otra = await this.esquelas.buscarPorExpediente(numeroExpediente);
+      if (!otra) throw new Error('No se pudo leer la esquela del expediente');
+      return otra;
+    }
     await this.documentos.generarPdfEsquela(esquela);                        // el worker arma el PDF
     return esquela;
   }
@@ -165,21 +171,21 @@ import { PagoRegistrado } from '../dominio/PagoRegistrado';
 import { RepositorioEsquelas, ConsultaTasa, GeneradorDocumentos, PublicadorEventos } from '../dominio/contratos';
 
 export class RepositorioEsquelasEnMemoria implements RepositorioEsquelas {
-  private filas = new Map<string, DatosEsquela>();
-  private contadores = new Map<string, number>();
+  private filas = new Map<string, DatosEsquela>();      // clave: código de la esquela
 
   async buscarPorCodigo(codigo: string) {
     const fila = this.filas.get(codigo);
     return fila ? Esquela.reconstruir({ ...fila }) : null;
   }
-  async siguienteSecuencial(numero: string) {
-    const siguiente = (this.contadores.get(numero) ?? 0) + 1;
-    this.contadores.set(numero, siguiente);
-    return siguiente;
+  async buscarPorExpediente(numero: string) {
+    const fila = [...this.filas.values()].find(f => f.numeroExpediente === numero);
+    return fila ? Esquela.reconstruir({ ...fila }) : null;
   }
   async guardarNueva(e: Esquela) {
-    if (this.filas.has(e.codigo)) throw new Error('Código de esquela duplicado');
+    const yaExiste = [...this.filas.values()].some(f => f.numeroExpediente === e.numeroExpediente);
+    if (yaExiste) return false;                                  // como UNIQUE (numero_expediente)
     this.filas.set(e.codigo, e.aDatos());
+    return true;
   }
   async guardarPago(e: Esquela) {
     const actual = this.filas.get(e.codigo);
@@ -211,10 +217,10 @@ export class PublicadorEventosEnMemoria implements PublicadorEventos {
 ### Cómo lo cumple PostgreSQL (`RepositorioEsquelasPostgres`)
 
 ```sql
--- siguienteSecuencial: atómico, dos peticiones nunca reciben el mismo número
-INSERT INTO contador_esquelas (numero_expediente, ultimo) VALUES ($1, 1)
-ON CONFLICT (numero_expediente) DO UPDATE SET ultimo = contador_esquelas.ultimo + 1
-RETURNING ultimo;
+-- guardarNueva: atómico, un expediente nunca tiene dos esquelas (UNIQUE sobre numero_expediente)
+INSERT INTO esquelas (codigo, numero_expediente, monto) VALUES ($1, $2, $3)
+ON CONFLICT (numero_expediente) DO NOTHING;
+-- 1 fila insertada = esquela creada (true); 0 filas = el expediente ya tenía esquela (false)
 
 -- guardarPago: solo actualiza si la esquela sigue sin pagar
 UPDATE esquelas SET numero_recibo = $2, pagada_en = now()
@@ -261,7 +267,10 @@ const generar = new GenerarEsquela(repo, new ConsultaTasaEnMemoria(), new Genera
 const registrar = new RegistrarPagoEnCaja(repo, eventos);
 
 const esquela = await generar.ejecutar('EXP-2026-0001', 'LIC-01');   // riesgo bajo: S/ 159.50 del catálogo
-console.log(esquela.codigo, esquela.monto);                          // ESQ-EXP-2026-0001-01 159.5
+console.log(esquela.codigo, esquela.monto);                          // ESQ-EXP-2026-0001 159.5
+
+const otraVez = await generar.ejecutar('EXP-2026-0001', 'LIC-01');   // se pide de nuevo (p. ej., se perdió el PDF)
+console.log(otraVez.codigo === esquela.codigo);                      // true: la misma esquela, nunca una segunda
 
 // Dos cajeros registran la MISMA esquela al mismo tiempo
 const resultados = await Promise.allSettled([
@@ -283,9 +292,12 @@ console.log(leida?.estaPagada());                  // true: al leerla de nuevo s
 | Una sola fuente de la tasa | `GenerarEsquela` pide el monto a `ConsultaTasa`; nadie lo escribe a mano. |
 | La esquela pagada sigue pagada al leerla | `Esquela.reconstruir()` recibe el número de recibo guardado. |
 | Un solo pago aunque dos cajeros actúen a la vez | `guardarPago` es atómico: en PostgreSQL, `UPDATE ... WHERE numero_recibo IS NULL`. |
-| Código de esquela único | `siguienteSecuencial` es atómico; en PostgreSQL usa un contador con `ON CONFLICT`. |
+| Una sola esquela por expediente | `GenerarEsquela` devuelve la existente; `guardarNueva` es atómico (en PostgreSQL, `ON CONFLICT (numero_expediente) DO NOTHING`), así nadie paga dos veces. |
 | Inversión de dependencias (DIP) | Los casos de uso reciben sus contratos por el constructor. |
-| Adaptadores intercambiables (LSP) | El contrato exige que `siguienteSecuencial` y `guardarPago` sean atómicos; el adaptador en memoria y el de PostgreSQL lo cumplen, por eso se cambian sin tocar los casos de uso. |
+| Adaptadores intercambiables (LSP) | El contrato exige que `guardarNueva` y `guardarPago` sean atómicos; el adaptador en memoria y el de PostgreSQL lo cumplen, por eso se cambian sin tocar los casos de uso. |
 | Límite entre módulos | Pagos no toca el `Expediente`: publica `PagoRegistrado` y Trámites reacciona. |
 | Cómo evitar perder el evento | El ejemplo publica directo para ser simple; en producción se usaría outbox (nota de la sección 3). |
 | Se prueba sin base de datos | Todo el ejemplo funciona en memoria. |
+
+**Fuera de este ejemplo** (están en el diseño interno de módulos): la pantalla de confirmación del cajero
+(`ConsultarEsquela`), la corrección del número de recibo por la jefatura (`CorregirNumeroRecibo`) y el registro de auditoría.

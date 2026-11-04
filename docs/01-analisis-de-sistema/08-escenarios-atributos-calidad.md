@@ -44,13 +44,13 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | **Atributo de calidad** | Disponibilidad |
 | **Origen** | AC03 · DA06 · ADR-005 |
 | **Fuente** | Administrados y personal municipal |
-| **Estímulo** | Falla una instancia del backend. |
-| **Artefacto** | Backend API, balanceador y réplica de PostgreSQL |
+| **Estímulo** | Falla una instancia del backend o la base de datos principal. |
+| **Artefacto** | Backend API, balanceador y PostgreSQL (primaria y réplica con conmutación automática) |
 | **Entorno** | Horario de atención. |
-| **Respuesta** | El balanceador envía el tráfico a la otra instancia; presentar solicitudes, generar esquelas y consultar estado siguen funcionando. |
-| **Medida** | **Propuesta por validar:** disponibilidad mensual de 99,5 %; recuperación en 5 minutos o menos. |
-| **Verificación** | Simulacro apagando una instancia; revisión mensual del monitoreo. |
-| **Herramienta** | **Docker** (`docker stop` de una instancia), **Nginx** como balanceador con chequeo de salud y **Uptime Kuma** para medir la disponibilidad mensual. |
+| **Respuesta** | El balanceador envía el tráfico a la otra instancia; si cae la base principal, la réplica toma su lugar automáticamente. Presentar solicitudes, generar esquelas y consultar estado siguen funcionando. |
+| **Medida** | **Propuesta por validar:** disponibilidad mensual de 99,5 %; recuperación en 5 minutos o menos, sin perder pagos ya registrados. |
+| **Verificación** | Simulacro apagando una instancia y, en otro simulacro, la base principal; revisión mensual del monitoreo. |
+| **Herramienta** | **Docker** (`docker stop` de una instancia o de la base principal), **Patroni** para la conmutación de PostgreSQL, **Nginx** como balanceador con chequeo de salud y **Uptime Kuma** para medir la disponibilidad mensual. |
 | **Estado** | Pendiente de definir las ventanas de mantenimiento. |
 
 ## EQ-04. Seguridad: acceso a operaciones protegidas
@@ -59,13 +59,13 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 |---|---|
 | **Atributo de calidad** | Seguridad |
 | **Origen** | AC02 · DA03 · ADR-007 · Ley N.° 29733 |
-| **Fuente** | Personal sin sesión, sin código OTP o con un rol insuficiente; o un administrado que no conoce el DNI/RUC del expediente |
-| **Estímulo** | Intenta aprobar un expediente, registrar un pago de caja, cambiar el catálogo o consultar el expediente de otra persona. |
-| **Artefacto** | API REST (autenticación y roles), Seguridad y Usuarios; módulos Trámites, Pagos en caja, Catálogo y Licencias |
+| **Fuente** | Personal sin sesión, sin código OTP o con un rol insuficiente; un administrado que no conoce el DNI/RUC del expediente; o una persona que intenta presentar un trámite a nombre de otra |
+| **Estímulo** | Intenta aprobar un expediente, registrar o corregir un pago de caja, cambiar el catálogo, consultar el expediente de otra persona (incluso probando muchos números seguidos) o presentar una solicitud sin confirmar la identidad. |
+| **Artefacto** | API REST (autenticación, roles y límite de intentos), Seguridad y Usuarios; módulos Trámites, Pagos en caja, Catálogo y Licencias |
 | **Entorno** | Pruebas de seguridad en el entorno de pruebas. |
-| **Respuesta** | El sistema rechaza la operación, no modifica datos y no expone información sensible. |
-| **Medida** | Rechazar el 100 % de los intentos no autorizados probados; ningún dato personal en mensajes de error ni en la página pública del QR. |
-| **Verificación** | Matriz de pruebas por rol (mesa de partes, evaluador, inspector, caja, jefatura y administrador) y prueba de consulta del administrado con un DNI/RUC que no corresponde al expediente. |
+| **Respuesta** | El sistema rechaza la operación, no modifica datos y no expone información sensible; tras 5 intentos fallidos bloquea temporalmente. Las operaciones permitidas quedan en el registro de auditoría. |
+| **Medida** | Rechazar el 100 % de los intentos no autorizados probados; bloqueo en el 6.º intento fallido; ningún dato personal en mensajes de error ni en la página pública del QR; el 100 % de los pagos, correcciones y decisiones probados aparecen en la auditoría. |
+| **Verificación** | Matriz de pruebas por rol (mesa de partes, evaluador, inspector, caja, jefatura y administrador), prueba de consulta del administrado con un DNI/RUC que no corresponde al expediente, prueba de fuerza bruta y prueba de presentación sin código OTP. |
 | **Herramienta** | **Jest + Supertest** (pruebas automáticas por rol), **OWASP ZAP** (escaneo de vulnerabilidades) y **testssl.sh** (comprobar TLS 1.3). |
 | **Estado** | Pendiente de aprobar la matriz de permisos por rol. |
 
@@ -139,6 +139,7 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | Grafana + Prometheus | Ver en gráficos el tiempo de respuesta, los errores y el uso de las instancias. | EQ-01, EQ-02 |
 | Docker / Docker Compose | Levantar varias instancias, apagar una a propósito y escalar. | EQ-02, EQ-03, EQ-07 |
 | Nginx | Balanceador que deja de enviar tráfico a una instancia caída. | EQ-03 |
+| Patroni | Cambia automáticamente a la réplica de PostgreSQL si cae la base principal. | EQ-03 |
 | Uptime Kuma | Revisar cada minuto si el sistema responde y calcular la disponibilidad mensual. | EQ-03 |
 | Jest + Supertest | Pruebas automáticas del backend NestJS (roles, reglas, plazos). | EQ-04, EQ-06, EQ-07 |
 | OWASP ZAP | Buscar vulnerabilidades comunes en la API y el Portal Web. | EQ-04 |

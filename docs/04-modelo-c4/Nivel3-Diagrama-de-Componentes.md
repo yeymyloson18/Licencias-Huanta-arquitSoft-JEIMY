@@ -11,7 +11,7 @@ El diagrama completo, con la tabla de responsabilidades y la trazabilidad de cad
 
 ```mermaid
 flowchart LR
-    Front["Portal Web<br/>administrado, personal y administrador"] -->|"HTTPS/JSON"| Rest["API REST<br/>autenticación, roles, validación"]
+    Front["Portal Web<br/>administrado, personal y administrador"] -->|"HTTPS/JSON"| Rest["API REST<br/>autenticación, roles, validación,<br/>límite de intentos"]
 
     subgraph API["Backend API - monolito modular"]
         Rest -->|"valida sesión, OTP y rol"| Seg["Seguridad y Usuarios"]
@@ -30,7 +30,7 @@ flowchart LR
         Lic -->|"lee vigencia"| Cat
         Pla -->|"lee plazos"| Cat
         Tra -->|"solicita esquela - rutas A y B"| Pag
-        Pag -.->|"PagoRegistrado"| Tra
+        Pag -.->|"PagoRegistrado - vía outbox"| Tra
         Tra --> Ins
         Ins -.->|"ResultadoITSERegistrado"| Tra
         Tra --> Lic
@@ -48,6 +48,8 @@ flowchart LR
     Cola -->|"envían"| Msg["Correo y SMS"]
     Seg -->|"OTP directo"| Msg
     API --> BD[("PostgreSQL")]
+    Cola -->|"leen eventos pendientes"| BD
+    API --> Redis[("Redis<br/>recetas, estados e intentos")]
 ```
 
 ## Reglas del nivel de componentes
@@ -58,3 +60,5 @@ flowchart LR
 4. Notificaciones solo encola; los workers envían los correos y SMS (ADR-005). Excepción: Seguridad envía el OTP directo.
 5. Las tareas diarias del Reloj de plazos y del aviso ITSE corren una sola vez al día, con un bloqueo en PostgreSQL (ADR-006).
 6. Dentro de cada componente se aplica Clean Architecture (ADR-003); ese detalle se ve en el Nivel 4.
+7. `PagoRegistrado` se guarda en la tabla `eventos_pendientes` junto con el pago; los workers lo entregan a Trámites (outbox).
+8. Cada componente guarda su registro de auditoría en sus propias tablas (RF25).

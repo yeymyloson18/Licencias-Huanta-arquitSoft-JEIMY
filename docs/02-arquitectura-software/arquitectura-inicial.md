@@ -50,7 +50,7 @@ flowchart TD
         Cache[("Caché Redis")]
     end
 
-    Workers["Cola y workers<br/>PDF, QR y correos"]
+    Workers["Cola y workers<br/>PDF, QR, correos y eventos pendientes"]
 
     subgraph EXTERNOS["SISTEMAS EXTERNOS"]
         Ident["Validación DNI / RUC"]
@@ -84,6 +84,7 @@ flowchart TD
     Tramites -->|"valida identidad"| Ident
     Notif -->|"encola avisos"| Workers
     Workers -->|"envía"| Mensajeria
+    Workers -->|"lee eventos pendientes"| BD
     Seguridad -->|"OTP directo"| Mensajeria
 ```
 
@@ -130,16 +131,22 @@ Fuente: TUPA 2024 de la Municipalidad Provincial de Huanta. Plazos en días háb
 (en la verificación de requisitos de la ruta A o al terminar la evaluación previa de la ruta B). Si el evaluador
 corrige el riesgo, el expediente toma la receta del nuevo nivel (tasa, plazo y ruta) **antes** de generar la esquela.
 
+**Plazo de la ruta A:** los 2 días hábiles del TUPA cubren la verificación de requisitos y la emisión. La licencia la emite
+el sistema automáticamente (calificación automática) en cuanto caja registra el pago, porque el riesgo ya fue verificado; no espera
+una decisión del evaluador.
+
 **Plazo de la ruta B:** los 8 días hábiles del TUPA incluyen la evaluación previa, la ITSE previa (hasta 7 días) y la emisión (1 día).
-Los días que el expediente espera el pago en caja dependen del administrado; si se descuentan o no del plazo es un punto **por validar con la Municipalidad**.
+
+**Espera del pago (rutas A y B):** los días que el expediente espera el pago en caja dependen del administrado; si se descuentan
+o no del plazo es un punto **por validar con la Municipalidad**.
 
 ## Descripción
 
-- **Presentación:** todos los usuarios entran por el Portal Web, desde computadora o celular con internet. El Portal se comunica con el backend mediante una API REST. En la Fase 2 se suma un chatbot que usa la misma API.
+- **Presentación:** todos los usuarios entran por el Portal Web, desde computadora o celular con internet. El Portal se comunica con el backend mediante una API REST, que limita los intentos fallidos de consulta e inicio de sesión. Antes de presentar una solicitud en línea, el administrado confirma su identidad (DNI con fecha de emisión y código OTP en su celular). En la Fase 2 se suma un chatbot que usa la misma API.
 - **Lógica de negocio:** una sola aplicación organizada en módulos. El **Catálogo de licencias** es el corazón: cada módulo lo consulta para saber qué requisitos pedir, qué tasa cobrar, qué ruta seguir y qué plazo controlar.
-- **Pago:** en las rutas A y B el sistema genera una **esquela de pago** con la tasa del catálogo; la persona paga en la caja de la Municipalidad y el personal de caja registra el pago. La ruta C (bodega) es gratuita y no genera esquela.
-- **Notificaciones:** el módulo Notificaciones solo **encola** los avisos; los **workers** son los que envían los correos y SMS. La única excepción es el **código OTP**, que el módulo Seguridad envía directo porque el usuario lo espera para iniciar sesión.
-- **Datos:** PostgreSQL guarda toda la información; los PDF, planos y fotos se guardan en un almacén aparte; Redis acelera el catálogo y el estado de los trámites.
+- **Pago:** en las rutas A y B el sistema genera **una sola esquela de pago por expediente** con la tasa del catálogo; la persona paga en la caja de la Municipalidad y el personal de caja, después de confirmar en pantalla el expediente, el titular y el monto, registra el pago. La ruta C (bodega) es gratuita y no genera esquela.
+- **Notificaciones:** el módulo Notificaciones solo **encola** los avisos; los **workers** son los que envían los correos y SMS. La única excepción es el **código OTP**, que el módulo Seguridad envía directo porque la persona lo espera en ese momento (inicio de sesión del personal o confirmación de identidad del administrado).
+- **Datos:** PostgreSQL guarda toda la información, incluido el registro de auditoría; los PDF, planos y fotos se guardan en un almacén aparte; Redis acelera el catálogo y el estado de los trámites y guarda los contadores de intentos. Cuando cambia una receta o el estado de un expediente, su clave se borra de Redis (ADR-005).
 
 ## Despliegue
 
@@ -147,7 +154,7 @@ Los días que el expediente espera el pago en caja dependen del administrado; si
 |---|---|
 | Servidor de aplicación | Mínimo 2 instancias del backend; se agregan más en los picos (de 1,000 a 10,000 usuarios). |
 | Balanceador de carga | Reparte las solicitudes entre las instancias. |
-| Base de datos | PostgreSQL con réplica de respaldo y copias diarias. |
-| Caché | Redis para el catálogo y el estado de los trámites. |
-| Cola y workers | Generan los PDF de esquelas y licencias, los QR y los correos en segundo plano. |
+| Base de datos | PostgreSQL primaria con réplica en espera, conmutación automática y copias diarias. |
+| Caché | Redis para el catálogo, el estado de los trámites y los contadores de intentos. |
+| Cola y workers | Generan los PDF de esquelas y licencias, los QR, envían correos y SMS y entregan los eventos pendientes (outbox), en segundo plano. |
 | Almacén de documentos | Guarda PDF, planos y fotos de inspección. |

@@ -43,6 +43,7 @@ y un único **motor de trámites** sigue la receta que corresponde (ADR-002).
 | Atributos de calidad reducidos a seis | Rendimiento, seguridad, disponibilidad, escalabilidad, usabilidad y mantenibilidad. |
 | Sin integración con SIAF | Queda fuera de alcance. |
 | Sin recursos de reconsideración ni apelación | Quedan fuera del alcance del sistema. |
+| Sin anulación de pagos en el sistema | Se evita el error con una pantalla de confirmación para el cajero; un número de recibo mal digitado lo corrige la jefatura (RF24). Anular un pago ya registrado sigue el procedimiento de caja de la Municipalidad. |
 | Sin bitácora ni versionado del catálogo | El administrador actualiza las recetas; cada esquela guarda el monto con el que se generó. |
 
 ## Mejoras para la Fase 2 (fuera del Sprint 1)

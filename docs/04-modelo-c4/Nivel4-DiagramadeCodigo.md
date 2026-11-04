@@ -9,19 +9,16 @@ classDiagram
     direction LR
 
     class Esquela {
-        -codigo: CodigoEsquela
-        -numeroExpediente: NumeroExpediente
-        -monto: Monto
-        -numeroRecibo: NumeroRecibo
+        +codigo: string
+        +numeroExpediente: string
+        +monto: number
+        -numeroRecibo: string o null
         +nueva(codigo, numeroExpediente, monto)$ Esquela
         +reconstruir(datos)$ Esquela
-        +registrarPago(recibo: NumeroRecibo) void
+        +generarCodigo(numeroExpediente)$ string
+        +registrarPago(numeroRecibo: string) void
         +estaPagada() boolean
-    }
-
-    class CodigoEsquela {
-        <<objeto de valor>>
-        +generar(numeroExpediente, secuencial) CodigoEsquela
+        +aDatos() DatosEsquela
     }
 
     class PagoRegistrado {
@@ -33,15 +30,15 @@ classDiagram
 
     class RepositorioEsquelas {
         <<interface>>
-        +buscarPorCodigo(codigo: CodigoEsquela) Esquela
-        +siguienteSecuencial(numero: NumeroExpediente) number
-        +guardarNueva(esquela: Esquela) void
+        +buscarPorCodigo(codigo: string) Esquela
+        +buscarPorExpediente(numeroExpediente: string) Esquela
+        +guardarNueva(esquela: Esquela) boolean
         +guardarPago(esquela: Esquela) boolean
     }
 
     class ConsultaTasa {
         <<interface>>
-        +tasaDe(codigoReceta: string) Monto
+        +tasaDe(codigoReceta: string) number
     }
 
     class GeneradorDocumentos {
@@ -61,7 +58,7 @@ classDiagram
 
     class RegistrarPagoEnCaja {
         <<caso de uso>>
-        +ejecutar(codigo: CodigoEsquela, recibo: NumeroRecibo) void
+        +ejecutar(codigo: string, numeroRecibo: string) void
     }
 
     class RepositorioEsquelasPostgres {
@@ -98,7 +95,6 @@ classDiagram
     GenerarEsquela --> RepositorioEsquelas : usa
     GenerarEsquela --> GeneradorDocumentos : usa
     GenerarEsquela ..> Esquela : crea
-    GenerarEsquela ..> CodigoEsquela : usa
     RegistrarPagoEnCaja --> RepositorioEsquelas : usa
     RegistrarPagoEnCaja --> PublicadorEventos : usa
     RegistrarPagoEnCaja ..> PagoRegistrado : crea
@@ -112,7 +108,7 @@ classDiagram
 
 | Capa | Clases |
 |---|---|
-| **Dominio** | `Esquela`, `CodigoEsquela`, `PagoRegistrado` y los contratos `RepositorioEsquelas`, `ConsultaTasa`, `GeneradorDocumentos` y `PublicadorEventos` |
+| **Dominio** | `Esquela`, `PagoRegistrado` y los contratos `RepositorioEsquelas`, `ConsultaTasa`, `GeneradorDocumentos` y `PublicadorEventos` |
 | **Aplicación** | `GenerarEsquela`, `RegistrarPagoEnCaja` y la fachada `ModuloPagos` |
 | **Infraestructura** | `RepositorioEsquelasPostgres`, `ConsultaTasaCatalogo`, `GeneradorPdf`, `PublicadorEventosNest` |
 | **Presentación** | `PagosController` (solo el rol de caja puede registrar pagos) |
@@ -120,13 +116,16 @@ classDiagram
 **Reglas del dominio:**
 - `Esquela.registrarPago()` rechaza el registro si la esquela ya fue pagada.
 - `Esquela.reconstruir()` crea la esquela leída de la base **con su número de recibo**, así una esquela pagada sigue pagada.
-- `siguienteSecuencial()` y `guardarPago()` deben ser **atómicos**: si dos cajeros registran la misma esquela a la vez, solo uno lo logra (en PostgreSQL: `UPDATE ... WHERE numero_recibo IS NULL`).
+- `guardarNueva()` y `guardarPago()` deben ser **atómicos**: si se pide la esquela dos veces a la vez, solo se crea una (en PostgreSQL: `INSERT ... ON CONFLICT (numero_expediente) DO NOTHING`); si dos cajeros registran la misma esquela a la vez, solo uno lo logra (`UPDATE ... WHERE numero_recibo IS NULL`).
 - El monto **no se recibe desde afuera**: `GenerarEsquela` lo pide al catálogo mediante `ConsultaTasa` (RF05, ADR-002).
-- El código es único: `ESQ-<expediente>-<secuencial>`, con un contador atómico y una restricción UNIQUE en la base de datos.
+- Un expediente tiene **una sola esquela**: el código es `ESQ-<expediente>`, con una restricción UNIQUE sobre el número de expediente. Si se vuelve a pedir, `GenerarEsquela` devuelve la misma esquela, así nadie paga dos veces.
 - La esquela se genera solo con el nivel de riesgo confirmado, así el monto siempre coincide con la licencia.
 
 **Límite del módulo:** `Expediente` **no aparece** aquí porque pertenece al módulo Trámites. Pagos no lo
 modifica: solo publica `PagoRegistrado`, y Trámites reacciona marcando su expediente como pagado.
+
+**Otros casos de uso del módulo:** `ConsultarEsquela` (caja) y `CorregirNumeroRecibo` (jefatura, con motivo y
+auditoría) siguen la misma estructura; no se dibujan para que el diagrama se lea con facilidad (ver el diseño interno de módulos).
 
 Las flechas `..|>` muestran la **inversión de dependencias**: los adaptadores dependen de los contratos
 del dominio, nunca al revés. El código de ejemplo está en `tecnologia/README.md`.

@@ -13,7 +13,7 @@
 
 | Capa | Qué contiene | Ejemplos en el sistema |
 |---|---|---|
-| **1. Dominio** (centro) | Entidades, objetos de valor, reglas y **contratos** | Entidades: `Expediente`, `Receta`, `Requisito`, `Esquela`, `Inspeccion`, `Licencia`, `CertificadoITSE`. Objetos de valor: `Tasa`, `PlazoDiasHabiles`, `Ruta` (A, B, C), `EstadoExpediente`, `DniRuc`, `CodigoEsquela`. Contratos: `RepositorioCatalogo`, `RepositorioExpedientes`, `RepositorioEsquelas`, `ConsultaTasa`, `ConsultaExpedientes`, `ValidadorIdentidad`, `Notificador`, `AlmacenDocumentos`, `CalendarioHabil`, `PublicadorEventos`. |
+| **1. Dominio** (centro) | Entidades, objetos de valor, reglas y **contratos** | Entidades: `Expediente`, `Receta`, `Requisito`, `Esquela`, `Inspeccion`, `Licencia`, `CertificadoITSE`. Objetos de valor: `Tasa`, `PlazoDiasHabiles`, `Ruta` (A, B, C), `EstadoExpediente`, `DniRuc`. Contratos: `RepositorioCatalogo`, `RepositorioExpedientes`, `RepositorioEsquelas`, `ConsultaTasa`, `ConsultaExpedientes`, `ValidadorIdentidad`, `Notificador`, `AlmacenDocumentos`, `CalendarioHabil`, `PublicadorEventos`. |
 | **2. Aplicación** | Casos de uso: orquestan el dominio usando contratos | `ProponerLicencia`, `RegistrarSolicitud`, `GenerarEsquela`, `RegistrarPagoEnCaja`, `AsignarInspeccion`, `RegistrarResultadoITSE`, `EmitirLicencia`, `VerificarPlazos` |
 | **3. Infraestructura** | Adaptadores que **implementan** los contratos | `RepositorioExpedientesPostgres`, `RepositorioEsquelasPostgres`, `RepositorioCatalogoConCache` (Redis), `ConsultaTasaCatalogo`, `ConsultaExpedientesTramites`, `AdaptadorValidacionDniRuc`, `NotificadorEnCola`, `AlmacenObjetos`, `CalendarioFeriadosPostgres` |
 | **4. Presentación** | Adaptadores de entrada | Controladores REST, tarea programada del reloj de plazos, chatbot (Fase 2) |
@@ -22,11 +22,12 @@
 
 1. Una receta define requisitos, tasa, plazo, calificación, orden del ITSE y vigencia.
 2. La ruta A emite la licencia antes del ITSE (ITSE posterior); la ruta B exige evaluación previa e ITSE favorable antes de emitir (si es desfavorable, se deniega); la ruta C emite una provisional gratuita de 12 meses, sin esquela, con ITSE dentro de los 6 meses. En las rutas A y C, si la ITSE es desfavorable, el caso se deriva a fiscalización (fuera del alcance del sistema).
-3. Una esquela tiene un código único y **solo puede pagarse una vez**; su monto se toma **siempre** del catálogo.
+3. Un expediente tiene **una sola esquela**, con código único `ESQ-<expediente>`, que **solo puede pagarse una vez**; su monto se toma **siempre** del catálogo.
 4. Una licencia no se emite si la esquela no está pagada (salvo la ruta C, que es gratuita).
 5. La esquela se genera solo cuando el nivel de riesgo está confirmado; si el evaluador lo corrige, el expediente toma la receta del nuevo nivel antes de generarla.
 6. El plazo se cuenta en días hábiles desde la presentación completa.
-7. El administrado solo ve su expediente si ingresa el número de expediente **y** su DNI/RUC.
+7. El administrado solo ve su expediente si ingresa el número de expediente **y** su DNI/RUC, con un límite de intentos fallidos.
+8. Una solicitud en línea solo se registra si la identidad del solicitante fue validada y su celular confirmado con un código OTP.
 
 ## Regla de dependencia
 

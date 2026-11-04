@@ -12,7 +12,7 @@ Se eligieron **seis**, uno por cada problema principal del diseño.
 | **Adapter** (adaptador) | El servicio de DNI/RUC, el de correo/SMS y los otros módulos tienen interfaces propias, distintas de los contratos del dominio. | `AdaptadorValidacionDniRuc`, `NotificadorCorreoSMS` (usado por el worker), `ConsultaTasaCatalogo`, adaptador del chatbot (Fase 2). | DA08 · ADR-003 |
 | **Facade** (fachada de módulo) | Otros módulos no deben conocer el interior de un módulo. | Cada módulo expone una fachada pública, por ejemplo `ModuloPagos.generarEsquela()`. | DA07 · ADR-001 |
 | **Observer / Eventos de dominio** | Cuando ocurre algo importante, otros módulos deben reaccionar sin acoplarse. | `PagoRegistrado` → Trámites; `ResultadoITSERegistrado` → Trámites; `EstadoExpedienteCambiado` → Notificaciones. | DA08 |
-| **Decorator** (decorador) | El catálogo se consulta mucho y casi no cambia. | `RepositorioCatalogoConCache` envuelve al repositorio real, **cumple el mismo contrato** `RepositorioCatalogo` y agrega la caché en Redis. | DA02 · ADR-005 |
+| **Decorator** (decorador) | El catálogo se consulta mucho y casi no cambia. | `RepositorioCatalogoConCache` envuelve al repositorio real, **cumple el mismo contrato** `RepositorioCatalogo` y agrega la caché en Redis; al guardar una receta actualizada, borra su clave para que nadie lea la versión vieja. | DA02 · ADR-005 |
 
 **CORS** no es un patrón de diseño: es una configuración de seguridad; la API solo acepta peticiones del Portal Web oficial.
 
@@ -78,7 +78,7 @@ Si apareciera una cuarta ruta, se agrega una clase nueva **sin modificar el moto
 | **Chain of Responsibility** | Las validaciones de la solicitud son pocas y fijas; se hacen en orden dentro de `RegistrarSolicitud`. |
 | **Saga** | Sirve para transacciones entre microservicios; aquí hay una sola base de datos. |
 | **CQRS completo** | Los reportes leen de la misma base; separar modelos añadiría complejidad sin beneficio. |
-| **Circuit Breaker** | No hay pasarela de pago; el único servicio externo crítico (DNI/RUC) puede validarse después por mesa de partes. |
+| **Circuit Breaker** | No hay pasarela de pago; si el único servicio externo crítico (DNI/RUC) no responde, el Portal pide intentar más tarde o acudir a mesa de partes, donde se verifica el DNI físico. Basta un tiempo de espera corto en el adaptador. |
 | **Singleton global** | Dificulta las pruebas; las dependencias se inyectan desde la raíz de composición. |
 | **State** (patrón de estados) | El ciclo del expediente se controla con una tabla de transiciones; un objeto por estado sería sobreingeniería. |
 
