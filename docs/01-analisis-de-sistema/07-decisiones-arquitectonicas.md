@@ -58,7 +58,7 @@ las alternativas evaluadas y sus consecuencias.
 - **Contexto:** se manejan datos personales (Ley N.° 29733) y decisiones administrativas.
 - **Decisión:**
   - OTP para el personal y roles.
-  - Antes de presentar una solicitud en línea, el administrado confirma su identidad: el servicio externo valida su DNI con la fecha de emisión (o el RUC con el DNI de su representante legal) y el módulo Seguridad envía un código OTP a su celular. En mesa de partes, el personal verifica el DNI físico.
+  - Antes de presentar una solicitud en línea, el administrado confirma su identidad: el servicio externo valida su RUC y su DNI con la fecha de emisión o su carné de extranjería (y los del representante legal o apoderado, si actúa uno), y el módulo Seguridad envía un código OTP a su celular. En mesa de partes, el personal verifica el documento físico.
   - El administrado consulta su trámite solo con su número de expediente **y** su DNI/RUC juntos.
   - **Límite de intentos:** 5 intentos fallidos en 15 minutos, por IP y por número de expediente (o usuario), bloquean temporalmente la consulta, el inicio de sesión o el código OTP. Los contadores se guardan en Redis para que todas las instancias los compartan.
   - TLS 1.3; AES-256 en reposo para DNI/RUC, celular, correo, dirección y documentos adjuntos.

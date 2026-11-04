@@ -40,7 +40,7 @@ flowchart TB
 | Personal de caja | Persona | Cobra la tasa y registra el pago con el código de la esquela. |
 | Jefatura | Persona | Supervisa plazos, tiempos de atención e ingresos; corrige números de recibo mal digitados y revisa la auditoría. |
 | Administrador del sistema | Persona | Gestiona usuarios, roles, el catálogo de recetas y el calendario de feriados. |
-| Validación DNI / RUC | Sistema externo | Valida la identidad del solicitante (DNI con fecha de emisión; RUC con el DNI del representante legal). |
+| Validación DNI / RUC | Sistema externo | Valida la identidad del solicitante (RUC, DNI con fecha de emisión o carné de extranjería; también los del representante legal o apoderado). |
 | Correo y SMS | Sistema externo | Envía las notificaciones y los códigos OTP. |
 | WhatsApp Business API | Sistema externo (Fase 2) | Canal del asistente virtual. |
 

@@ -4,7 +4,7 @@
 
 | Actor | ¿Qué necesita realizar? |
 |---|---|
-| Administrado (persona o empresa) | Saber qué licencia le corresponde, confirmar su identidad (DNI con su fecha de emisión y un código enviado a su celular), presentar la solicitud con sus documentos, obtener la esquela de pago, consultar el estado del trámite (con su número de expediente y su DNI/RUC) y descargar su licencia digital. |
+| Administrado (persona o empresa) | Saber qué licencia le corresponde, confirmar su identidad (RUC más DNI o carné de extranjería, y un código enviado a su celular), presentar la solicitud con sus documentos, obtener la esquela de pago, consultar el estado del trámite (con su número de expediente y su DNI/RUC) y descargar su licencia digital. |
 | Personal de mesa de partes | Atender presencialmente, registrar solicitudes de quienes no usan internet y verificar documentos. |
 | Evaluador | Revisar expedientes, confirmar o corregir el nivel de riesgo y aprobar, observar o denegar solicitudes. |
 | Inspector ITSE | Consultar sus inspecciones asignadas y registrar el resultado con fotos desde su celular, con conexión a internet. |
@@ -16,6 +16,6 @@
 
 | Actor | ¿Qué necesita realizar? |
 |---|---|
-| Servicio de validación de DNI / RUC | Validar la identidad de personas y empresas (DNI con su fecha de emisión; RUC con el DNI de su representante legal). |
+| Servicio de validación de DNI / RUC | Validar la identidad de personas y empresas (RUC, DNI con su fecha de emisión o carné de extranjería; también los del representante legal o apoderado). |
 | Servicio de correo y SMS | Enviar notificaciones de avance del trámite y los códigos OTP. |
 | WhatsApp Business API (Fase 2) | Canal del asistente virtual por chat. |

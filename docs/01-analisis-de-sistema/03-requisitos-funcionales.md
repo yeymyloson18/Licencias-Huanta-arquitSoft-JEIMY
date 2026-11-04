@@ -12,7 +12,7 @@
 |---|---|
 | RF04 | El sistema debe mostrar un formulario dinámico que solicite solo los documentos de la licencia elegida, incluidos los documentos especiales según el giro. |
 | RF05 | El sistema debe calcular automáticamente la tasa según el TUPA vigente. |
-| RF06 | El sistema debe validar la identidad del solicitante con un servicio externo (DNI con su fecha de emisión; RUC con el DNI de su representante legal) y confirmar su celular con un código OTP antes de presentar la solicitud en línea. |
+| RF06 | El sistema debe validar la identidad del solicitante con un servicio externo (RUC más DNI con su fecha de emisión o carné de extranjería; si actúa un representante legal o apoderado, también su documento y la carta poder o el poder inscrito en SUNARP) y confirmar su celular con un código OTP antes de presentar la solicitud en línea. |
 
 ## Evaluación e inspección
 | ID | Requisito funcional |
@@ -67,3 +67,5 @@
 | HU17 Corrección de recibo y auditoría | RF24, RF25 |
 
 RF16, RF17, RF22 y RF25 provienen del atributo de seguridad (AC02) y de la Ley N.° 29733.
+
+**Nota:** en todo el proyecto, «DNI/RUC» incluye también el carné de extranjería, como indica el TUPA (ver [09-validacion-del-tupa.md](09-validacion-del-tupa.md)).

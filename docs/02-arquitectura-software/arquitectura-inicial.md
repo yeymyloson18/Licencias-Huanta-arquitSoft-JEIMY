@@ -107,7 +107,7 @@ flowchart LR
     end
 
     subgraph RC["Ruta C - Bodega: tipo 9"]
-        C1["Provisional gratis en 5 días hábiles<br/>sin esquela"] --> C2["ITSE dentro de 6 meses"] --> C3["Definitiva a los 12 meses"]
+        C1["Provisional gratis en 5 días hábiles<br/>sin esquela"] --> C2["ITSE dentro de 6 meses"] --> C3["Definitiva automática y gratuita<br/>dentro de 10 días calendario<br/>al vencer los 12 meses"]
     end
 ```
 
@@ -140,14 +140,14 @@ corrige el riesgo, el expediente toma la receta del nuevo nivel (tasa, plazo y r
 requisitos y confirma el nivel de riesgo; después, la licencia la emite el sistema automáticamente (calificación automática) en cuanto
 caja registra el pago, sin esperar otra decisión del evaluador.
 
-**Plazo de la ruta B:** los 8 días hábiles del TUPA cubren la evaluación previa, la ITSE previa y la emisión. Cuántos días toca a cada etapa es un punto **por validar con la Municipalidad**.
+**Plazo de la ruta B:** de los 8 días hábiles del TUPA, la verificación de requisitos y la ITSE previa con su certificado toman como máximo 7 días hábiles, y la emisión de la licencia 1 día hábil (TUPA, pág. 372).
 
 **Espera del pago (rutas A y B):** los días que el expediente espera el pago en caja dependen del administrado; si se descuentan
 o no del plazo es un punto **por validar con la Municipalidad**.
 
 ## Descripción
 
-- **Presentación:** todos los usuarios entran por el Portal Web, desde computadora o celular con internet. El Portal se comunica con el backend mediante una API REST, que limita los intentos fallidos de consulta e inicio de sesión. Antes de presentar una solicitud en línea, el administrado confirma su identidad (DNI con fecha de emisión y código OTP en su celular). En la Fase 2 se suma un chatbot que usa la misma API.
+- **Presentación:** todos los usuarios entran por el Portal Web, desde computadora o celular con internet. El Portal se comunica con el backend mediante una API REST, que limita los intentos fallidos de consulta e inicio de sesión. Antes de presentar una solicitud en línea, el administrado confirma su identidad (RUC más DNI o carné de extranjería, y código OTP en su celular). En la Fase 2 se suma un chatbot que usa la misma API.
 - **Lógica de negocio:** una sola aplicación organizada en módulos. El **Catálogo de licencias** es el corazón: cada módulo lo consulta para saber qué requisitos pedir, qué tasa cobrar, qué ruta seguir y qué plazo controlar.
 - **Pago:** en las rutas A y B el sistema genera **una sola esquela de pago por expediente** con la tasa del catálogo; la persona paga en la caja de la Municipalidad y el personal de caja, después de confirmar en pantalla el expediente, el titular y el monto, registra el pago. La ruta C (bodega) es gratuita y no genera esquela.
 - **Notificaciones:** el módulo Notificaciones solo **encola** los avisos; los **workers** son los que envían los correos y SMS. La única excepción es el **código OTP**, que el módulo Seguridad envía directo porque la persona lo espera en ese momento (inicio de sesión del personal o confirmación de identidad del administrado).

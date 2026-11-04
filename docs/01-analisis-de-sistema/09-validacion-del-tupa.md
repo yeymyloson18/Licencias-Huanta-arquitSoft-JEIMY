@@ -61,16 +61,16 @@ En todas las licencias con ITSE, el certificado ITSE se renueva cada 2 años.
 (RC11); la licencia gratuita de la bodega; que no hay reconsideración ni apelación; y la regla de los trámites conectados
 (si un cambio de giro sube el riesgo, se tramita como licencia nueva).
 
-**Diferencias encontradas (decisiones pendientes).** El diseño todavía no se cambió; cada punto se decide y, si corresponde,
-se actualiza en los documentos del proyecto:
+**Diferencias encontradas.** D2, D3 y D4 ya se aplicaron al diseño porque el TUPA las indica con claridad. D1 y D5 siguen
+pendientes de confirmar con la Municipalidad:
 
-| N.° | Lo que dice el TUPA | Lo que dice hoy el diseño | Decisión pendiente |
+| N.° | Lo que dice el TUPA | Lo que decía el diseño | Estado |
 |---|---|---|---|
-| D1 | "La municipalidad, **previa presentación** de la solicitud, determina el nivel de riesgo en función a la matriz de riesgo". El plazo corre desde la presentación. El duplicado pide la constancia de pago **al presentar**. | El riesgo se confirma después de presentar y la esquela se genera después; el pago ocurre en medio del trámite. | Confirmar con la Municipalidad si el pago se hace **antes de presentar**. Si es así, la esquela se generaría al determinar el riesgo, antes de presentar, y la duda sobre los días de espera del pago desaparecería. |
-| D2 | Se identifica con **RUC y DNI o carné de extranjería**, también para personas naturales; con representante, carta poder o poder inscrito en SUNARP. | DNI con fecha de emisión, o RUC con el DNI del representante legal. | Agregar el carné de extranjería, el RUC de la persona natural y la representación. |
-| D3 | Ruta B: verificación de requisitos e ITSE con certificado en **máximo 7 días hábiles**, y licencia en **1 día hábil**. | El reparto de los 8 días figura como "por validar". | Usar el reparto del TUPA en lugar de "por validar". |
-| D4 | Bodega: la licencia definitiva se emite **dentro de 10 días calendario** después de vencer la provisional; requiere conformidad de zonificación. | Definitiva a los 12 meses, sin el plazo de 10 días ni la zonificación. | Agregar esas dos condiciones a la receta 9. |
-| D5 | El duplicado es un **servicio prestado en exclusividad**, con plazo de 3 días hábiles, y se presenta en Atención al Ciudadano. | Se trata como un trámite conectado más. | Confirmar si sigue el mismo camino que los otros trámites conectados. |
+| D1 | "La municipalidad, **previa presentación** de la solicitud, determina el nivel de riesgo en función a la matriz de riesgo". El plazo corre desde la presentación. El duplicado pide la constancia de pago **al presentar**. | El riesgo se confirma después de presentar y la esquela se genera después; el pago ocurre en medio del trámite. | ⏳ Pendiente: confirmar con la Municipalidad si el pago se hace **antes de presentar**. Si es así, la esquela se generaría al determinar el riesgo, antes de presentar, y la duda sobre los días de espera del pago desaparecería. |
+| D2 | Se identifica con **RUC y DNI o carné de extranjería**, también para personas naturales; con representante, carta poder o poder inscrito en SUNARP. | DNI con fecha de emisión, o RUC con el DNI del representante legal. | ✅ Aplicado (04/11/2026): RF06, actores, ADR-007, diseño interno y C4 nivel 1. «DNI/RUC» incluye el carné de extranjería. |
+| D3 | Ruta B: verificación de requisitos e ITSE con certificado en **máximo 7 días hábiles**, y licencia en **1 día hábil**. | El reparto de los 8 días figura como "por validar". | ✅ Aplicado (04/11/2026): arquitectura inicial, plazo de la ruta B. |
+| D4 | Bodega: la licencia definitiva se emite **dentro de 10 días calendario** después de vencer la provisional; requiere conformidad de zonificación. | Definitiva a los 12 meses, sin el plazo de 10 días ni la zonificación. | ✅ Aplicado (04/11/2026): arquitectura inicial (rutas) y diseño interno (ruta C). |
+| D5 | El duplicado es un **servicio prestado en exclusividad**, con plazo de 3 días hábiles, y se presenta en Atención al Ciudadano. | Se trata como un trámite conectado más. | ⏳ Pendiente: confirmar si sigue el mismo camino que los otros trámites conectados. |
 
 ## Registro de dudas
 
@@ -79,7 +79,7 @@ se actualiza en los documentos del proyecto:
 | 1 | ¿El derecho de trámite se paga antes de presentar la solicitud? (D1) | Subgerencia de Comercio, Licencias y Control Sanitario; caja | Pendiente |
 | 2 | ¿Quién aplica la matriz de riesgo antes de la presentación y con qué preguntas? (base del asistente de tres preguntas) | Subgerencia de Comercio, Licencias y Control Sanitario; área de ITSE | Pendiente |
 | 3 | ¿Las tasas son montos fijos o se recalculan con la UIT cada año? El TUPA las publica en soles. | Oficina General de Planeamiento y Presupuesto | Pendiente |
-| 4 | ¿Qué días toma cada etapa dentro del plazo de la ruta B en la práctica? (D3) | Área de ITSE | Pendiente |
+| 4 | ¿Cuántos días toma cada etapa dentro del plazo de la ruta B? (D3) | — | Resuelto con el TUPA (pág. 372): verificación e ITSE hasta 7 días hábiles; emisión en 1 día hábil |
 | 5 | ¿Con cuántos días de anticipación se alerta un plazo? (EQ-07) | Jefatura | Pendiente |
 
 Cuando una duda se resuelve, se anota la respuesta, quién respondió y la fecha.

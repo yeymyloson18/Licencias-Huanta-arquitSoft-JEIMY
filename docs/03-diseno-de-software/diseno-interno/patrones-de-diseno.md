@@ -78,7 +78,7 @@ Si apareciera una cuarta ruta, se agrega una clase nueva **sin modificar el moto
 | **Chain of Responsibility** | Las validaciones de la solicitud son pocas y fijas; se hacen en orden dentro de `RegistrarSolicitud`. |
 | **Saga** | Sirve para transacciones entre microservicios; aquí hay una sola base de datos. |
 | **CQRS completo** | Los reportes leen de la misma base; separar modelos añadiría complejidad sin beneficio. |
-| **Circuit Breaker** | No hay pasarela de pago; si el único servicio externo crítico (DNI/RUC) no responde, el Portal pide intentar más tarde o acudir a mesa de partes, donde se verifica el DNI físico. Basta un tiempo de espera corto en el adaptador. |
+| **Circuit Breaker** | No hay pasarela de pago; si el único servicio externo crítico (DNI/RUC) no responde, el Portal pide intentar más tarde o acudir a mesa de partes, donde se verifica el documento físico. Basta un tiempo de espera corto en el adaptador. |
 | **Singleton global** | Dificulta las pruebas; las dependencias se inyectan desde la raíz de composición. |
 | **State** (patrón de estados) | El ciclo del expediente se controla con una tabla de transiciones; un objeto por estado sería sobreingeniería. |
 
