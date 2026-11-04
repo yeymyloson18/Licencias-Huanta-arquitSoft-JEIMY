@@ -101,7 +101,7 @@ stateDiagram-v2
 3. El administrado paga en la caja de la Municipalidad.
 4. El cajero ingresa el código de la esquela y el Portal muestra:
      → expediente, monto y si ya está pagada: pagos.controller → ConsultarEsquela (aplicación)
-     → titular del expediente: tramites.controller → ConsultarEstado (solo lectura, rol caja)
+     → titular del expediente: tramites.controller → ConsultarEstado (solo lectura; para el rol caja no pide DNI y solo devuelve el titular)
      → el cajero confirma que corresponde a la persona que pagó
      (el Portal junta ambos datos, así Pagos no depende de Trámites)
 5. pagos.controller (rol caja) → RegistrarPagoEnCaja (aplicación)

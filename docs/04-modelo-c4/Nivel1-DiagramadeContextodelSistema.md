@@ -22,7 +22,7 @@ flowchart TB
     Per -->|"registra solicitudes presenciales y evalúa expedientes"| Sis
     Insp -->|"registra el resultado de la ITSE"| Sis
     Caja -->|"registra el pago de la esquela"| Sis
-    Jef -->|"revisa alertas, tiempos e ingresos"| Sis
+    Jef -->|"revisa alertas, tiempos, ingresos y auditoría; corrige recibos mal digitados"| Sis
     AdmS -->|"gestiona usuarios, catálogo y feriados"| Sis
 
     Sis -->|"valida la identidad"| Ident
@@ -38,7 +38,7 @@ flowchart TB
 | Personal municipal | Persona | Registra solicitudes presenciales y evalúa expedientes. |
 | Inspector ITSE | Persona | Registra la inspección con fotos desde su celular, con internet. |
 | Personal de caja | Persona | Cobra la tasa y registra el pago con el código de la esquela. |
-| Jefatura | Persona | Supervisa plazos, tiempos de atención e ingresos. |
+| Jefatura | Persona | Supervisa plazos, tiempos de atención e ingresos; corrige números de recibo mal digitados y revisa la auditoría. |
 | Administrador del sistema | Persona | Gestiona usuarios, roles, el catálogo de recetas y el calendario de feriados. |
 | Validación DNI / RUC | Sistema externo | Valida la identidad del solicitante (DNI con fecha de emisión; RUC con el DNI del representante legal). |
 | Correo y SMS | Sistema externo | Envía las notificaciones y los códigos OTP. |

@@ -121,6 +121,10 @@ classDiagram
 - Un expediente tiene **una sola esquela**: el código es `ESQ-<expediente>`, con una restricción UNIQUE sobre el número de expediente. Si se vuelve a pedir, `GenerarEsquela` devuelve la misma esquela, así nadie paga dos veces.
 - La esquela se genera solo con el nivel de riesgo confirmado, así el monto siempre coincide con la licencia.
 
+**Versión de producción:** el diagrama muestra la versión simple, en la que `RegistrarPagoEnCaja` llama a `PublicadorEventos`.
+En producción se usa **outbox**: el pago y el evento `PagoRegistrado` se guardan juntos en la tabla `eventos_pendientes` y los
+workers lo entregan a Trámites (como muestran los niveles 2 y 3).
+
 **Límite del módulo:** `Expediente` **no aparece** aquí porque pertenece al módulo Trámites. Pagos no lo
 modifica: solo publica `PagoRegistrado`, y Trámites reacciona marcando su expediente como pagado.
 

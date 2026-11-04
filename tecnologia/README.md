@@ -236,6 +236,7 @@ el pago quedaría registrado pero el expediente no avanzaría. En producción se
 1. El pago y el evento se guardan **en una sola sentencia**, y el evento **solo** se guarda si el pago se registró.
 2. Los **workers** leen la tabla `eventos_pendientes` y entregan el evento a Trámites; si falla, lo reintentan.
 3. En ese diseño, el caso de uso **ya no llama a `publicar()`**, así el evento no se entrega dos veces.
+4. En la **misma transacción** se guarda también la fila de auditoría del pago (RF25); se omite abajo para que la sentencia se lea fácil.
 
 ```sql
 -- Si el UPDATE no actualiza ninguna fila (ya estaba pagada), el INSERT no guarda nada

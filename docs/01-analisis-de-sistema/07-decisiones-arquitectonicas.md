@@ -44,8 +44,8 @@ las alternativas evaluadas y sus consecuencias.
 ## ADR-005: Escalamiento horizontal con caché y cola
 - **Contexto:** campañas de formalización y renovaciones del ITSE generan picos de 1,000 a 10,000 usuarios.
 - **Alternativas:** un servidor grande; microservicios.
-- **Decisión:** backend sin estado con varias instancias detrás de un balanceador; Redis para el catálogo, el estado de los trámites y los contadores de intentos (compartidos por todas las instancias); PostgreSQL primaria con una réplica en espera y **conmutación automática** (Patroni o el servicio administrado de PostgreSQL de la nube); y workers para generar PDF y QR, enviar correos y SMS, y entregar los eventos pendientes (outbox).
-- **Reglas de la caché:** al actualizar una receta, el catálogo borra esa receta de Redis; al cambiar el estado de un expediente, Trámites borra su clave. Además, cada clave vence sola a los 10 minutos como respaldo. Si Redis falla, el sistema lee directo de PostgreSQL.
+- **Decisión:** backend sin estado con varias instancias detrás de un balanceador; Redis para el catálogo, el estado de los trámites y los contadores de intentos (compartidos por todas las instancias); PostgreSQL primaria con una réplica **síncrona** en espera (así no se pierde ningún pago ya confirmado) y **conmutación automática** (Patroni o el servicio administrado de PostgreSQL de la nube); y workers para generar PDF y QR, enviar correos y SMS, y entregar los eventos pendientes (outbox).
+- **Reglas de la caché:** al actualizar una receta, el catálogo borra esa receta de Redis; al cambiar el estado de un expediente, Trámites borra su clave. Además, cada clave vence sola a los 10 minutos como respaldo. Si Redis falla, el sistema lee directo de PostgreSQL y el límite de intentos se aplica con un contador en la memoria de cada instancia hasta que Redis vuelva.
 - **Consecuencias:** ✅ crece según la demanda; ✅ sigue operando si falla una instancia o la base de datos principal; ✅ la caché nunca muestra datos viejos después de un cambio. ⚠️ infraestructura más compleja que un solo servidor.
 
 ## ADR-006: Reloj de plazos como tarea programada
