@@ -79,7 +79,7 @@ flowchart TB
     Seg -->|"OTP directo - HTTPS/REST"| Msg
 ```
 
-**Leyenda:** flecha continua = llamada directa a la fachada pública de otro módulo; flecha punteada = evento publicado.
+**Leyenda:** flecha continua = llamada directa (entre módulos, siempre a la fachada pública del otro módulo; también hacia contenedores y sistemas externos); flecha punteada = evento publicado.
 
 **Notas:**
 1. Cada componente es un módulo del monolito: todos se despliegan juntos.

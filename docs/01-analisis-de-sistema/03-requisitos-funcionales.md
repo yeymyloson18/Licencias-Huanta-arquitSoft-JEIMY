@@ -43,7 +43,7 @@
 | RF22 | El sistema debe permitir al administrador crear, desactivar y asignar roles a los usuarios del personal. |
 | RF23 | El sistema debe permitir al administrador registrar el calendario de feriados usado para contar días hábiles. |
 | RF24 | El sistema debe permitir a la jefatura corregir el número de recibo de un pago mal digitado, indicando el motivo. |
-| RF25 | El sistema debe guardar un registro de auditoría (usuario, acción, fecha y hora) del registro y la corrección de pagos, de las decisiones del evaluador, de los resultados ITSE y de la emisión de licencias. |
+| RF25 | El sistema debe guardar un registro de auditoría (usuario, acción, fecha y hora) del registro y la corrección de pagos, de las decisiones del evaluador, de los resultados ITSE y de la emisión de licencias, y permitir a la jefatura consultarlo. |
 
 ## Relación entre historias de usuario y requisitos funcionales
 | Historia de usuario | Requisitos relacionados |

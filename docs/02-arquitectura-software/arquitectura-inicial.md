@@ -97,7 +97,7 @@ flowchart LR
     S --> C1
 
     subgraph RA["Ruta A - ITSE después: tipos 1, 2 y 6"]
-        A0["Verificación de requisitos<br/>y del nivel de riesgo"] --> A4["Esquela de pago"] --> A1["Pago en caja"] --> A2["Licencia en 2 días hábiles"] --> A3["ITSE posterior hasta 9 días hábiles"]
+        A0["Verificación de requisitos<br/>y del nivel de riesgo"] --> A4["Esquela de pago"] --> A1["Pago en caja"] --> A2["Licencia emitida al registrar el pago<br/>dentro de los 2 días hábiles"] --> A3["ITSE posterior hasta 9 días hábiles"]
     end
 
     subgraph RB["Ruta B - ITSE antes: tipos 3, 4, 5, 7 y 8"]
@@ -135,7 +135,7 @@ corrige el riesgo, el expediente toma la receta del nuevo nivel (tasa, plazo y r
 el sistema automáticamente (calificación automática) en cuanto caja registra el pago, porque el riesgo ya fue verificado; no espera
 una decisión del evaluador.
 
-**Plazo de la ruta B:** los 8 días hábiles del TUPA incluyen la evaluación previa, la ITSE previa (hasta 7 días) y la emisión (1 día).
+**Plazo de la ruta B:** los 8 días hábiles del TUPA cubren la evaluación previa, la ITSE previa y la emisión. Cuántos días toca a cada etapa es un punto **por validar con la Municipalidad**.
 
 **Espera del pago (rutas A y B):** los días que el expediente espera el pago en caja dependen del administrado; si se descuentan
 o no del plazo es un punto **por validar con la Municipalidad**.

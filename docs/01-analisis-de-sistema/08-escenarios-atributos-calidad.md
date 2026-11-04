@@ -61,7 +61,7 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | **Origen** | AC02 · DA03 · ADR-007 · Ley N.° 29733 |
 | **Fuente** | Personal sin sesión, sin código OTP o con un rol insuficiente; un administrado que no conoce el DNI/RUC del expediente; o una persona que intenta presentar un trámite a nombre de otra |
 | **Estímulo** | Intenta aprobar un expediente, registrar o corregir un pago de caja, cambiar el catálogo, consultar el expediente de otra persona (incluso probando muchos números seguidos) o presentar una solicitud sin confirmar la identidad. |
-| **Artefacto** | API REST (autenticación, roles y límite de intentos), Seguridad y Usuarios; módulos Trámites, Pagos en caja, Catálogo y Licencias |
+| **Artefacto** | API REST (autenticación, roles y límite de intentos), Seguridad y Usuarios; módulos Trámites, Pagos en caja, Catálogo, Inspecciones y Licencias |
 | **Entorno** | Pruebas de seguridad en el entorno de pruebas. |
 | **Respuesta** | El sistema rechaza la operación, no modifica datos y no expone información sensible; tras 5 intentos fallidos bloquea temporalmente. Las operaciones permitidas quedan en el registro de auditoría. |
 | **Medida** | Rechazar el 100 % de los intentos no autorizados probados; bloqueo en el 6.º intento fallido; ningún dato personal en mensajes de error ni en la página pública del QR; el 100 % de los pagos, correcciones y decisiones probados aparecen en la auditoría. |
@@ -108,7 +108,7 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | **Atributo de calidad** | Disponibilidad |
 | **Origen** | AC03 · DA05 · ADR-006 · RC04 (Ley N.° 27444) |
 | **Fuente** | Tarea programada diaria del Reloj de plazos |
-| **Estímulo** | Un expediente abierto llega a 2 días hábiles de su vencimiento. |
+| **Estímulo** | Un expediente abierto se acerca a su vencimiento (por ejemplo, a 2 días hábiles; el número exacto está por definir). |
 | **Artefacto** | Reloj de plazos, calendario de feriados y Notificaciones |
 | **Entorno** | Operación normal, incluso si una instancia del backend está caída. |
 | **Respuesta** | Una sola instancia obtiene el bloqueo de la tarea (ADR-006), detecta el expediente y alerta a la jefatura una sola vez. |
