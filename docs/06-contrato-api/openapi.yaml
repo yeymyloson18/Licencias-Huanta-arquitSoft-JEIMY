@@ -1,0 +1,1763 @@
+openapi: 3.1.0
+info:
+  title: API del Sistema de Trámite de Licencias de Funcionamiento – Municipalidad Provincial de Huanta
+  version: 1.0.0
+  description: |
+    Contrato REST (RC08) entre el Portal Web y el Backend NestJS. Es la fuente única de verdad:
+    el backend se valida contra este archivo y el frontend genera su cliente a partir de él.
+
+    **Tres formas de acceso**
+    - `bearerPersonal`: JWT del personal municipal, obtenido con usuario, clave y OTP (RF16). El rol viaja en el token (RF17).
+    - `tokenIdentidad`: JWT de 15 minutos que recibe el administrado después de validar su DNI/RUC y su celular con OTP (RF06). Solo sirve para presentar o subsanar una solicitud.
+    - `tokenConsulta`: JWT de 15 minutos que recibe el administrado al consultar con número de expediente + DNI/RUC (RF03). Solo sirve para leer su expediente y descargar su esquela o su licencia.
+
+    **Reglas generales**
+    - Prefijo de versión: `/api/v1`.
+    - Los datos personales nunca viajan en la URL ni en parámetros de consulta: se envían en el cuerpo (POST).
+    - Errores en formato `application/problem+json` (RFC 9457) sin datos personales (EQ-04).
+    - Límite de intentos: 5 intentos fallidos en 15 minutos bloquean temporalmente (respuesta 429, ADR-007).
+    - Listados paginados con `pagina` y `porPagina` (máximo 100).
+  contact:
+    name: Jeimy Gregori Sulca Ccorimanya
+  license:
+    name: Uso académico – UNSCH 2026
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Desarrollo local (Docker Compose)
+  - url: https://api.licencias.example.pe/api/v1
+    description: Producción (dominio por definir con la Municipalidad)
+
+tags:
+  - name: Seguridad
+    description: Inicio de sesión del personal, OTP y verificación de identidad del administrado
+  - name: Usuarios
+    description: Gestión del personal y sus roles (administrador)
+  - name: Catálogo
+    description: Recetas del TUPA y asistente de ruta
+  - name: Trámites
+    description: Presentación, evaluación y consulta de expedientes
+  - name: Pagos
+    description: Esquelas de pago y registro en caja
+  - name: Inspecciones
+    description: Inspecciones ITSE desde el celular
+  - name: Licencias
+    description: Licencias emitidas y verificación pública del QR
+  - name: Plazos
+    description: Feriados y alertas de vencimiento
+  - name: Reportes
+    description: Tablero y reportes de la jefatura
+  - name: Operación
+    description: Salud del servicio para el balanceador y el monitoreo
+
+paths:
+  # ===================================================================== SEGURIDAD
+  /auth/iniciar-sesion:
+    post:
+      tags: [Seguridad]
+      operationId: iniciarSesion
+      summary: Paso 1 del inicio de sesión del personal. Valida correo y clave, y envía un OTP por SMS (RF16).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CredencialesPersonal' }
+      responses:
+        '200':
+          description: Credenciales correctas; se envió el código OTP.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DesafioOtp' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+
+  /auth/verificar-otp:
+    post:
+      tags: [Seguridad]
+      operationId: verificarOtpPersonal
+      summary: Paso 2 del inicio de sesión. Verifica el OTP y entrega los tokens.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VerificacionOtp' }
+      responses:
+        '200':
+          description: Sesión iniciada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SesionPersonal' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+
+  /auth/renovar:
+    post:
+      tags: [Seguridad]
+      operationId: renovarSesion
+      summary: Renueva el token de acceso con el refresh token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          description: Nuevo par de tokens.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SesionPersonal' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+
+  /auth/cerrar-sesion:
+    post:
+      tags: [Seguridad]
+      operationId: cerrarSesion
+      summary: Revoca el refresh token actual.
+      security: [{ bearerPersonal: [] }]
+      responses:
+        '204': { description: Sesión cerrada. }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+
+  /identidad/verificar:
+    post:
+      tags: [Seguridad]
+      operationId: verificarIdentidadAdministrado
+      summary: Valida RUC y DNI (con fecha de emisión) o carné de extranjería con el servicio externo, y envía un OTP al celular (RF06).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SolicitudVerificacionIdentidad' }
+      responses:
+        '200':
+          description: Identidad válida; se envió el OTP.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DesafioOtp' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+        '503':
+          description: El servicio de validación de DNI/RUC no está disponible. El administrado puede acudir a mesa de partes (RC12).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
+  /identidad/verificar-otp:
+    post:
+      tags: [Seguridad]
+      operationId: verificarOtpAdministrado
+      summary: Verifica el OTP del administrado y entrega el token de identidad (15 minutos).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VerificacionOtp' }
+      responses:
+        '200':
+          description: Identidad confirmada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenCorto' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+
+  # ===================================================================== USUARIOS
+  /usuarios:
+    get:
+      tags: [Usuarios]
+      operationId: listarUsuarios
+      summary: Lista el personal (rol ADMINISTRADOR).
+      security: [{ bearerPersonal: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/PorPagina'
+        - name: activo
+          in: query
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: Página de usuarios.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginacion'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items: { $ref: '#/components/schemas/Usuario' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+    post:
+      tags: [Usuarios]
+      operationId: crearUsuario
+      summary: Crea un usuario del personal (RF22).
+      security: [{ bearerPersonal: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NuevoUsuario' }
+      responses:
+        '201':
+          description: Usuario creado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usuario' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
+
+  /usuarios/{usuarioId}:
+    parameters:
+      - name: usuarioId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [Usuarios]
+      operationId: actualizarUsuario
+      summary: Cambia el nombre, el celular o activa/desactiva un usuario (RF22).
+      security: [{ bearerPersonal: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                nombreCompleto: { type: string, maxLength: 150 }
+                celular: { $ref: '#/components/schemas/Celular' }
+                activo: { type: boolean }
+      responses:
+        '200':
+          description: Usuario actualizado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usuario' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /usuarios/{usuarioId}/roles:
+    parameters:
+      - name: usuarioId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      tags: [Usuarios]
+      operationId: asignarRoles
+      summary: Reemplaza los roles de un usuario (RF17, RF22).
+      security: [{ bearerPersonal: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [roles]
+              properties:
+                roles:
+                  type: array
+                  minItems: 1
+                  uniqueItems: true
+                  items: { $ref: '#/components/schemas/Rol' }
+      responses:
+        '200':
+          description: Roles asignados.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usuario' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  # ===================================================================== CATÁLOGO
+  /catalogo/recetas:
+    get:
+      tags: [Catálogo]
+      operationId: listarRecetas
+      summary: Lista las recetas activas del TUPA (público, con caché en Redis y CDN).
+      security: []
+      parameters:
+        - name: tipo
+          in: query
+          schema: { type: string, enum: [LICENCIA, TRAMITE_CONECTADO] }
+      responses:
+        '200':
+          description: Recetas.
+          headers:
+            Cache-Control: { schema: { type: string }, description: 'public, max-age=300' }
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RecetaResumen' }
+
+  /catalogo/recetas/{codigoReceta}:
+    parameters:
+      - $ref: '#/components/parameters/CodigoReceta'
+    get:
+      tags: [Catálogo]
+      operationId: obtenerReceta
+      summary: Requisitos, tasa y plazo de una licencia (RF02, RF05).
+      security: []
+      responses:
+        '200':
+          description: Receta completa.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Receta' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    put:
+      tags: [Catálogo]
+      operationId: actualizarReceta
+      summary: Actualiza una receta cuando cambia el TUPA, sin programar (RF21, EQ-06). Borra su clave de la caché.
+      security: [{ bearerPersonal: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecetaEditable' }
+      responses:
+        '200':
+          description: Receta actualizada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Receta' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
+
+  /asistente/preguntas:
+    get:
+      tags: [Catálogo]
+      operationId: obtenerPreguntasAsistente
+      summary: Las 3 preguntas del asistente de ruta (RF01).
+      security: []
+      responses:
+        '200':
+          description: Preguntas en orden.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PreguntaAsistente' }
+
+  /asistente/proponer:
+    post:
+      tags: [Catálogo]
+      operationId: proponerLicencia
+      summary: Propone la licencia según las respuestas y devuelve requisitos, tasa y plazo (RF01, RF02).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [respuestas]
+              properties:
+                respuestas:
+                  type: object
+                  description: Código de pregunta → valor elegido.
+                  additionalProperties: { type: string }
+                  example: { TIPO_ESTABLECIMIENTO: OTRO, ES_CESIONARIO: 'NO', NIVEL_RIESGO: MEDIO }
+      responses:
+        '200':
+          description: Licencia propuesta.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Receta' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
+
+  # ===================================================================== TRÁMITES
+  /documentos:
+    post:
+      tags: [Trámites]
+      operationId: subirDocumento
+      summary: Sube un archivo antes de presentar o subsanar. Devuelve un id temporal (válido 24 horas).
+      description: Acepta tokenIdentidad (administrado en línea) o bearerPersonal (mesa de partes). Solo PDF, JPG o PNG de hasta 10 MB.
+      security: [{ tokenIdentidad: [] }, { bearerPersonal: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [archivo]
+              properties:
+                archivo: { type: string, format: binary }
+            encoding:
+              archivo:
+                contentType: application/pdf, image/jpeg, image/png
+      responses:
+        '201':
+          description: Archivo recibido.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [documentoId, sha256]
+                properties:
+                  documentoId: { type: string, format: uuid }
+                  sha256: { type: string, minLength: 64, maxLength: 64 }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '413':
+          description: El archivo supera los 10 MB.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '415':
+          description: Tipo de archivo no permitido.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
+  /expedientes:
+    post:
+      tags: [Trámites]
+      operationId: presentarSolicitud
+      summary: Presenta la solicitud (RF04, RF06, RF07). En línea exige tokenIdentidad; en mesa de partes, bearerPersonal con rol MESA_PARTES.
+      security: [{ tokenIdentidad: [] }, { bearerPersonal: [] }]
+      parameters:
+        - $ref: '#/components/parameters/ClaveIdempotencia'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NuevaSolicitud' }
+      responses:
+        '201':
+          description: Expediente registrado. La ruta se asigna según la receta.
+          headers:
+            Location: { schema: { type: string }, description: URL del expediente }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExpedienteRegistrado' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
+    get:
+      tags: [Trámites]
+      operationId: listarExpedientes
+      summary: Bandeja del personal (mesa de partes, evaluador, jefatura).
+      security: [{ bearerPersonal: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/PorPagina'
+        - name: estado
+          in: query
+          schema: { $ref: '#/components/schemas/EstadoExpediente' }
+        - name: ruta
+          in: query
+          schema: { $ref: '#/components/schemas/Ruta' }
+        - name: asignadosAMi
+          in: query
+          schema: { type: boolean, default: false }
+        - name: vencenAntesDe
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Página de expedientes.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginacion'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items: { $ref: '#/components/schemas/ExpedienteResumen' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /expedientes/consultar:
+    post:
+      tags: [Trámites]
+      operationId: consultarEstado
+      summary: Consulta pública del estado con número de expediente + DNI/RUC juntos (RF03, HU05). Límite de 5 intentos fallidos en 15 minutos.
+      description: Si los datos no coinciden responde 404 sin decir cuál de los dos falló (EQ-04).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [numeroExpediente, documento]
+              properties:
+                numeroExpediente: { $ref: '#/components/schemas/NumeroExpediente' }
+                documento:
+                  type: string
+                  description: DNI, carné de extranjería o RUC del titular.
+                  pattern: '^[0-9A-Z]{8,12}$'
+      responses:
+        '200':
+          description: Estado del trámite y token para descargar sus documentos.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EstadoPublico' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+
+  /expedientes/{numeroExpediente}:
+    parameters:
+      - $ref: '#/components/parameters/NumeroExpediente'
+    get:
+      tags: [Trámites]
+      operationId: obtenerExpediente
+      summary: Detalle completo del expediente para el personal.
+      security: [{ bearerPersonal: [] }]
+      responses:
+        '200':
+          description: Expediente.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Expediente' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /expedientes/{numeroExpediente}/titular:
+    parameters:
+      - $ref: '#/components/parameters/NumeroExpediente'
+    get:
+      tags: [Trámites]
+      operationId: obtenerTitularParaCaja
+      summary: Solo el nombre del titular, para que el cajero confirme antes de registrar el pago (RF12, rol CAJA).
+      security: [{ bearerPersonal: [] }]
+      responses:
+        '200':
+          description: Titular.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [numeroExpediente, nombreTitular]
+                properties:
+                  numeroExpediente: { $ref: '#/components/schemas/NumeroExpediente' }
+                  nombreTitular: { type: string }
+                  razonSocial: { type: [string, 'null'] }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /expedientes/{numeroExpediente}/riesgo:
+    parameters:
+      - $ref: '#/components/parameters/NumeroExpediente'
+    post:
+      tags: [Trámites]
+      operationId: confirmarNivelRiesgo
+      summary: El evaluador confirma o corrige el nivel de riesgo (RF09). Si lo corrige, el expediente toma la receta del nuevo nivel. En la ruta A genera la esquela.
+      security: [{ bearerPersonal: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nivelRiesgo]
+              properties:
+                nivelRiesgo: { $ref: '#/components/schemas/NivelRiesgo' }
+                comentario: { type: string, maxLength: 1000 }
+      responses:
+        '200':
+          description: Riesgo confirmado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Expediente' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+        '412': { $ref: '#/components/responses/VersionCambiada' }
+
+  /expedientes/{numeroExpediente}/aprobar:
+    parameters:
+      - $ref: '#/components/parameters/NumeroExpediente'
+    post:
+      tags: [Trámites]
+      operationId: aprobarEvaluacion
+      summary: Aprueba la evaluación previa de la ruta B y genera la esquela (RF09, RF11).
+      security: [{ bearerPersonal: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comentario: { type: string, maxLength: 1000 }
+      responses:
+        '200':
+          description: Evaluación aprobada; el expediente queda en PENDIENTE_PAGO.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Expediente' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+        '412': { $ref: '#/components/responses/VersionCambiada' }
+
+  /expedientes/{numeroExpediente}/observar:
+    parameters:
+      - $ref: '#/components/parameters/NumeroExpediente'
+    post:
+      tags: [Trámites]
+      operationId: observarExpediente
+      summary: Observa el expediente por requisitos faltantes (RF09).
+      security: [{ bearerPersonal: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [descripcion, plazoSubsanarEn]
+              properties:
+                descripcion: { type: string, minLength: 10, maxLength: 2000 }
+                plazoSubsanarEn: { type: string, format: date }
+      responses:
+        '200':
+          description: Expediente observado; se notifica al administrado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Expediente' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+        '412': { $ref: '#/components/responses/VersionCambiada' }
+
+  /expedientes/{numeroExpediente}/denegar:
+    parameters:
+      - $ref: '#/components/parameters/NumeroExpediente'
+    post:
+      tags: [Trámites]
+      operationId: denegarExpediente
+      summary: Deniega el expediente con motivo (RF09).
+      security: [{ bearerPersonal: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [motivo]
+              properties:
+                motivo: { type: string, minLength: 10, maxLength: 2000 }
+      responses:
+        '200':
+          description: Expediente denegado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Expediente' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+        '412': { $ref: '#/components/responses/VersionCambiada' }
+
+  /expedientes/{numeroExpediente}/subsanar:
+    parameters:
+      - $ref: '#/components/parameters/NumeroExpediente'
+    post:
+      tags: [Trámites]
+      operationId: subsanarObservacion
+      summary: El administrado adjunta los documentos que faltaban (requiere tokenIdentidad del mismo titular).
+      security: [{ tokenIdentidad: [] }, { bearerPersonal: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [documentos]
+              properties:
+                documentos:
+                  type: array
+                  minItems: 1
+                  items: { $ref: '#/components/schemas/DocumentoAdjunto' }
+      responses:
+        '200':
+          description: Observación subsanada; el expediente vuelve a REGISTRADO.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExpedienteRegistrado' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+
+  /expedientes/{numeroExpediente}/auditoria:
+    parameters:
+      - $ref: '#/components/parameters/NumeroExpediente'
+    get:
+      tags: [Trámites]
+      operationId: auditoriaTramites
+      summary: Decisiones registradas sobre el expediente (RF25, rol JEFATURA).
+      security: [{ bearerPersonal: [] }]
+      responses:
+        '200':
+          description: Registro de auditoría.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RegistroAuditoria' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /expedientes/{numeroExpediente}/documentos/{documentoId}:
+    parameters:
+      - $ref: '#/components/parameters/NumeroExpediente'
+      - name: documentoId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Trámites]
+      operationId: descargarDocumento
+      summary: Redirige a una URL firmada de corta duración para descargar un documento adjunto.
+      security: [{ bearerPersonal: [] }, { tokenConsulta: [] }]
+      responses:
+        '302':
+          description: Redirección a la URL firmada (válida 5 minutos).
+          headers:
+            Location: { schema: { type: string, format: uri } }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  # ===================================================================== PAGOS
+  /esquelas/{codigoEsquela}:
+    parameters:
+      - $ref: '#/components/parameters/CodigoEsquela'
+    get:
+      tags: [Pagos]
+      operationId: consultarEsquela
+      summary: El cajero consulta la esquela antes de registrar el pago (RF12, rol CAJA).
+      security: [{ bearerPersonal: [] }]
+      responses:
+        '200':
+          description: Esquela.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Esquela' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /esquelas/{codigoEsquela}/pdf:
+    parameters:
+      - $ref: '#/components/parameters/CodigoEsquela'
+    get:
+      tags: [Pagos]
+      operationId: descargarEsquela
+      summary: PDF de la esquela para pagar en caja (HU04).
+      security: [{ tokenConsulta: [] }, { bearerPersonal: [] }]
+      responses:
+        '200':
+          description: PDF.
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        '202':
+          description: El PDF todavía se está generando; reintentar en unos segundos.
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /esquelas/{codigoEsquela}/pago:
+    parameters:
+      - $ref: '#/components/parameters/CodigoEsquela'
+    post:
+      tags: [Pagos]
+      operationId: registrarPagoEnCaja
+      summary: Registra el pago con el número de recibo (RF12, rol CAJA). Atómico; guarda la auditoría y el evento PagoRegistrado.
+      security: [{ bearerPersonal: [] }]
+      parameters:
+        - $ref: '#/components/parameters/ClaveIdempotencia'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [numeroRecibo]
+              properties:
+                numeroRecibo: { $ref: '#/components/schemas/NumeroRecibo' }
+      responses:
+        '201':
+          description: Pago registrado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Esquela' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: La esquela ya fue pagada, o el número de recibo ya existe.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+
+  /esquelas/{codigoEsquela}/recibo:
+    parameters:
+      - $ref: '#/components/parameters/CodigoEsquela'
+    patch:
+      tags: [Pagos]
+      operationId: corregirNumeroRecibo
+      summary: La jefatura corrige un número de recibo mal digitado, con motivo (RF24). No cambia el estado del pago.
+      security: [{ bearerPersonal: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [numeroRecibo, motivo]
+              properties:
+                numeroRecibo: { $ref: '#/components/schemas/NumeroRecibo' }
+                motivo: { type: string, minLength: 10, maxLength: 500 }
+      responses:
+        '200':
+          description: Recibo corregido.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Esquela' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+
+  /pagos/auditoria:
+    get:
+      tags: [Pagos]
+      operationId: auditoriaPagos
+      summary: Pagos y correcciones registrados (RF25, rol JEFATURA).
+      security: [{ bearerPersonal: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/PorPagina'
+        - { name: desde, in: query, schema: { type: string, format: date } }
+        - { name: hasta, in: query, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Página de registros.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginacion'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items: { $ref: '#/components/schemas/RegistroAuditoria' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  # ===================================================================== INSPECCIONES
+  /inspecciones:
+    get:
+      tags: [Inspecciones]
+      operationId: listarInspecciones
+      summary: Bandeja de inspecciones. El inspector ve solo las suyas; la jefatura ve todas.
+      security: [{ bearerPersonal: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/PorPagina'
+        - name: estado
+          in: query
+          schema: { type: string, enum: [PENDIENTE, ASIGNADA, REALIZADA] }
+      responses:
+        '200':
+          description: Página de inspecciones.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginacion'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items: { $ref: '#/components/schemas/Inspeccion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /inspecciones/{inspeccionId}/asignar:
+    parameters:
+      - $ref: '#/components/parameters/InspeccionId'
+    post:
+      tags: [Inspecciones]
+      operationId: asignarInspector
+      summary: Asigna el inspector y la fecha (RF10, rol JEFATURA).
+      security: [{ bearerPersonal: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [inspectorId, programadaPara]
+              properties:
+                inspectorId: { type: string, format: uuid }
+                programadaPara: { type: string, format: date }
+      responses:
+        '200':
+          description: Inspección asignada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Inspeccion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+
+  /inspecciones/{inspeccionId}/resultado:
+    parameters:
+      - $ref: '#/components/parameters/InspeccionId'
+    post:
+      tags: [Inspecciones]
+      operationId: registrarResultadoItse
+      summary: El inspector asignado registra el resultado con fotos desde su celular (RF10, HU08). Publica ResultadoITSERegistrado.
+      security: [{ bearerPersonal: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [resultado, fotos]
+              properties:
+                resultado: { type: string, enum: [FAVORABLE, DESFAVORABLE] }
+                observaciones: { type: string, maxLength: 4000 }
+                numeroCertificado: { type: string, maxLength: 30, description: Obligatorio si es FAVORABLE. }
+                fotos:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items: { type: string, format: binary }
+            encoding:
+              fotos:
+                contentType: image/jpeg, image/png
+      responses:
+        '201':
+          description: Resultado registrado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Inspeccion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
+
+  # ===================================================================== LICENCIAS
+  /licencias/verificar/{codigoVerificacion}:
+    parameters:
+      - name: codigoVerificacion
+        in: path
+        required: true
+        description: Token aleatorio impreso en el QR.
+        schema: { type: string, pattern: '^[A-Za-z0-9_-]{22}$' }
+    get:
+      tags: [Licencias]
+      operationId: verificarLicenciaPublica
+      summary: Verificación pública del QR con datos mínimos (RF13, ADR-007). Sin DNI, celular ni dirección.
+      security: []
+      responses:
+        '200':
+          description: Licencia encontrada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LicenciaPublica' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+
+  /licencias/{numeroLicencia}:
+    parameters:
+      - $ref: '#/components/parameters/NumeroLicencia'
+    get:
+      tags: [Licencias]
+      operationId: obtenerLicencia
+      summary: Detalle de la licencia y su certificado ITSE.
+      security: [{ bearerPersonal: [] }, { tokenConsulta: [] }]
+      responses:
+        '200':
+          description: Licencia.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Licencia' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /licencias/{numeroLicencia}/pdf:
+    parameters:
+      - $ref: '#/components/parameters/NumeroLicencia'
+    get:
+      tags: [Licencias]
+      operationId: descargarLicencia
+      summary: PDF de la licencia con el código QR (HU06).
+      security: [{ tokenConsulta: [] }, { bearerPersonal: [] }]
+      responses:
+        '200':
+          description: PDF.
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        '202':
+          description: El PDF todavía se está generando.
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  # ===================================================================== PLAZOS
+  /feriados:
+    get:
+      tags: [Plazos]
+      operationId: listarFeriados
+      summary: Feriados de un año.
+      security: [{ bearerPersonal: [] }]
+      parameters:
+        - name: anio
+          in: query
+          required: true
+          schema: { type: integer, minimum: 2024, maximum: 2100 }
+      responses:
+        '200':
+          description: Feriados.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Feriado' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+    post:
+      tags: [Plazos]
+      operationId: registrarFeriado
+      summary: Registra un feriado (RF23, rol ADMINISTRADOR).
+      security: [{ bearerPersonal: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Feriado' }
+      responses:
+        '201':
+          description: Feriado registrado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Feriado' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+
+  /feriados/{fecha}:
+    parameters:
+      - name: fecha
+        in: path
+        required: true
+        schema: { type: string, format: date }
+    delete:
+      tags: [Plazos]
+      operationId: eliminarFeriado
+      summary: Elimina un feriado registrado por error (rol ADMINISTRADOR).
+      security: [{ bearerPersonal: [] }]
+      responses:
+        '204': { description: Feriado eliminado. }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /plazos/alertas:
+    get:
+      tags: [Plazos]
+      operationId: listarAlertas
+      summary: Expedientes próximos a vencer (RF08, HU09, rol JEFATURA).
+      security: [{ bearerPersonal: [] }]
+      parameters:
+        - name: pendientes
+          in: query
+          schema: { type: boolean, default: true }
+      responses:
+        '200':
+          description: Alertas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AlertaPlazo' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  # ===================================================================== REPORTES
+  /reportes/tablero:
+    get:
+      tags: [Reportes]
+      operationId: obtenerTablero
+      summary: Trámites, tiempos de atención frente al plazo del TUPA e ingresos en caja (RF19, HU10).
+      security: [{ bearerPersonal: [] }]
+      parameters:
+        - { name: desde, in: query, required: true, schema: { type: string, format: date } }
+        - { name: hasta, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Indicadores.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tablero' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /reportes/licencias:
+    get:
+      tags: [Reportes]
+      operationId: reporteLicencias
+      summary: Licencias vigentes, en trámite y con ITSE por vencer, por tipo, giro y zona (RF18).
+      security: [{ bearerPersonal: [] }]
+      parameters:
+        - name: situacion
+          in: query
+          required: true
+          schema: { type: string, enum: [VIGENTES, EN_TRAMITE, ITSE_POR_VENCER] }
+        - $ref: '#/components/parameters/CodigoRecetaFiltro'
+        - { name: giro, in: query, schema: { type: string } }
+        - { name: zona, in: query, schema: { type: string } }
+        - name: formato
+          in: query
+          schema: { type: string, enum: [json, csv], default: json }
+      responses:
+        '200':
+          description: Reporte.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/FilaReporte' }
+            text/csv:
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  # ===================================================================== OPERACIÓN
+  /salud:
+    get:
+      tags: [Operación]
+      operationId: salud
+      summary: Chequeo de salud para Nginx y Uptime Kuma (EQ-03). Verifica PostgreSQL y Redis.
+      security: []
+      responses:
+        '200':
+          description: Servicio sano.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Salud' }
+        '503':
+          description: Alguna dependencia falla; el balanceador deja de enviar tráfico a esta instancia.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Salud' }
+
+components:
+  securitySchemes:
+    bearerPersonal:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token de acceso del personal (15 minutos). Incluye el id y los roles.
+    tokenIdentidad:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token de 15 minutos del administrado con identidad confirmada (RF06).
+    tokenConsulta:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token de 15 minutos para leer un solo expediente después de la consulta pública (RF03).
+
+  parameters:
+    Pagina:
+      name: pagina
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PorPagina:
+      name: porPagina
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    NumeroExpediente:
+      name: numeroExpediente
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/NumeroExpediente' }
+    CodigoReceta:
+      name: codigoReceta
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/CodigoReceta' }
+    CodigoRecetaFiltro:
+      name: codigoReceta
+      in: query
+      schema: { $ref: '#/components/schemas/CodigoReceta' }
+    CodigoEsquela:
+      name: codigoEsquela
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ESQ-EXP-[0-9]{4}-[0-9]{6}$', example: ESQ-EXP-2026-000001 }
+    NumeroLicencia:
+      name: numeroLicencia
+      in: path
+      required: true
+      schema: { type: string, pattern: '^LF-[0-9]{4}-[0-9]{6}$', example: LF-2026-000001 }
+    InspeccionId:
+      name: inspeccionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ClaveIdempotencia:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: UUID generado por el Portal. Si la red falla y se reintenta, la operación no se repite.
+      schema: { type: string, format: uuid }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: Versión del expediente leída (bloqueo optimista). Si otro usuario lo cambió, responde 412.
+      schema: { type: string }
+
+  responses:
+    NoAutenticado:
+      description: Falta el token, venció o las credenciales son incorrectas.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
+    SinPermiso:
+      description: El rol del usuario no permite esta operación (EQ-04).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
+    NoEncontrado:
+      description: El recurso no existe o los datos no coinciden.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
+    Conflicto:
+      description: La operación no corresponde al estado actual (por ejemplo, ya fue pagada o el expediente no está en evaluación).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
+    VersionCambiada:
+      description: Otro usuario modificó el expediente; volver a leerlo.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
+    NoProcesable:
+      description: Los datos no cumplen las reglas de validación.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
+    DemasiadosIntentos:
+      description: Se superaron 5 intentos fallidos en 15 minutos (ADR-007).
+      headers:
+        Retry-After:
+          schema: { type: integer }
+          description: Segundos para volver a intentar.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
+
+  schemas:
+    # ------------------------------------------------------------- tipos básicos
+    Rol:
+      type: string
+      enum: [MESA_PARTES, EVALUADOR, INSPECTOR, CAJA, JEFATURA, ADMINISTRADOR]
+    Ruta:
+      type: string
+      enum: [A, B, C]
+    NivelRiesgo:
+      type: string
+      enum: [BAJO, MEDIO, ALTO, MUY_ALTO]
+    CodigoReceta:
+      type: string
+      pattern: '^(LIC-0[1-9]|TRF-01|CGI-01|DUP-01)$'
+      example: LIC-01
+    NumeroExpediente:
+      type: string
+      pattern: '^EXP-[0-9]{4}-[0-9]{6}$'
+      example: EXP-2026-000001
+    NumeroRecibo:
+      type: string
+      pattern: '^[A-Z0-9-]{4,30}$'
+      example: REC-000123
+    Celular:
+      type: string
+      pattern: '^9[0-9]{8}$'
+      example: '987654321'
+    Soles:
+      type: string
+      pattern: '^[0-9]+\.[0-9]{2}$'
+      description: Monto en soles como texto con 2 decimales, para no perder precisión.
+      example: '159.50'
+    EstadoExpediente:
+      type: string
+      enum: [REGISTRADO, OBSERVADO, EN_EVALUACION, PENDIENTE_PAGO, PAGADO, EN_INSPECCION, APROBADO,
+             LICENCIA_PROVISIONAL, LICENCIA_EMITIDA, ITSE_POSTERIOR_PENDIENTE, FINALIZADO, DENEGADO,
+             DERIVADO_A_FISCALIZACION]
+
+    Problema:
+      type: object
+      description: Error en formato RFC 9457. Nunca incluye datos personales.
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri, example: 'https://licencias.example.pe/errores/esquela-ya-pagada' }
+        title: { type: string, example: Esta esquela ya fue pagada }
+        status: { type: integer, example: 409 }
+        detail: { type: string }
+        instance: { type: string }
+        errores:
+          type: array
+          description: Errores de validación por campo (solo en 422).
+          items:
+            type: object
+            required: [campo, mensaje]
+            properties:
+              campo: { type: string }
+              mensaje: { type: string }
+
+    Paginacion:
+      type: object
+      required: [pagina, porPagina, total]
+      properties:
+        pagina: { type: integer }
+        porPagina: { type: integer }
+        total: { type: integer }
+
+    # ------------------------------------------------------------- seguridad
+    CredencialesPersonal:
+      type: object
+      required: [correo, clave]
+      properties:
+        correo: { type: string, format: email }
+        clave: { type: string, minLength: 10, maxLength: 128, format: password }
+    DesafioOtp:
+      type: object
+      required: [desafioId, venceEn, celularEnmascarado]
+      properties:
+        desafioId: { type: string, format: uuid }
+        venceEn: { type: string, format: date-time }
+        celularEnmascarado: { type: string, example: '9*****321' }
+    VerificacionOtp:
+      type: object
+      required: [desafioId, codigo]
+      properties:
+        desafioId: { type: string, format: uuid }
+        codigo: { type: string, pattern: '^[0-9]{6}$' }
+    SesionPersonal:
+      type: object
+      required: [accessToken, refreshToken, expiraEn, usuario]
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        expiraEn: { type: integer, description: Segundos de vida del accessToken. }
+        usuario: { $ref: '#/components/schemas/Usuario' }
+    TokenCorto:
+      type: object
+      required: [token, expiraEn]
+      properties:
+        token: { type: string }
+        expiraEn: { type: integer, example: 900 }
+    SolicitudVerificacionIdentidad:
+      type: object
+      required: [tipoDocumento, numeroDocumento, ruc, celular]
+      properties:
+        tipoDocumento: { type: string, enum: [DNI, CE] }
+        numeroDocumento: { type: string, pattern: '^[0-9A-Z]{8,12}$' }
+        fechaEmision: { type: string, format: date, description: Obligatoria para DNI. }
+        ruc: { type: string, pattern: '^(10|15|17|20)[0-9]{9}$' }
+        celular: { $ref: '#/components/schemas/Celular' }
+        representante:
+          type: object
+          description: Solo si actúa un representante legal o apoderado (RF06).
+          required: [tipoDocumento, numeroDocumento]
+          properties:
+            tipoDocumento: { type: string, enum: [DNI, CE] }
+            numeroDocumento: { type: string, pattern: '^[0-9A-Z]{8,12}$' }
+            fechaEmision: { type: string, format: date }
+
+    # ------------------------------------------------------------- usuarios
+    Usuario:
+      type: object
+      required: [id, correo, nombreCompleto, roles, activo]
+      properties:
+        id: { type: string, format: uuid }
+        correo: { type: string, format: email }
+        nombreCompleto: { type: string }
+        roles:
+          type: array
+          items: { $ref: '#/components/schemas/Rol' }
+        activo: { type: boolean }
+    NuevoUsuario:
+      type: object
+      required: [correo, nombreCompleto, celular, roles]
+      properties:
+        correo: { type: string, format: email }
+        nombreCompleto: { type: string, maxLength: 150 }
+        celular: { $ref: '#/components/schemas/Celular' }
+        roles:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/Rol' }
+
+    # ------------------------------------------------------------- catálogo
+    RecetaResumen:
+      type: object
+      required: [codigo, nombre, tipo, tasa]
+      properties:
+        codigo: { $ref: '#/components/schemas/CodigoReceta' }
+        nombre: { type: string }
+        tipo: { type: string, enum: [LICENCIA, TRAMITE_CONECTADO] }
+        ruta: { oneOf: [{ $ref: '#/components/schemas/Ruta' }, { type: 'null' }] }
+        tasa: { $ref: '#/components/schemas/Soles' }
+        plazoDias: { type: [integer, 'null'] }
+    Receta:
+      allOf:
+        - $ref: '#/components/schemas/RecetaResumen'
+        - type: object
+          required: [codigoTupa, paginaTupa, calificacion, requisitos]
+          properties:
+            codigoTupa: { type: string, example: PE1027344C1 }
+            paginaTupa: { type: integer, example: 368 }
+            nivelRiesgo: { oneOf: [{ $ref: '#/components/schemas/NivelRiesgo' }, { type: 'null' }] }
+            tipoPlazo: { type: string, enum: [HABILES, CALENDARIO] }
+            calificacion: { type: string, enum: [APROBACION_AUTOMATICA, EVALUACION_PREVIA_SILENCIO_POSITIVO, SERVICIO_EXCLUSIVO] }
+            ordenItse: { type: [string, 'null'], enum: [POSTERIOR, PREVIA, DENTRO_6_MESES, null] }
+            plazoItseDias: { type: [integer, 'null'] }
+            vigenciaMeses: { type: [integer, 'null'], description: null = indeterminada }
+            requisitos:
+              type: array
+              items: { $ref: '#/components/schemas/Requisito' }
+    RecetaEditable:
+      type: object
+      description: Campos que el administrador puede cambiar cuando se modifica el TUPA.
+      minProperties: 1
+      properties:
+        tasa: { $ref: '#/components/schemas/Soles' }
+        plazoDias: { type: integer, minimum: 1 }
+        calificacion: { type: string, enum: [APROBACION_AUTOMATICA, EVALUACION_PREVIA_SILENCIO_POSITIVO, SERVICIO_EXCLUSIVO] }
+        ordenItse: { type: string, enum: [POSTERIOR, PREVIA, DENTRO_6_MESES] }
+        plazoItseDias: { type: integer, minimum: 1 }
+        vigenciaMeses: { type: [integer, 'null'] }
+        activa: { type: boolean }
+        requisitos:
+          type: array
+          items:
+            type: object
+            required: [orden, descripcion, condicion]
+            properties:
+              orden: { type: integer, minimum: 1 }
+              descripcion: { type: string }
+              obligatorio: { type: boolean, default: true }
+              condicion: { type: string, enum: [SIEMPRE, CON_REPRESENTANTE, GIRO_ESPECIAL, SIN_PLANOS_VIGENTES] }
+    Requisito:
+      type: object
+      required: [id, orden, descripcion, obligatorio, condicion]
+      properties:
+        id: { type: integer }
+        orden: { type: integer }
+        descripcion: { type: string }
+        obligatorio: { type: boolean }
+        condicion: { type: string, enum: [SIEMPRE, CON_REPRESENTANTE, GIRO_ESPECIAL, SIN_PLANOS_VIGENTES] }
+    PreguntaAsistente:
+      type: object
+      required: [codigo, orden, texto, opciones]
+      properties:
+        codigo: { type: string, example: TIPO_ESTABLECIMIENTO }
+        orden: { type: integer }
+        texto: { type: string }
+        opciones:
+          type: array
+          items:
+            type: object
+            required: [valor, texto]
+            properties:
+              valor: { type: string }
+              texto: { type: string }
+
+    # ------------------------------------------------------------- trámites
+    DocumentoAdjunto:
+      type: object
+      required: [requisitoId, documentoId]
+      properties:
+        requisitoId: { type: integer }
+        documentoId: { type: string, format: uuid, description: Id devuelto por POST /documentos. }
+    NuevaSolicitud:
+      type: object
+      required: [codigoReceta, nombreTitular, giro, direccion, zona, documentos]
+      properties:
+        codigoReceta: { $ref: '#/components/schemas/CodigoReceta' }
+        expedienteOrigen:
+          description: Solo para trámites conectados (RF15).
+          oneOf: [{ $ref: '#/components/schemas/NumeroExpediente' }, { type: 'null' }]
+        nombreTitular: { type: string, maxLength: 150 }
+        razonSocial: { type: [string, 'null'], maxLength: 200 }
+        correo: { type: [string, 'null'], format: email }
+        nombreComercial: { type: [string, 'null'], maxLength: 200 }
+        giro: { type: string, maxLength: 150 }
+        direccion: { type: string, maxLength: 300 }
+        zona: { type: string, maxLength: 60 }
+        areaM2: { type: [number, 'null'], exclusiveMinimum: 0 }
+        identidadPresencial:
+          description: Solo en mesa de partes; en línea la identidad sale del tokenIdentidad.
+          $ref: '#/components/schemas/SolicitudVerificacionIdentidad'
+        documentos:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentoAdjunto' }
+    ExpedienteRegistrado:
+      type: object
+      required: [numero, estado, ruta, codigoReceta, vencePlazoEn]
+      properties:
+        numero: { $ref: '#/components/schemas/NumeroExpediente' }
+        estado: { $ref: '#/components/schemas/EstadoExpediente' }
+        ruta: { $ref: '#/components/schemas/Ruta' }
+        codigoReceta: { $ref: '#/components/schemas/CodigoReceta' }
+        vencePlazoEn: { type: [string, 'null'], format: date }
+    ExpedienteResumen:
+      type: object
+      required: [numero, estado, ruta, codigoReceta, nombreTitular, presentadoEn]
+      properties:
+        numero: { $ref: '#/components/schemas/NumeroExpediente' }
+        estado: { $ref: '#/components/schemas/EstadoExpediente' }
+        ruta: { $ref: '#/components/schemas/Ruta' }
+        codigoReceta: { $ref: '#/components/schemas/CodigoReceta' }
+        nombreTitular: { type: string }
+        giro: { type: string }
+        presentadoEn: { type: string, format: date-time }
+        vencePlazoEn: { type: [string, 'null'], format: date }
+        diasHabilesRestantes: { type: [integer, 'null'] }
+    Expediente:
+      allOf:
+        - $ref: '#/components/schemas/ExpedienteResumen'
+        - type: object
+          required: [version, canal, documentos, historial]
+          properties:
+            version: { type: integer, description: Se envía en If-Match al decidir. }
+            canal: { type: string, enum: [EN_LINEA, MESA_PARTES] }
+            nivelRiesgoPropuesto: { oneOf: [{ $ref: '#/components/schemas/NivelRiesgo' }, { type: 'null' }] }
+            nivelRiesgoConfirmado: { oneOf: [{ $ref: '#/components/schemas/NivelRiesgo' }, { type: 'null' }] }
+            documentoTitularEnmascarado: { type: string, example: '4*****21' }
+            razonSocial: { type: [string, 'null'] }
+            nombreComercial: { type: [string, 'null'] }
+            direccion: { type: string, description: Solo para roles que la necesitan (evaluador, inspector, jefatura). }
+            zona: { type: string }
+            areaM2: { type: [number, 'null'] }
+            codigoEsquela: { type: [string, 'null'] }
+            numeroLicencia: { type: [string, 'null'] }
+            documentos:
+              type: array
+              items:
+                type: object
+                required: [id, requisitoId, nombreOriginal, tipoMime]
+                properties:
+                  id: { type: string, format: uuid }
+                  requisitoId: { type: integer }
+                  nombreOriginal: { type: string }
+                  tipoMime: { type: string }
+            observaciones:
+              type: array
+              items:
+                type: object
+                properties:
+                  descripcion: { type: string }
+                  plazoSubsanarEn: { type: string, format: date }
+                  subsanadaEn: { type: [string, 'null'], format: date-time }
+            historial:
+              type: array
+              items:
+                type: object
+                required: [estadoNuevo, ocurridoEn]
+                properties:
+                  estadoAnterior: { type: [string, 'null'] }
+                  estadoNuevo: { type: string }
+                  comentario: { type: [string, 'null'] }
+                  ocurridoEn: { type: string, format: date-time }
+    EstadoPublico:
+      type: object
+      description: Lo que ve el administrado al consultar (RF03). Sin datos personales completos.
+      required: [numero, estado, ruta, nombreLicencia, tokenConsulta]
+      properties:
+        numero: { $ref: '#/components/schemas/NumeroExpediente' }
+        estado: { $ref: '#/components/schemas/EstadoExpediente' }
+        ruta: { $ref: '#/components/schemas/Ruta' }
+        nombreLicencia: { type: string }
+        vencePlazoEn: { type: [string, 'null'], format: date }
+        siguientePaso: { type: string, example: Paga la esquela en la caja municipal }
+        codigoEsquela: { type: [string, 'null'] }
+        montoEsquela: { oneOf: [{ $ref: '#/components/schemas/Soles' }, { type: 'null' }] }
+        esquelaPagada: { type: boolean }
+        numeroLicencia: { type: [string, 'null'] }
+        observacionesPendientes:
+          type: array
+          items: { type: string }
+        tokenConsulta: { $ref: '#/components/schemas/TokenCorto' }
+    RegistroAuditoria:
+      type: object
+      required: [usuarioId, accion, ocurridoEn]
+      properties:
+        usuarioId: { type: [string, 'null'], format: uuid }
+        nombreUsuario: { type: [string, 'null'] }
+        accion: { type: string }
+        referencia: { type: string, description: Expediente, esquela o inspección. }
+        detalle: { type: [object, 'null'] }
+        ocurridoEn: { type: string, format: date-time }
+
+    # ------------------------------------------------------------- pagos
+    Esquela:
+      type: object
+      required: [codigo, numeroExpediente, concepto, monto, pagada, generadaEn]
+      properties:
+        codigo: { type: string, example: ESQ-EXP-2026-000001 }
+        numeroExpediente: { $ref: '#/components/schemas/NumeroExpediente' }
+        concepto: { type: string }
+        monto: { $ref: '#/components/schemas/Soles' }
+        pagada: { type: boolean }
+        numeroRecibo: { type: [string, 'null'] }
+        pagadaEn: { type: [string, 'null'], format: date-time }
+        generadaEn: { type: string, format: date-time }
+
+    # ------------------------------------------------------------- inspecciones
+    Inspeccion:
+      type: object
+      required: [id, numeroExpediente, tipo, estado]
+      properties:
+        id: { type: string, format: uuid }
+        numeroExpediente: { $ref: '#/components/schemas/NumeroExpediente' }
+        tipo: { type: string, enum: [PREVIA, POSTERIOR, BODEGA] }
+        estado: { type: string, enum: [PENDIENTE, ASIGNADA, REALIZADA] }
+        inspectorId: { type: [string, 'null'], format: uuid }
+        programadaPara: { type: [string, 'null'], format: date }
+        direccion: { type: string, description: Visible para el inspector asignado. }
+        giro: { type: string }
+        resultado: { type: [string, 'null'], enum: [FAVORABLE, DESFAVORABLE, null] }
+        observaciones: { type: [string, 'null'] }
+        registradaEn: { type: [string, 'null'], format: date-time }
+
+    # ------------------------------------------------------------- licencias
+    LicenciaPublica:
+      type: object
+      description: Datos mínimos que muestra la página del QR (ADR-007).
+      required: [numero, tipo, estado, titular, giro, emitidaEn]
+      properties:
+        numero: { type: string, example: LF-2026-000001 }
+        tipo: { type: string, enum: [DEFINITIVA, PROVISIONAL] }
+        estado: { type: string, enum: [VIGENTE, REEMPLAZADA, VENCIDA] }
+        titular: { type: string, description: Razón social o nombre con apellidos abreviados. }
+        nombreComercial: { type: [string, 'null'] }
+        giro: { type: string }
+        zona: { type: string }
+        emitidaEn: { type: string, format: date }
+        vigenteHasta: { type: [string, 'null'], format: date }
+        itseVenceEn: { type: [string, 'null'], format: date }
+    Licencia:
+      allOf:
+        - $ref: '#/components/schemas/LicenciaPublica'
+        - type: object
+          required: [numeroExpediente, codigoReceta]
+          properties:
+            numeroExpediente: { $ref: '#/components/schemas/NumeroExpediente' }
+            codigoReceta: { $ref: '#/components/schemas/CodigoReceta' }
+            urlVerificacion: { type: string, format: uri }
+            certificadoItse:
+              type: [object, 'null']
+              properties:
+                numero: { type: string }
+                emitidoEn: { type: string, format: date }
+                venceEn: { type: string, format: date }
+
+    # ------------------------------------------------------------- plazos
+    Feriado:
+      type: object
+      required: [fecha, descripcion, alcance]
+      properties:
+        fecha: { type: string, format: date }
+        descripcion: { type: string, maxLength: 150 }
+        alcance: { type: string, enum: [NACIONAL, REGIONAL, LOCAL] }
+    AlertaPlazo:
+      type: object
+      required: [numeroExpediente, venceEn, diasHabilesRestantes, generadaEn]
+      properties:
+        numeroExpediente: { $ref: '#/components/schemas/NumeroExpediente' }
+        venceEn: { type: string, format: date }
+        diasHabilesRestantes: { type: integer }
+        estadoExpediente: { $ref: '#/components/schemas/EstadoExpediente' }
+        generadaEn: { type: string, format: date-time }
+        atendidaEn: { type: [string, 'null'], format: date-time }
+
+    # ------------------------------------------------------------- reportes y operación
+    Tablero:
+      type: object
+      required: [expedientesPorEstado, tiempoPromedioPorReceta, ingresos]
+      properties:
+        expedientesPorEstado:
+          type: object
+          additionalProperties: { type: integer }
+        tiempoPromedioPorReceta:
+          type: array
+          items:
+            type: object
+            required: [codigoReceta, plazoTupaDias, promedioDiasHabiles, dentroDelPlazo]
+            properties:
+              codigoReceta: { $ref: '#/components/schemas/CodigoReceta' }
+              plazoTupaDias: { type: integer }
+              promedioDiasHabiles: { type: number }
+              dentroDelPlazo: { type: number, description: Porcentaje de expedientes atendidos dentro del plazo. }
+        ingresos:
+          type: object
+          required: [total, porReceta]
+          properties:
+            total: { $ref: '#/components/schemas/Soles' }
+            porReceta:
+              type: object
+              additionalProperties: { $ref: '#/components/schemas/Soles' }
+    FilaReporte:
+      type: object
+      properties:
+        numero: { type: string }
+        codigoReceta: { $ref: '#/components/schemas/CodigoReceta' }
+        titular: { type: string }
+        giro: { type: string }
+        zona: { type: string }
+        estado: { type: string }
+        fecha: { type: string, format: date }
+    Salud:
+      type: object
+      required: [estado, baseDeDatos, cache]
+      properties:
+        estado: { type: string, enum: [OK, DEGRADADO, CAIDO] }
+        baseDeDatos: { type: string, enum: [OK, CAIDO] }
+        cache: { type: string, enum: [OK, CAIDO], description: Si Redis falla el servicio sigue (DEGRADADO), ADR-005. }
+        version: { type: string }
