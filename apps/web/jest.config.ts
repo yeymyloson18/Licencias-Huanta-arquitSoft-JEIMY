@@ -2,7 +2,7 @@ import type { Config } from 'jest';
 
 // Pruebas del portal con Jest + jsdom + Testing Library (constitución, principio V; research.md §R-11).
 const config: Config = {
-  testEnvironment: 'jsdom',
+  testEnvironment: '<rootDir>/jest.entorno.cjs',
   testMatch: ['<rootDir>/src/**/*.test.{ts,tsx}'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   transform: {

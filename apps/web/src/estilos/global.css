@@ -1,0 +1,172 @@
+/* Portal primero celular (FR-014): una columna hasta 767 px, cuadrícula desde 768 px.
+   Colores con contraste AA sobre fondo claro. */
+
+:root {
+  --color-fondo: #f6f7f9;
+  --color-superficie: #ffffff;
+  --color-texto: #1d2329;
+  --color-texto-suave: #4a5561;
+  --color-primario: #0b5394;
+  --color-primario-oscuro: #083d6d;
+  --color-borde: #d5dbe1;
+  --color-error-fondo: #fdecea;
+  --color-error-borde: #b3261e;
+  --color-foco: #f2a900;
+  --radio: 0.75rem;
+  --espacio: 1rem;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+  font-size: 100%; /* 16 px base: respeta el tamaño elegido por la persona */
+  line-height: 1.5;
+  color: var(--color-texto);
+  background-color: var(--color-fondo);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+img,
+svg,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-foco);
+  outline-offset: 2px;
+}
+
+.cabecera {
+  padding: calc(var(--espacio) * 1.5) var(--espacio);
+  color: #ffffff;
+  background-color: var(--color-primario);
+}
+
+.cabecera__entidad {
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+.cabecera__titulo {
+  margin: 0.25rem 0;
+  font-size: 1.625rem;
+  line-height: 1.2;
+}
+
+.cabecera__descripcion {
+  margin: 0;
+}
+
+.contenido {
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: var(--espacio);
+}
+
+.aviso {
+  margin: 0;
+  padding: var(--espacio);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background-color: var(--color-superficie);
+}
+
+.aviso p {
+  margin: 0 0 var(--espacio);
+}
+
+.aviso--error {
+  border-color: var(--color-error-borde);
+  background-color: var(--color-error-fondo);
+}
+
+.boton {
+  min-height: 2.75rem; /* área táctil cómoda */
+  padding: 0.5rem 1.25rem;
+  border: 0;
+  border-radius: var(--radio);
+  font: inherit;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: var(--color-primario);
+  cursor: pointer;
+}
+
+.boton:hover {
+  background-color: var(--color-primario-oscuro);
+}
+
+.lista-licencias {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--espacio);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tarjeta {
+  padding: var(--espacio);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background-color: var(--color-superficie);
+}
+
+.tarjeta__nombre {
+  margin: 0 0 0.75rem;
+  font-size: 1.125rem;
+  line-height: 1.3;
+}
+
+.tarjeta__datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+}
+
+.tarjeta__dato dt {
+  font-size: 0.875rem;
+  color: var(--color-texto-suave);
+}
+
+.tarjeta__dato dd {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+@media (min-width: 768px) {
+  .cabecera {
+    padding: calc(var(--espacio) * 2) calc(var(--espacio) * 2);
+  }
+
+  .cabecera__titulo {
+    font-size: 2rem;
+  }
+
+  .contenido {
+    padding: calc(var(--espacio) * 2);
+  }
+
+  .lista-licencias {
+    grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  }
+}
