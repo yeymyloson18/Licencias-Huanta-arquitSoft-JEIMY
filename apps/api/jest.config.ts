@@ -11,7 +11,10 @@ const config: Config = {
     {
       displayName: 'unit',
       testEnvironment: 'node',
-      testMatch: ['<rootDir>/test/unit/**/*.spec.ts'],
+      testMatch: [
+        '<rootDir>/test/unit/**/*.spec.ts',
+        '<rootDir>/test/regla-dependencia/**/*.spec.ts',
+      ],
       testPathIgnorePatterns: ['/node_modules/', '/fixtures/'],
       transform,
     },

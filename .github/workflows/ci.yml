@@ -1,0 +1,132 @@
+# Verificaciones automáticas (specs/001-esqueleto-sistema/contracts/ci-verificaciones.md, EQ-06).
+# Los NOMBRES de los jobs son parte del contrato: la protección de `main` los exige por nombre
+# (FR-019a). No cambiarlos sin actualizar esa protección y el README.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  compilacion:
+    name: compilacion
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Generar tipos del contrato
+        run: npm run generar
+      - name: Generar cliente de Prisma
+        run: npm exec -w apps/api -- prisma generate
+      - name: Tipos (strict)
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Formato
+        run: npm run formato
+      - name: Build
+        run: npm run build
+
+  pruebas:
+    name: pruebas
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          # Credenciales ficticias de ejemplo (.env.example), solo para el contenedor efímero del CI.
+          POSTGRES_USER: licencias
+          POSTGRES_PASSWORD: cambiar_en_produccion_solo_desarrollo
+          POSTGRES_DB: licencias
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U licencias -d licencias"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://licencias:cambiar_en_produccion_solo_desarrollo@localhost:5432/licencias
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Generar tipos del contrato
+        run: npm run generar
+      - name: Generar cliente de Prisma
+        run: npm exec -w apps/api -- prisma generate
+      - name: Aplicar migraciones
+        run: npm exec -w apps/api -- prisma migrate deploy
+      - name: Pruebas (unitarias, integración y portal)
+        run: npm test
+
+  cobertura:
+    name: cobertura
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Generar tipos del contrato
+        run: npm run generar
+      - name: Generar cliente de Prisma
+        run: npm exec -w apps/api -- prisma generate
+      - name: Cobertura de dominio y aplicacion (≥ 80 %)
+        run: npm run cobertura
+
+  regla-dependencia:
+    name: regla-dependencia
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Regla de dependencia (dependency-cruiser)
+        run: npm run regla-dependencia
+
+  contrato:
+    name: contrato
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Lint del contrato OpenAPI
+        run: npm run contrato
