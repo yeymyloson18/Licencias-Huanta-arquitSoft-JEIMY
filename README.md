@@ -34,6 +34,10 @@ y un único **motor de trámites** sigue la receta que corresponde (ADR-002).
 | 15 | Modelo C4 (niveles 1 a 4) | [`docs/04-modelo-c4/`](docs/04-modelo-c4/) |
 | 16 | Ejemplo de código (Clean Architecture) | [`tecnologia/README.md`](tecnologia/README.md) |
 | 17 | Validación del TUPA (fichas y diferencias encontradas) | [`docs/01-analisis-de-sistema/09-validacion-del-tupa.md`](docs/01-analisis-de-sistema/09-validacion-del-tupa.md) |
+| 18 | Diagramas de secuencia (presentar solicitud y pagar en caja) | [`docs/03-diseno-de-software/diagramas-de-secuencia.md`](docs/03-diseno-de-software/diagramas-de-secuencia.md) |
+| 19 | Modelo entidad-relación y diccionario de datos | [`docs/05-modelo-de-datos/modelo-entidad-relacion.md`](docs/05-modelo-de-datos/modelo-entidad-relacion.md) |
+| 20 | Esquema PostgreSQL y datos semilla del TUPA | [`docs/05-modelo-de-datos/esquema.sql`](docs/05-modelo-de-datos/esquema.sql), [`datos-semilla.sql`](docs/05-modelo-de-datos/datos-semilla.sql) |
+| 21 | Contrato de la API (OpenAPI 3.1) y matriz de permisos por rol | [`docs/06-contrato-api/`](docs/06-contrato-api/) |
 
 ## Cambios de alcance (simplificación)
 

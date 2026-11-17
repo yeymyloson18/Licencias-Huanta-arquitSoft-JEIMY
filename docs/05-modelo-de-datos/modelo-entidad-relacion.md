@@ -1,0 +1,305 @@
+# Modelo de datos
+
+El sistema guarda su información en **una sola base PostgreSQL (RC09)** dividida en **un esquema por módulo**
+(ADR-001). Son 28 tablas en 9 esquemas. El modelo físico completo está en [`esquema.sql`](esquema.sql) y los datos
+iniciales (roles, las 9 recetas del TUPA, sus requisitos y el asistente) en [`datos-semilla.sql`](datos-semilla.sql).
+
+> Ambos archivos se ejecutaron sin errores en PostgreSQL 16, y se comprobaron tres reglas: un expediente no
+> puede tener dos esquelas, una esquela no se paga dos veces y un vencimiento no genera dos alertas.
+
+## Decisiones del modelo
+
+| N.° | Decisión | Motivo | Relación |
+|---|---|---|---|
+| MD1 | Un esquema de PostgreSQL por módulo (`tramites`, `pagos`, `licencias`…) | Cada módulo es dueño de sus tablas; se ve en la base lo mismo que en el código. | ADR-001 |
+| MD2 | Claves foráneas **solo dentro** de un esquema. Entre módulos se guarda el identificador de negocio (`numero_expediente`, `codigo_receta`, `usuario_id`) sin FK | Ningún módulo depende de las tablas de otro; un módulo se puede extraer en el futuro sin romper la base. La consistencia entre módulos la cuidan las fachadas y el outbox. | ADR-001, ADR-003 |
+| MD3 | Datos personales cifrados con AES-256-GCM en la aplicación (`*_cifrado`), con un HMAC-SHA256 para buscar (`*_hmac`) | Se puede consultar por DNI/RUC sin guardarlo en claro (Ley N.° 29733). | ADR-007, EQ-04 |
+| MD4 | Reglas de negocio críticas protegidas también por la base: `UNIQUE (numero_expediente)` en esquela, `UPDATE … WHERE numero_recibo IS NULL`, `UNIQUE (numero_expediente, vence_en)` en alertas | Segunda defensa ante dos cajeros o dos instancias actuando al mismo tiempo. | ADR-004, ADR-006, EQ-07 |
+| MD5 | Tabla `comun.evento_pendiente` (outbox) | El pago y su evento se guardan en la misma transacción; nunca hay un pago con el expediente detenido. | ADR-005 |
+| MD6 | Tabla `comun.ejecucion_tarea` con clave `(nombre_tarea, fecha)` | Junto con `pg_try_advisory_lock`, la tarea diaria corre una sola vez aunque haya N instancias. | ADR-006 |
+| MD7 | Estados y tipos con `CHECK`, no con `ENUM` | Agregar un valor es una migración simple. | ADR-003 |
+| MD8 | La esquela **copia** el monto del catálogo al generarse | Si el TUPA cambia una tasa, las esquelas ya emitidas conservan su monto. | ADR-002, ADR-004 |
+| MD9 | El QR lleva un `codigo_verificacion` aleatorio de 22 caracteres, no el número de licencia | Nadie puede recorrer licencias adivinando números; la página pública muestra datos mínimos. | ADR-007, RF13 |
+
+## Diagrama entidad-relación
+
+Las líneas continuas son claves foráneas dentro de un módulo. Las líneas punteadas son **referencias lógicas** entre
+módulos (MD2): se guardan como un valor, sin clave foránea.
+
+```mermaid
+erDiagram
+    %% ===== Seguridad y Usuarios =====
+    USUARIO ||--o{ USUARIO_ROL : "tiene"
+    ROL ||--o{ USUARIO_ROL : "se asigna en"
+    USUARIO ||--o{ SESION : "abre"
+    USUARIO |o--o{ CODIGO_OTP : "recibe"
+    CODIGO_OTP |o--o| VERIFICACION_IDENTIDAD : "confirma"
+
+    %% ===== Catálogo y Asistente =====
+    RECETA ||--|{ REQUISITO : "exige"
+    RECETA ||--o{ REGLA_ASISTENTE : "es resultado de"
+
+    %% ===== Trámites =====
+    EXPEDIENTE ||--o{ DOCUMENTO : "adjunta"
+    EXPEDIENTE ||--o{ OBSERVACION : "recibe"
+    EXPEDIENTE ||--|{ HISTORIAL_ESTADO : "registra"
+
+    %% ===== Pagos en caja =====
+    ESQUELA ||--o{ AUDITORIA_PAGOS : "audita"
+
+    %% ===== Inspecciones =====
+    INSPECCION ||--o{ FOTO : "incluye"
+    INSPECCION ||--o{ AUDITORIA_INSPECCIONES : "audita"
+
+    %% ===== Licencias =====
+    LICENCIA ||--o{ CERTIFICADO_ITSE : "tiene"
+    LICENCIA |o--o| LICENCIA : "reemplaza a"
+
+    %% ===== Referencias lógicas entre módulos (sin FK) =====
+    RECETA ||..o{ EXPEDIENTE : "codigo_receta"
+    REQUISITO ||..o{ DOCUMENTO : "requisito_id"
+    EXPEDIENTE ||..o| ESQUELA : "numero_expediente"
+    EXPEDIENTE ||..o{ INSPECCION : "numero_expediente"
+    EXPEDIENTE ||..o{ LICENCIA : "numero_expediente"
+    EXPEDIENTE ||..o{ ALERTA : "numero_expediente"
+    EXPEDIENTE ||..o{ MENSAJE : "numero_expediente"
+    USUARIO ||..o{ EXPEDIENTE : "evaluador_id"
+    USUARIO ||..o{ INSPECCION : "inspector_id"
+
+    USUARIO {
+        uuid id PK
+        varchar correo UK
+        varchar nombre_completo
+        varchar clave_hash "argon2id"
+        bytea celular_cifrado
+        boolean activo
+    }
+    ROL {
+        varchar codigo PK "MESA_PARTES, EVALUADOR, INSPECTOR, CAJA, JEFATURA, ADMINISTRADOR"
+        varchar nombre
+    }
+    USUARIO_ROL {
+        uuid usuario_id PK,FK
+        varchar rol_codigo PK,FK
+    }
+    SESION {
+        uuid id PK
+        uuid usuario_id FK
+        varchar refresh_hash
+        timestamptz vence_en
+    }
+    CODIGO_OTP {
+        uuid id PK
+        varchar proposito "INICIO_SESION o IDENTIDAD_ADMINISTRADO"
+        bytea destino_hmac
+        smallint intentos "máx. 5"
+        timestamptz vence_en "5 minutos"
+    }
+    VERIFICACION_IDENTIDAD {
+        uuid id PK
+        bytea documento_hmac
+        bytea ruc_hmac
+        varchar resultado_servicio
+        uuid codigo_otp_id FK
+    }
+    RECETA {
+        varchar codigo PK "LIC-01 a LIC-09"
+        varchar codigo_tupa UK
+        char ruta "A, B o C"
+        varchar nivel_riesgo
+        numeric tasa
+        smallint plazo_dias
+        varchar calificacion
+        varchar orden_itse
+        smallint vigencia_meses
+    }
+    REQUISITO {
+        bigint id PK
+        varchar codigo_receta FK
+        smallint orden
+        text descripcion
+        varchar condicion
+    }
+    REGLA_ASISTENTE {
+        bigint id PK
+        smallint prioridad UK
+        jsonb condiciones
+        varchar codigo_receta FK
+    }
+    EXPEDIENTE {
+        uuid id PK
+        varchar numero UK "EXP-2026-000001"
+        varchar codigo_receta
+        char ruta
+        varchar estado
+        varchar canal
+        bytea documento_cifrado
+        bytea documento_hmac
+        varchar giro
+        varchar zona
+        date vence_plazo_en
+        uuid evaluador_id
+        integer version
+    }
+    DOCUMENTO {
+        uuid id PK
+        uuid expediente_id FK
+        bigint requisito_id
+        varchar clave_almacen UK
+        char sha256
+    }
+    OBSERVACION {
+        bigint id PK
+        uuid expediente_id FK
+        text descripcion
+        date plazo_subsanar_en
+    }
+    HISTORIAL_ESTADO {
+        bigint id PK
+        uuid expediente_id FK
+        varchar estado_anterior
+        varchar estado_nuevo
+        timestamptz ocurrido_en
+    }
+    ESQUELA {
+        varchar codigo PK "ESQ-EXP-2026-000001"
+        varchar numero_expediente UK
+        numeric monto
+        varchar numero_recibo UK "NULL = pendiente"
+        timestamptz pagada_en
+    }
+    AUDITORIA_PAGOS {
+        bigint id PK
+        varchar codigo_esquela FK
+        varchar accion
+        text motivo
+    }
+    INSPECCION {
+        uuid id PK
+        varchar numero_expediente
+        varchar tipo "PREVIA, POSTERIOR o BODEGA"
+        uuid inspector_id
+        varchar resultado
+    }
+    FOTO {
+        uuid id PK
+        uuid inspeccion_id FK
+        varchar clave_almacen UK
+    }
+    AUDITORIA_INSPECCIONES {
+        bigint id PK
+        uuid inspeccion_id FK
+        varchar accion
+    }
+    LICENCIA {
+        uuid id PK
+        varchar numero UK "LF-2026-000001"
+        varchar numero_expediente
+        varchar tipo "DEFINITIVA o PROVISIONAL"
+        char codigo_verificacion UK "token del QR"
+        date vigente_hasta
+        uuid reemplaza_a FK
+    }
+    CERTIFICADO_ITSE {
+        uuid id PK
+        uuid licencia_id FK
+        date vence_en
+        timestamptz aviso_enviado_en
+    }
+    ALERTA {
+        bigint id PK
+        varchar numero_expediente
+        date vence_en
+    }
+    MENSAJE {
+        uuid id PK
+        varchar canal "CORREO o SMS"
+        varchar plantilla
+        varchar estado
+    }
+```
+
+No se dibujan las tablas sin relaciones: `comun.evento_pendiente`, `comun.ejecucion_tarea`, `plazos.feriado`,
+`catalogo.pregunta_asistente`, `tramites.auditoria` y `licencias.auditoria`.
+
+## Diccionario de datos
+
+### Esquema `seguridad` (Seguridad y Usuarios)
+
+| Tabla | Para qué sirve | Columnas clave y reglas |
+|---|---|---|
+| `rol` | Los 6 roles del personal (RF17). | `codigo` con `CHECK` de los 6 valores. |
+| `usuario` | Personal municipal (RF22). | `correo` único; `clave_hash` con argon2id; `celular_cifrado` para el OTP; `activo` permite desactivar sin borrar. |
+| `usuario_rol` | Un usuario puede tener varios roles. | PK `(usuario_id, rol_codigo)`; guarda quién asignó y cuándo. |
+| `sesion` | Refresh tokens del personal. | `refresh_hash` (nunca el token en claro); `revocada_en` para cerrar sesión. |
+| `codigo_otp` | Códigos de un solo uso (RF06, RF16). | Vence a los 5 min; `intentos` ≤ 5; `codigo_hash`, nunca el código en claro. |
+| `verificacion_identidad` | Resultado de validar DNI/RUC con el servicio externo + OTP del administrado. | `resultado_servicio`: `VALIDO`, `NO_VALIDO`, `NO_DISPONIBLE`; `confirmada_en` se llena al verificar el OTP. |
+
+### Esquema `catalogo` (Catálogo y Asistente de ruta)
+
+| Tabla | Para qué sirve | Columnas clave y reglas |
+|---|---|---|
+| `receta` | Un procedimiento del TUPA: las 9 licencias y los 3 trámites conectados (ADR-002). | `tasa` (0 = gratuito), `plazo_dias`, `tipo_plazo`, `calificacion`, `orden_itse`, `vigencia_meses` (NULL = indeterminada); `codigo_tupa` y `pagina_tupa` para trazar al TUPA. |
+| `requisito` | Documentos que exige cada receta (RF04). | `condicion`: `SIEMPRE`, `CON_REPRESENTANTE`, `GIRO_ESPECIAL`, `SIN_PLANOS_VIGENTES`; con eso el formulario dinámico decide qué pedir. |
+| `pregunta_asistente` | Las 3 preguntas del asistente (RF01). | `opciones` en JSON. |
+| `regla_asistente` | Convierte las respuestas en una receta. | Se evalúan por `prioridad`; gana la primera cuyas `condiciones` están contenidas en las respuestas (`@>` de JSONB). |
+
+### Esquema `tramites` (Trámites)
+
+| Tabla | Para qué sirve | Columnas clave y reglas |
+|---|---|---|
+| `expediente` | El trámite del administrado. | `numero` único (`EXP-AAAA-NNNNNN`); `estado` con los 13 estados del ciclo de vida; DNI/RUC, celular, correo y dirección cifrados; `documento_hmac` + `numero` permiten la consulta pública (RF03); `version` para bloqueo optimista. |
+| `documento` | Archivos adjuntos. | Solo PDF, JPG o PNG de hasta 10 MB; el archivo vive en el almacén de objetos (`clave_almacen`) y se guarda su `sha256`. |
+| `observacion` | Observaciones del evaluador y su subsanación. | `plazo_subsanar_en`; `subsanada_en` NULL = pendiente. |
+| `historial_estado` | Cada cambio de estado. | Base del tablero de tiempos de atención (RF19). |
+| `auditoria` | Decisiones del evaluador y registros presenciales (RF25). | Se escribe en la misma transacción que la decisión. |
+
+### Esquema `pagos` (Pagos en caja)
+
+| Tabla | Para qué sirve | Columnas clave y reglas |
+|---|---|---|
+| `esquela` | La esquela de pago (RF11, RF12). | `numero_expediente` único: una esquela por expediente; `numero_recibo` NULL = pendiente; el pago se registra con `UPDATE … WHERE numero_recibo IS NULL`; un `CHECK` exige que recibo, fecha y cajero se llenen juntos. |
+| `auditoria` | Registro y corrección de pagos (RF24, RF25). | Una corrección exige `motivo` y `recibo_anterior`. |
+
+### Esquema `inspecciones` (Inspecciones ITSE)
+
+| Tabla | Para qué sirve | Columnas clave y reglas |
+|---|---|---|
+| `inspeccion` | Una ITSE previa, posterior o de bodega (RF10). | `UNIQUE (numero_expediente, tipo)`; un solo `inspector_id`; `resultado` obligatorio cuando `estado = REALIZADA`. |
+| `foto` | Fotos tomadas desde el celular. | Solo JPG o PNG de hasta 10 MB. |
+| `auditoria` | Asignación de inspector y registro del resultado (RF25). | — |
+
+### Esquema `licencias` (Licencias)
+
+| Tabla | Para qué sirve | Columnas clave y reglas |
+|---|---|---|
+| `licencia` | La licencia emitida (RF13). | `numero` único (`LF-AAAA-NNNNNN`); `codigo_verificacion` aleatorio para el QR; solo una licencia `VIGENTE` por expediente; `reemplaza_a` para transferencia, cambio de giro y la definitiva de la bodega. |
+| `certificado_itse` | Certificado ITSE y su vencimiento (RF14). | `vence_en` (cada 2 años); `aviso_enviado_en` evita avisar dos veces. |
+| `auditoria` | Emisión de licencias (RF25). | `usuario_id` NULL = emisión automática de la ruta A. |
+
+### Esquemas `plazos`, `notificaciones` y `comun`
+
+| Tabla | Para qué sirve | Columnas clave y reglas |
+|---|---|---|
+| `plazos.feriado` | Calendario de feriados (RF23). | `fecha` es la clave; `alcance` nacional, regional o local. |
+| `plazos.alerta` | Alertas de vencimiento a la jefatura (RF08). | `UNIQUE (numero_expediente, vence_en)`: ni cero ni duplicadas (EQ-07). |
+| `notificaciones.mensaje` | Correos y SMS pendientes y enviados (RF20). | Los workers toman los `PENDIENTE`; `intentos` y `ultimo_error` para reintentos. |
+| `comun.evento_pendiente` | Outbox de eventos de dominio. | Índice parcial sobre los no procesados. |
+| `comun.ejecucion_tarea` | Ejecución única de tareas diarias (ADR-006). | PK `(nombre_tarea, fecha)`. |
+
+## Índices pensados para los escenarios de calidad
+
+| Índice | Consulta que acelera | Escenario |
+|---|---|---|
+| `ix_expediente_consulta (numero, documento_hmac)` | Consulta pública del estado del trámite | EQ-01 |
+| `ix_expediente_estado (estado, vence_plazo_en)` | Tarea diaria del reloj de plazos | EQ-07 |
+| `ix_expediente_bandeja (evaluador_id, estado)` | Bandeja del evaluador | EQ-01 |
+| `ix_inspeccion_bandeja (inspector_id, estado)` | Bandeja del inspector en el celular | EQ-05 |
+| `ix_itse_por_vencer (vence_en)` parcial | Aviso de vencimiento del ITSE | RF14 |
+| `ix_evento_pendiente_sin_procesar` parcial | Workers del outbox | EQ-03 |
+
+## Pendientes
+
+- El asistente de 3 preguntas y sus reglas son una propuesta: dependen de la duda N.° 2 del documento 09.
+- El TUPA no tiene licencia para cesionarios de riesgo bajo; con las reglas actuales ese caso cae en `LIC-01`. Confirmar con la Municipalidad.
+- Si se confirma la diferencia D1 (pago antes de presentar), la esquela se generaría antes del expediente y habría que revisar `pagos.esquela`.
