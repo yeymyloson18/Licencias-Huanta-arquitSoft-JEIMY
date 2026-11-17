@@ -107,6 +107,44 @@ cinco verificaciones. Las cinco deben terminar en verde para poder fusionar:
 > `regla-dependencia`, `contrato`): la protección de la rama `main` los exige por nombre. Si se
 > renombra un job, hay que actualizar también esa protección y esta tabla.
 
+### Protección de `main`
+
+La rama `main` está protegida (constitución, principio VIII; FR-019a). Se configura en GitHub,
+en **Settings → Branches → Branch protection rules → `main`**:
+
+| Regla                                     | Valor                                                                  |
+| ----------------------------------------- | ---------------------------------------------------------------------- |
+| Exigir pull request antes de fusionar     | Sí, con 0 aprobaciones (proyecto de una persona)                       |
+| Exigir que los checks pasen               | `compilacion`, `pruebas`, `cobertura`, `regla-dependencia`, `contrato` |
+| Exigir que la rama esté al día con `main` | Sí                                                                     |
+| Aplicar también a los administradores     | Sí                                                                     |
+| Permitir _force push_                     | No                                                                     |
+| Permitir borrar la rama                   | No                                                                     |
+
+Equivalente con la API de GitHub (requiere permisos de administrador):
+
+```bash
+gh api -X PUT repos/yeymyloson18/licencias-huanta-arquitsoft-jeimy/branches/main/protection --input - <<'JSON'
+{
+  "required_status_checks": { "strict": true, "contexts": ["compilacion","pruebas","cobertura","regla-dependencia","contrato"] },
+  "required_pull_request_reviews": { "required_approving_review_count": 0 },
+  "enforce_admins": true,
+  "restrictions": null,
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
+JSON
+```
+
+Cómo comprobarla:
+
+```bash
+gh api repos/yeymyloson18/licencias-huanta-arquitsoft-jeimy/branches/main/protection
+git push origin main   # un push directo es rechazado: "protected branch hook declined"
+```
+
+Todo cambio entra a `main` desde una rama propia mediante un pull request con los cinco checks en verde.
+
 ## Documentación del proyecto (Sprint 1)
 
 | N.° | Documento                                                     | Ubicación                                                                                                                                      |
