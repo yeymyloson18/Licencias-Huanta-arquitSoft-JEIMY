@@ -1,0 +1,15 @@
+{
+  "name": "@licencias/contracts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tipos TypeScript generados desde docs/06-contrato-api/openapi.yaml",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "generar": "openapi-typescript ../../docs/06-contrato-api/openapi.yaml -o src/generado/api.d.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0"
+  }
+}
