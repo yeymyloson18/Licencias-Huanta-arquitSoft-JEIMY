@@ -43,9 +43,9 @@ qué y qué alternativas se descartaron.
   que da idempotencia al volver a levantar (FR-004) y carga el catálogo en todos los entornos,
   incluida producción (FR-006). Copiar los SQL mantiene `docs/` como fuente de verdad (principio III).
 - **Control de deriva**: una prueba (en el job `pruebas`) compara el contenido de ambas migraciones
-  con los archivos de `docs/05-modelo-de-datos/` y otra ejecuta
-  `prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --exit-code`
-  con la base de servicio del CI como base sombra.
+  con los archivos de `docs/05-modelo-de-datos/`. No se usa `prisma migrate diff`, porque
+  `esquema.sql` tiene índices parciales que Prisma 6 no modela y la comparación siempre daría
+  diferencias falsas.
 - **Alternativas**: `prisma db seed` para las semillas (no es versionado ni se ejecuta en
   producción, contradice la aclaración del 2026-11-16); Flyway (otra herramienta); generar el SQL
   desde `schema.prisma` (perdería los `CHECK` y comentarios de `esquema.sql`).
