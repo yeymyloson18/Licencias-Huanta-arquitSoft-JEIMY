@@ -193,7 +193,7 @@ consulta `/api/v1/salud`.
 
 **Propósito**: activar la protección **solo después** de que el CI haya corrido en verde al menos una vez (GitHub solo ofrece como checks requeridos los que ya se ejecutaron). Es la **última tarea** del plan.
 
-- [ ] T067 [US4] Con T062 en verde, aplicar la protección con `gh api -X PUT repos/{owner}/{repo}/branches/main/protection` exigiendo `required_status_checks: { strict: true, contexts: ["compilacion","pruebas","cobertura","regla-dependencia","contrato"] }`, `required_pull_request_reviews: { required_approving_review_count: 0 }`, `enforce_admins: true`, `allow_force_pushes: false`, `allow_deletions: false`, `restrictions: null`; documentar en `README.md` (sección "Protección de main") el comando usado y cómo comprobarla; verificar que un `git push origin main` directo es rechazado. Confirmar con la responsable del repositorio antes de ejecutar el comando, porque cambia la configuración remota
+- [X] T067 [US4] Con T062 en verde, aplicar la protección con `gh api -X PUT repos/{owner}/{repo}/branches/main/protection` exigiendo `required_status_checks: { strict: true, contexts: ["compilacion","pruebas","cobertura","regla-dependencia","contrato"] }`, `required_pull_request_reviews: { required_approving_review_count: 0 }`, `enforce_admins: true`, `allow_force_pushes: false`, `allow_deletions: false`, `restrictions: null`; documentar en `README.md` (sección "Protección de main") el comando usado y cómo comprobarla; verificar que un `git push origin main` directo es rechazado. Confirmar con la responsable del repositorio antes de ejecutar el comando, porque cambia la configuración remota
 
 ---
 
