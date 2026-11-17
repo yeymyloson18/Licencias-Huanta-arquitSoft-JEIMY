@@ -1,0 +1,19 @@
+# Lint del contrato OpenAPI (verificación "contrato" del CI, research.md §R-13).
+# Solo los errores hacen fallar el job. Estas reglas del conjunto recomendado quedan
+# explícitamente en `warn` porque no aplican al contrato actual:
+extends:
+  - recommended
+
+rules:
+  # /salud solo responde 200 o 503 (no tiene entradas que validar) y /asistente/preguntas
+  # es una lectura pública sin parámetros: no tienen respuestas 4xx que declarar.
+  operation-4xx-response: warn
+  # La descarga de documentos responde 302 hacia una URL firmada; no hay respuesta 2xx.
+  operation-2xx-response: warn
+  # Uso académico (UNSCH 2026): la licencia no tiene URL ni identificador SPDX.
+  info-license-strict: warn
+  # Servidores de ejemplo: localhost para desarrollo y un dominio por definir con la Municipalidad.
+  no-server-example.com: warn
+  # /licencias/verificar/{codigoVerificacion} y /licencias/{numeroLicencia}/pdf se distinguen
+  # por el segmento literal; NestJS los resuelve sin ambigüedad.
+  no-ambiguous-paths: warn

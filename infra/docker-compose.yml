@@ -1,0 +1,76 @@
+# Sistema completo para desarrollo local (FR-001, research.md §R-14).
+# Comando único (desde la raíz del repositorio):
+#   docker compose -f infra/docker-compose.yml up -d --build
+# Funciona sin ningún archivo .env: todos los valores tienen un valor por defecto de ejemplo.
+# Para cambiar un puerto ocupado: cp .env.example infra/.env y editar PUERTO_*.
+# Los valores por defecto son ficticios y solo sirven para desarrollo local (FR-003).
+name: licencias-huanta
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-licencias}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cambiar_en_produccion_solo_desarrollo}
+      POSTGRES_DB: ${POSTGRES_DB:-licencias}
+    volumes:
+      - datos-postgres:/var/lib/postgresql/data
+    ports:
+      - '${PUERTO_POSTGRES:-5432}:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '${PUERTO_REDIS:-6379}:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-licencias}:${POSTGRES_PASSWORD:-cambiar_en_produccion_solo_desarrollo}@postgres:5432/${POSTGRES_DB:-licencias}
+      REDIS_URL: redis://redis:6379
+      PUERTO_API: 3000
+      CATALOGO_CACHE_TTL_SEGUNDOS: ${CATALOGO_CACHE_TTL_SEGUNDOS:-300}
+      SALUD_TIMEOUT_MS: ${SALUD_TIMEOUT_MS:-2000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - '${PUERTO_API:-3000}:3000'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3000/api/v1/salud || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '${PUERTO_WEB:-8080}:80'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1/ || exit 1']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  datos-postgres:

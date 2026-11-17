@@ -1,0 +1,4 @@
+# Finales de línea LF en todas las copias de trabajo, también en Windows: Prettier exige LF
+# (`npm run formato`) y, con `core.autocrlf=true`, un clon en Windows saldría con CRLF y fallaría.
+* text=auto eol=lf
+*.sh text eol=lf

@@ -1,0 +1,10 @@
+docs/
+specs/
+.specify/
+.claude/
+tecnologia/
+**/dist
+**/coverage
+packages/contracts/src/generado
+package-lock.json
+*.sql

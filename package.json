@@ -1,0 +1,32 @@
+{
+  "name": "licencias-huanta",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema de Trámite de Licencias de Funcionamiento – Municipalidad Provincial de Huanta",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "generar": "npm run generar -w packages/contracts",
+    "build": "npm run generar && npm run build --workspaces --if-present",
+    "typecheck": "npm run generar && npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "formato": "prettier --check .",
+    "test": "npm run generar && npm test --workspaces --if-present",
+    "cobertura": "npm run cobertura -w apps/api",
+    "regla-dependencia": "depcruise apps/api/src --config .dependency-cruiser.cjs --output-type err-long",
+    "contrato": "redocly lint docs/06-contrato-api/openapi.yaml"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^2.79.0",
+    "dependency-cruiser": "^17.4.3",
+    "eslint": "^10.15.0",
+    "prettier": "^3.10.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.73.0"
+  }
+}
