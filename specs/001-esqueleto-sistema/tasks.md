@@ -182,9 +182,9 @@ consulta `/api/v1/salud`.
 
 **Propósito**: verificaciones de calidad finales que abarcan varias historias.
 
-- [ ] T063 [P] Ejecutar `docker run --rm -v "${PWD}:/repo" zricethezav/gitleaks:latest detect --source /repo --no-banner` (`${PWD}` funciona igual en PowerShell y en bash) y resolver cualquier hallazgo hasta tener 0 (FR-003, SC-002)
-- [ ] T064 [P] Auditar http://localhost:8080 con Lighthouse en modo móvil y corregir en `apps/web/src/` hasta obtener accesibilidad ≥ 90 y buenas prácticas ≥ 90; anotar las puntuaciones en la sección de verificación del `README.md` (SC-006, EQ-05)
-- [ ] T065 Ejecutar `npm run cobertura` y agregar pruebas en `apps/api/test/unit/` hasta que `dominio` y `aplicacion` superen el 80 % de líneas y ramas
+- [X] T063 [P] Ejecutar `docker run --rm -v "${PWD}:/repo" zricethezav/gitleaks:latest detect --source /repo --no-banner` (`${PWD}` funciona igual en PowerShell y en bash) y resolver cualquier hallazgo hasta tener 0 (FR-003, SC-002)
+- [X] T064 [P] Auditar http://localhost:8080 con Lighthouse en modo móvil y corregir en `apps/web/src/` hasta obtener accesibilidad ≥ 90 y buenas prácticas ≥ 90; anotar las puntuaciones en la sección de verificación del `README.md` (SC-006, EQ-05)
+- [X] T065 Ejecutar `npm run cobertura` y agregar pruebas en `apps/api/test/unit/` hasta que `dominio` y `aplicacion` superen el 80 % de líneas y ramas
 - [ ] T066 Recorrer los 9 escenarios de [quickstart.md](./quickstart.md) en un clon limpio y corregir cualquier diferencia (incluye `docker stop` real de Redis y PostgreSQL para EQ-03 y el cambio de tasa para EQ-06)
 
 ---

@@ -51,6 +51,15 @@ curl http://localhost:3000/api/v1/salud         # {"estado":"OK","baseDeDatos":"
 También puede ejecutar la prueba de humo, que levanta todo, lo verifica, lo reinicia y comprueba
 que los datos no se duplican: `bash infra/prueba-humo.sh`.
 
+Auditoría Lighthouse 12 del portal (<http://localhost:8080>, modo móvil, 17/11/2026):
+
+| Rendimiento | Accesibilidad | Buenas prácticas | SEO |
+| ----------- | ------------- | ---------------- | --- |
+| 100         | 100           | 100              | 91  |
+
+Para repetirla: `npx lighthouse http://localhost:8080 --form-factor=mobile --view` (el mínimo
+exigido es 90 en accesibilidad y en buenas prácticas, SC-006).
+
 ### Cómo detenerlo
 
 ```bash
