@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+**/dist
+**/coverage
+.git
+.env
+infra/.env
+specs
+.specify
+.claude
+tecnologia
+docs/fuentes
+docs/img
+packages/contracts/src/generado
+*.log

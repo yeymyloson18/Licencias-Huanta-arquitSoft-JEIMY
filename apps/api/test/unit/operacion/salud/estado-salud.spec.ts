@@ -1,6 +1,5 @@
 import {
   calcularEstadoGeneral,
-  codigoHttpPara,
   type EstadoDependencia,
   type EstadoGeneral,
 } from '../../../../src/operacion/salud/dominio/estado-salud';
@@ -14,15 +13,5 @@ describe('calcularEstadoGeneral', () => {
     ['CAIDO', 'CAIDO', 'CAIDO'],
   ])('base %s + caché %s → %s', (baseDeDatos, cache, esperado) => {
     expect(calcularEstadoGeneral(baseDeDatos, cache)).toBe(esperado);
-  });
-});
-
-describe('codigoHttpPara', () => {
-  it.each<[EstadoGeneral, number]>([
-    ['OK', 200],
-    ['DEGRADADO', 200],
-    ['CAIDO', 503],
-  ])('%s → %i', (estado, codigo) => {
-    expect(codigoHttpPara(estado)).toBe(codigo);
   });
 });

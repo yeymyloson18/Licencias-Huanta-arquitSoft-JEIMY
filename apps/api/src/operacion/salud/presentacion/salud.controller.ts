@@ -1,7 +1,7 @@
 import { Controller, Get, Res } from '@nestjs/common';
 import type { components } from '@licencias/contracts';
 import { ConsultarSalud } from '../aplicacion/consultar-salud';
-import { codigoHttpPara } from '../dominio/estado-salud';
+import { codigoHttpPara } from './codigo-http';
 
 type Salud = components['schemas']['Salud'];
 

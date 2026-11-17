@@ -13,6 +13,72 @@ Las nueve licencias del TUPA 2024 siguen casi los mismos pasos. Lo que cambia (r
 plazo, calificación, orden del ITSE y vigencia) se guarda como **datos en un catálogo de recetas**,
 y un único **motor de trámites** sigue la receta que corresponde (ADR-002).
 
+## Cómo levantar el sistema
+
+### Herramientas previas
+
+- [Git](https://git-scm.com/)
+- [Docker](https://docs.docker.com/get-docker/) con Docker Compose v2 (Docker Desktop ya lo incluye)
+- [Node.js 24 LTS](https://nodejs.org/) con npm, **solo** para ejecutar las pruebas fuera de Docker
+
+### Comando único
+
+Desde la raíz del repositorio:
+
+```bash
+docker compose -f infra/docker-compose.yml up -d --build
+```
+
+Levanta PostgreSQL 16, Redis 7, el backend (NestJS) y el portal web. No hace falta crear ningún
+archivo ni pedir secretos: la primera vez el backend crea el esquema y carga el catálogo del TUPA
+con migraciones versionadas, que se aplican una sola vez.
+
+> **Aviso:** `.env.example` y los valores por defecto de `infra/docker-compose.yml` son
+> **ficticios** y solo sirven para desarrollo local. Nunca los use en producción.
+
+### Cómo verificar que funciona
+
+```bash
+docker compose -f infra/docker-compose.yml ps   # los 4 servicios en estado "healthy"
+curl http://localhost:3000/api/v1/salud         # {"estado":"OK","baseDeDatos":"OK","cache":"OK",...}
+```
+
+- Chequeo de salud: <http://localhost:3000/api/v1/salud>
+- Portal web: <http://localhost:8080>
+
+También puede ejecutar la prueba de humo, que levanta todo, lo verifica, lo reinicia y comprueba
+que los datos no se duplican: `bash infra/prueba-humo.sh`.
+
+### Cómo detenerlo
+
+```bash
+docker compose -f infra/docker-compose.yml down      # detiene y conserva los datos
+docker compose -f infra/docker-compose.yml down -v   # detiene y borra la base (reinicio desde cero)
+```
+
+### Si un puerto ya está ocupado
+
+Los puertos por defecto son 8080 (portal), 3000 (API), 5432 (PostgreSQL) y 6379 (Redis). Para
+cambiarlos, copie el archivo de ejemplo a `infra/.env` (Docker Compose lo lee automáticamente) y
+edite las variables `PUERTO_*`:
+
+```bash
+cp .env.example infra/.env
+```
+
+### Cómo ejecutar las pruebas
+
+```bash
+npm ci
+npm test                    # pruebas unitarias y de integración (requiere PostgreSQL y Redis)
+npm run cobertura           # cobertura mínima de 80 % en dominio y aplicacion
+npm run regla-dependencia   # regla de dependencia de Clean Architecture
+npm run contrato            # validación del contrato OpenAPI
+```
+
+Las pruebas de integración usan `DATABASE_URL` y `REDIS_URL` (por defecto, `localhost:5432` y
+`localhost:6379`), así que basta con tener levantado el sistema con el comando único.
+
 ## Documentación del proyecto (Sprint 1)
 
 | N.° | Documento | Ubicación |
