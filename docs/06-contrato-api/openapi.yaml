@@ -305,6 +305,7 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/RecetaResumen' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
 
   /catalogo/recetas/{codigoReceta}:
     parameters:
@@ -1170,12 +1171,12 @@ paths:
       security: []
       responses:
         '200':
-          description: Servicio sano.
+          description: Servicio sano (OK) o degradado (DEGRADADO, solo falla la caché; la instancia sigue recibiendo tráfico, ADR-005).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Salud' }
         '503':
-          description: Alguna dependencia falla; el balanceador deja de enviar tráfico a esta instancia.
+          description: La base de datos no responde; el balanceador deja de enviar tráfico a esta instancia.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Salud' }
@@ -1572,7 +1573,7 @@ components:
             documentoTitularEnmascarado: { type: string, example: '4*****21' }
             razonSocial: { type: [string, 'null'] }
             nombreComercial: { type: [string, 'null'] }
-            direccion: { type: string, description: Solo para roles que la necesitan (evaluador, inspector, jefatura). }
+            direccion: { type: string, description: 'Solo para roles que la necesitan (evaluador, inspector, jefatura).' }
             zona: { type: string }
             areaM2: { type: [number, 'null'] }
             codigoEsquela: { type: [string, 'null'] }
@@ -1631,7 +1632,7 @@ components:
         usuarioId: { type: [string, 'null'], format: uuid }
         nombreUsuario: { type: [string, 'null'] }
         accion: { type: string }
-        referencia: { type: string, description: Expediente, esquela o inspección. }
+        referencia: { type: string, description: 'Expediente, esquela o inspección.' }
         detalle: { type: [object, 'null'] }
         ocurridoEn: { type: string, format: date-time }
 
@@ -1759,5 +1760,5 @@ components:
       properties:
         estado: { type: string, enum: [OK, DEGRADADO, CAIDO] }
         baseDeDatos: { type: string, enum: [OK, CAIDO] }
-        cache: { type: string, enum: [OK, CAIDO], description: Si Redis falla el servicio sigue (DEGRADADO), ADR-005. }
+        cache: { type: string, enum: [OK, CAIDO], description: 'Si Redis falla el servicio sigue (DEGRADADO), ADR-005.' }
         version: { type: string }
