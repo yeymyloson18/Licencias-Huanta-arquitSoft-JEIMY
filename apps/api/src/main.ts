@@ -3,13 +3,11 @@ import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { CONFIGURACION, type Configuracion } from './compartido/infraestructura/configuracion';
-import { FiltroProblema } from './compartido/presentacion/filtro-problema';
+import { configurarAplicacion } from './configurar-aplicacion';
 
 async function arrancar(): Promise<void> {
   const app = await NestFactory.create(AppModule);
-  app.setGlobalPrefix('api/v1');
-  app.useGlobalFilters(new FiltroProblema());
-  app.enableShutdownHooks();
+  configurarAplicacion(app);
 
   const configuracion = app.get<Configuracion>(CONFIGURACION);
   await app.listen(configuracion.puertoApi);
