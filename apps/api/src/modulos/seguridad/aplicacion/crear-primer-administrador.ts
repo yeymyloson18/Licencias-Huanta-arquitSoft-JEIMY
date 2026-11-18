@@ -1,6 +1,5 @@
 import { Celular } from '../dominio/celular';
 import { Correo } from '../dominio/correo';
-import { ErrorDominio } from '../dominio/error-dominio';
 import { NombreCompleto } from '../dominio/nombre-completo';
 import { PoliticaClave } from '../dominio/politica-clave';
 import type { GeneradorSecretos } from '../dominio/puertos/generador-secretos';
@@ -9,6 +8,7 @@ import type { Reloj } from '../dominio/puertos/reloj';
 import type { RepositorioUsuarios } from '../dominio/puertos/repositorio-usuarios';
 import { Usuario } from '../dominio/usuario';
 import { ErrorClaveInvalida, ErrorDatosInvalidos } from './errores';
+import { leerCampo } from './leer-campos';
 
 export interface DependenciasCrearPrimerAdministrador {
   readonly usuarios: RepositorioUsuarios;
@@ -29,19 +29,6 @@ export type ResultadoPrimerAdministrador =
   | { readonly resultado: 'YA_EXISTE' }
   | { readonly resultado: 'CORREO_EN_USO' };
 
-/** Convierte un texto en objeto de valor o anota el campo inválido (sin su valor). */
-const leer = <T>(campo: string, invalidos: string[], crear: () => T): T | null => {
-  try {
-    return crear();
-  } catch (error) {
-    if (error instanceof ErrorDominio) {
-      invalidos.push(campo);
-      return null;
-    }
-    throw error;
-  }
-};
-
 /**
  * Paso de instalación: crea el primer administrador si no hay ninguno activo (FR-023, FR-024). Es
  * idempotente: con un administrador activo no crea ni modifica nada. El usuario creado debe cambiar
@@ -52,9 +39,9 @@ export class CrearPrimerAdministrador {
 
   async ejecutar(datos: DatosPrimerAdministrador): Promise<ResultadoPrimerAdministrador> {
     const invalidos: string[] = [];
-    const correo = leer('correo', invalidos, () => Correo.crear(datos.correo));
-    const nombre = leer('nombre', invalidos, () => NombreCompleto.crear(datos.nombre));
-    const celular = leer('celular', invalidos, () => Celular.crear(datos.celular));
+    const correo = leerCampo('correo', invalidos, () => Correo.crear(datos.correo));
+    const nombre = leerCampo('nombre', invalidos, () => NombreCompleto.crear(datos.nombre));
+    const celular = leerCampo('celular', invalidos, () => Celular.crear(datos.celular));
     const reglas = PoliticaClave.validar(datos.clave);
     if (correo === null || nombre === null || celular === null) {
       // Un solo mensaje con todos los campos inválidos, también la clave si no cumple la política.

@@ -3,10 +3,16 @@ import type Redis from 'ioredis';
 import { CONFIGURACION, type Configuracion } from '../../compartido/infraestructura/configuracion';
 import { PrismaServicio } from '../../compartido/infraestructura/prisma.servicio';
 import { REDIS_CLIENTE } from '../../compartido/infraestructura/redis.proveedor';
+import { ActualizarUsuario } from './aplicacion/actualizar-usuario';
+import { AsignarClaveTemporal } from './aplicacion/asignar-clave-temporal';
+import { BuscarUsuarios } from './aplicacion/buscar-usuarios';
 import { CambiarClave } from './aplicacion/cambiar-clave';
 import { CerrarSesion } from './aplicacion/cerrar-sesion';
 import { CrearPrimerAdministrador } from './aplicacion/crear-primer-administrador';
+import { CrearUsuario } from './aplicacion/crear-usuario';
 import { IniciarSesion } from './aplicacion/iniciar-sesion';
+import { ListarUsuarios } from './aplicacion/listar-usuarios';
+import { ReemplazarRoles } from './aplicacion/reemplazar-roles';
 import { RenovarSesion } from './aplicacion/renovar-sesion';
 import { VerificarOtp } from './aplicacion/verificar-otp';
 import type { AlmacenVersionSeguridad } from './dominio/puertos/almacen-version-seguridad';
@@ -37,6 +43,7 @@ import { RepositorioUsuariosPostgres } from './infraestructura/repositorio-usuar
 import { AuthController } from './presentacion/auth.controller';
 import { JwtAuthGuard } from './presentacion/jwt-auth.guard';
 import { RolesGuard } from './presentacion/roles.guard';
+import { UsuariosController } from './presentacion/usuarios.controller';
 import {
   ALMACEN_VERSION_SEGURIDAD,
   EMISOR_TOKENS,
@@ -57,7 +64,7 @@ import {
 // módulo sin que este importe el interior de `seguridad` (contracts/control-permisos.md).
 @Global()
 @Module({
-  controllers: [AuthController],
+  controllers: [AuthController, UsuariosController],
   providers: [
     // ---------------------------------------------------------------- adaptadores
     {
@@ -276,6 +283,74 @@ import {
         generador: GeneradorSecretos,
         reloj: Reloj,
       ) => new CrearPrimerAdministrador({ usuarios, hasher, generador, reloj }),
+    },
+
+    // ---------------------------------------------------------------- gestión de usuarios (US5)
+    {
+      provide: ListarUsuarios,
+      inject: [REPOSITORIO_USUARIOS],
+      useFactory: (usuarios: RepositorioUsuarios) => new ListarUsuarios({ usuarios }),
+    },
+    {
+      provide: BuscarUsuarios,
+      inject: [REPOSITORIO_USUARIOS],
+      useFactory: (usuarios: RepositorioUsuarios) => new BuscarUsuarios({ usuarios }),
+    },
+    {
+      provide: CrearUsuario,
+      inject: [REPOSITORIO_USUARIOS, HASHER_CLAVES, GENERADOR_SECRETOS, RELOJ],
+      useFactory: (
+        usuarios: RepositorioUsuarios,
+        hasher: HasherClaves,
+        generador: GeneradorSecretos,
+        reloj: Reloj,
+      ) => new CrearUsuario({ usuarios, hasher, generador, reloj }),
+    },
+    {
+      provide: ActualizarUsuario,
+      inject: [
+        REPOSITORIO_USUARIOS,
+        REPOSITORIO_SESIONES,
+        ALMACEN_VERSION_SEGURIDAD,
+        RELOJ,
+        REGISTRO_EVENTOS_SEGURIDAD,
+      ],
+      useFactory: (
+        usuarios: RepositorioUsuarios,
+        sesiones: RepositorioSesiones,
+        almacen: AlmacenVersionSeguridad,
+        reloj: Reloj,
+        eventos: RegistroEventosSeguridad,
+      ) => new ActualizarUsuario({ usuarios, sesiones, almacen, reloj, eventos }),
+    },
+    {
+      provide: ReemplazarRoles,
+      inject: [REPOSITORIO_USUARIOS, ALMACEN_VERSION_SEGURIDAD, RELOJ, REGISTRO_EVENTOS_SEGURIDAD],
+      useFactory: (
+        usuarios: RepositorioUsuarios,
+        almacen: AlmacenVersionSeguridad,
+        reloj: Reloj,
+        eventos: RegistroEventosSeguridad,
+      ) => new ReemplazarRoles({ usuarios, almacen, reloj, eventos }),
+    },
+    {
+      provide: AsignarClaveTemporal,
+      inject: [
+        REPOSITORIO_USUARIOS,
+        REPOSITORIO_SESIONES,
+        HASHER_CLAVES,
+        ALMACEN_VERSION_SEGURIDAD,
+        RELOJ,
+        REGISTRO_EVENTOS_SEGURIDAD,
+      ],
+      useFactory: (
+        usuarios: RepositorioUsuarios,
+        sesiones: RepositorioSesiones,
+        hasher: HasherClaves,
+        almacen: AlmacenVersionSeguridad,
+        reloj: Reloj,
+        eventos: RegistroEventosSeguridad,
+      ) => new AsignarClaveTemporal({ usuarios, sesiones, hasher, almacen, reloj, eventos }),
     },
 
     JwtAuthGuard,

@@ -30,11 +30,15 @@ import type { Reloj } from '../../../../../src/modulos/seguridad/dominio/puertos
 import type { RepositorioCodigosOtp } from '../../../../../src/modulos/seguridad/dominio/puertos/repositorio-codigos-otp';
 import type { RepositorioSesiones } from '../../../../../src/modulos/seguridad/dominio/puertos/repositorio-sesiones';
 import type {
+  CambioUsuario,
+  CriterioBusquedaUsuarios,
   EstadoSeguridadUsuario,
+  PaginaUsuarios,
   RepositorioUsuarios,
 } from '../../../../../src/modulos/seguridad/dominio/puertos/repositorio-usuarios';
 import type { Rol } from '../../../../../src/modulos/seguridad/dominio/rol';
 import type { Sesion } from '../../../../../src/modulos/seguridad/dominio/sesion';
+import { AsignacionRol } from '../../../../../src/modulos/seguridad/dominio/asignacion-rol';
 import { Usuario } from '../../../../../src/modulos/seguridad/dominio/usuario';
 
 export const T0 = new Date('2026-11-17T10:00:00.000Z');
@@ -177,6 +181,38 @@ export class RepositorioUsuariosEnMemoria implements RepositorioUsuarios {
     this.guardados += 1;
     this.usuarios.set(usuario.id, usuario);
     return Promise.resolve();
+  }
+  buscar(criterio: CriterioBusquedaUsuarios): Promise<PaginaUsuarios> {
+    const texto = criterio.texto?.toLowerCase();
+    const todos = [...this.usuarios.values()]
+      .filter((u) => criterio.activo === undefined || u.activo === criterio.activo)
+      .filter(
+        (u) =>
+          texto === undefined ||
+          u.nombreCompleto.valor.toLowerCase().includes(texto) ||
+          (criterio.correo !== undefined && u.correo.esIgualA(criterio.correo)),
+      )
+      .sort((a, b) => a.nombreCompleto.valor.localeCompare(b.nombreCompleto.valor));
+    const inicio = (criterio.pagina - 1) * criterio.porPagina;
+    return Promise.resolve({
+      usuarios: todos.slice(inicio, inicio + criterio.porPagina),
+      total: todos.length,
+    });
+  }
+  modificar(usuarioId: string, cambio: CambioUsuario): Promise<Usuario | null> {
+    const usuario = this.usuarios.get(usuarioId);
+    if (usuario === undefined) {
+      return Promise.resolve(null);
+    }
+    const administradores = [...this.usuarios.values()]
+      .filter((u) => u.activo && u.tieneRol('ADMINISTRADOR'))
+      .map((u) => u.id);
+    // Como la transacción real: se trabaja sobre una copia y solo se guarda si el cambio no falla.
+    const copia = copiarUsuario(usuario);
+    cambio(copia, administradores);
+    this.usuarios.set(usuarioId, copia);
+    this.guardados += 1;
+    return Promise.resolve(copia);
   }
   hayAdministradorActivo(): Promise<boolean> {
     return Promise.resolve(false);
@@ -348,3 +384,26 @@ export class LimitadorFalso implements LimitadorIntentos {
     return this.liberar(this.envios, [usuarioId]);
   }
 }
+
+/** Copia profunda de un usuario (con sus asignaciones), para simular una transacción. */
+export const copiarUsuario = (usuario: Usuario): Usuario =>
+  Usuario.reconstruir({
+    id: usuario.id,
+    correo: usuario.correo,
+    nombreCompleto: usuario.nombreCompleto,
+    celular: usuario.celular,
+    claveHash: usuario.claveHash,
+    debeCambiarClave: usuario.debeCambiarClave,
+    activo: usuario.activo,
+    versionSeguridad: usuario.versionSeguridad,
+    asignaciones: usuario.asignaciones.map((a) =>
+      AsignacionRol.reconstruir({
+        id: a.id,
+        rol: a.rol,
+        asignadoPor: a.asignadoPor,
+        asignadoEn: a.asignadoEn,
+        retiradoPor: a.retiradoPor,
+        retiradoEn: a.retiradoEn,
+      }),
+    ),
+  });

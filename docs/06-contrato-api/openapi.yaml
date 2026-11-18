@@ -227,6 +227,7 @@ paths:
                 allOf:
                   - $ref: '#/components/schemas/Paginacion'
                   - type: object
+                    required: [datos]
                     properties:
                       datos:
                         type: array
@@ -281,6 +282,7 @@ paths:
                 allOf:
                   - $ref: '#/components/schemas/Paginacion'
                   - type: object
+                    required: [datos]
                     properties:
                       datos:
                         type: array

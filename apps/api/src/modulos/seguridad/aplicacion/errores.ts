@@ -34,3 +34,19 @@ export class ErrorDemasiadosIntentos extends Error {
     this.name = 'ErrorDemasiadosIntentos';
   }
 }
+
+/** El correo ya pertenece a otro usuario (historia 5, escenario 3). */
+export class ErrorCorreoEnUso extends Error {
+  constructor() {
+    super('El correo ya está en uso');
+    this.name = 'ErrorCorreoEnUso';
+  }
+}
+
+/** No existe un usuario con ese id. */
+export class ErrorUsuarioNoEncontrado extends Error {
+  constructor() {
+    super('Usuario no encontrado');
+    this.name = 'ErrorUsuarioNoEncontrado';
+  }
+}

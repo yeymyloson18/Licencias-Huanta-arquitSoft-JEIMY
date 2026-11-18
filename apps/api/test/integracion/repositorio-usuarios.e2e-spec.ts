@@ -107,4 +107,83 @@ describe('RepositorioUsuariosPostgres', () => {
 
     await expect(repositorio.crear(nuevoUsuario('Repetido@Ejemplo.pe'))).rejects.toThrow();
   });
+
+  describe('buscar y modificar (historia 5)', () => {
+    const crearVarios = async () => {
+      const nombres = ['Ana Quispe', 'Beto Huamán', 'Carla Rojas'];
+      const creados: Usuario[] = [];
+      for (const [i, nombre] of nombres.entries()) {
+        const usuario = Usuario.crear({
+          id: randomUUID(),
+          correo: Correo.crear(`persona${String(i)}@ejemplo.pe`),
+          nombreCompleto: NombreCompleto.crear(nombre),
+          celular: Celular.crear('987654321'),
+          claveHash: 'h',
+          roles: i === 0 ? ['ADMINISTRADOR'] : ['CAJA'],
+          asignadoPor: ADMIN,
+          en: T0,
+        });
+        if (i === 2) {
+          usuario.desactivar();
+        }
+        await repositorio.crear(usuario);
+        creados.push(usuario);
+      }
+      return creados;
+    };
+
+    it('busca por fragmento del nombre, por correo exacto y por estado, paginado', async () => {
+      await crearVarios();
+
+      const porNombre = await repositorio.buscar({ texto: 'ROJ', pagina: 1, porPagina: 20 });
+      expect(porNombre.usuarios.map((u) => u.nombreCompleto.valor)).toEqual(['Carla Rojas']);
+
+      const porCorreo = await repositorio.buscar({
+        texto: 'persona1@ejemplo.pe',
+        correo: Correo.crear('PERSONA1@ejemplo.pe'),
+        pagina: 1,
+        porPagina: 20,
+      });
+      expect(porCorreo.usuarios.map((u) => u.nombreCompleto.valor)).toEqual(['Beto Huamán']);
+
+      const inactivos = await repositorio.buscar({ activo: false, pagina: 1, porPagina: 20 });
+      expect(inactivos.total).toBe(1);
+
+      const pagina2 = await repositorio.buscar({ pagina: 2, porPagina: 2 });
+      expect(pagina2.total).toBe(3);
+      expect(pagina2.usuarios.map((u) => u.nombreCompleto.valor)).toEqual(['Carla Rojas']);
+    });
+
+    it('modificar entrega los administradores activos y guarda el cambio', async () => {
+      const [admin, caja] = await crearVarios();
+      let administradoresVistos: readonly string[] = [];
+
+      const modificado = await repositorio.modificar(caja?.id ?? '', (usuario, administradores) => {
+        administradoresVistos = administradores;
+        usuario.reemplazarRoles(['JEFATURA'], ADMIN, new Date('2026-11-18T09:00:00.000Z'));
+      });
+
+      expect(administradoresVistos).toEqual([admin?.id]);
+      expect(modificado?.rolesVigentes).toEqual(['JEFATURA']);
+      expect((await repositorio.obtenerPorId(caja?.id ?? ''))?.rolesVigentes).toEqual(['JEFATURA']);
+    });
+
+    it('si el cambio lanza un error no guarda nada', async () => {
+      const [, caja] = await crearVarios();
+
+      await expect(
+        repositorio.modificar(caja?.id ?? '', (usuario) => {
+          usuario.desactivar();
+          throw new Error('rechazado');
+        }),
+      ).rejects.toThrow('rechazado');
+
+      expect((await repositorio.obtenerPorId(caja?.id ?? ''))?.activo).toBe(true);
+    });
+
+    it('modificar un usuario inexistente devuelve null', async () => {
+      await expect(repositorio.modificar(randomUUID(), () => undefined)).resolves.toBeNull();
+      await expect(repositorio.modificar('no-es-uuid', () => undefined)).resolves.toBeNull();
+    });
+  });
 });

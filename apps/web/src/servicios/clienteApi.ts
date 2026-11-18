@@ -150,3 +150,114 @@ export async function cerrarSesion(): Promise<void> {
     // Sin red: el portal igual descarta la sesión en memoria.
   }
 }
+
+// ----------------------------------------------------------------------------- gestión de usuarios
+
+export type Usuario = components['schemas']['Usuario'];
+export type Rol = components['schemas']['Rol'];
+export type NuevoUsuario = components['schemas']['NuevoUsuario'];
+
+export interface PaginaUsuarios {
+  readonly pagina: number;
+  readonly porPagina: number;
+  readonly total: number;
+  readonly datos: Usuario[];
+}
+
+/** Resultado de una operación de administración, sin detalles técnicos para la pantalla. */
+export type ResultadoOperacion<T> =
+  | { readonly tipo: 'ok'; readonly datos: T }
+  | { readonly tipo: 'invalido'; readonly errores: readonly ErrorCampo[] }
+  | { readonly tipo: 'correo-en-uso' }
+  | { readonly tipo: 'ultimo-administrador' }
+  | { readonly tipo: 'no-encontrado' }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' };
+
+const tipoDeProblema = (error: unknown): string =>
+  ((error as { type?: string } | undefined)?.type ?? '').split('/').pop() ?? '';
+
+const ejecutarOperacion = async <T>(
+  llamada: () => Promise<{ data?: T; error?: unknown; response: Response }>,
+  vacio?: T,
+): Promise<ResultadoOperacion<T>> => {
+  try {
+    const { data, error, response } = await llamada();
+    if (response.ok) {
+      const datos = data ?? vacio;
+      return datos === undefined ? { tipo: 'no-disponible' } : { tipo: 'ok', datos };
+    }
+    switch (response.status) {
+      case 422:
+        return {
+          tipo: 'invalido',
+          errores: (error as { errores?: ErrorCampo[] } | undefined)?.errores ?? [],
+        };
+      case 409:
+        return tipoDeProblema(error) === 'ultimo-administrador'
+          ? { tipo: 'ultimo-administrador' }
+          : { tipo: 'correo-en-uso' };
+      case 404:
+        return { tipo: 'no-encontrado' };
+      case 401:
+      case 403:
+        return { tipo: 'sin-permiso' };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** Lista el personal (los filtros no llevan datos personales, por eso van en la URL). */
+export const listarUsuarios = (filtro: { activo?: boolean; pagina?: number }) =>
+  ejecutarOperacion<PaginaUsuarios>(() =>
+    cliente.GET('/usuarios', {
+      params: {
+        query: { pagina: filtro.pagina ?? 1, porPagina: 20, activo: filtro.activo },
+      },
+    }),
+  );
+
+/** Busca por nombre o correo con POST: el texto no queda en la URL (principio VII). */
+export const buscarUsuarios = (filtro: { texto: string; activo?: boolean; pagina?: number }) =>
+  ejecutarOperacion<PaginaUsuarios>(() =>
+    cliente.POST('/usuarios/busqueda', {
+      body: {
+        texto: filtro.texto,
+        pagina: filtro.pagina ?? 1,
+        porPagina: 20,
+        ...(filtro.activo === undefined ? {} : { activo: filtro.activo }),
+      },
+    }),
+  );
+
+export const crearUsuario = (datos: NuevoUsuario) =>
+  ejecutarOperacion<Usuario>(() => cliente.POST('/usuarios', { body: datos }));
+
+export const actualizarUsuario = (
+  usuarioId: string,
+  cambios: { nombreCompleto?: string; celular?: string; activo?: boolean },
+) =>
+  ejecutarOperacion<Usuario>(() =>
+    cliente.PATCH('/usuarios/{usuarioId}', { params: { path: { usuarioId } }, body: cambios }),
+  );
+
+export const asignarRoles = (usuarioId: string, roles: Rol[]) =>
+  ejecutarOperacion<Usuario>(() =>
+    cliente.PUT('/usuarios/{usuarioId}/roles', {
+      params: { path: { usuarioId } },
+      body: { roles },
+    }),
+  );
+
+export const asignarClaveTemporal = (usuarioId: string, claveTemporal: string) =>
+  ejecutarOperacion<true>(
+    () =>
+      cliente.POST('/usuarios/{usuarioId}/clave-temporal', {
+        params: { path: { usuarioId } },
+        body: { claveTemporal },
+      }),
+    true,
+  );
