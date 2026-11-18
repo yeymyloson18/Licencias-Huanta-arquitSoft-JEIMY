@@ -3,12 +3,16 @@ import type { AlmacenVersionSeguridad } from '../dominio/puertos/almacen-version
 import type { EmisorTokens } from '../dominio/puertos/emisor-tokens';
 import type { GeneradorSecretos } from '../dominio/puertos/generador-secretos';
 import type { HasherClaves } from '../dominio/puertos/hasher-claves';
+import {
+  ErrorLimitadorNoDisponible,
+  type LimitadorIntentos,
+} from '../dominio/puertos/limitador-intentos';
 import type { RegistroEventosSeguridad } from '../dominio/puertos/registro-eventos-seguridad';
 import type { Reloj } from '../dominio/puertos/reloj';
 import type { RepositorioSesiones } from '../dominio/puertos/repositorio-sesiones';
 import type { RepositorioUsuarios } from '../dominio/puertos/repositorio-usuarios';
 import { emitirSesion, type SesionEmitida } from './emitir-sesion';
-import { ErrorAutenticacion, ErrorClaveInvalida } from './errores';
+import { ErrorAutenticacion, ErrorClaveInvalida, ErrorDemasiadosIntentos } from './errores';
 
 export interface DependenciasCambiarClave {
   readonly usuarios: RepositorioUsuarios;
@@ -19,11 +23,13 @@ export interface DependenciasCambiarClave {
   readonly reloj: Reloj;
   readonly eventos: RegistroEventosSeguridad;
   readonly almacen: AlmacenVersionSeguridad;
+  readonly limitador: LimitadorIntentos;
 }
 
 export interface EntradaCambiarClave {
   readonly usuarioId: string;
   readonly sesionId: string;
+  readonly ip: string;
   readonly claveActual: string;
   readonly claveNueva: string;
 }
@@ -45,7 +51,17 @@ export class CambiarClave {
     if (sesion.usuarioId !== usuario.id) {
       throw new ErrorAutenticacion();
     }
+    const fallos = await this.sinFallarSiNoHayLimites(() =>
+      this.d.limitador.consultarFallos(usuario.correo, entrada.ip),
+    );
+    if (fallos?.bloqueado === true) {
+      this.d.eventos.registrar('bloqueo-temporal', { usuarioId: usuario.id });
+      throw new ErrorDemasiadosIntentos(fallos.segundosRestantes);
+    }
     if (!(await this.d.hasher.verificar(entrada.claveActual, usuario.claveHash))) {
+      await this.sinFallarSiNoHayLimites(() =>
+        this.d.limitador.registrarFallo(usuario.correo, entrada.ip),
+      );
       throw new ErrorAutenticacion();
     }
 
@@ -75,5 +91,20 @@ export class CambiarClave {
 
     this.d.eventos.registrar('clave-cambiada', { usuarioId: usuario.id, sesionId: sesion.id });
     return emitirSesion(this.d.emisor, usuario, sesion, nuevoRefresh);
+  }
+
+  /**
+   * Cambiar la clave ya exige una sesión válida: si los límites no están disponibles, la operación
+   * sigue sin ellos (el contrato no declara 503 aquí). El inicio de sesión, en cambio, falla cerrado.
+   */
+  private async sinFallarSiNoHayLimites<T>(operacion: () => Promise<T>): Promise<T | null> {
+    try {
+      return await operacion();
+    } catch (error) {
+      if (error instanceof ErrorLimitadorNoDisponible) {
+        return null;
+      }
+      throw error;
+    }
   }
 }

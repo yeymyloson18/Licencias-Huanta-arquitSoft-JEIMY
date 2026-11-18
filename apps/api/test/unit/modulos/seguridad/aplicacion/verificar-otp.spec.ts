@@ -1,10 +1,15 @@
-import { ErrorAutenticacion } from '../../../../../src/modulos/seguridad/aplicacion/errores';
+import {
+  ErrorAutenticacion,
+  ErrorDemasiadosIntentos,
+} from '../../../../../src/modulos/seguridad/aplicacion/errores';
+import { ErrorLimitadorNoDisponible } from '../../../../../src/modulos/seguridad/dominio/puertos/limitador-intentos';
 import { VerificarOtp } from '../../../../../src/modulos/seguridad/aplicacion/verificar-otp';
 import { CodigoOtp } from '../../../../../src/modulos/seguridad/dominio/codigo-otp';
 import {
   EmisorFalso,
   EventosFalsos,
   GeneradorFalso,
+  LimitadorFalso,
   RelojFalso,
   RepositorioCodigosEnMemoria,
   RepositorioSesionesEnMemoria,
@@ -14,6 +19,8 @@ import {
   type OpcionesUsuario,
 } from './dobles';
 
+const IP = '10.0.0.1';
+
 const preparar = async (opciones: OpcionesUsuario = {}) => {
   const usuarios = new RepositorioUsuariosEnMemoria();
   const codigos = new RepositorioCodigosEnMemoria();
@@ -21,6 +28,7 @@ const preparar = async (opciones: OpcionesUsuario = {}) => {
   const emisor = new EmisorFalso();
   const eventos = new EventosFalsos();
   const reloj = new RelojFalso();
+  const limitador = new LimitadorFalso();
   const usuario = usuarioFicticio(opciones);
   await usuarios.crear(usuario);
   await codigos.crear(
@@ -40,15 +48,20 @@ const preparar = async (opciones: OpcionesUsuario = {}) => {
     emisor,
     reloj,
     eventos,
+    limitador,
   });
-  return { usuarios, usuario, codigos, sesiones, emisor, eventos, reloj, casoDeUso };
+  return { usuarios, usuario, codigos, sesiones, emisor, eventos, reloj, limitador, casoDeUso };
 };
 
 describe('VerificarOtp (paso 2)', () => {
   it('con el código correcto abre una sesión de 8 h y firma el token', async () => {
     const { usuario, sesiones, emisor, eventos, casoDeUso } = await preparar();
 
-    const resultado = await casoDeUso.ejecutar({ desafioId: 'desafio-1', codigo: '654321' });
+    const resultado = await casoDeUso.ejecutar({
+      ip: IP,
+      desafioId: 'desafio-1',
+      codigo: '654321',
+    });
 
     expect(resultado.accessToken).toBe(
       `token:usuario-1:id-1:${String(usuario.versionSeguridad)}:false`,
@@ -74,7 +87,11 @@ describe('VerificarOtp (paso 2)', () => {
   it('con clave temporal el token lleva dcc = true', async () => {
     const { emisor, casoDeUso } = await preparar({ debeCambiarClave: true });
 
-    const resultado = await casoDeUso.ejecutar({ desafioId: 'desafio-1', codigo: '654321' });
+    const resultado = await casoDeUso.ejecutar({
+      ip: IP,
+      desafioId: 'desafio-1',
+      codigo: '654321',
+    });
 
     expect(emisor.firmados[0]?.dcc).toBe(true);
     expect(resultado.usuario.debeCambiarClave).toBe(true);
@@ -84,7 +101,7 @@ describe('VerificarOtp (paso 2)', () => {
     const { codigos, sesiones, eventos, casoDeUso } = await preparar();
 
     await expect(
-      casoDeUso.ejecutar({ desafioId: 'desafio-1', codigo: '000000' }),
+      casoDeUso.ejecutar({ ip: IP, desafioId: 'desafio-1', codigo: '000000' }),
     ).rejects.toBeInstanceOf(ErrorAutenticacion);
     expect((await codigos.obtenerPorId('desafio-1'))?.intentos).toBe(1);
     expect(sesiones.sesiones.size).toBe(0);
@@ -96,27 +113,31 @@ describe('VerificarOtp (paso 2)', () => {
     reloj.avanzar(301);
 
     await expect(
-      casoDeUso.ejecutar({ desafioId: 'desafio-1', codigo: '654321' }),
+      casoDeUso.ejecutar({ ip: IP, desafioId: 'desafio-1', codigo: '654321' }),
     ).rejects.toBeInstanceOf(ErrorAutenticacion);
   });
 
   it('un código usado no vuelve a servir', async () => {
     const { casoDeUso } = await preparar();
-    await casoDeUso.ejecutar({ desafioId: 'desafio-1', codigo: '654321' });
+    await casoDeUso.ejecutar({ ip: IP, desafioId: 'desafio-1', codigo: '654321' });
 
     await expect(
-      casoDeUso.ejecutar({ desafioId: 'desafio-1', codigo: '654321' }),
+      casoDeUso.ejecutar({ ip: IP, desafioId: 'desafio-1', codigo: '654321' }),
     ).rejects.toBeInstanceOf(ErrorAutenticacion);
   });
 
   it('un código agotado (5 fallos) no autentica aunque sea correcto', async () => {
-    const { casoDeUso } = await preparar();
+    const { casoDeUso, limitador } = await preparar();
     for (let i = 0; i < 5; i += 1) {
-      await casoDeUso.ejecutar({ desafioId: 'desafio-1', codigo: '000000' }).catch(() => undefined);
+      await casoDeUso
+        .ejecutar({ ip: IP, desafioId: 'desafio-1', codigo: '000000' })
+        .catch(() => undefined);
     }
+    // Aísla la regla del código: sin esto, el limitador (5 fallos) bloquearía antes.
+    limitador.fallos.clear();
 
     await expect(
-      casoDeUso.ejecutar({ desafioId: 'desafio-1', codigo: '654321' }),
+      casoDeUso.ejecutar({ ip: IP, desafioId: 'desafio-1', codigo: '654321' }),
     ).rejects.toBeInstanceOf(ErrorAutenticacion);
   });
 
@@ -124,7 +145,7 @@ describe('VerificarOtp (paso 2)', () => {
     const { casoDeUso } = await preparar();
 
     await expect(
-      casoDeUso.ejecutar({ desafioId: 'otro', codigo: '654321' }),
+      casoDeUso.ejecutar({ ip: IP, desafioId: 'otro', codigo: '654321' }),
     ).rejects.toBeInstanceOf(ErrorAutenticacion);
   });
 
@@ -134,8 +155,50 @@ describe('VerificarOtp (paso 2)', () => {
     await usuarios.guardar(usuario);
 
     await expect(
-      casoDeUso.ejecutar({ desafioId: 'desafio-1', codigo: '654321' }),
+      casoDeUso.ejecutar({ ip: IP, desafioId: 'desafio-1', codigo: '654321' }),
     ).rejects.toBeInstanceOf(ErrorAutenticacion);
     expect(sesiones.sesiones.size).toBe(0);
+  });
+});
+
+describe('VerificarOtp: límites de intentos (historia 4)', () => {
+  it('los códigos incorrectos suman al correo del usuario y a la IP', async () => {
+    const { limitador, casoDeUso } = await preparar();
+
+    await casoDeUso
+      .ejecutar({ ip: IP, desafioId: 'desafio-1', codigo: '000000' })
+      .catch(() => undefined);
+
+    expect(limitador.fallos.get('correo:persona@ejemplo.pe')).toBe(1);
+    expect(limitador.fallos.get(`ip:${IP}`)).toBe(1);
+  });
+
+  it('un desafío inexistente solo suma a la IP', async () => {
+    const { limitador, casoDeUso } = await preparar();
+
+    await casoDeUso
+      .ejecutar({ ip: IP, desafioId: 'otro', codigo: '654321' })
+      .catch(() => undefined);
+
+    expect([...limitador.fallos.keys()]).toEqual([`ip:${IP}`]);
+  });
+
+  it('con 5 fallos acumulados rechaza el código correcto', async () => {
+    const { limitador, sesiones, casoDeUso } = await preparar();
+    limitador.fallos.set('correo:persona@ejemplo.pe', 5);
+
+    await expect(
+      casoDeUso.ejecutar({ ip: IP, desafioId: 'desafio-1', codigo: '654321' }),
+    ).rejects.toBeInstanceOf(ErrorDemasiadosIntentos);
+    expect(sesiones.sesiones.size).toBe(0);
+  });
+
+  it('si los límites no están disponibles falla cerrado', async () => {
+    const { limitador, casoDeUso } = await preparar();
+    limitador.noDisponible = true;
+
+    await expect(
+      casoDeUso.ejecutar({ ip: IP, desafioId: 'desafio-1', codigo: '654321' }),
+    ).rejects.toBeInstanceOf(ErrorLimitadorNoDisponible);
   });
 });

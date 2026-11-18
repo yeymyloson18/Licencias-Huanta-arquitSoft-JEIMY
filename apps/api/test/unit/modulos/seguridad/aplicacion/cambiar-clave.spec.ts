@@ -2,6 +2,7 @@ import { CambiarClave } from '../../../../../src/modulos/seguridad/aplicacion/ca
 import {
   ErrorAutenticacion,
   ErrorClaveInvalida,
+  ErrorDemasiadosIntentos,
 } from '../../../../../src/modulos/seguridad/aplicacion/errores';
 import { Sesion } from '../../../../../src/modulos/seguridad/dominio/sesion';
 import {
@@ -10,6 +11,7 @@ import {
   EventosFalsos,
   GeneradorFalso,
   HasherFalso,
+  LimitadorFalso,
   RelojFalso,
   RepositorioSesionesEnMemoria,
   RepositorioUsuariosEnMemoria,
@@ -23,6 +25,7 @@ const preparar = async () => {
   const almacen = new AlmacenFalso();
   const emisor = new EmisorFalso();
   const eventos = new EventosFalsos();
+  const limitador = new LimitadorFalso();
   const usuario = usuarioFicticio({ clave: 'ClaveTemporal2026', debeCambiarClave: true });
   await usuarios.crear(usuario);
   for (const id of ['actual', 'otra-1', 'otra-2']) {
@@ -39,13 +42,15 @@ const preparar = async () => {
     reloj: new RelojFalso(),
     eventos,
     almacen,
+    limitador,
   });
-  return { usuario, usuarios, sesiones, almacen, emisor, eventos, casoDeUso };
+  return { usuario, usuarios, sesiones, almacen, emisor, eventos, limitador, casoDeUso };
 };
 
 const entrada = (claveActual: string, claveNueva: string) => ({
   usuarioId: 'usuario-1',
   sesionId: 'actual',
+  ip: '10.0.0.1',
   claveActual,
   claveNueva,
 });
@@ -127,5 +132,30 @@ describe('CambiarClave', () => {
     await expect(
       casoDeUso.ejecutar(entrada('ClaveTemporal2026', 'ClaveDefinitiva2026')),
     ).rejects.toBeInstanceOf(ErrorAutenticacion);
+  });
+});
+
+describe('CambiarClave: límites de intentos (historia 4)', () => {
+  it('la clave actual incorrecta cuenta como fallo y a los 5 se bloquea', async () => {
+    const { limitador, casoDeUso } = await preparar();
+    for (let i = 0; i < 5; i += 1) {
+      await casoDeUso
+        .ejecutar(entrada('Incorrecta2026', 'ClaveDefinitiva2026'))
+        .catch(() => undefined);
+    }
+    expect(limitador.fallos.get('correo:persona@ejemplo.pe')).toBe(5);
+
+    await expect(
+      casoDeUso.ejecutar(entrada('ClaveTemporal2026', 'ClaveDefinitiva2026')),
+    ).rejects.toBeInstanceOf(ErrorDemasiadosIntentos);
+  });
+
+  it('si los límites no están disponibles sigue sin límite (ya exige una sesión válida)', async () => {
+    const { limitador, casoDeUso } = await preparar();
+    limitador.noDisponible = true;
+
+    await expect(
+      casoDeUso.ejecutar(entrada('ClaveTemporal2026', 'ClaveDefinitiva2026')),
+    ).resolves.toMatchObject({ usuario: { debeCambiarClave: false } });
   });
 });

@@ -26,3 +26,11 @@ export class ErrorDatosInvalidos extends Error {
     this.name = 'ErrorDatosInvalidos';
   }
 }
+
+/** Se superó un límite de intentos (FR-002a, FR-006, FR-007): se puede reintentar en `segundos`. */
+export class ErrorDemasiadosIntentos extends Error {
+  constructor(readonly segundos: number) {
+    super('Demasiados intentos');
+    this.name = 'ErrorDemasiadosIntentos';
+  }
+}

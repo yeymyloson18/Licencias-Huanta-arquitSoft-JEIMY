@@ -14,6 +14,7 @@ import type { EmisorTokens } from './dominio/puertos/emisor-tokens';
 import type { EnviadorOTP } from './dominio/puertos/enviador-otp';
 import type { GeneradorSecretos } from './dominio/puertos/generador-secretos';
 import type { HasherClaves } from './dominio/puertos/hasher-claves';
+import type { LimitadorIntentos } from './dominio/puertos/limitador-intentos';
 import type { ProtectorDatos } from './dominio/puertos/protector-datos';
 import type { RegistroEventosSeguridad } from './dominio/puertos/registro-eventos-seguridad';
 import type { Reloj } from './dominio/puertos/reloj';
@@ -26,6 +27,7 @@ import { EmisorTokensJwt } from './infraestructura/emisor-tokens-jwt';
 import { EnviadorOtpSimulado } from './infraestructura/enviador-otp-simulado';
 import { GeneradorSecretosCrypto } from './infraestructura/generador-secretos-crypto';
 import { HasherClavesArgon2 } from './infraestructura/hasher-claves-argon2';
+import { LimitadorIntentosRedis } from './infraestructura/limitador-intentos-redis';
 import { ProtectorDatosAesGcm } from './infraestructura/protector-datos-aes-gcm';
 import { RegistroEventosSeguridadLogger } from './infraestructura/registro-eventos-seguridad-logger';
 import { RelojSistema } from './infraestructura/reloj-sistema';
@@ -41,6 +43,7 @@ import {
   ENVIADOR_OTP,
   GENERADOR_SECRETOS,
   HASHER_CLAVES,
+  LIMITADOR_INTENTOS,
   PROTECTOR_DATOS,
   REGISTRO_EVENTOS_SEGURIDAD,
   RELOJ,
@@ -113,6 +116,13 @@ import {
         new AlmacenVersionSeguridadRedis(redis, eventos),
     },
     {
+      // Contadores de intentos compartidos por todas las instancias (FR-006 a FR-009, §R-08).
+      provide: LIMITADOR_INTENTOS,
+      inject: [REDIS_CLIENTE, PROTECTOR_DATOS],
+      useFactory: (redis: Redis, protector: ProtectorDatos): LimitadorIntentos =>
+        new LimitadorIntentosRedis(redis, protector),
+    },
+    {
       provide: ResolverUsuarioAutenticado,
       inject: [ALMACEN_VERSION_SEGURIDAD, REPOSITORIO_USUARIOS],
       useFactory: (almacen: AlmacenVersionSeguridad, usuarios: RepositorioUsuarios) =>
@@ -131,6 +141,7 @@ import {
         ENVIADOR_OTP,
         RELOJ,
         REGISTRO_EVENTOS_SEGURIDAD,
+        LIMITADOR_INTENTOS,
       ],
       useFactory: (
         usuarios: RepositorioUsuarios,
@@ -141,6 +152,7 @@ import {
         enviador: EnviadorOTP,
         reloj: Reloj,
         eventos: RegistroEventosSeguridad,
+        limitador: LimitadorIntentos,
       ) =>
         new IniciarSesion({
           usuarios,
@@ -151,6 +163,7 @@ import {
           enviador,
           reloj,
           eventos,
+          limitador,
         }),
     },
     {
@@ -163,6 +176,7 @@ import {
         EMISOR_TOKENS,
         RELOJ,
         REGISTRO_EVENTOS_SEGURIDAD,
+        LIMITADOR_INTENTOS,
       ],
       useFactory: (
         codigos: RepositorioCodigosOtp,
@@ -172,7 +186,18 @@ import {
         emisor: EmisorTokens,
         reloj: Reloj,
         eventos: RegistroEventosSeguridad,
-      ) => new VerificarOtp({ codigos, usuarios, sesiones, generador, emisor, reloj, eventos }),
+        limitador: LimitadorIntentos,
+      ) =>
+        new VerificarOtp({
+          codigos,
+          usuarios,
+          sesiones,
+          generador,
+          emisor,
+          reloj,
+          eventos,
+          limitador,
+        }),
     },
     {
       provide: RenovarSesion,
@@ -216,6 +241,7 @@ import {
         RELOJ,
         REGISTRO_EVENTOS_SEGURIDAD,
         ALMACEN_VERSION_SEGURIDAD,
+        LIMITADOR_INTENTOS,
       ],
       useFactory: (
         usuarios: RepositorioUsuarios,
@@ -226,6 +252,7 @@ import {
         reloj: Reloj,
         eventos: RegistroEventosSeguridad,
         almacen: AlmacenVersionSeguridad,
+        limitador: LimitadorIntentos,
       ) =>
         new CambiarClave({
           usuarios,
@@ -236,6 +263,7 @@ import {
           reloj,
           eventos,
           almacen,
+          limitador,
         }),
     },
 

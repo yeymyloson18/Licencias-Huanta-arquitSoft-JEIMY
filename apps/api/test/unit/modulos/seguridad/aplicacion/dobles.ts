@@ -15,6 +15,11 @@ import type {
 import type { EnviadorOTP } from '../../../../../src/modulos/seguridad/dominio/puertos/enviador-otp';
 import type { GeneradorSecretos } from '../../../../../src/modulos/seguridad/dominio/puertos/generador-secretos';
 import type { HasherClaves } from '../../../../../src/modulos/seguridad/dominio/puertos/hasher-claves';
+import {
+  ErrorLimitadorNoDisponible,
+  type EstadoLimite,
+  type LimitadorIntentos,
+} from '../../../../../src/modulos/seguridad/dominio/puertos/limitador-intentos';
 import type { ProtectorDatos } from '../../../../../src/modulos/seguridad/dominio/puertos/protector-datos';
 import type {
   EventoSeguridad,
@@ -285,3 +290,41 @@ export const usuarioFicticio = (opciones: OpcionesUsuario = {}): Usuario => {
   }
   return usuario;
 };
+
+/** Limitador en memoria: 5 fallos por correo o por IP, 3 envíos por usuario. */
+export class LimitadorFalso implements LimitadorIntentos {
+  readonly fallos = new Map<string, number>();
+  readonly envios = new Map<string, number>();
+  noDisponible = false;
+
+  private clavesFallo(correo: Correo | null, ip: string): string[] {
+    return [...(correo === null ? [] : [`correo:${correo.valor}`]), `ip:${ip}`];
+  }
+  private comprobar(): void {
+    if (this.noDisponible) {
+      throw new ErrorLimitadorNoDisponible();
+    }
+  }
+  consultarFallos(correo: Correo | null, ip: string): Promise<EstadoLimite> {
+    this.comprobar();
+    const bloqueado = this.clavesFallo(correo, ip).some((c) => (this.fallos.get(c) ?? 0) >= 5);
+    return Promise.resolve({ bloqueado, segundosRestantes: bloqueado ? 600 : 0 });
+  }
+  registrarFallo(correo: Correo | null, ip: string): Promise<void> {
+    this.comprobar();
+    for (const clave of this.clavesFallo(correo, ip)) {
+      this.fallos.set(clave, (this.fallos.get(clave) ?? 0) + 1);
+    }
+    return Promise.resolve();
+  }
+  consultarEnvios(usuarioId: string): Promise<EstadoLimite> {
+    this.comprobar();
+    const bloqueado = (this.envios.get(usuarioId) ?? 0) >= 3;
+    return Promise.resolve({ bloqueado, segundosRestantes: bloqueado ? 300 : 0 });
+  }
+  registrarEnvio(usuarioId: string): Promise<void> {
+    this.comprobar();
+    this.envios.set(usuarioId, (this.envios.get(usuarioId) ?? 0) + 1);
+    return Promise.resolve();
+  }
+}

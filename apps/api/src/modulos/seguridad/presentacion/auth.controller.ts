@@ -5,12 +5,17 @@ import { ErrorValidacion } from '../../../compartido/presentacion/filtro-problem
 import { CambiarClave } from '../aplicacion/cambiar-clave';
 import { CerrarSesion } from '../aplicacion/cerrar-sesion';
 import type { SesionEmitida } from '../aplicacion/emitir-sesion';
-import { ErrorAutenticacion, ErrorClaveInvalida } from '../aplicacion/errores';
+import {
+  ErrorAutenticacion,
+  ErrorClaveInvalida,
+  ErrorDemasiadosIntentos,
+} from '../aplicacion/errores';
 import { IniciarSesion } from '../aplicacion/iniciar-sesion';
 import { RenovarSesion } from '../aplicacion/renovar-sesion';
 import { VerificarOtp } from '../aplicacion/verificar-otp';
 import { PoliticaClave } from '../dominio/politica-clave';
 import { ErrorEnvioOtp } from '../dominio/puertos/enviador-otp';
+import { ErrorLimitadorNoDisponible } from '../dominio/puertos/limitador-intentos';
 import { PermitirConClaveTemporal } from './decoradores';
 import { JwtAuthGuard, type PeticionAutenticada } from './jwt-auth.guard';
 import { aSesionPersonal, type SesionPersonalRespuesta } from './respuestas';
@@ -34,7 +39,11 @@ interface RespuestaConCookies {
 
 interface PeticionConCookies extends PeticionAutenticada {
   readonly cookies?: Readonly<Record<string, string | undefined>>;
+  /** IP del cliente; con `trust proxy`, la que informa el nginx del portal (FR-007). */
+  readonly ip?: string;
 }
+
+const ipDe = (peticion: PeticionConCookies): string => peticion.ip ?? 'desconocida';
 
 const esquemaCredenciales = z.object({
   correo: z.email(),
@@ -74,10 +83,10 @@ export class AuthController {
 
   @Post('iniciar-sesion')
   @HttpCode(200)
-  async iniciar(@Body() cuerpo: unknown) {
+  async iniciar(@Body() cuerpo: unknown, @Req() peticion: PeticionConCookies) {
     const entrada = validarCuerpo(esquemaCredenciales, cuerpo, MENSAJES);
     try {
-      const desafio = await this.iniciarSesion.ejecutar(entrada);
+      const desafio = await this.iniciarSesion.ejecutar({ ...entrada, ip: ipDe(peticion) });
       return {
         desafioId: desafio.desafioId,
         venceEn: desafio.venceEn.toISOString(),
@@ -92,11 +101,13 @@ export class AuthController {
   @HttpCode(200)
   async verificar(
     @Body() cuerpo: unknown,
+    @Req() peticion: PeticionConCookies,
     @Res({ passthrough: true }) respuesta: RespuestaConCookies,
   ): Promise<SesionPersonalRespuesta> {
     const entrada = validarCuerpo(esquemaVerificacion, cuerpo, MENSAJES);
     try {
-      return this.responderSesion(await this.verificarOtp.ejecutar(entrada), respuesta);
+      const sesion = await this.verificarOtp.ejecutar({ ...entrada, ip: ipDe(peticion) });
+      return this.responderSesion(sesion, respuesta);
     } catch (error) {
       throw traducirError(error);
     }
@@ -149,6 +160,7 @@ export class AuthController {
       const sesion = await this.cambiarClave.ejecutar({
         usuarioId: usuario.usuarioId,
         sesionId: usuario.sesionId,
+        ip: ipDe(peticion),
         ...entrada,
       });
       return this.responderSesion(sesion, respuesta);
@@ -183,7 +195,10 @@ const traducirError = (error: unknown): unknown => {
       })),
     );
   }
-  if (error instanceof ErrorEnvioOtp) {
+  if (error instanceof ErrorDemasiadosIntentos) {
+    return ErrorProblema.demasiadosIntentos(error.segundos);
+  }
+  if (error instanceof ErrorEnvioOtp || error instanceof ErrorLimitadorNoDisponible) {
     return ErrorProblema.servicioNoDisponible();
   }
   return error;

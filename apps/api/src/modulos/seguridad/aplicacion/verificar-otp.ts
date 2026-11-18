@@ -1,5 +1,6 @@
 import type { EmisorTokens } from '../dominio/puertos/emisor-tokens';
 import type { GeneradorSecretos } from '../dominio/puertos/generador-secretos';
+import type { LimitadorIntentos } from '../dominio/puertos/limitador-intentos';
 import type { RegistroEventosSeguridad } from '../dominio/puertos/registro-eventos-seguridad';
 import type { Reloj } from '../dominio/puertos/reloj';
 import type { RepositorioCodigosOtp } from '../dominio/puertos/repositorio-codigos-otp';
@@ -7,7 +8,7 @@ import type { RepositorioSesiones } from '../dominio/puertos/repositorio-sesione
 import type { RepositorioUsuarios } from '../dominio/puertos/repositorio-usuarios';
 import { Sesion } from '../dominio/sesion';
 import { emitirSesion, type SesionEmitida } from './emitir-sesion';
-import { ErrorAutenticacion } from './errores';
+import { ErrorAutenticacion, ErrorDemasiadosIntentos } from './errores';
 
 export interface DependenciasVerificarOtp {
   readonly codigos: RepositorioCodigosOtp;
@@ -17,6 +18,7 @@ export interface DependenciasVerificarOtp {
   readonly emisor: EmisorTokens;
   readonly reloj: Reloj;
   readonly eventos: RegistroEventosSeguridad;
+  readonly limitador: LimitadorIntentos;
 }
 
 /**
@@ -27,9 +29,24 @@ export interface DependenciasVerificarOtp {
 export class VerificarOtp {
   constructor(private readonly d: DependenciasVerificarOtp) {}
 
-  async ejecutar(entrada: { desafioId: string; codigo: string }): Promise<SesionEmitida> {
+  async ejecutar(entrada: {
+    desafioId: string;
+    codigo: string;
+    ip: string;
+  }): Promise<SesionEmitida> {
     const codigo = await this.d.codigos.obtenerPorId(entrada.desafioId);
+    const usuario = codigo === null ? null : await this.d.usuarios.obtenerPorId(codigo.usuarioId);
+    // Los fallos del código suman al mismo contador que los de la clave (por correo y por IP).
+    const correo = usuario?.correo ?? null;
+
+    const fallos = await this.d.limitador.consultarFallos(correo, entrada.ip);
+    if (fallos.bloqueado) {
+      this.d.eventos.registrar('bloqueo-temporal', usuario ? { usuarioId: usuario.id } : {});
+      throw new ErrorDemasiadosIntentos(fallos.segundosRestantes);
+    }
+
     if (codigo === null) {
+      await this.d.limitador.registrarFallo(null, entrada.ip);
       this.d.eventos.registrar('inicio-sesion-fallido');
       throw new ErrorAutenticacion();
     }
@@ -43,11 +60,11 @@ export class VerificarOtp {
     await this.d.codigos.guardar(codigo);
 
     if (resultado !== 'CORRECTO') {
+      await this.d.limitador.registrarFallo(correo, entrada.ip);
       this.d.eventos.registrar('inicio-sesion-fallido', { usuarioId: codigo.usuarioId });
       throw new ErrorAutenticacion();
     }
 
-    const usuario = await this.d.usuarios.obtenerPorId(codigo.usuarioId);
     if (usuario?.activo !== true) {
       this.d.eventos.registrar('inicio-sesion-fallido', { usuarioId: codigo.usuarioId });
       throw new ErrorAutenticacion();
