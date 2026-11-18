@@ -21,7 +21,7 @@ este documento se aparta de ella, lo dice y explica el motivo (siempre la consti
   | `GeneradorSecretos` | Código de 6 dígitos, refresh token opaco, HMAC del código | `GeneradorSecretosCrypto` |
   | `EmisorTokens` | Firmar y verificar el token de acceso | `EmisorTokensJwt` (`@nestjs/jwt`) |
   | `LimitadorIntentos` | Contadores de fallos y de envíos (FR-006 a FR-009, FR-002a) | `LimitadorIntentosRedis` |
-  | `AlmacenVersionSeguridad` | Versión de seguridad vigente por usuario (FR-011, FR-015) | `AlmacenVersionSeguridadRedis` con respaldo en PostgreSQL |
+  | `AlmacenVersionSeguridad` | Versión de seguridad vigente por usuario y sesiones revocadas (FR-004, FR-011, FR-015) | `AlmacenVersionSeguridadRedis` con respaldo en PostgreSQL |
   | `EnviadorOTP` | Enviar el código al celular (FR-030) | `EnviadorOtpSimulado` (desarrollo/pruebas); `EnviadorOtpSms` cuando haya proveedor |
   | `Reloj` | Hora actual (pruebas deterministas de vencimientos) | `RelojSistema` |
 
@@ -124,22 +124,31 @@ este documento se aparta de ella, lo dice y explica el motivo (siempre la consti
 - **Alternativas**: actualizar `ultima_actividad_en` en cada petición (una escritura por petición,
   contra EQ-01); sin margen de 10 s (dos pestañas cerrarían todas las sesiones por error).
 
-## R-07. Efecto inmediato de desactivar, cambiar roles o asignar clave temporal
+## R-07. Efecto inmediato de desactivar, cambiar roles, asignar clave temporal o cerrar sesión
 
 - **Decisión**: columna `usuario.version_seguridad` (entero) como fuente de verdad, más una copia en
   Redis (`seg:version:<usuarioId>`, TTL 60 s). Se incrementa **en la misma transacción** que
   desactivar, cambiar roles, asignar clave temporal o cambiar la clave; tras el `COMMIT` se escribe el
   valor nuevo en Redis. En cada petición protegida, `JwtAuthGuard`:
   1. verifica firma y vencimiento del token;
-  2. lee la versión de Redis (si la clave no existe o Redis no responde, la lee de PostgreSQL y la
-     vuelve a poner en Redis si puede);
+  2. lee de Redis, en una sola ida (`MGET`), la versión (`seg:version:<usuarioId>`) y la marca de
+     sesión revocada (`seg:sesion-revocada:<sid>`); si la sesión está marcada como revocada →
+     **401**; si la versión no existe o Redis no responde, lee de PostgreSQL `version_seguridad` y
+     `sesion.revocada_en` (revocada → **401**) y vuelve a poner la versión en Redis si puede;
   3. si coincide con `vs`, usa los roles del token;
-  4. si no coincide, consulta el estado actual del usuario (`activo`, roles vigentes,
+  4. si la versión no coincide, consulta el estado actual del usuario (`activo`, roles vigentes,
      `debe_cambiar_clave`): inactivo → **401**; activo → continúa con los **roles actuales**, de modo
      que una operación que pedía un rol retirado responde **403** (escenario 5 de la historia 2).
-- **Por qué**: cumple FR-011/FR-015 (aclaración del 2026-11-17) con una lectura de Redis por
-  petición y sin consultar PostgreSQL en el caso normal (EQ-01). El TTL de 60 s acota el único caso
-  raro (Redis acepta lecturas pero falló la escritura tras el `COMMIT`) a un minuto como máximo.
+  **Sesiones revocadas** (FR-004, FR-013): cada vez que se revoca una sesión (cerrar sesión,
+  desactivar al usuario, asignarle clave temporal, cambiar la clave —las demás sesiones— o detectar
+  reutilización del refresh), después del `COMMIT` se escribe `SET seg:sesion-revocada:<sid> 1 EX 900`
+  (900 s = vida máxima del token de acceso; pasado ese tiempo el token ya venció solo).
+- **Por qué**: cumple FR-004, FR-011 y FR-015 (aclaración del 2026-11-17) con una lectura de Redis
+  por petición y sin consultar PostgreSQL en el caso normal (EQ-01). El TTL de 60 s acota el único caso
+  raro (Redis acepta lecturas pero falló la escritura tras el `COMMIT`) a un minuto como máximo para la
+  versión; para la marca de sesión revocada ese mismo caso raro deja servir el token hasta su
+  vencimiento (≤ 15 min), porque una clave ausente significa "no revocada". Se registra el fallo de
+  escritura como evento para detectarlo.
 - **Alternativas**: lista negra de tokens (crece sin límite); consultar PostgreSQL en cada petición
   (contra EQ-01); responder 401 ante cualquier cambio de versión (el usuario vería "no autenticado"
   al perder un rol, contradiciendo la historia 2).
@@ -191,7 +200,8 @@ este documento se aparta de ella, lo dice y explica el motivo (siempre la consti
   `@UsuarioActual()`. `SeguridadModule` es `@Global()` y exporta lo que los guards necesitan, así
   otros módulos los usan importando solo la fachada. Los guards lanzan excepciones que
   `FiltroProblema` convierte en `problem+json`:
-  - 401 `no-autenticado`: sin token, inválido, vencido o usuario inactivo.
+  - 401 `no-autenticado`: sin token, inválido, vencido, de una sesión revocada o de un usuario
+    inactivo.
   - 403 `sin-permiso`: ningún rol admitido.
   - 403 `debe-cambiar-clave`: el usuario tiene clave temporal; solo se le permiten
     `/auth/cambiar-clave`, `/auth/renovar` y `/auth/cerrar-sesion` (FR-022).
@@ -311,3 +321,18 @@ este documento se aparta de ella, lo dice y explica el motivo (siempre la consti
 - **Prueba**: en las pruebas de integración se reemplaza el logger por uno que acumula las líneas, y
   se verifica que ninguna línea ni ninguna respuesta contiene el correo, el celular, la clave ni el
   código usados en la prueba (SC-007).
+
+## R-18. Escaneo OWASP ZAP (EQ-04)
+
+- **Decisión**: EQ-04 nombra OWASP ZAP como herramienta. Se ejecuta el escaneo base (pasivo) contra
+  el stack local levantado con Docker Compose:
+  `docker run --rm -t ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://host.docker.internal:8080 -r zap-informe.html`
+  (en Linux se agrega `--add-host=host.docker.internal:host-gateway`). Las alertas de riesgo medio o
+  alto se corrigen (por ejemplo, cabeceras de seguridad en `apps/web/nginx.conf`) o se justifican en
+  el README; el resultado se anota en la sección de verificación del README. testssl.sh (TLS 1.3)
+  queda para el entorno desplegado, porque en local no hay TLS.
+- **Por qué**: el principio VI exige comprobar la medida con la herramienta indicada; el escaneo base
+  no necesita un entorno desplegado.
+- **Alternativas**: escaneo activo (`zap-full-scan.py`; más lento y puede llenar la base con datos
+  basura; se deja para el entorno de pruebas); no ejecutar ZAP hasta tener ese entorno (dejaría la
+  medida sin comprobar en esta funcionalidad).

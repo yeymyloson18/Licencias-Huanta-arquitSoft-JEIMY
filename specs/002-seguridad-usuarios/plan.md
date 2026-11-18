@@ -12,8 +12,8 @@ personal en dos pasos (correo + clave con argon2id, luego OTP de 6 dígitos por 
 `EnviadorOTP` con adaptador simulado), sesión con JWT de acceso de 15 minutos y refresh token opaco
 en cookie `HttpOnly`/`SameSite=Strict` con rotación y detección de reutilización (máximo 8 h, cierre
 tras 30 min sin actividad), límites compartidos en Redis (5 fallos en 15 min por correo y por IP;
-3 códigos en 15 min), efecto inmediato de desactivar o cambiar roles mediante una versión de
-seguridad por usuario (Redis con respaldo en PostgreSQL), control de permisos reutilizable
+3 códigos en 15 min), efecto inmediato de desactivar, cambiar roles o cerrar sesión mediante una
+versión de seguridad por usuario y una marca de sesión revocada (Redis con respaldo en PostgreSQL), control de permisos reutilizable
 (`@RequiereRoles`, `JwtAuthGuard`, `RolesGuard`) expuesto por la fachada, gestión de usuarios con
 historial de roles y la regla "nunca sin administrador" con bloqueo de filas, el comando
 `crear-administrador` y tres pantallas del portal (`/ingresar`, `/cambiar-clave`,
@@ -77,12 +77,12 @@ con 13 casos de uso, 11 operaciones HTTP (5 de `/auth` y 6 de `/usuarios`, inclu
 
 | Principio / puerta | Cómo lo cumple este plan | Estado |
 |---|---|---|
-| **I. Monolito modular con Clean Architecture** | Todo en `apps/api/src/modulos/seguridad/{dominio,aplicacion,infraestructura,presentacion}`. Criptografía, tiempo, Redis y JWT detrás de puertos del dominio (research §R-01), así `dominio/` y `aplicacion/` no importan npm ni `node:*`. Otros módulos usan solo `fachada.ts` (decoradores, guards y `FachadaSeguridad`). Sin cambios en `.dependency-cruiser.cjs`. | ✅ |
+| **I. Monolito modular con Clean Architecture** | Todo en `apps/api/src/modulos/seguridad/{dominio,aplicacion,infraestructura,presentacion}`. Criptografía, tiempo, Redis y JWT detrás de puertos del dominio (research §R-01), así `dominio/` y `aplicacion/` no importan npm ni `node:*`. Otros módulos usan solo `fachada.ts` (decoradores y guards). Sin cambios en `.dependency-cruiser.cjs`. | ✅ |
 | **II. Contrato primero** | `openapi.yaml` se cambia primero ([contracts/openapi-cambios.md](./contracts/openapi-cambios.md)); los tipos del portal se regeneran; las pruebas de integración validan cada respuesta con Ajv; `redocly lint` en CI. | ✅ |
 | **III. Modelo de datos por módulo** | Solo se toca el esquema `seguridad`, con la migración versionada `0003` y `docs/05-modelo-de-datos/` actualizado en el mismo PR. Correo y celular cifrados con AES-256-GCM y buscados por HMAC-SHA256; claves con argon2id (MD3). `asignado_por`/`retirado_por` sin FK hacia otros esquemas. Equivalencia `docs` ↔ migraciones verificada por prueba (research §R-15). | ✅ |
 | **IV. TypeScript estricto y lenguaje del dominio** | `strict` y sin `any`. Nombres en español: `Usuario`, `AsignacionRol`, `CodigoOtp`, `Sesion`, `PoliticaClave`, `ReglaUltimoAdministrador`, `IniciarSesion`, `VerificarOtp`, `RenovarSesion`, `CambiarClave`, `ReemplazarRoles`, `AsignarClaveTemporal`, `CrearPrimerAdministrador`, `EnviadorOTP`, `LimitadorIntentos`. Términos técnicos de librerías (`JwtAuthGuard`) se mantienen. | ✅ |
 | **V. Toda tarea incluye su prueba** | Unitarias de cada objeto de valor, regla y caso de uso; integración de cada endpoint; umbral 80 % en `dominio`/`aplicacion` del módulo. | ✅ |
-| **VI. Escenarios de calidad** | **EQ-04** (principal): matriz por rol de los endpoints de usuarios (Jest + Supertest), fuerza bruta con bloqueo exacto en el 6.º intento, sin datos personales en errores; OWASP ZAP y testssl.sh quedan para el entorno de pruebas desplegado (no existe aún). **EQ-01**: sin consulta a PostgreSQL por petición en el caso normal. **EQ-05**: Lighthouse ≥ 90 en las 3 pantallas. **EQ-06**: el adaptador SMS se cambia sin tocar casos de uso. | ✅ |
+| **VI. Escenarios de calidad** | **EQ-04** (principal): matriz por rol de los endpoints de usuarios (Jest + Supertest), fuerza bruta con bloqueo exacto en el 6.º intento, sin datos personales en errores; escaneo base de **OWASP ZAP** contra el stack local con alertas medias o altas corregidas (research §R-18); testssl.sh queda para el entorno desplegado (en local no hay TLS). **EQ-01**: sin consulta a PostgreSQL por petición en el caso normal. **EQ-05**: Lighthouse ≥ 90 en las 3 pantallas. **EQ-06**: el adaptador SMS se cambia sin tocar casos de uso. | ✅ |
 | **VII. Protección de datos personales** | Búsqueda por `POST` (no en la URL); errores sin datos personales; logs solo con `usuarioId`/`sesionId` (research §R-17); OTP y límite de 5 intentos en 15 minutos; prueba automática de SC-007 sobre respuestas y logs. | ✅ |
 | **VIII. Flujo Git disciplinado** | Rama `002-seguridad-usuarios`, commits convencionales, PR con los 5 checks en verde. | ✅ |
 | **Puertas de CI (5)** | Las mismas de la 001; el job `pruebas` incorpora la equivalencia de esquema y la concurrencia; `cobertura` incluye el módulo. El workflow necesita las variables nuevas con valores de ejemplo (`JWT_SECRETO`, `CLAVE_CIFRADO_DATOS`, `CLAVE_HMAC_DATOS`). | ✅ |
@@ -110,7 +110,7 @@ entrada resueltas a favor de la constitución (tabla del resumen); ninguna excep
 ```text
 specs/002-seguridad-usuarios/
 ├── plan.md              # Este archivo
-├── research.md          # Fase 0: decisiones técnicas (R-01 a R-17)
+├── research.md          # Fase 0: decisiones técnicas (R-01 a R-18)
 ├── data-model.md        # Fase 1: migración 0003, entidades y reglas
 ├── quickstart.md        # Fase 1: guía de validación de punta a punta
 ├── contracts/           # Fase 1: contratos de interfaz
@@ -165,7 +165,7 @@ apps/api/
 │       │                            # decoradores Roles/RequiereRoles/UsuarioActual, DTO,
 │       │                            # cli/crear-administrador.ts
 │       ├── seguridad.module.ts      # @Global, cableado con useFactory
-│       └── fachada.ts               # RequiereRoles, Roles, guards, UsuarioActual, Rol, FachadaSeguridad
+│       └── fachada.ts               # RequiereRoles, Roles, guards, UsuarioActual, UsuarioAutenticado, Rol
 └── test/
     ├── unit/modulos/seguridad/      # dominio, aplicación, guards
     ├── unit/migraciones.spec.ts     # 0001 congelada (SHA-256) y 0002 == datos-semilla.sql

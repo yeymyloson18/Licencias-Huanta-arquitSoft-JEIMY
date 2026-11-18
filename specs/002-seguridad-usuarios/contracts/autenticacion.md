@@ -16,7 +16,7 @@ Portal                                   API
   │ … operaciones con Authorization: Bearer <accessToken> (15 min)
   │ POST /auth/renovar   (cookie)         │ máximo 8 h, ≤ 30 min sin renovar → rota
   │◀─ 200 SesionPersonal + Set-Cookie nueva
-  │ POST /auth/cerrar-sesion (cookie)     │ revoca la sesión
+  │ POST /auth/cerrar-sesion (cookie)     │ revoca la sesión y marca seg:sesion-revocada:<sid>
   │◀─ 204 + Set-Cookie (borra)
 ```
 
@@ -54,6 +54,13 @@ aunque sea correcto).
 | Hash = `refresh_hash` vigente | 200 + rotación + cookie nueva; `accessToken` con roles, `vs` y `dcc` actuales |
 | Hash = `refresh_anterior_hash` y `rotada_en` hace ≤ 10 s | 401 (carrera entre pestañas; no revoca) |
 | Hash = `refresh_anterior_hash` y `rotada_en` hace > 10 s | 401 + **revoca todas las sesiones del usuario** + evento `reutilizacion-refresh` |
+
+## `cerrar-sesion`
+
+- Siempre 204 y borra la cookie, aunque no haya cookie o la sesión ya esté revocada (idempotente).
+- Si la sesión existía: `revocada_en = now` y, después del `COMMIT`, `SET seg:sesion-revocada:<sid> 1 EX 900`.
+  Desde ese momento el token de acceso de esa sesión responde **401** en cualquier operación
+  protegida (FR-004, FR-013), aunque no haya vencido.
 
 ## `cambiar-clave`
 

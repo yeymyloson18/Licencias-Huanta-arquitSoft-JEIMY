@@ -50,8 +50,8 @@ al cerrar sesión, ya no puede seguir usando esa sesión.
 **Escenarios de aceptación**:
 
 1. **Dado** un usuario activo, **cuando** escribe su correo y su clave correctos, **entonces** el
-   sistema le envía un código de 6 dígitos a su celular y le pide escribirlo, mostrando solo los
-   últimos dígitos del celular de destino.
+   sistema le envía un código de 6 dígitos a su celular y le pide escribirlo, mostrando el celular
+   de destino enmascarado (por ejemplo, `9*****321`).
 2. **Dado** que el usuario recibió el código hace menos de 5 minutos, **cuando** lo escribe
    correctamente, **entonces** entra al sistema con una sesión de corta duración y el portal muestra
    su nombre y las opciones de sus roles.
@@ -180,8 +180,8 @@ quitarle el rol administrador al único administrador activo y comprobar que el 
 **Escenarios de aceptación**:
 
 1. **Dado** un administrador con sesión, **cuando** abre la gestión de usuarios, **entonces** ve la
-   lista del personal con nombre, correo, roles y estado (activo o inactivo), y puede buscar por
-   nombre o correo.
+   lista del personal con nombre, correo, roles y estado (activo o inactivo), y puede buscar por un
+   fragmento del nombre o por el correo completo.
 2. **Dado** un administrador, **cuando** crea un usuario con correo, nombre, celular, clave temporal y
    uno o más roles, **entonces** el usuario queda activo, puede iniciar sesión en dos pasos (y debe
    cambiar la clave temporal al entrar) y queda registrado quién le asignó cada rol y cuándo.
@@ -249,10 +249,13 @@ quitarle el rol administrador al único administrador activo y comprobar que el 
 - **FR-003**: Con el código correcto, el sistema DEBE abrir una sesión de corta duración (15 minutos)
   que se puede renovar sin repetir los dos pasos hasta un máximo de 8 horas desde el inicio de sesión
   (una jornada laboral); pasado ese máximo, el usuario debe volver a iniciar sesión.
-- **FR-003a**: La sesión DEBE cerrarse sola tras 30 minutos sin actividad del usuario: pasado ese
-  tiempo ya no se puede renovar, aunque no se haya llegado a las 8 horas, y el portal lleva al
-  usuario a la pantalla de inicio de sesión.
-- **FR-004**: El usuario DEBE poder cerrar sesión; al cerrarla, esa sesión ya no se puede renovar.
+- **FR-003a**: La sesión DEBE cerrarse sola tras 30 minutos sin actividad del usuario, medida así:
+  el portal cierra la sesión cuando pasan 30 minutos sin que el usuario use el teclado, toque la
+  pantalla o haga clic, y lo lleva a la pantalla de inicio de sesión; el sistema rechaza renovar la
+  sesión si pasaron más de 30 minutos desde su última renovación, aunque no se haya llegado a las
+  8 horas.
+- **FR-004**: El usuario DEBE poder cerrar sesión; al cerrarla, esa sesión deja de servir al instante:
+  ya no se puede renovar y su siguiente operación protegida responde "no autenticado".
 - **FR-005**: Los mensajes de error del inicio de sesión DEBEN ser iguales para correo inexistente,
   clave incorrecta, código incorrecto y usuario desactivado, sin indicar qué dato falló.
 
@@ -291,7 +294,7 @@ quitarle el rol administrador al único administrador activo y comprobar que el 
 **Gestión de usuarios (administrador)**
 
 - **FR-016**: El administrador DEBE poder listar los usuarios del personal (nombre, correo, roles y
-  estado) y buscarlos por nombre o correo (RF22).
+  estado) y buscarlos por un fragmento del nombre o por el correo completo (RF22).
 - **FR-017**: El administrador DEBE poder crear usuarios con correo, nombre completo, celular, clave
   temporal y uno o más roles. El correo DEBE ser único y no se puede cambiar después.
 - **FR-018**: El administrador DEBE poder editar el nombre, el celular y el estado activo de un
@@ -338,8 +341,9 @@ quitarle el rol administrador al único administrador activo y comprobar que el 
 
 - **FR-027**: Las claves y los códigos NUNCA DEBEN guardarse ni registrarse en claro; solo se guarda
   una huella irreversible que permite comprobarlos.
-- **FR-028**: El celular DEBE guardarse cifrado y mostrarse enmascarado fuera de la pantalla de edición
-  del administrador (por ejemplo, `*****4321`).
+- **FR-028**: El correo y el celular DEBEN guardarse cifrados. El celular DEBE mostrarse siempre
+  enmascarado (por ejemplo, `9*****321`), también en la pantalla de edición del administrador; para
+  cambiarlo, el administrador escribe el número nuevo.
 - **FR-029**: Ningún dato personal (correo, celular, nombre, clave o código) DEBE aparecer en
   direcciones web, registros ni mensajes de error; los registros identifican al usuario solo con su
   identificador interno.
@@ -354,8 +358,8 @@ quitarle el rol administrador al único administrador activo y comprobar que el 
 
 ### Entidades clave
 
-- **Usuario del personal**: persona de la Municipalidad que usa el sistema. Tiene correo (único, no
-  editable), nombre completo, celular (guardado cifrado), huella de la clave, indicador de si la clave
+- **Usuario del personal**: persona de la Municipalidad que usa el sistema. Tiene correo (guardado
+  cifrado, único, no editable), nombre completo, celular (guardado cifrado), huella de la clave, indicador de si la clave
   es temporal (debe cambiarla), estado activo o inactivo y fechas de creación y actualización.
 - **Rol**: uno de los seis roles fijos (mesa de partes, evaluador, inspector, caja, jefatura,
   administrador), ya cargados en el catálogo de roles.
@@ -410,8 +414,9 @@ quitarle el rol administrador al único administrador activo y comprobar que el 
 - La desactivación y los cambios de rol valen desde la siguiente operación del usuario (no al vencer
   su sesión corta), confirmado en las aclaraciones: el escenario EQ-04 exige rechazar el 100 % de los
   intentos no autorizados.
-- Cerrar sesión impide renovar; el portal descarta la sesión al instante y la sesión corta restante
-  deja de servir como máximo al vencer sus 15 minutos.
+- Cerrar sesión invalida al instante la renovación y el acceso de esa sesión (FR-004); lo mismo
+  ocurre con todas las sesiones del usuario cuando se lo desactiva, se le asigna una clave temporal
+  o se detecta que reutilizaron su renovación.
 - Se permiten sesiones simultáneas del mismo usuario en varios dispositivos.
 - El celular del personal es un número móvil del Perú (9 dígitos empezando por 9).
 - Los seis roles ya existen en el catálogo de roles cargado por la funcionalidad 001; esta

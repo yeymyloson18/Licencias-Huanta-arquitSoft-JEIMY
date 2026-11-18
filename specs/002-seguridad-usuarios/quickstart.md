@@ -65,7 +65,8 @@ curl -s -o /dev/null -w '%{http_code}\n' -b cookies.txt -X POST $API/auth/renova
 
 **Esperado**: reutilizar la cookie rotada responde 401 y cierra **todas** las sesiones del usuario,
 así que la cookie vigente también deja de servir. Iniciar sesión otra vez y luego
-`POST /auth/cerrar-sesion` → 204; un `renovar` posterior → 401.
+`POST /auth/cerrar-sesion` → 204; un `renovar` posterior → 401, y `GET /usuarios` con el
+`accessToken` de esa sesión (aunque no haya vencido) → **401** (FR-004, FR-013).
 
 ## 4. Fuerza bruta y límite de códigos (historia 4, EQ-04, SC-003)
 
@@ -141,15 +142,28 @@ $C run --rm -e NODE_ENV=production -e ENVIO_OTP=simulado api node dist/main.js; 
 
 Abrir http://localhost:8080/ingresar con las herramientas de desarrollo a 360 px:
 
-- Iniciar sesión en dos pasos en menos de 1 minuto; con clave temporal, el portal lleva a
-  `/cambiar-clave`.
-- Como administrador, crear un usuario con dos roles en `/admin/usuarios` en menos de 2 minutos.
+- Iniciar sesión en dos pasos en menos de 1 minuto, cronometrado desde que se abre `/ingresar`
+  (SC-001); con clave temporal, el portal lleva a `/cambiar-clave`.
+- Con un usuario recién creado, cronometrar desde su primer ingreso hasta tener la clave cambiada y
+  ver el menú: menos de 2 minutos (SC-008).
+- Como administrador, crear un usuario con dos roles en `/admin/usuarios` en menos de 2 minutos
+  (SC-009).
+- Anotar los tres tiempos en la sección de verificación del `README.md`.
 - Recargar la página: la sesión se mantiene (renovación con la cookie); en DevTools > Application,
   ni `localStorage` ni `sessionStorage` contienen tokens.
 - Lighthouse móvil en `/ingresar`, `/cambiar-clave` y `/admin/usuarios`: accesibilidad ≥ 90 y buenas
   prácticas ≥ 90.
 
-## 11. Calidad (CI)
+## 11. Escaneo OWASP ZAP (EQ-04, research §R-18)
+
+```bash
+docker run --rm -t -v "$PWD:/zap/wrk" ghcr.io/zaproxy/zaproxy:stable   zap-baseline.py -t http://host.docker.internal:8080 -r zap-informe.html
+```
+
+**Esperado**: 0 alertas de riesgo medio o alto sin corregir ni justificar (las justificadas quedan
+anotadas en el README); `zap-informe.html` no se versiona.
+
+## 12. Calidad (CI)
 
 ```bash
 npm run build && npm run lint && npm run formato && npm test && npm run cobertura \

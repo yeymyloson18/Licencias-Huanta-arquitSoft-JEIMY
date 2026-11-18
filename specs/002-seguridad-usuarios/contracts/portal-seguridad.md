@@ -49,7 +49,8 @@ mensaje "Su clave se cambió".
 - "Nuevo usuario": correo, nombre completo, celular, clave temporal y casillas de los 6 roles (al
   menos uno). Recordatorio: "Entregue la clave temporal en persona; el usuario deberá cambiarla al
   ingresar".
-- "Editar": nombre, celular nuevo (opcional; el actual se muestra enmascarado), activo, roles.
+- "Editar": nombre, celular nuevo (opcional; el actual se muestra siempre enmascarado, `9*****321`,
+  FR-028), activo, roles.
   "Asignar clave temporal" con confirmación.
 - Errores: 409 `correo-en-uso` junto al campo correo; 409 `ultimo-administrador` como alerta
   "Debe existir al menos un administrador activo"; 422 junto a cada campo.

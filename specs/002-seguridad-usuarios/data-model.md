@@ -43,7 +43,7 @@ Nombres en español (principio IV). Los objetos de valor se validan al construir
 | `id` | `UsuarioId` (uuid) | Asignado al crear |
 | `correo` | `Correo` | Formato de correo; se normaliza a minúsculas y sin espacios; único (por `correo_hmac`); **no editable** (FR-017) |
 | `nombreCompleto` | `NombreCompleto` | 3 a 150 caracteres, sin espacios al inicio o al final |
-| `celular` | `Celular` | `^9[0-9]{8}$` (FR-028, caso límite); se expone enmascarado `9*****321` |
+| `celular` | `Celular` | `^9[0-9]{8}$` (FR-028, caso límite); se expone siempre enmascarado `9*****321` |
 | `claveHash` | `HuellaClave` | Solo la huella argon2id; nunca la clave |
 | `debeCambiarClave` | boolean | `true` al crear (por administrador o por el paso de instalación) y al asignar clave temporal; `false` tras cambiarla |
 | `activo` | boolean | `false` impide iniciar sesión (FR-010) |
@@ -121,6 +121,7 @@ Estados: **activa** → **revocada** | **vencida** (por máximo de 8 h o por 30 
 | `lim:fallos:ip:<ip>` | contador | 15 min | FR-007 |
 | `lim:envios:usuario:<usuarioId>` | contador | 15 min | FR-002a |
 | `seg:version:<usuarioId>` | `version_seguridad` | 60 s | FR-011, FR-015 (research §R-07) |
+| `seg:sesion-revocada:<sesionId>` | `1` | 900 s | FR-004, FR-013: el token de acceso de una sesión revocada deja de servir al instante (research §R-07) |
 | `dev:otp:<usuarioId>` | último código en claro | 300 s | Solo con `ENVIO_OTP=simulado` (FR-031) |
 
 ## 4. Transiciones relevantes (casos de uso)
@@ -129,11 +130,11 @@ Estados: **activa** → **revocada** | **vencida** (por máximo de 8 h o por 30 
 |---|---|---|---|
 | `IniciarSesion` (paso 1) | usuario por `correo_hmac` | `codigo_otp` nuevo; vence los anteriores | `EnviadorOTP.enviar`; contadores |
 | `VerificarOtp` (paso 2) | `codigo_otp` | `codigo_otp.usado_en` o `intentos+1`; `sesion` nueva | contadores si falla |
-| `RenovarSesion` | `sesion` | rotación o revocación de todas (reutilización) | — |
-| `CerrarSesion` | `sesion` | `revocada_en` | — |
-| `CambiarClave` | usuario | `clave_hash`, `debe_cambiar_clave=false`, `version_seguridad+1`, revoca las otras sesiones | versión en Redis |
+| `RenovarSesion` | `sesion` | rotación o revocación de todas (reutilización) | si revocó: marca cada `sid` revocado |
+| `CerrarSesion` | `sesion` | `revocada_en` | marca `seg:sesion-revocada:<sid>` |
+| `CambiarClave` | usuario | `clave_hash`, `debe_cambiar_clave=false`, `version_seguridad+1`, revoca las otras sesiones | versión en Redis; marca los `sid` revocados |
 | `CrearUsuario` | `correo_hmac` (único) | `usuario` + `usuario_rol` | — |
-| `ActualizarUsuario` | usuario (+ admins bloqueados si desactiva) | nombre, celular, `activo`; si desactiva: `version_seguridad+1` y revoca sesiones | versión en Redis |
+| `ActualizarUsuario` | usuario (+ admins bloqueados si desactiva) | nombre, celular, `activo`; si desactiva: `version_seguridad+1` y revoca sesiones | versión en Redis; marca los `sid` revocados |
 | `ReemplazarRoles` | usuario (+ admins bloqueados si quita ADMINISTRADOR) | retira/crea `usuario_rol`; `version_seguridad+1` | versión en Redis |
-| `AsignarClaveTemporal` | usuario | `clave_hash`, `debe_cambiar_clave=true`, `version_seguridad+1`, revoca sesiones | versión en Redis |
+| `AsignarClaveTemporal` | usuario | `clave_hash`, `debe_cambiar_clave=true`, `version_seguridad+1`, revoca sesiones | versión en Redis; marca los `sid` revocados |
 | `CrearPrimerAdministrador` | admins activos | usuario + rol `ADMINISTRADOR` (si no hay ninguno) | — |
