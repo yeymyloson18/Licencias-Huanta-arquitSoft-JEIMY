@@ -19,6 +19,11 @@ const conRolesVigentes = {
 
 type FilaUsuario = Prisma.usuarioGetPayload<{ include: typeof conRolesVigentes }>;
 
+const ADMINISTRADORES_ACTIVOS = {
+  activo: true,
+  usuario_rol: { some: { rol_codigo: 'ADMINISTRADOR', retirado_en: null } },
+} satisfies Prisma.usuarioWhereInput;
+
 /**
  * Adaptador de `seguridad.usuario` y `seguridad.usuario_rol` (solo el esquema propio, principio III).
  * El correo y el celular se cifran con AES-256-GCM y el correo se busca por su HMAC (MD3). Los
@@ -31,24 +36,45 @@ export class RepositorioUsuariosPostgres implements RepositorioUsuarios {
   ) {}
 
   async crear(usuario: Usuario): Promise<void> {
-    await this.prisma.$transaction([
-      this.prisma.usuario.create({
-        data: {
-          id: usuario.id,
-          ...this.datosPersonales(usuario),
-          correo_cifrado: aBytes(this.protector.cifrar(usuario.correo.valor)),
-          correo_hmac: this.hmacCorreo(usuario.correo),
-        },
-      }),
-      this.prisma.usuario_rol.createMany({
-        data: usuario.asignaciones.map((asignacion) => ({
-          usuario_id: usuario.id,
-          rol_codigo: asignacion.rol,
-          asignado_por: asignacion.asignadoPor,
-          asignado_en: asignacion.asignadoEn,
-        })),
-      }),
-    ]);
+    await this.prisma.$transaction(async (tx) => {
+      await this.insertar(tx, usuario);
+    });
+  }
+
+  async hayAdministradorActivo(): Promise<boolean> {
+    return (await this.prisma.usuario.count({ where: ADMINISTRADORES_ACTIVOS })) > 0;
+  }
+
+  async crearSiNoHayAdministradores(usuario: Usuario): Promise<boolean> {
+    return this.prisma.$transaction(async (tx) => {
+      // Con cero administradores no hay filas que bloquear con FOR UPDATE: un bloqueo de aplicación
+      // (liberado al terminar la transacción) serializa las ejecuciones simultáneas del comando.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('seguridad.primer_administrador'))`;
+      if ((await tx.usuario.count({ where: ADMINISTRADORES_ACTIVOS })) > 0) {
+        return false;
+      }
+      await this.insertar(tx, usuario);
+      return true;
+    });
+  }
+
+  private async insertar(tx: Prisma.TransactionClient, usuario: Usuario): Promise<void> {
+    await tx.usuario.create({
+      data: {
+        id: usuario.id,
+        ...this.datosPersonales(usuario),
+        correo_cifrado: aBytes(this.protector.cifrar(usuario.correo.valor)),
+        correo_hmac: this.hmacCorreo(usuario.correo),
+      },
+    });
+    await tx.usuario_rol.createMany({
+      data: usuario.asignaciones.map((asignacion) => ({
+        usuario_id: usuario.id,
+        rol_codigo: asignacion.rol,
+        asignado_por: asignacion.asignadoPor,
+        asignado_en: asignacion.asignadoEn,
+      })),
+    });
   }
 
   async obtenerPorId(id: string): Promise<Usuario | null> {

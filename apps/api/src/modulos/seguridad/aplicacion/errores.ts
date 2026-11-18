@@ -18,3 +18,11 @@ export class ErrorClaveInvalida extends Error {
     this.name = 'ErrorClaveInvalida';
   }
 }
+
+/** Datos con formato inválido. Lleva solo los nombres de los campos, nunca sus valores (FR-029). */
+export class ErrorDatosInvalidos extends Error {
+  constructor(readonly campos: readonly string[]) {
+    super(`Datos inválidos: ${campos.join(', ')}`);
+    this.name = 'ErrorDatosInvalidos';
+  }
+}

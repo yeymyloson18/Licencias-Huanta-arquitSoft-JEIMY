@@ -5,6 +5,7 @@ import { PrismaServicio } from '../../compartido/infraestructura/prisma.servicio
 import { REDIS_CLIENTE } from '../../compartido/infraestructura/redis.proveedor';
 import { CambiarClave } from './aplicacion/cambiar-clave';
 import { CerrarSesion } from './aplicacion/cerrar-sesion';
+import { CrearPrimerAdministrador } from './aplicacion/crear-primer-administrador';
 import { IniciarSesion } from './aplicacion/iniciar-sesion';
 import { RenovarSesion } from './aplicacion/renovar-sesion';
 import { VerificarOtp } from './aplicacion/verificar-otp';
@@ -236,6 +237,17 @@ import {
           eventos,
           almacen,
         }),
+    },
+
+    {
+      provide: CrearPrimerAdministrador,
+      inject: [REPOSITORIO_USUARIOS, HASHER_CLAVES, GENERADOR_SECRETOS, RELOJ],
+      useFactory: (
+        usuarios: RepositorioUsuarios,
+        hasher: HasherClaves,
+        generador: GeneradorSecretos,
+        reloj: Reloj,
+      ) => new CrearPrimerAdministrador({ usuarios, hasher, generador, reloj }),
     },
 
     JwtAuthGuard,

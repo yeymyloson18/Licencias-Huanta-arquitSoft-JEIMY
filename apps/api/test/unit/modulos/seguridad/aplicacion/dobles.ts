@@ -173,6 +173,13 @@ export class RepositorioUsuariosEnMemoria implements RepositorioUsuarios {
     this.usuarios.set(usuario.id, usuario);
     return Promise.resolve();
   }
+  hayAdministradorActivo(): Promise<boolean> {
+    return Promise.resolve(false);
+  }
+  crearSiNoHayAdministradores(usuario: Usuario): Promise<boolean> {
+    this.usuarios.set(usuario.id, usuario);
+    return Promise.resolve(true);
+  }
   obtenerEstadoSeguridad(usuarioId: string): Promise<EstadoSeguridadUsuario | null> {
     const usuario = this.usuarios.get(usuarioId);
     return Promise.resolve(

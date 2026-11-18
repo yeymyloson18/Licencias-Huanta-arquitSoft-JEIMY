@@ -21,6 +21,13 @@ export interface RepositorioUsuarios {
   obtenerPorCorreo(correo: Correo): Promise<Usuario | null>;
   /** Guarda los cambios del usuario: datos, asignaciones retiradas y nuevas, y la versión. */
   guardar(usuario: Usuario): Promise<void>;
+  /** Si hay al menos un usuario activo con el rol ADMINISTRADOR vigente. */
+  hayAdministradorActivo(): Promise<boolean>;
+  /**
+   * Crea `usuario` solo si no hay ningún administrador activo, dentro de una transacción que
+   * serializa las creaciones simultáneas (FR-024). Devuelve `false` si ya había uno.
+   */
+  crearSiNoHayAdministradores(usuario: Usuario): Promise<boolean>;
   /** Lectura liviana para el control de permisos cuando la caché no basta; `null` si no existe. */
   obtenerEstadoSeguridad(
     usuarioId: string,
