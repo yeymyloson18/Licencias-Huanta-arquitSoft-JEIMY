@@ -72,6 +72,13 @@ jobs:
     env:
       DATABASE_URL: postgresql://licencias:cambiar_en_produccion_solo_desarrollo@localhost:5432/licencias
       REDIS_URL: redis://localhost:6379
+      # Seguridad (002): valores FICTICIOS de .env.example, solo para las pruebas del CI.
+      NODE_ENV: test
+      JWT_SECRETO: desarrollo-jwt-solo-no-usar-en-produccion
+      CLAVE_CIFRADO_DATOS: ZGVzYXJyb2xsby1jaWZyYWRvLW5vLXVzYXItcHJvZCE=
+      CLAVE_HMAC_DATOS: ZGVzYXJyb2xsby1obWFjLXNvbG8tbm8tdXNhci1lbi1wcm9kdWNjaW9u
+      ENVIO_OTP: simulado
+      TRUST_PROXY_SALTOS: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -91,6 +98,14 @@ jobs:
   cobertura:
     name: cobertura
     runs-on: ubuntu-latest
+    env:
+      # Seguridad (002): valores FICTICIOS de .env.example, solo para las pruebas del CI.
+      NODE_ENV: test
+      JWT_SECRETO: desarrollo-jwt-solo-no-usar-en-produccion
+      CLAVE_CIFRADO_DATOS: ZGVzYXJyb2xsby1jaWZyYWRvLW5vLXVzYXItcHJvZCE=
+      CLAVE_HMAC_DATOS: ZGVzYXJyb2xsby1obWFjLXNvbG8tbm8tdXNhci1lbi1wcm9kdWNjaW9u
+      ENVIO_OTP: simulado
+      TRUST_PROXY_SALTOS: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

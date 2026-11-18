@@ -45,12 +45,12 @@ instalación (US3).
 
 **Propósito**: agregar dependencias y variables de entorno sin cambiar comportamiento.
 
-- [ ] T001 Agregar dependencias de la API en `apps/api/package.json`: `argon2`, `@nestjs/jwt`, `cookie-parser` y, en devDependencies, `@types/cookie-parser`; agregar el script `"crear-administrador": "node dist/modulos/seguridad/presentacion/cli/crear-administrador.js"`; ejecutar `npm install` y confirmar que `docker compose -f infra/docker-compose.yml build api` termina bien con `argon2` en `node:24-alpine` (si no hay binario precompilado para musl, agregar `python3 make g++` solo en la etapa de build de `apps/api/Dockerfile`; research.md §R-02)
-- [ ] T002 [P] Agregar `react-router` (7.x) a `apps/web/package.json` y ejecutar `npm install`
-- [ ] T003 [P] Agregar a `.env.example` las variables de research.md §R-16 con valores ficticios y un comentario "solo desarrollo": `NODE_ENV=development`, `JWT_SECRETO` (≥ 32 bytes), `CLAVE_CIFRADO_DATOS` (base64 de exactamente 32 bytes), `CLAVE_HMAC_DATOS` (base64 de ≥ 32 bytes), `ENVIO_OTP=simulado`, `TRUST_PROXY_SALTOS=1`
-- [ ] T004 [P] Agregar las mismas variables al servicio `api` de `infra/docker-compose.yml` con interpolación y el mismo valor por defecto de `.env.example` (`${JWT_SECRETO:-…}`), para que el comando único siga funcionando sin crear archivos
-- [ ] T005 [P] Agregar las variables de T003 con sus valores de ejemplo al bloque `env` de los jobs `pruebas` y `cobertura` en `.github/workflows/ci.yml` (sin cambiar el nombre de ningún job)
-- [ ] T006 Ejecutar `docker run --rm -v "${PWD}:/repo" zricethezav/gitleaks:latest detect --source /repo --no-banner`; si marca los valores de ejemplo de T003–T005, crear `.gitleaks.toml` que extienda la configuración por defecto (`[extend] useDefault = true`) y permita solo esos valores literales con un comentario que diga que son ficticios de desarrollo; repetir hasta 0 hallazgos
+- [X] T001 Agregar dependencias de la API en `apps/api/package.json`: `argon2`, `@nestjs/jwt`, `cookie-parser` y, en devDependencies, `@types/cookie-parser`; agregar el script `"crear-administrador": "node dist/modulos/seguridad/presentacion/cli/crear-administrador.js"`; ejecutar `npm install` y confirmar que `docker compose -f infra/docker-compose.yml build api` termina bien con `argon2` en `node:24-alpine` (si no hay binario precompilado para musl, agregar `python3 make g++` solo en la etapa de build de `apps/api/Dockerfile`; research.md §R-02)
+- [X] T002 [P] Agregar `react-router` (7.x) a `apps/web/package.json` y ejecutar `npm install`
+- [X] T003 [P] Agregar a `.env.example` las variables de research.md §R-16 con valores ficticios y un comentario "solo desarrollo": `NODE_ENV=development`, `JWT_SECRETO` (≥ 32 bytes), `CLAVE_CIFRADO_DATOS` (base64 de exactamente 32 bytes), `CLAVE_HMAC_DATOS` (base64 de ≥ 32 bytes), `ENVIO_OTP=simulado`, `TRUST_PROXY_SALTOS=1`
+- [X] T004 [P] Agregar las mismas variables al servicio `api` de `infra/docker-compose.yml` con interpolación y el mismo valor por defecto de `.env.example` (`${JWT_SECRETO:-…}`), para que el comando único siga funcionando sin crear archivos
+- [X] T005 [P] Agregar las variables de T003 con sus valores de ejemplo al bloque `env` de los jobs `pruebas` y `cobertura` en `.github/workflows/ci.yml` (sin cambiar el nombre de ningún job)
+- [X] T006 Ejecutar `docker run --rm -v "${PWD}:/repo" zricethezav/gitleaks:latest detect --source /repo --no-banner`; si marca los valores de ejemplo de T003–T005, crear `.gitleaks.toml` que extienda la configuración por defecto (`[extend] useDefault = true`) y permita solo esos valores literales con un comentario que diga que son ficticios de desarrollo; repetir hasta 0 hallazgos
 
 ---
 
