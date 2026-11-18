@@ -393,7 +393,7 @@ la ficha responde 404 y el asistente da `RECETA_NO_DISPONIBLE`; al reactivarla v
 
 **Propósito**: escenarios de calidad, documentación y verificación final.
 
-- [ ] T053 [P] Crear `tests/carga/eq01-catalogo.js` (k6, research §R-10):
+- [X] T053 [P] Crear `tests/carga/eq01-catalogo.js` (k6, research §R-10):
   - variables `BASE`, `USUARIOS` y `DURACION`;
   - mezcla de peticiones: 50 % `GET /catalogo/recetas?tipo=LICENCIA`, 30 % `GET /catalogo/recetas/<código al azar de LIC-01 a LIC-09>` y 20 % `GET /asistente/preguntas` + `POST /asistente/proponer` con respuestas al azar;
   - `thresholds`: `http_req_duration: ['p(95)<2000']` y `http_req_failed: ['rate<0.01']`;
@@ -401,22 +401,27 @@ la ficha responde 404 y el asistente da `RECETA_NO_DISPONIBLE`; al reactivarla v
   - un comentario con el comando `docker run … grafana/k6:<versión fijada> run -` del [quickstart](./quickstart.md).
 
   Ejecutarlo contra un stack aislado: primero con 100 usuarios durante 2 minutos (humo) y después **con 1,000 usuarios** (SC-004, EQ-01) durante al menos 2 minutos. Anotar el p95, la tasa de errores y los recursos de la máquina. Si los umbrales no se cumplen por falta de recursos de la máquina local (no del sistema), dejarlo documentado como "pendiente de medir en el entorno desplegado" en `README.md` (T054) y en la descripción del PR (T058); si fallan por el sistema, corregirlo antes de fusionar (constitución, principio VI)
-- [ ] T054 Actualizar `README.md`:
+  _Nota de implementación:_ k6 `grafana/k6:0.54.0` contra un clon aislado. 100 usuarios: 8,127 peticiones, p95 5.3 ms, 0 % de errores. 1,000 usuarios: 81,108 peticiones, p95 6.4 ms, 0.01 % de errores (15, sin rastro en los registros de la API: red de Docker Desktop). Cumple los umbrales; como k6 y el sistema comparten la máquina, SC-004 queda por confirmar en el entorno desplegado (anotado en el README).
+- [X] T054 Actualizar `README.md`:
   - **Sección del asistente de ruta y del catálogo**: qué hace el asistente, la ficha pública, cómo edita el administrador en `/admin/catalogo` y el tiempo máximo de propagación de 5 minutos (Redis 240 s + navegador 60 s), con la nota de que normalmente el cambio se ve en la siguiente consulta.
   - **Fila "Sin bitácora ni versionado del catálogo"** de la tabla "Cambios de alcance": reemplazarla por "Registro de cambios del catálogo sin historial visible ni versionado". El motivo dice: "Cada cambio de una receta queda registrado (quién, cuándo, valores antes y después) en la misma operación; no hay pantalla para consultar ese historial ni versiones del catálogo para volver atrás. Cada esquela guarda el monto con el que se generó."
   - **Fila "Bitácora y versionado del catálogo"** de "Mejoras para la Fase 2": reemplazarla por "Pantalla de historial y versionado del catálogo", con el motivo "El registro de cambios ya existe (funcionalidad 003); falta consultarlo desde el portal y poder volver a una versión anterior."
   - **Fila nueva en "Cambios de alcance"**: "Gana el último que guarda al editar una receta", con el motivo "Pocos administradores; el registro de cambios permite recuperar un valor sobrescrito (aclaración 5 de la 003)".
   - **Resultados**: la tabla Lighthouse de las pantallas de la 003 (T055) y los dos resultados de k6 de T053 (100 y 1,000 usuarios), con el p95, la tasa de errores y la máquina usada; si la corrida de 1,000 no fue concluyente por recursos locales, la nota "SC-004 pendiente de medir en el entorno desplegado".
-- [ ] T055 Auditoría Lighthouse 12 en modo móvil, en un stack aislado y con el procedimiento de la 002 (cookie `refresh_personal` con `--extra-headers` para la pantalla de administración), sobre:
+- [X] T055 Auditoría Lighthouse 12 en modo móvil, en un stack aislado y con el procedimiento de la 002 (cookie `refresh_personal` con `--extra-headers` para la pantalla de administración), sobre:
   - `/asistente`;
   - `/asistente?TIPO_ESTABLECIMIENTO=OTRO&ES_CESIONARIO=NO&NIVEL_RIESGO=MEDIO`, que muestra la propuesta;
   - `/licencias/LIC-03`;
   - `/admin/catalogo/LIC-02`.
 
   La meta es accesibilidad ≥ 90 y buenas prácticas ≥ 90 (SC-008). Corregir lo que falte y anotar los resultados para T054. Comprobar que ninguna página tiene desplazamiento horizontal a 360 px
-- [ ] T056 Recorrer los escenarios 1 a 5 y 7 de [quickstart.md](./quickstart.md) en un clon con su propio nombre de proyecto de Compose y sus propios puertos, con un administrador de prueba ficticio, **sin tocar el stack principal ni su administrador**. Medir con el navegador SC-001 (asistente en 3 minutos o menos) y SC-007 (edición en 3 minutos o menos) y anotarlos en `README.md`. Al terminar, bajar ese stack con `-v` y borrar el clon
-- [ ] T057 Cadena completa de CI en local: `npm run build`, `lint`, `formato`, `test:unit`, `test:integracion` (con `DATABASE_URL` hacia un PostgreSQL temporal en el puerto 5433 y un Redis aislado), `cobertura` (≥ 80 % de líneas y ramas por archivo en `catalogo/dominio` y `catalogo/aplicacion`), `regla-dependencia` y `contrato`. Además, `docker run --rm -v "${PWD}:/repo" zricethezav/gitleaks:latest detect --source /repo --no-banner` debe dar 0 hallazgos
+  _Nota de implementación:_ Accesibilidad 100 en las 4 pantallas; buenas prácticas 96 (las 3 públicas, por el 401 de `/auth/renovar` sin sesión, aceptado en la 002) y 100 (administración). Sin desplazamiento horizontal a 360 px, medido con Chrome sin interfaz (las cabeceras de la 002 impiden medirlo en un `iframe`). No hizo falta corregir nada.
+- [X] T056 Recorrer los escenarios 1 a 5 y 7 de [quickstart.md](./quickstart.md) en un clon con su propio nombre de proyecto de Compose y sus propios puertos, con un administrador de prueba ficticio, **sin tocar el stack principal ni su administrador**. Medir con el navegador SC-001 (asistente en 3 minutos o menos) y SC-007 (edición en 3 minutos o menos) y anotarlos en `README.md`. Al terminar, bajar ese stack con `-v` y borrar el clon
+  _Nota de implementación:_ Escenarios 1 a 4 con un guion de 24 comprobaciones de la API (24 correctas) más el peor caso con Redis detenido; escenario 5 en el navegador (teclado, foco, avance, recarga, "Volver" y "Empezar de nuevo"): SC-001 69 s y SC-007 52 s; escenario 7 es T057. El 403 con un usuario CAJA queda cubierto por `matriz-permisos-catalogo`. Clon bajado con `down -v` y borrado; el stack principal no se tocó.
+- [X] T057 Cadena completa de CI en local: `npm run build`, `lint`, `formato`, `test:unit`, `test:integracion` (con `DATABASE_URL` hacia un PostgreSQL temporal en el puerto 5433 y un Redis aislado), `cobertura` (≥ 80 % de líneas y ramas por archivo en `catalogo/dominio` y `catalogo/aplicacion`), `regla-dependencia` y `contrato`. Además, `docker run --rm -v "${PWD}:/repo" zricethezav/gitleaks:latest detect --source /repo --no-banner` debe dar 0 hallazgos
+  _Nota de implementación:_ Todo en verde: API 594 unitarias y 200 de integración (PostgreSQL temporal en 5433 y Redis en 16379), portal 124, cobertura ≥ 80 % en los 20 archivos de `catalogo/dominio` y `catalogo/aplicacion`. gitleaks: 0 hallazgos en 151 commits.
 - [ ] T058 Abrir el PR de `003-catalogo-asistente` hacia `main` (la descripción incluye el resultado de k6 de T053 y, si aplica, que SC-004 queda pendiente de medir en el entorno desplegado) y confirmar los 5 checks en verde. **Hacer push solo con la autorización explícita de la usuaria**
+  _Nota de implementación:_ Pendiente: el PR #30 ya existe (no se creó otro) y los 5 checks están en verde para la fase 6 (`5c622da`). Falta que la usuaria haga commit y push de la fase 7 (no hubo autorización explícita para el push), confirmar los 5 checks sobre ese commit y actualizar la descripción del PR con el texto preparado (resultados de k6 y la nota de SC-004).
 
 ---
 
