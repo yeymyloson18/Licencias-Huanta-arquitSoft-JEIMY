@@ -141,7 +141,7 @@ export class AuthController {
     @Res({ passthrough: true }) respuesta: RespuestaConCookies,
   ): Promise<SesionPersonalRespuesta> {
     const entrada = validarCuerpo(esquemaCambioClave, cuerpo, MENSAJES);
-    const usuario = peticion.usuarioAutenticado;
+    const usuario = peticion.sesionAutenticada;
     if (usuario === undefined) {
       throw ErrorProblema.noAutenticado();
     }

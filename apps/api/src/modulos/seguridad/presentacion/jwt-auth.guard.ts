@@ -1,37 +1,35 @@
 import { type CanActivate, type ExecutionContext, Inject, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ErrorProblema } from '../../../compartido/presentacion/error-problema';
+import { ErrorAutenticacion } from '../aplicacion/errores';
+import {
+  ResolverUsuarioAutenticado,
+  type SesionResuelta,
+} from '../aplicacion/resolver-usuario-autenticado';
 import type { EmisorTokens } from '../dominio/puertos/emisor-tokens';
-import type { Rol } from '../dominio/rol';
 import { EMISOR_TOKENS } from '../tokens';
 import { METADATO_PERMITIR_CLAVE_TEMPORAL } from './decoradores';
 
-/** Usuario autenticado que el guard deja en la petición. Sin datos personales (principio VII). */
-export interface UsuarioAutenticado {
-  readonly usuarioId: string;
-  readonly sesionId: string;
-  readonly roles: readonly Rol[];
-  readonly versionSeguridad: number;
-  readonly debeCambiarClave: boolean;
-}
+/** Sesión que el guard deja en la petición (interna del módulo; sin datos personales). */
+export type SesionAutenticada = SesionResuelta;
 
 export interface PeticionAutenticada {
   readonly headers: Readonly<Record<string, string | string[] | undefined>>;
-  usuarioAutenticado?: UsuarioAutenticado;
+  sesionAutenticada?: SesionAutenticada;
 }
 
 const PREFIJO = 'Bearer ';
 
 /**
- * Exige un token de acceso válido (401 `no-autenticado`) y, si el usuario tiene clave temporal,
- * solo deja pasar las operaciones marcadas con `@PermitirConClaveTemporal()` (403
- * `debe-cambiar-clave`, FR-022). La versión de seguridad y las sesiones revocadas se comprueban a
- * partir de US2 (research.md §R-07).
+ * Exige un token de acceso válido de una sesión vigente (401 `no-autenticado`) y resuelve los roles
+ * que valen ahora (research.md §R-07). Si el usuario tiene clave temporal, solo deja pasar las
+ * operaciones marcadas con `@PermitirConClaveTemporal()` (403 `debe-cambiar-clave`, FR-022).
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
     @Inject(EMISOR_TOKENS) private readonly emisor: EmisorTokens,
+    private readonly resolver: ResolverUsuarioAutenticado,
     private readonly reflector: Reflector,
   ) {}
 
@@ -43,19 +41,21 @@ export class JwtAuthGuard implements CanActivate {
       throw ErrorProblema.noAutenticado();
     }
 
-    const usuario: UsuarioAutenticado = {
-      usuarioId: reclamos.sub,
-      sesionId: reclamos.sid,
-      roles: reclamos.roles,
-      versionSeguridad: reclamos.vs,
-      debeCambiarClave: reclamos.dcc,
-    };
+    let sesion: SesionAutenticada;
+    try {
+      sesion = await this.resolver.ejecutar(reclamos);
+    } catch (error) {
+      if (error instanceof ErrorAutenticacion) {
+        throw ErrorProblema.noAutenticado();
+      }
+      throw error;
+    }
 
-    if (usuario.debeCambiarClave && !this.permiteClaveTemporal(contexto)) {
+    if (sesion.debeCambiarClave && !this.permiteClaveTemporal(contexto)) {
       throw ErrorProblema.debeCambiarClave();
     }
 
-    peticion.usuarioAutenticado = usuario;
+    peticion.sesionAutenticada = sesion;
     return true;
   }
 

@@ -19,7 +19,8 @@ import type { Reloj } from './dominio/puertos/reloj';
 import type { RepositorioCodigosOtp } from './dominio/puertos/repositorio-codigos-otp';
 import type { RepositorioSesiones } from './dominio/puertos/repositorio-sesiones';
 import type { RepositorioUsuarios } from './dominio/puertos/repositorio-usuarios';
-import { AlmacenVersionSeguridadEnMemoria } from './infraestructura/almacen-version-seguridad-en-memoria';
+import { ResolverUsuarioAutenticado } from './aplicacion/resolver-usuario-autenticado';
+import { AlmacenVersionSeguridadRedis } from './infraestructura/almacen-version-seguridad-redis';
 import { EmisorTokensJwt } from './infraestructura/emisor-tokens-jwt';
 import { EnviadorOtpSimulado } from './infraestructura/enviador-otp-simulado';
 import { GeneradorSecretosCrypto } from './infraestructura/generador-secretos-crypto';
@@ -32,6 +33,7 @@ import { RepositorioSesionesPostgres } from './infraestructura/repositorio-sesio
 import { RepositorioUsuariosPostgres } from './infraestructura/repositorio-usuarios-postgres';
 import { AuthController } from './presentacion/auth.controller';
 import { JwtAuthGuard } from './presentacion/jwt-auth.guard';
+import { RolesGuard } from './presentacion/roles.guard';
 import {
   ALMACEN_VERSION_SEGURIDAD,
   EMISOR_TOKENS,
@@ -103,9 +105,17 @@ import {
       useFactory: (redis: Redis): EnviadorOTP => new EnviadorOtpSimulado(redis),
     },
     {
-      // Provisional (US1): en US2 (T048) se reemplaza por el adaptador de Redis.
+      // Versión de seguridad y sesiones revocadas compartidas por todas las instancias (§R-07).
       provide: ALMACEN_VERSION_SEGURIDAD,
-      useFactory: (): AlmacenVersionSeguridad => new AlmacenVersionSeguridadEnMemoria(),
+      inject: [REDIS_CLIENTE, REGISTRO_EVENTOS_SEGURIDAD],
+      useFactory: (redis: Redis, eventos: RegistroEventosSeguridad): AlmacenVersionSeguridad =>
+        new AlmacenVersionSeguridadRedis(redis, eventos),
+    },
+    {
+      provide: ResolverUsuarioAutenticado,
+      inject: [ALMACEN_VERSION_SEGURIDAD, REPOSITORIO_USUARIOS],
+      useFactory: (almacen: AlmacenVersionSeguridad, usuarios: RepositorioUsuarios) =>
+        new ResolverUsuarioAutenticado({ almacen, usuarios }),
     },
 
     // ---------------------------------------------------------------- casos de uso
@@ -229,7 +239,9 @@ import {
     },
 
     JwtAuthGuard,
+    RolesGuard,
   ],
-  exports: [EMISOR_TOKENS, JwtAuthGuard],
+  // Lo que necesitan los guards de la fachada cuando otro módulo los usa.
+  exports: [EMISOR_TOKENS, ResolverUsuarioAutenticado, JwtAuthGuard, RolesGuard],
 })
 export class SeguridadModule {}

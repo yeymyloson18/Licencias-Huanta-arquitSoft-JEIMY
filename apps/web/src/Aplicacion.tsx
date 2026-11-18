@@ -1,4 +1,5 @@
 import { Outlet, Route, Routes, useLocation } from 'react-router';
+import { Menu } from './componentes/Menu';
 import { RutaProtegida } from './componentes/RutaProtegida';
 import { CambiarClave } from './paginas/CambiarClave';
 import { Ingresar } from './paginas/Ingresar';
@@ -9,7 +10,7 @@ interface EstadoNavegacion {
   readonly aviso?: string;
 }
 
-/** Diseño común: muestra el aviso pendiente (cierre por inactividad, clave cambiada…). */
+/** Diseño común: menú del personal y aviso pendiente (cierre por inactividad, clave cambiada…). */
 function Diseno() {
   const { aviso } = useSesion();
   const ubicacion = useLocation();
@@ -18,6 +19,7 @@ function Diseno() {
 
   return (
     <>
+      <Menu />
       {mensaje && (
         <p className="aviso aviso--info" role="status">
           {mensaje}

@@ -1,6 +1,8 @@
 import type { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ErrorProblema } from '../../../../../src/compartido/presentacion/error-problema';
+import { ErrorAutenticacion } from '../../../../../src/modulos/seguridad/aplicacion/errores';
+import type { ResolverUsuarioAutenticado } from '../../../../../src/modulos/seguridad/aplicacion/resolver-usuario-autenticado';
 import type {
   EmisorTokens,
   ReclamosAcceso,
@@ -60,9 +62,23 @@ const esperarProblema = async (promesa: Promise<boolean>, tipo: string): Promise
   });
 };
 
-describe('JwtAuthGuard (básico)', () => {
+/** Resolvedor falso: devuelve lo del token, salvo la sesión "revocada". */
+const resolverFalso = {
+  ejecutar: (reclamos: ReclamosAcceso) =>
+    reclamos.sid === 'revocada'
+      ? Promise.reject(new ErrorAutenticacion())
+      : Promise.resolve({
+          usuarioId: reclamos.sub,
+          sesionId: reclamos.sid,
+          roles: reclamos.roles,
+          versionSeguridad: reclamos.vs,
+          debeCambiarClave: reclamos.dcc,
+        }),
+} as unknown as ResolverUsuarioAutenticado;
+
+describe('JwtAuthGuard', () => {
   const guard = (reclamos: ReclamosAcceso | null = reclamosValidos) =>
-    new JwtAuthGuard(emisorFalso(reclamos), new Reflector());
+    new JwtAuthGuard(emisorFalso(reclamos), resolverFalso, new Reflector());
 
   it.each([
     ['sin Authorization', undefined],
@@ -77,7 +93,7 @@ describe('JwtAuthGuard (básico)', () => {
     const { contexto: ctx, peticion } = contexto('Bearer valido');
 
     await expect(guard().canActivate(ctx)).resolves.toBe(true);
-    expect(peticion.usuarioAutenticado).toEqual({
+    expect(peticion.sesionAutenticada).toEqual({
       usuarioId: 'usuario-1',
       sesionId: 'sesion-1',
       roles: ['CAJA'],
@@ -97,5 +113,14 @@ describe('JwtAuthGuard (básico)', () => {
     const { contexto: ctx } = contexto('Bearer valido', 'cambiarClave');
 
     await expect(guard({ ...reclamosValidos, dcc: true }).canActivate(ctx)).resolves.toBe(true);
+  });
+
+  it('una sesión revocada (o un usuario inactivo) responde 401 no-autenticado', async () => {
+    await esperarProblema(
+      guard({ ...reclamosValidos, sid: 'revocada' }).canActivate(
+        contexto('Bearer valido').contexto,
+      ),
+      'no-autenticado',
+    );
   });
 });

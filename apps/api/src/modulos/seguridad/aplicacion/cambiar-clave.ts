@@ -63,6 +63,8 @@ export class CambiarClave {
     const ahora = this.d.reloj.ahora();
     usuario.cambiarClave(await this.d.hasher.huella(entrada.claveNueva));
     await this.d.usuarios.guardar(usuario);
+    // Después de guardar: los tokens con la versión anterior se vuelven a evaluar (§R-07).
+    await this.d.almacen.publicarVersion(usuario.id, usuario.versionSeguridad);
 
     const revocadas = await this.d.sesiones.revocarTodasMenos(usuario.id, sesion.id, ahora);
     await this.d.almacen.marcarSesionesRevocadas(revocadas);

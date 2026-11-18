@@ -82,6 +82,14 @@ describe('CambiarClave', () => {
     });
   });
 
+  it('publica la versión nueva de seguridad después de guardar (T050)', async () => {
+    const { usuario, almacen, casoDeUso } = await preparar();
+
+    await casoDeUso.ejecutar(entrada('ClaveTemporal2026', 'ClaveDefinitiva2026'));
+
+    expect(almacen.versiones.get('usuario-1')).toBe(usuario.versionSeguridad);
+  });
+
   it('con la clave actual incorrecta no autentica y no cambia nada', async () => {
     const { usuarios, casoDeUso } = await preparar();
 

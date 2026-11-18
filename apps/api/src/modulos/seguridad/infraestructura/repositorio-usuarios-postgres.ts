@@ -5,10 +5,13 @@ import { Celular } from '../dominio/celular';
 import { Correo } from '../dominio/correo';
 import { NombreCompleto } from '../dominio/nombre-completo';
 import type { ProtectorDatos } from '../dominio/puertos/protector-datos';
-import type { RepositorioUsuarios } from '../dominio/puertos/repositorio-usuarios';
+import type {
+  EstadoSeguridadUsuario,
+  RepositorioUsuarios,
+} from '../dominio/puertos/repositorio-usuarios';
 import { esRol } from '../dominio/rol';
 import { Usuario } from '../dominio/usuario';
-import { aBytes } from './uuid';
+import { aBytes, esUuid } from './uuid';
 
 const conRolesVigentes = {
   usuario_rol: { where: { retirado_en: null } },
@@ -92,6 +95,38 @@ export class RepositorioUsuariosPostgres implements RepositorioUsuarios {
           })),
       }),
     ]);
+  }
+
+  async obtenerEstadoSeguridad(
+    usuarioId: string,
+    sesionId: string,
+  ): Promise<EstadoSeguridadUsuario | null> {
+    if (!esUuid(usuarioId)) {
+      return null;
+    }
+    const fila = await this.prisma.usuario.findUnique({
+      where: { id: usuarioId },
+      select: {
+        activo: true,
+        version_seguridad: true,
+        debe_cambiar_clave: true,
+        usuario_rol: { where: { retirado_en: null }, select: { rol_codigo: true } },
+        sesion: esUuid(sesionId)
+          ? { where: { id: sesionId }, select: { revocada_en: true } }
+          : { where: { id: { in: [] } }, select: { revocada_en: true } },
+      },
+    });
+    if (fila === null) {
+      return null;
+    }
+    const [sesion] = fila.sesion;
+    return {
+      activo: fila.activo,
+      versionSeguridad: fila.version_seguridad,
+      roles: fila.usuario_rol.map((asignacion) => asignacion.rol_codigo).filter(esRol),
+      debeCambiarClave: fila.debe_cambiar_clave,
+      sesionRevocada: sesion === undefined || sesion.revocada_en !== null,
+    };
   }
 
   private datosPersonales(usuario: Usuario) {

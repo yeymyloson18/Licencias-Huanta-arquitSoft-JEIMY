@@ -24,7 +24,10 @@ import type {
 import type { Reloj } from '../../../../../src/modulos/seguridad/dominio/puertos/reloj';
 import type { RepositorioCodigosOtp } from '../../../../../src/modulos/seguridad/dominio/puertos/repositorio-codigos-otp';
 import type { RepositorioSesiones } from '../../../../../src/modulos/seguridad/dominio/puertos/repositorio-sesiones';
-import type { RepositorioUsuarios } from '../../../../../src/modulos/seguridad/dominio/puertos/repositorio-usuarios';
+import type {
+  EstadoSeguridadUsuario,
+  RepositorioUsuarios,
+} from '../../../../../src/modulos/seguridad/dominio/puertos/repositorio-usuarios';
 import type { Rol } from '../../../../../src/modulos/seguridad/dominio/rol';
 import type { Sesion } from '../../../../../src/modulos/seguridad/dominio/sesion';
 import { Usuario } from '../../../../../src/modulos/seguridad/dominio/usuario';
@@ -169,6 +172,20 @@ export class RepositorioUsuariosEnMemoria implements RepositorioUsuarios {
     this.guardados += 1;
     this.usuarios.set(usuario.id, usuario);
     return Promise.resolve();
+  }
+  obtenerEstadoSeguridad(usuarioId: string): Promise<EstadoSeguridadUsuario | null> {
+    const usuario = this.usuarios.get(usuarioId);
+    return Promise.resolve(
+      usuario === undefined
+        ? null
+        : {
+            activo: usuario.activo,
+            versionSeguridad: usuario.versionSeguridad,
+            roles: usuario.rolesVigentes,
+            debeCambiarClave: usuario.debeCambiarClave,
+            sesionRevocada: false,
+          },
+    );
   }
 }
 
