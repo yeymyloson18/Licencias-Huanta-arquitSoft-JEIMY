@@ -265,6 +265,13 @@ Todo cambio entra a `main` desde una rama propia mediante un pull request con lo
 | 19  | Modelo entidad-relación y diccionario de datos                | [`docs/05-modelo-de-datos/modelo-entidad-relacion.md`](docs/05-modelo-de-datos/modelo-entidad-relacion.md)                                     |
 | 20  | Esquema PostgreSQL y datos semilla del TUPA                   | [`docs/05-modelo-de-datos/esquema.sql`](docs/05-modelo-de-datos/esquema.sql), [`datos-semilla.sql`](docs/05-modelo-de-datos/datos-semilla.sql) |
 | 21  | Contrato de la API (OpenAPI 3.1) y matriz de permisos por rol | [`docs/06-contrato-api/`](docs/06-contrato-api/)                                                                                               |
+| 22  | Diagrama de casos de uso (25 casos, trazados a HU y RF)       | [`docs/03-diseno-de-software/diagrama-casos-de-uso.md`](docs/03-diseno-de-software/diagrama-casos-de-uso.md)                                   |
+
+El **backlog** está en [GitHub Issues](https://github.com/yeymyloson18/Licencias-Huanta-arquitSoft-JEIMY/issues): un
+issue por historia de usuario y por tarea técnica, con etiquetas de módulo y prioridad, agrupados en un
+[hito por funcionalidad](https://github.com/yeymyloson18/Licencias-Huanta-arquitSoft-JEIMY/milestones). Las
+decisiones ADR-008 (réplica con Patroni), ADR-009 (portal en React + Vite) y ADR-010 (Cloudflare para DNS y CDN)
+están en el documento 8.
 
 ## Cambios de alcance (simplificación)
 

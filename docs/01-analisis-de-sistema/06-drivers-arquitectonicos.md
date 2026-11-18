@@ -18,10 +18,10 @@ Un driver es un requisito, atributo de calidad o restricción que **cambia la fo
 | Driver | Problema que plantea | Decisión que responde | ADR |
 |---|---|---|---|
 | DA01 - Catálogo de recetas | 9 licencias con reglas distintas | Motor único + catálogo de recetas | ADR-002 |
-| DA02 - Escalabilidad y rendimiento | De 1,000 a 10,000 usuarios en campañas | Varias instancias, caché Redis y cola de tareas | ADR-005 |
+| DA02 - Escalabilidad y rendimiento | De 1,000 a 10,000 usuarios en campañas | Varias instancias, caché Redis y cola de tareas; portal estático en CDN | ADR-005, ADR-009, ADR-010 |
 | DA03 - Seguridad | Datos personales y Ley 29733 | OTP, identidad confirmada, límite de intentos, roles, TLS 1.3, AES-256 y auditoría | ADR-007 |
 | DA04 - Pago en caja | No hay pagos digitales | Esquela de pago y registro en caja | ADR-004 |
 | DA05 - Plazos | Riesgo de silencio positivo | Reloj de plazos programado | ADR-006 |
-| DA06 - Disponibilidad | Un servidor puede fallar | Dos instancias y réplica de base de datos con conmutación automática | ADR-005 |
+| DA06 - Disponibilidad | Un servidor puede fallar | Dos instancias y réplica de base de datos con conmutación automática | ADR-005, ADR-008, ADR-010 |
 | DA07 - Simplicidad | Equipo de TI municipal pequeño | Monolito modular | ADR-001 |
 | DA08 - Independencia del negocio | La tecnología puede cambiar; habrá Fase 2 | Clean Architecture | ADR-003 |
