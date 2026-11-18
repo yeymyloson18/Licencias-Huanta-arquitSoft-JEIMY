@@ -52,12 +52,19 @@ describe('crearRecetaCompleta', () => {
     expect(receta.vigenciaMeses).toBe(12);
   });
 
-  it('lee un trámite conectado sin ruta, sin ITSE y (en la semilla actual) sin requisitos', () => {
+  it('lee un trámite conectado sin ruta ni ITSE, con sus requisitos (migración 0005)', () => {
     const receta = crearRecetaCompleta(datosDe('TRF-01'));
 
     expect(receta.ruta).toBeNull();
     expect(receta.ordenItse).toBeNull();
-    expect(receta.requisitos).toHaveLength(0);
+    expect(receta.requisitos.map((requisito) => requisito.descripcion)).toEqual([
+      'Declaración jurada',
+      'Copia del contrato de transferencia',
+    ]);
+  });
+
+  it('acepta una receta sin requisitos al leerla (la regla de al menos uno es de la edición)', () => {
+    expect(crearRecetaCompleta({ ...datosDe('TRF-01'), requisitos: [] }).requisitos).toEqual([]);
   });
 
   it.each([

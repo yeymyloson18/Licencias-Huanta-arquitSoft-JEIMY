@@ -59,7 +59,7 @@ export interface DatosRecetaCompleta {
   readonly actualizadaEn: string;
 }
 
-const pertenece = <T extends string>(lista: readonly T[], valor: unknown): valor is T =>
+export const pertenece = <T extends string>(lista: readonly T[], valor: unknown): valor is T =>
   lista.includes(valor as T);
 
 const validarEnumeracion = <T extends string>(

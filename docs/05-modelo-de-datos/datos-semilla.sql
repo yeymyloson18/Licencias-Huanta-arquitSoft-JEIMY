@@ -3,8 +3,9 @@
 -- Fuente: docs/01-analisis-de-sistema/09-validacion-del-tupa.md (páginas impresas del TUPA)
 -- Se ejecuta después de esquema.sql.
 -- Describe los datos semilla ACTUALES: el estado después de todas las migraciones (0002 = versión
--- inicial; 0004 = opción "No lo sé" del asistente). La prueba esquema-equivalente.e2e-spec.ts
--- compara estos datos con la base migrada (research.md §R-08 de la 003).
+-- inicial; 0004 = opción "No lo sé" del asistente; 0005 = requisitos de los trámites conectados).
+-- La prueba esquema-equivalente.e2e-spec.ts compara estos datos con la base migrada (research.md
+-- §R-08 de la 003).
 -- =====================================================================================
 
 INSERT INTO seguridad.rol (codigo, nombre) VALUES
@@ -71,6 +72,14 @@ WHERE r.codigo IN ('LIC-03', 'LIC-04', 'LIC-05', 'LIC-07', 'LIC-08');
 INSERT INTO catalogo.requisito (codigo_receta, orden, descripcion, condicion) VALUES
     ('LIC-09', 1, 'Solicitud de licencia provisional con declaración jurada', 'SIEMPRE'),
     ('LIC-09', 2, 'Declaración jurada de condiciones de seguridad de la bodega', 'SIEMPRE');
+
+-- Requisitos de los trámites conectados (RF15; doc. 09, TUPA págs. 384, 390 y 499)
+INSERT INTO catalogo.requisito (codigo_receta, orden, descripcion, condicion) VALUES
+    ('TRF-01', 1, 'Declaración jurada', 'SIEMPRE'),
+    ('TRF-01', 2, 'Copia del contrato de transferencia', 'SIEMPRE'),
+    ('CGI-01', 1, 'Declaración jurada', 'SIEMPRE'),
+    ('DUP-01', 1, 'Solicitud con el número del certificado de licencia', 'SIEMPRE'),
+    ('DUP-01', 2, 'Fecha y número de la constancia de pago', 'SIEMPRE');
 
 -- Asistente de 3 preguntas (RF01). Pendiente de validar con la Municipalidad (duda N.° 2 del doc. 09).
 INSERT INTO catalogo.pregunta_asistente (codigo, orden, texto, opciones) VALUES

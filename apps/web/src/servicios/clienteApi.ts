@@ -7,6 +7,9 @@ export type RecetaResumen = components['schemas']['RecetaResumen'];
 export type Receta = components['schemas']['Receta'];
 export type PreguntaAsistente = components['schemas']['PreguntaAsistente'];
 export type ResultadoAsistente = components['schemas']['ResultadoAsistente'];
+export type RecetaAdminResumen = components['schemas']['RecetaAdminResumen'];
+export type RecetaAdmin = components['schemas']['RecetaAdmin'];
+export type RecetaEditable = components['schemas']['RecetaEditable'];
 export type DesafioOtp = components['schemas']['DesafioOtp'];
 export type { SesionPersonal };
 
@@ -304,3 +307,37 @@ export const asignarClaveTemporal = (usuarioId: string, claveTemporal: string) =
       }),
     true,
   );
+
+// ----------------------------------------------------------------------- catálogo: edición (003)
+
+/** Las 12 recetas, activas y desactivadas (solo ADMINISTRADOR). */
+export const listarRecetasAdmin = () =>
+  ejecutarOperacion<RecetaAdminResumen[]>(() => cliente.GET('/admin/catalogo/recetas'));
+
+/** Una receta para editarla, aunque esté desactivada (solo ADMINISTRADOR). */
+export const obtenerRecetaAdmin = (codigo: string) =>
+  ejecutarOperacion<RecetaAdmin>(() =>
+    cliente.GET('/admin/catalogo/recetas/{codigoReceta}', {
+      params: { path: { codigoReceta: codigo } },
+    }),
+  );
+
+/**
+ * Guarda los cambios de una receta. Además de los resultados de la 002, distingue la sesión vencida
+ * (401, ya intentada la renovación) para que la pantalla conserve lo escrito y lleve a ingresar.
+ */
+export const actualizarReceta = async (
+  codigo: string,
+  cambios: RecetaEditable,
+): Promise<ResultadoOperacion<RecetaAdmin> | { readonly tipo: 'no-autenticado' }> => {
+  let estado = 0;
+  const resultado = await ejecutarOperacion<RecetaAdmin>(async () => {
+    const respuesta = await cliente.PUT('/catalogo/recetas/{codigoReceta}', {
+      params: { path: { codigoReceta: codigo } },
+      body: cambios,
+    });
+    estado = respuesta.response.status;
+    return respuesta;
+  });
+  return estado === 401 ? { tipo: 'no-autenticado' } : resultado;
+};

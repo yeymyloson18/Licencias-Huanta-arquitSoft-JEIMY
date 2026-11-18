@@ -1,6 +1,6 @@
 import type { components } from '@licencias/contracts';
 import type { ReactNode } from 'react';
-import { Navigate } from 'react-router';
+import { Navigate, useLocation } from 'react-router';
 import { useSesion } from '../sesion/ProveedorSesion';
 
 type Rol = components['schemas']['Rol'];
@@ -19,6 +19,7 @@ interface Propiedades {
  */
 export function RutaProtegida({ children, roles, permitirClaveTemporal = false }: Propiedades) {
   const { estado, sesion } = useSesion();
+  const ubicacion = useLocation();
 
   if (estado === 'cargando') {
     return (
@@ -28,7 +29,8 @@ export function RutaProtegida({ children, roles, permitirClaveTemporal = false }
     );
   }
   if (sesion === null) {
-    return <Navigate to="/ingresar" replace />;
+    // Recuerda la pantalla para volver a ella después de ingresar (por ejemplo, tras un 401).
+    return <Navigate to="/ingresar" replace state={{ volverA: ubicacion.pathname }} />;
   }
   if (sesion.debeCambiarClave && !permitirClaveTemporal) {
     return <Navigate to="/cambiar-clave" replace />;

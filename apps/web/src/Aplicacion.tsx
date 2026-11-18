@@ -1,6 +1,8 @@
 import { Outlet, Route, Routes, useLocation } from 'react-router';
 import { Menu } from './componentes/Menu';
 import { RutaProtegida } from './componentes/RutaProtegida';
+import { Catalogo } from './paginas/admin/Catalogo';
+import { EditarReceta } from './paginas/admin/EditarReceta';
 import { Usuarios } from './paginas/admin/Usuarios';
 import { Asistente } from './paginas/Asistente';
 import { CambiarClave } from './paginas/CambiarClave';
@@ -47,6 +49,22 @@ export function RutasAplicacion() {
           element={
             <RutaProtegida roles={['ADMINISTRADOR']}>
               <Usuarios />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/admin/catalogo"
+          element={
+            <RutaProtegida roles={['ADMINISTRADOR']}>
+              <Catalogo />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/admin/catalogo/:codigo"
+          element={
+            <RutaProtegida roles={['ADMINISTRADOR']}>
+              <EditarReceta />
             </RutaProtegida>
           }
         />

@@ -251,14 +251,15 @@ comprobar que no se tocó código.
 
 ### Pruebas de la historia 3 ⚠️
 
-- [ ] T034 [P] [US3] Prueba unitaria `test-cat/dominio/coherencia-ruta.spec.ts`. Recorre la tabla `COHERENCIA_POR_RUTA` de [data-model.md §2](./data-model.md):
+- [X] T034 [P] [US3] Prueba unitaria `test-cat/dominio/coherencia-ruta.spec.ts`. Recorre la tabla `COHERENCIA_POR_RUTA` de [data-model.md §2](./data-model.md):
   - **Ruta A**: `APROBACION_AUTOMATICA` + `POSTERIOR` + plazo del ITSE ≥ 1.
   - **Ruta B**: `EVALUACION_PREVIA_SILENCIO_POSITIVO` + `PREVIA` + plazo del ITSE ≥ 1.
   - **Ruta C**: `APROBACION_AUTOMATICA` + `DENTRO_6_MESES` + plazo del ITSE null.
   - **Trámite conectado**: sin ITSE ni vigencia, calificación `APROBACION_AUTOMATICA` o `SERVICIO_EXCLUSIVO`.
 
   Incluye un caso que lee `docs/05-modelo-de-datos/datos-semilla.sql`, extrae las 12 recetas y comprueba que todas cumplen la tabla.
-- [ ] T035 [P] [US3] Prueba unitaria `test-cat/dominio/aplicar-cambios.spec.ts`:
+  _Nota de implementación:_ Las 12 recetas de la semilla cumplen la tabla. Para que los trámites conectados pudieran editarse sin violar FR-019 ("una receta sin requisitos"), se agregó la migración `0005_requisitos_tramites_conectados` con los requisitos del documento 09 (TUPA págs. 384, 390 y 499) y se actualizó `datos-semilla.sql`; `esquema-equivalente` la verifica.
+- [X] T035 [P] [US3] Prueba unitaria `test-cat/dominio/aplicar-cambios.spec.ts`:
   - **Diferencias**:
     - tasa `177.10` → `180.00` da `{ tasa: { antes: "177.10", despues: "180.00" } }`;
     - los mismos valores dan diferencias vacías;
@@ -276,7 +277,7 @@ comprobar que no se tocó código.
     - `id` que no pertenece a la receta, o repetido;
     - ruta A con `EVALUACION_PREVIA_SILENCIO_POSITIVO`, licencia con `ordenItse=null`, o trámite conectado con `vigenciaMeses`.
   - **Recorte**: los espacios al inicio y al final de una descripción se recortan.
-- [ ] T036 [P] [US3] Prueba unitaria `test-cat/aplicacion/actualizar-receta.spec.ts`, con dobles de `UnidadDeTrabajoCatalogo`, `InvalidadorCacheCatalogo` y `Reloj`:
+- [X] T036 [P] [US3] Prueba unitaria `test-cat/aplicacion/actualizar-receta.spec.ts`, con dobles de `UnidadDeTrabajoCatalogo`, `InvalidadorCacheCatalogo` y `Reloj`:
   - con cambios → guarda la receta y el registro con `usuarioId` y `cambiadoEn`, y después invalida la caché;
   - sin cambios → no guarda, no registra y no invalida;
   - con errores de dominio → no guarda;
@@ -284,7 +285,7 @@ comprobar que no se tocó código.
   - si la invalidación falla → el caso de uso termina bien.
 
   Pruebas `test-cat/aplicacion/listar-recetas-admin.spec.ts` y `test-cat/aplicacion/obtener-receta-admin.spec.ts`: incluyen las desactivadas.
-- [ ] T037 [P] [US3] Prueba de integración `int/matriz-permisos-catalogo.e2e-spec.ts`, con `clienteConRoles` de `apps/api/test/apoyo/admin-prueba.ts`. Para `GET /admin/catalogo/recetas`, `GET /admin/catalogo/recetas/LIC-02` y `PUT /catalogo/recetas/LIC-02`:
+- [X] T037 [P] [US3] Prueba de integración `int/matriz-permisos-catalogo.e2e-spec.ts`, con `clienteConRoles` de `apps/api/test/apoyo/admin-prueba.ts`. Para `GET /admin/catalogo/recetas`, `GET /admin/catalogo/recetas/LIC-02` y `PUT /catalogo/recetas/LIC-02`:
   - sin token → 401;
   - con cada uno de los roles `MESA_PARTES`, `EVALUADOR`, `INSPECTOR`, `CAJA` y `JEFATURA` → 403;
   - `ADMINISTRADOR` → 200.
@@ -292,7 +293,8 @@ comprobar que no se tocó código.
   - **Rol retirado durante la edición** (caso límite de la spec): un administrador de prueba obtiene su token, otro administrador le retira el rol con `PUT /usuarios/{id}/roles` (o directamente con la regla de la 002) y el PUT de la receta con el **mismo token** responde 403 sin cambiar nada (efecto inmediato de la 002).
 
   En los casos 401/403 la receta no cambia ni se agregan filas a `cambio_receta`. Todas las respuestas se validan contra el contrato.
-- [ ] T038 [P] [US3] Prueba de integración `int/catalogo-admin.e2e-spec.ts`. Cada prueba restaura `LIC-01`/`LIC-02` y vacía `cambio_receta` en `afterEach`.
+  _Nota de implementación:_ El 404 de una receta inexistente no se puede probar por HTTP: todos los códigos con formato válido existen. Se prueba el 422 de un código inválido y el 404 queda cubierto por las pruebas unitarias.
+- [X] T038 [P] [US3] Prueba de integración `int/catalogo-admin.e2e-spec.ts`. Cada prueba restaura `LIC-01`/`LIC-02` y vacía `cambio_receta` en `afterEach`.
   - **Lectura de administración**: `GET /admin/catalogo/recetas` → 12 recetas con `activa` y `actualizadaEn`, y `Cache-Control: no-store`.
   - **Cambio de tasa**: `PUT LIC-02 {"tasa":"180.00"}` → 200 `RecetaAdmin` con `tasa=180.00`. Hay una fila en `cambio_receta` con `usuario_id` igual al del administrador de prueba y `cambios={"tasa":{"antes":"177.10","despues":"180.00"}}`, y `receta.actualizada_por` igual a ese usuario.
   - **PUT idéntico**: 200 y la cuenta de filas no cambia.
@@ -304,21 +306,25 @@ comprobar que no se tocó código.
   - **`id` ajeno**: un `id` de requisito de otra receta → 422 `campo=requisitos[0].id`.
   - **Atomicidad**: si se fuerza un fallo al insertar el registro (por ejemplo, con un doble que lanza dentro de la unidad de trabajo, o con un `CHECK` temporal en la base de prueba), ni la receta ni los requisitos cambian.
   - **Datos personales**: el logger capturador de la 002 no recibe el correo ni el nombre del administrador, y las líneas solo llevan `codigo` y `usuarioId`.
-- [ ] T039 [P] [US3] Prueba de integración `int/cache-catalogo.e2e-spec.ts`:
+  _Nota de implementación:_ La atomicidad se prueba con un `CHECK (false) NOT VALID` temporal en `cambio_receta`: el PUT responde 500 y ni la receta ni sus requisitos cambian.
+- [X] T039 [P] [US3] Prueba de integración `int/cache-catalogo.e2e-spec.ts`:
   - **Invalidación**: llenar la caché leyendo la ficha y la lista de `LIC-02`, hacer el PUT de la tasa, y comprobar que la siguiente lectura ya muestra el valor nuevo y que se borraron `catalogo:receta:LIC-02` y `catalogo:recetas:*`.
   - **Peor caso**: con un cliente Redis falso cuyo `del` falla (sobrescribiendo el proveedor `REDIS_CLIENTE` en el módulo de prueba), el PUT responde 200, se registra un aviso y la clave conserva un TTL de 240 s o menos; el `Cache-Control` público es `max-age=60`. Así el máximo es de 300 s.
-- [ ] T040 [P] [US3] Prueba de integración `int/guardado-concurrente-receta.e2e-spec.ts`: dos PUT simultáneos sobre `LIC-02` (`tasa` 180.00 y 190.00) responden 200 los dos y dejan 2 filas en `cambio_receta`; el "antes" de la segunda es el "después" de la primera, y la tasa final es la del último en confirmar. Con `timeout` explícito de 60 000 ms
+  _Nota de implementación:_ En el peor caso se reemplaza el método `del` del cliente Redis de la propia aplicación, en lugar de sobrescribir el proveedor `REDIS_CLIENTE`: con un cliente sustituto, ioredis fallaba al cerrar la conexión al terminar la prueba.
+- [X] T040 [P] [US3] Prueba de integración `int/guardado-concurrente-receta.e2e-spec.ts`: dos PUT simultáneos sobre `LIC-02` (`tasa` 180.00 y 190.00) responden 200 los dos y dejan 2 filas en `cambio_receta`; el "antes" de la segunda es el "después" de la primera, y la tasa final es la del último en confirmar. Con `timeout` explícito de 60 000 ms
 
 ### Implementación de la historia 3
 
-- [ ] T041 [P] [US3] Crear `cat/dominio/coherencia-ruta.ts` (`COHERENCIA_POR_RUTA` como datos y `verificarCoherencia(receta): ErrorCampo[]`). Debe hacer pasar T034
-- [ ] T042 [US3] Crear en `cat/dominio/` los archivos `cambios-receta.ts` (`CambiosReceta`), `diferencia-receta.ts` (`DiferenciaReceta`, que compara por valor; la tasa se compara en céntimos) y `error-validacion-receta.ts` (`ErrorValidacionReceta`, con la lista `{ campo, mensaje }` y mensajes sin datos personales). Agregar `aplicarCambios(receta, cambios)` a `receta-completa.ts`; se apoya en T041 y en los límites de research §R-03. Debe hacer pasar T035
-- [ ] T043 [P] [US3] Crear los puertos en `cat/dominio/`:
+- [X] T041 [P] [US3] Crear `cat/dominio/coherencia-ruta.ts` (`COHERENCIA_POR_RUTA` como datos y `verificarCoherencia(receta): ErrorCampo[]`). Debe hacer pasar T034
+- [X] T042 [US3] Crear en `cat/dominio/` los archivos `cambios-receta.ts` (`CambiosReceta`), `diferencia-receta.ts` (`DiferenciaReceta`, que compara por valor; la tasa se compara en céntimos) y `error-validacion-receta.ts` (`ErrorValidacionReceta`, con la lista `{ campo, mensaje }` y mensajes sin datos personales). Agregar `aplicarCambios(receta, cambios)` a `receta-completa.ts`; se apoya en T041 y en los límites de research §R-03. Debe hacer pasar T035
+  _Nota de implementación:_ `aplicarCambios` vive en `cat/dominio/aplicar-cambios.ts` y no en `receta-completa.ts`: la regla `sin-ciclos` de dependency-cruiser cuenta también las importaciones de tipos, y `coherencia-ruta.ts` y `diferencia-receta.ts` usan tipos de `receta-completa.ts`. También acepta `activa` (campo de `RecetaEditable`), que usará la historia 4.
+- [X] T043 [P] [US3] Crear los puertos en `cat/dominio/`:
   - `unidad-de-trabajo-catalogo.ts`: `ejecutar<T>(codigo, trabajo: (receta: RecetaCompleta) => { guardar: { receta: RecetaCompleta; diferencias: DiferenciaReceta; usuarioId: string; en: Date } | null; resultado: T }): Promise<T | null>`, que devuelve `null` si la receta no existe;
   - `invalidador-cache-catalogo.ts`: `invalidar(codigo): Promise<void>`;
   - `reloj.ts`: `ahora(): Date`.
-- [ ] T044 [US3] Crear en `cat/aplicacion/` los casos de uso `actualizar-receta.ts` (`ActualizarReceta.ejecutar(codigo, cambios, usuarioId)`), `listar-recetas-admin.ts` y `obtener-receta-admin.ts`. `ActualizarReceta` usa la unidad de trabajo con `aplicarCambios`, invalida la caché **después** de confirmar solo si hubo cambios y devuelve `RecetaCompleta` o "no encontrada". Deben hacer pasar T036
-- [ ] T045 [US3] Crear `cat/infraestructura/unidad-de-trabajo-catalogo-postgres.ts`, que trabaja con `prisma.$transaction` (research §R-04 y §R-05):
+  _Nota de implementación:_ `ejecutar` devuelve `{ receta, resultado }`, donde `receta` es la receta releída dentro de la transacción después de escribir: así la respuesta trae los `id` de los requisitos nuevos sin leer la caché, que podría estar vieja si falló la invalidación.
+- [X] T044 [US3] Crear en `cat/aplicacion/` los casos de uso `actualizar-receta.ts` (`ActualizarReceta.ejecutar(codigo, cambios, usuarioId)`), `listar-recetas-admin.ts` y `obtener-receta-admin.ts`. `ActualizarReceta` usa la unidad de trabajo con `aplicarCambios`, invalida la caché **después** de confirmar solo si hubo cambios y devuelve `RecetaCompleta` o "no encontrada". Deben hacer pasar T036
+- [X] T045 [US3] Crear `cat/infraestructura/unidad-de-trabajo-catalogo-postgres.ts`, que trabaja con `prisma.$transaction` (research §R-04 y §R-05):
   - `SELECT … FROM catalogo.receta WHERE codigo = $1 FOR UPDATE` (con `$queryRaw` y parámetros), y lectura de sus requisitos;
   - ejecuta el trabajo; si devuelve `guardar`:
     - `UPDATE` de los campos editables de la receta, más `actualizada_por` y `actualizada_en`;
@@ -326,15 +332,16 @@ comprobar que no se tocó código.
     - `INSERT` en `catalogo.cambio_receta` con `cambios` en jsonb.
 
   Si algo falla, se revierte todo. Crear también `cat/infraestructura/invalidador-cache-catalogo-redis.ts`, que hace `DEL` de `catalogo:receta:<CODIGO>`, `catalogo:recetas:TODOS`, `:LICENCIA` y `:TRAMITE_CONECTADO`; si falla, `Logger.warn('Caché del catálogo no disponible al invalidar codigo=<CODIGO>')` y no lanza. Y `cat/infraestructura/reloj-sistema.ts`
-- [ ] T046 [US3] Crear `cat/presentacion/catalogo-admin.controller.ts`, protegido con `@RequiereRoles('ADMINISTRADOR')` de la fachada de seguridad y con `Cache-Control: no-store` en todas las respuestas:
+- [X] T046 [US3] Crear `cat/presentacion/catalogo-admin.controller.ts`, protegido con `@RequiereRoles('ADMINISTRADOR')` de la fachada de seguridad y con `Cache-Control: no-store` en todas las respuestas:
   - `GET admin/catalogo/recetas` → `RecetaAdminResumen[]`;
   - `GET admin/catalogo/recetas/:codigoReceta` → `RecetaAdmin` o 404;
   - `PUT catalogo/recetas/:codigoReceta`: valida con zod la forma de `RecetaEditable` (`.strict()`, `minProperties: 1`, `Soles` `^[0-9]+\.[0-9]{2}$`) en `cat/presentacion/esquemas-catalogo.ts`, toma el usuario con `@UsuarioActual()` y traduce `ErrorValidacionReceta` a `ErrorValidacion`. Registra con `Logger` la línea `receta actualizada codigo=<CODIGO> usuarioId=<id> campos=<lista de nombres>`, sin valores.
 
   Comprobar que el PUT protegido no rompe el GET público de la misma ruta en `catalogo.controller.ts`. Cablear todo con `useFactory` en `cat/catalogo.module.ts`, inyectando `PrismaServicio`, `REDIS_CLIENTE` y `CONFIGURACION`. Debe hacer pasar T037 a T040
-- [ ] T047 [P] [US3] Agregar a `web/servicios/clienteApi.ts` las funciones `listarRecetasAdmin()`, `obtenerRecetaAdmin(codigo)` y `actualizarReceta(codigo, cambios)`. Esta última devuelve `ResultadoOperacion` como en la 002, con los `errores[]` del 422 por campo, y usa el middleware de `Authorization` existente
-- [ ] T048 [US3] Prueba `web/paginas/admin/Catalogo.test.tsx` y página `web/paginas/admin/Catalogo.tsx`: la lista de las 12 recetas con su código, nombre, tasa, plazo y el estado "Activa" o "Desactivada", y un enlace a la edición de cada una
-- [ ] T049 [US3] Prueba `web/paginas/admin/EditarReceta.test.tsx` y página `web/paginas/admin/EditarReceta.tsx`, según [contracts/portal-catalogo.md](./contracts/portal-catalogo.md):
+  _Nota de implementación:_ Las cabeceras `no-store` se fijan al inicio de cada operación, así que también las llevan los 404 y 422; los 401 y 403 de los guardas de la 002 no las llevan.
+- [X] T047 [P] [US3] Agregar a `web/servicios/clienteApi.ts` las funciones `listarRecetasAdmin()`, `obtenerRecetaAdmin(codigo)` y `actualizarReceta(codigo, cambios)`. Esta última devuelve `ResultadoOperacion` como en la 002, con los `errores[]` del 422 por campo, y usa el middleware de `Authorization` existente
+- [X] T048 [US3] Prueba `web/paginas/admin/Catalogo.test.tsx` y página `web/paginas/admin/Catalogo.tsx`: la lista de las 12 recetas con su código, nombre, tasa, plazo y el estado "Activa" o "Desactivada", y un enlace a la edición de cada una
+- [X] T049 [US3] Prueba `web/paginas/admin/EditarReceta.test.tsx` y página `web/paginas/admin/EditarReceta.tsx`, según [contracts/portal-catalogo.md](./contracts/portal-catalogo.md):
   - datos fijos en solo lectura;
   - campos editables, con los selects de calificación e ITSE limitados a lo válido para la ruta;
   - lista de requisitos con agregar, quitar, subir y bajar, texto con `maxLength=500`, obligatorio y condición, enviando el `id` de los existentes;
@@ -346,7 +353,8 @@ comprobar que no se tocó código.
   - un 403 muestra un aviso de permiso.
 
   Las pruebas cubren la normalización de la tasa, el 401 con el formulario restaurado y el 403. Sin estilos en línea
-- [ ] T050 [US3] Agregar a `web/Aplicacion.tsx` las rutas `/admin/catalogo` y `/admin/catalogo/:codigo` con `<RutaProtegida roles={['ADMINISTRADOR']}>`, y la opción "Catálogo" en `web/componentes/Menu.tsx` solo para ADMINISTRADOR. Actualizar `web/componentes/Menu.test.tsx`
+  _Nota de implementación:_ Para el 401, `RutaProtegida` ahora envía `volverA` a `/ingresar` e `Ingresar` vuelve a esa ruta (solo rutas internas `/admin/…` o `/cambiar-clave`). El borrador se guarda en `sessionStorage` antes de llamar a la API, porque la sesión vencida puede redirigir a `/ingresar` en cuanto falla la renovación; al volver se restaura y se avisa.
+- [X] T050 [US3] Agregar a `web/Aplicacion.tsx` las rutas `/admin/catalogo` y `/admin/catalogo/:codigo` con `<RutaProtegida roles={['ADMINISTRADOR']}>`, y la opción "Catálogo" en `web/componentes/Menu.tsx` solo para ADMINISTRADOR. Actualizar `web/componentes/Menu.test.tsx`
 
 **Punto de control**: las historias 1, 2 y 3 funcionan, y cambiar una tasa no requiere tocar código (EQ-06).
 

@@ -50,6 +50,30 @@ describe('Menú del personal', () => {
     expect(within(menu).queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
   });
 
+  it('el administrador ve "Catálogo" (003)', async () => {
+    simularApi(conSesion(['ADMINISTRADOR']));
+    montarEn('/');
+
+    const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+
+    expect(within(menu).getByRole('link', { name: 'Catálogo' })).toHaveAttribute(
+      'href',
+      '/admin/catalogo',
+    );
+  });
+
+  it.each(['MESA_PARTES', 'EVALUADOR', 'INSPECTOR', 'CAJA', 'JEFATURA'])(
+    'el rol %s no ve "Catálogo"',
+    async (rol) => {
+      simularApi(conSesion([rol]));
+      montarEn('/');
+
+      const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+
+      expect(within(menu).queryByRole('link', { name: 'Catálogo' })).not.toBeInTheDocument();
+    },
+  );
+
   it('"Cerrar sesión" llama a la API y vuelve a /ingresar', async () => {
     const llamadas = simularApi(conSesion(['CAJA']));
     montarEn('/');

@@ -10,7 +10,7 @@ import { crearReceta, esRuta, esTipoReceta, type Receta, type Ruta } from '../do
 import { crearRecetaCompleta, type RecetaCompleta } from '../dominio/receta-completa';
 import type { FiltroRecetas, RepositorioCatalogo } from '../dominio/repositorio-catalogo';
 
-const CON_REQUISITOS = {
+export const CON_REQUISITOS = {
   include: { requisito: { orderBy: { orden: 'asc' } } },
 } as const satisfies Prisma.RecetaDefaultArgs;
 
@@ -32,7 +32,7 @@ const leerTipoYRuta = (fila: {
   return { tipo: fila.tipo, ruta };
 };
 
-const aRecetaCompleta = (fila: FilaRecetaCompleta): RecetaCompleta =>
+export const aRecetaCompleta = (fila: FilaRecetaCompleta): RecetaCompleta =>
   crearRecetaCompleta({
     codigo: fila.codigo,
     nombre: fila.nombre,

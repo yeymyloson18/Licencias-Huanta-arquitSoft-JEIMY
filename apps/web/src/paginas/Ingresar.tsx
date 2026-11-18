@@ -1,5 +1,5 @@
 import { type SyntheticEvent, useState } from 'react';
-import { Navigate } from 'react-router';
+import { Navigate, useLocation } from 'react-router';
 import { CampoFormulario } from '../componentes/CampoFormulario';
 import {
   type DesafioOtp,
@@ -14,6 +14,14 @@ const MENSAJE_NO_DISPONIBLE =
   'El inicio de sesión no está disponible en este momento. Inténtelo en unos minutos.';
 
 const dosDigitos = (numero: number) => String(numero).padStart(2, '0');
+
+/** Solo rutas internas del personal: nunca una URL externa ni `//otro-sitio`. */
+const destinoSeguro = (estado: unknown): string => {
+  const volverA = (estado as { volverA?: unknown } | null)?.volverA;
+  return typeof volverA === 'string' && /^\/(admin|cambiar-clave)(\/[\w-]+)*$/.test(volverA)
+    ? volverA
+    : '/';
+};
 
 /** Mensaje para la persona; nunca dice qué dato falló ni repite el correo (FR-005). */
 const mensajeDeError = (resultado: Exclude<ResultadoAuth<unknown>, { tipo: 'ok' }>): string => {
@@ -33,6 +41,7 @@ const mensajeDeError = (resultado: Exclude<ResultadoAuth<unknown>, { tipo: 'ok' 
 /** Inicio de sesión del personal en dos pasos (FR-001, FR-025; contracts/portal-seguridad.md). */
 export function Ingresar() {
   const { estado, sesion, entrar } = useSesion();
+  const ubicacion = useLocation();
   const [desafio, setDesafio] = useState<DesafioOtp | null>(null);
   const [correo, setCorreo] = useState('');
   const [clave, setClave] = useState('');
@@ -41,7 +50,12 @@ export function Ingresar() {
   const [enviando, setEnviando] = useState(false);
 
   if (sesion !== null) {
-    return <Navigate to={sesion.debeCambiarClave ? '/cambiar-clave' : '/'} replace />;
+    return (
+      <Navigate
+        to={sesion.debeCambiarClave ? '/cambiar-clave' : destinoSeguro(ubicacion.state)}
+        replace
+      />
+    );
   }
 
   const pedirCodigo = async () => {
