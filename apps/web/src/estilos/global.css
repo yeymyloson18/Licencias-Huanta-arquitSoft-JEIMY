@@ -135,6 +135,18 @@ video {
   line-height: 1.3;
 }
 
+/* El nombre enlaza a la ficha (003); el área táctil cubre todo el título. */
+.tarjeta__enlace {
+  display: block;
+  min-height: 44px;
+  color: var(--color-primario-oscuro);
+  text-underline-offset: 0.2em;
+}
+
+.tarjeta__enlace:hover {
+  text-decoration-thickness: 2px;
+}
+
 .tarjeta__datos {
   display: flex;
   flex-wrap: wrap;
@@ -549,4 +561,24 @@ video {
   .lista-usuarios {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* Ficha pública /licencias/:codigo (funcionalidad 003). */
+.licencia {
+  max-width: 40rem;
+}
+
+.licencia__titulo {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+}
+
+.licencia__volver {
+  margin-top: var(--espacio);
+}
+
+.licencia__volver a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }

@@ -4,6 +4,7 @@ import { CONFIGURACION, type Configuracion } from '../../compartido/infraestruct
 import { PrismaServicio } from '../../compartido/infraestructura/prisma.servicio';
 import { REDIS_CLIENTE } from '../../compartido/infraestructura/redis.proveedor';
 import { ListarRecetas } from './aplicacion/listar-recetas';
+import { ObtenerFicha } from './aplicacion/obtener-ficha';
 import { ObtenerPreguntas } from './aplicacion/obtener-preguntas';
 import { ProponerLicencia } from './aplicacion/proponer-licencia';
 import type { RepositorioCatalogo } from './dominio/repositorio-catalogo';
@@ -37,6 +38,11 @@ export const REPOSITORIO_CATALOGO = Symbol('REPOSITORIO_CATALOGO');
       provide: ListarRecetas,
       inject: [REPOSITORIO_CATALOGO],
       useFactory: (repositorio: RepositorioCatalogo) => new ListarRecetas(repositorio),
+    },
+    {
+      provide: ObtenerFicha,
+      inject: [REPOSITORIO_CATALOGO],
+      useFactory: (repositorio: RepositorioCatalogo) => new ObtenerFicha(repositorio),
     },
     {
       provide: ObtenerPreguntas,

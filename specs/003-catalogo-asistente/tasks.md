@@ -208,7 +208,7 @@ receta desactivada directamente en la base muestra "no disponible".
 
 ### Pruebas de la historia 2 ⚠️
 
-- [ ] T028 [P] [US2] Ampliar `int/catalogo.e2e-spec.ts`:
+- [X] T028 [P] [US2] Ampliar `int/catalogo.e2e-spec.ts`:
   - **Lista**:
     - cambiar la prueba de `Cache-Control` de la lista a `public, max-age=60`;
     - cambiar la del TTL de Redis a "≤ 240" (el comentario "equivale a que venza el TTL de 300 s" pasa a 240);
@@ -219,19 +219,22 @@ receta desactivada directamente en la base muestra "no disponible".
     - `LIC-06` desactivada → 404 con `no-store`;
     - `XYZ-01` → 422.
   - Todas las respuestas se validan contra el contrato.
-- [ ] T029 [P] [US2] Prueba unitaria `test-cat/aplicacion/obtener-ficha.spec.ts`: una receta activa se devuelve, mientras que una desactivada o inexistente da `null`
+- [X] T029 [P] [US2] Prueba unitaria `test-cat/aplicacion/obtener-ficha.spec.ts`: una receta activa se devuelve, mientras que una desactivada o inexistente da `null`
 
 ### Implementación de la historia 2
 
-- [ ] T030 [US2] Crear `cat/aplicacion/obtener-ficha.ts` (`ObtenerFicha`: devuelve la receta solo si `activa`). En `cat/presentacion/catalogo.controller.ts`:
+- [X] T030 [US2] Crear `cat/aplicacion/obtener-ficha.ts` (`ObtenerFicha`: devuelve la receta solo si `activa`). En `cat/presentacion/catalogo.controller.ts`:
   - agregar `GET catalogo/recetas/:codigoReceta`, que valida el formato con `CodigoReceta` (422) y responde 200 `Receta` con `public, max-age=60`, o 404 con `no-store` si no está;
   - cambiar `CACHE_HTTP` de la lista a `public, max-age=60`;
   - extraer a `cat/presentacion/mapear-receta.ts` el mapeo de `RecetaCompleta` → `Receta` para reutilizarlo en T024 y T046.
 
   Registrar el caso de uso en `cat/catalogo.module.ts`. Debe hacer pasar T028 y T029
-- [ ] T031 [P] [US2] Agregar `obtenerFicha(codigo)` a `web/servicios/clienteApi.ts`; devuelve `null` si recibe 404
-- [ ] T032 [US2] Prueba `web/paginas/Licencia.test.tsx` y página `web/paginas/Licencia.tsx` (`/licencias/:codigo`): muestra `FichaLicencia`; con un 404, "Esta licencia no está disponible" y un enlace al inicio; si el servicio no está disponible, mensaje con "Reintentar"
-- [ ] T033 [US2] Agregar la ruta pública `/licencias/:codigo` en `web/Aplicacion.tsx` y convertir cada `TarjetaLicencia` (`web/componentes/TarjetaLicencia.tsx`) en un enlace a su ficha, manteniendo la semántica de lista. Actualizar las pruebas de `Inicio`
+  _Nota de implementación:_ `mapear-receta.ts` ya existía desde T024 y se reutiliza. Un código con formato inválido responde 422 en el campo `codigoReceta`, sin repetir el valor recibido; un 404 lleva `no-store` para que una receta reactivada aparezca enseguida.
+- [X] T031 [P] [US2] Agregar `obtenerFicha(codigo)` a `web/servicios/clienteApi.ts`; devuelve `null` si recibe 404
+  _Nota de implementación:_ también devuelve `null` con un 422 (código que no es del TUPA): para el visitante es igual que una licencia inexistente. Reutiliza `leerCatalogo` con un valor para "no encontrada".
+- [X] T032 [US2] Prueba `web/paginas/Licencia.test.tsx` y página `web/paginas/Licencia.tsx` (`/licencias/:codigo`): muestra `FichaLicencia`; con un 404, "Esta licencia no está disponible" y un enlace al inicio; si el servicio no está disponible, mensaje con "Reintentar"
+- [X] T033 [US2] Agregar la ruta pública `/licencias/:codigo` en `web/Aplicacion.tsx` y convertir cada `TarjetaLicencia` (`web/componentes/TarjetaLicencia.tsx`) en un enlace a su ficha, manteniendo la semántica de lista. Actualizar las pruebas de `Inicio`
+  _Nota de implementación:_ el enlace va dentro del `<h2>` de cada tarjeta (el `<li>` se conserva) y tiene un área táctil de 44 px. La página de la ficha usa el `<h1>` "Detalle de la licencia" en la cabecera y el nombre queda como `<h2>` de `FichaLicencia`.
 
 **Punto de control**: las historias 1 y 2 funcionan, cada una por su lado.
 

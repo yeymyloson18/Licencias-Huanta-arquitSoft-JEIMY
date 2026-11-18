@@ -107,6 +107,24 @@ describe('Página de inicio del catálogo', () => {
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
 
+  it('cada tarjeta enlaza a la ficha de su licencia sin perder la lista (003)', async () => {
+    fetchSimulado.mockResolvedValue(respuestaJson(nueveLicencias));
+
+    render(
+      <MemoryRouter>
+        <Inicio />
+      </MemoryRouter>,
+    );
+
+    const lista = await screen.findByRole('list', { name: 'Licencias de funcionamiento' });
+    const elementos = within(lista).getAllByRole('listitem');
+    expect(elementos).toHaveLength(9);
+    expect(
+      within(elementos[0] as HTMLElement).getByRole('link', { name: 'Licencia de prueba 1' }),
+    ).toHaveAttribute('href', '/licencias/LIC-01');
+    expect(within(lista).getAllByRole('link')).toHaveLength(9);
+  });
+
   it('muestra un mensaje claro si el catálogo llega vacío', async () => {
     fetchSimulado.mockResolvedValue(respuestaJson([]));
 

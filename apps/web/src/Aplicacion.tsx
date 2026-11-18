@@ -6,6 +6,7 @@ import { Asistente } from './paginas/Asistente';
 import { CambiarClave } from './paginas/CambiarClave';
 import { Ingresar } from './paginas/Ingresar';
 import { Inicio } from './paginas/Inicio';
+import { Licencia } from './paginas/Licencia';
 import { useSesion } from './sesion/ProveedorSesion';
 
 interface EstadoNavegacion {
@@ -39,6 +40,7 @@ export function RutasAplicacion() {
       <Route element={<Diseno />}>
         <Route path="/" element={<Inicio />} />
         <Route path="/asistente" element={<Asistente />} />
+        <Route path="/licencias/:codigo" element={<Licencia />} />
         <Route path="/ingresar" element={<Ingresar />} />
         <Route
           path="/admin/usuarios"

@@ -69,6 +69,7 @@ export class CatalogoNoDisponible extends Error {
  */
 async function leerCatalogo<T>(
   peticion: (signal: AbortSignal) => Promise<{ data?: T; response: Response }>,
+  siNoEncontrada?: T,
 ): Promise<T> {
   const controlador = new AbortController();
   const temporizador = setTimeout(() => {
@@ -77,6 +78,9 @@ async function leerCatalogo<T>(
 
   try {
     const { data, response } = await peticion(controlador.signal);
+    if (siNoEncontrada !== undefined && (response.status === 404 || response.status === 422)) {
+      return siNoEncontrada;
+    }
     if (response.status !== 200 || data === undefined) {
       throw new CatalogoNoDisponible();
     }
@@ -92,6 +96,20 @@ async function leerCatalogo<T>(
 export const listarLicencias = (): Promise<RecetaResumen[]> =>
   leerCatalogo((signal) =>
     cliente.GET('/catalogo/recetas', { params: { query: { tipo: 'LICENCIA' } }, signal }),
+  );
+
+/**
+ * Ficha pública de una receta (historia 2 de la 003). Devuelve `null` si no existe, está
+ * desactivada (404) o el código no tiene el formato del TUPA (422): para el visitante es lo mismo.
+ */
+export const obtenerFicha = (codigo: string): Promise<Receta | null> =>
+  leerCatalogo<Receta | null>(
+    (signal) =>
+      cliente.GET('/catalogo/recetas/{codigoReceta}', {
+        params: { path: { codigoReceta: codigo } },
+        signal,
+      }),
+    null,
   );
 
 // ----------------------------------------------------------------------------- asistente (003)

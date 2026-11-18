@@ -110,10 +110,27 @@ describe('GET /api/v1/catalogo/recetas', () => {
     ]);
   });
 
-  it('indica Cache-Control: public, max-age=300', async () => {
+  it('indica Cache-Control: public, max-age=60 (60 s + 240 s de Redis = 5 min, FR-024 de la 003)', async () => {
     const respuesta = await consultar('?tipo=LICENCIA');
 
-    expect(respuesta.headers['cache-control']).toBe('public, max-age=300');
+    expect(respuesta.headers['cache-control']).toBe('public, max-age=60');
+  });
+
+  it('no incluye una receta desactivada (FR-013 de la 003)', async () => {
+    try {
+      await prisma.receta.update({ where: { codigo: 'LIC-06' }, data: { activa: false } });
+
+      const respuesta = await consultar('?tipo=LICENCIA');
+
+      expect(respuesta.status).toBe(200);
+      await esperarCumpleContrato('get', RUTA, respuesta);
+      const codigos = (respuesta.body as { codigo: string }[]).map((receta) => receta.codigo);
+      expect(codigos).toHaveLength(8);
+      expect(codigos).not.toContain('LIC-06');
+    } finally {
+      await prisma.receta.update({ where: { codigo: 'LIC-06' }, data: { activa: true } });
+      await borrarCache();
+    }
   });
 
   it.each(['?tipo=OTRO', '?tipo=licencia', '?tipo=LICENCIA&tipo=TRAMITE_CONECTADO'])(
@@ -206,6 +223,115 @@ describe('GET /api/v1/catalogo/recetas', () => {
         'LIC-09',
         'TRF-01',
       ]);
+    });
+  });
+
+  describe('GET /api/v1/catalogo/recetas/{codigoReceta} (ficha pública, historia 2 de la 003)', () => {
+    const RUTA_FICHA = '/catalogo/recetas/{codigoReceta}';
+    const ficha = (codigo: string) =>
+      request(app.getHttpServer() as Parameters<typeof request>[0]).get(`/api/v1${RUTA}/${codigo}`);
+    const borrarFichas = async () => {
+      const claves = await redis.keys('catalogo:receta:*');
+      if (claves.length > 0) {
+        await redis.del(...claves);
+      }
+    };
+
+    interface RecetaFicha {
+      codigo: string;
+      tasa: string;
+      plazoDias: number | null;
+      calificacion: string;
+      ordenItse: string | null;
+      plazoItseDias: number | null;
+      vigenciaMeses: number | null;
+      requisitos: { orden: number; descripcion: string }[];
+    }
+
+    beforeEach(borrarFichas);
+    afterEach(async () => {
+      await prisma.receta.update({ where: { codigo: 'LIC-06' }, data: { activa: true } });
+      await borrarFichas();
+      await borrarCache();
+    });
+
+    it('LIC-03 responde 200 con su ficha completa, requisitos en orden y public, max-age=60', async () => {
+      const respuesta = await ficha('LIC-03');
+
+      expect(respuesta.status).toBe(200);
+      expect(respuesta.headers['cache-control']).toBe('public, max-age=60');
+      await esperarCumpleContrato('get', RUTA_FICHA, respuesta);
+      const receta = respuesta.body as RecetaFicha;
+      expect(receta).toMatchObject({
+        codigo: 'LIC-03',
+        tasa: '305.90',
+        calificacion: 'EVALUACION_PREVIA_SILENCIO_POSITIVO',
+        ordenItse: 'PREVIA',
+        plazoItseDias: 7,
+        vigenciaMeses: null,
+      });
+      const ordenes = receta.requisitos.map((requisito) => requisito.orden);
+      expect(ordenes.length).toBeGreaterThanOrEqual(8);
+      expect(ordenes).toEqual([...ordenes].sort((a, b) => a - b));
+    });
+
+    // SC-003: cada ficha coincide con docs/01-analisis-de-sistema/09-validacion-del-tupa.md.
+    const AP = 'APROBACION_AUTOMATICA';
+    const EP = 'EVALUACION_PREVIA_SILENCIO_POSITIVO';
+    it.each([
+      ['LIC-01', '159.50', 2, AP, 'POSTERIOR', 9, null],
+      ['LIC-02', '177.10', 2, AP, 'POSTERIOR', 9, null],
+      ['LIC-03', '305.90', 8, EP, 'PREVIA', 7, null],
+      ['LIC-04', '538.90', 8, EP, 'PREVIA', 7, null],
+      ['LIC-05', '529.20', 8, EP, 'PREVIA', 7, null],
+      ['LIC-06', '180.40', 2, AP, 'POSTERIOR', 9, null],
+      ['LIC-07', '309.20', 8, EP, 'PREVIA', 7, null],
+      ['LIC-08', '542.20', 8, EP, 'PREVIA', 7, null],
+      ['LIC-09', '0.00', 5, AP, 'DENTRO_6_MESES', null, 12],
+      ['TRF-01', '45.10', null, AP, null, null, null],
+      ['CGI-01', '46.20', null, AP, null, null, null],
+      ['DUP-01', '41.40', 3, 'SERVICIO_EXCLUSIVO', null, null, null],
+    ] as const)(
+      'la ficha de %s coincide con el TUPA (tasa %s, plazo %s)',
+      async (codigo, tasa, plazoDias, calificacion, ordenItse, plazoItseDias, vigenciaMeses) => {
+        const respuesta = await ficha(codigo);
+
+        expect(respuesta.status).toBe(200);
+        await esperarCumpleContrato('get', RUTA_FICHA, respuesta);
+        expect(respuesta.body).toMatchObject({
+          codigo,
+          tasa,
+          plazoDias,
+          calificacion,
+          ordenItse,
+          plazoItseDias,
+          vigenciaMeses,
+        });
+      },
+    );
+
+    it('una receta desactivada responde 404 con no-store, igual que una inexistente (FR-013)', async () => {
+      await prisma.receta.update({ where: { codigo: 'LIC-06' }, data: { activa: false } });
+
+      const respuesta = await ficha('LIC-06');
+
+      expect(respuesta.status).toBe(404);
+      expect(respuesta.headers['cache-control']).toBe('no-store');
+      expect(respuesta.headers['content-type']).toMatch(/^application\/problem\+json/);
+      await esperarCumpleContrato('get', RUTA_FICHA, respuesta);
+      expect(JSON.stringify(respuesta.body)).not.toContain('LIC-06');
+    });
+
+    it('un código con formato inválido responde 422 sin repetir lo recibido', async () => {
+      const respuesta = await ficha('XYZ-01');
+
+      expect(respuesta.status).toBe(422);
+      expect(respuesta.headers['content-type']).toMatch(/^application\/problem\+json/);
+      await esperarCumpleContrato('get', RUTA_FICHA, respuesta);
+      expect((respuesta.body as { errores: { campo: string }[] }).errores[0]?.campo).toBe(
+        'codigoReceta',
+      );
+      expect(JSON.stringify(respuesta.body)).not.toContain('XYZ-01');
     });
   });
 });
