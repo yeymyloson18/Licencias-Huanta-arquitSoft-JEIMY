@@ -77,11 +77,43 @@ El administrador deberá cambiar la clave en su primer ingreso.
 > `ADMIN_CELULAR` y `ADMIN_CLAVE` (por ejemplo, con `exec -e ...`), pero así la clave queda en el
 > historial de la terminal.
 
-Mientras no haya proveedor de SMS, el código de inicio de sesión se simula. En desarrollo se lee con:
+### Inicio de sesión del personal (desarrollo)
+
+El personal ingresa en <http://localhost:8080/ingresar> en dos pasos: correo y clave, y luego un
+código de 6 dígitos que vale 5 minutos. Mientras no haya proveedor de SMS (`ENVIO_OTP=simulado`),
+el código no se envía: se guarda en Redis y en desarrollo se lee con:
 
 ```bash
 docker compose -f infra/docker-compose.yml exec redis redis-cli GET dev:otp:<usuarioId>
 ```
+
+El `<usuarioId>` es el que imprime `crear-administrador` (o el que muestra la gestión de usuarios).
+Con una clave temporal, el portal lleva a `/cambiar-clave` antes de cualquier otra pantalla. Tras 5
+intentos fallidos con el mismo correo o desde la misma IP, el ingreso se bloquea 15 minutos.
+
+El administrador gestiona al personal en <http://localhost:8080/admin/usuarios>: alta con clave
+temporal, edición, roles, desactivación y asignación de una clave temporal a quien olvidó la suya.
+
+### Variables de entorno de seguridad
+
+La funcionalidad 002 agrega estas variables (están en `.env.example` y Docker Compose las trae por
+defecto):
+
+| Variable              | Para qué sirve                                                                      |
+| --------------------- | ----------------------------------------------------------------------------------- |
+| `JWT_SECRETO`         | Firma del token de acceso de 15 minutos (al menos 32 bytes)                         |
+| `CLAVE_CIFRADO_DATOS` | Clave AES-256-GCM con la que se cifran el correo y el celular (base64, 32 bytes)    |
+| `CLAVE_HMAC_DATOS`    | Huella HMAC para buscar por correo sin descifrar y para guardar el código OTP       |
+| `ENVIO_OTP`           | `simulado` (desarrollo y pruebas); `sms` queda reservado para cuando haya proveedor |
+| `TRUST_PROXY_SALTOS`  | Cuántos proxies hay delante de la API, para conocer la IP real en los límites       |
+| `NODE_ENV`            | `production` activa las comprobaciones de arranque descritas abajo                  |
+
+**Por qué no tienen valores reales:** el repositorio es público para el curso y cualquier clave
+escrita en él deja de ser secreta. Los valores de `.env.example` son ficticios y dicen
+"desarrollo" en su contenido. La API **se niega a arrancar** si una clave es demasiado corta (en
+cualquier entorno) o si se pide `ENVIO_OTP=sms` sin proveedor; con `NODE_ENV=production`, además,
+si alguna clave es igual a la de ejemplo o si `ENVIO_OTP=simulado`. En producción las
+claves reales se entregan como variables del servidor y nunca se suben al repositorio.
 
 ### Cómo detenerlo
 
@@ -205,6 +237,8 @@ Todo cambio entra a `main` desde una rama propia mediante un pull request con lo
 | Sin recursos de reconsideración ni apelación               | Quedan fuera del alcance del sistema.                                                                                                                                                                               |
 | Sin anulación de pagos en el sistema                       | Se evita el error con una pantalla de confirmación para el cajero; un número de recibo mal digitado lo corrige la jefatura (RF24). Anular un pago ya registrado sigue el procedimiento de caja de la Municipalidad. |
 | Sin bitácora ni versionado del catálogo                    | El administrador actualiza las recetas; cada esquela guarda el monto con el que se generó.                                                                                                                          |
+| La búsqueda de usuarios usa `POST /usuarios/busqueda`      | Un `GET ?texto=` dejaría el nombre o el correo en la URL, que queda en logs de proxies e historial del navegador (principio VII; research.md §R-13 de la 002). El listado sin texto sigue siendo `GET /usuarios`.   |
+| El correo del personal se guarda cifrado                   | Por eso solo se puede buscar por el correo **completo** (se compara su huella HMAC), no por un fragmento; el nombre sí admite fragmentos (research.md §R-04 de la 002).                                             |
 
 ## Mejoras para la Fase 2 (fuera del Sprint 1)
 
