@@ -147,6 +147,19 @@ describe('IniciarSesion: límites de intentos (historia 4, contracts/autenticaci
     expect(eventos.nombres()).toContain('bloqueo-temporal');
   });
 
+  it('un intento con credenciales correctas se devuelve: solo los fallos quedan contados', async () => {
+    const { usuarios, limitador, casoDeUso } = preparar();
+    await usuarios.crear(usuarioFicticio());
+    for (let i = 0; i < 4; i += 1) {
+      await casoDeUso.ejecutar({ ...credenciales, clave: 'Incorrecta2026' }).catch(() => undefined);
+    }
+
+    await casoDeUso.ejecutar(credenciales);
+
+    expect(limitador.fallos.get('correo:persona@ejemplo.pe')).toBe(4);
+    expect(limitador.fallos.get(`ip:${IP}`)).toBe(4);
+  });
+
   it('un correo inexistente cuenta igual (no revela qué correos existen)', async () => {
     const { limitador, casoDeUso } = preparar();
 

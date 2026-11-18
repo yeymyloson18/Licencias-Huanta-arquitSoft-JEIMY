@@ -22,27 +22,28 @@ Portal                                   API
 
 ## Tabla de decisiones de `iniciar-sesion`
 
-El orden importa: los límites se comprueban **antes** que las credenciales (el 6.º intento se rechaza
-aunque sea correcto).
+El orden importa: el intento se **reserva de forma atómica antes** de comprobar las credenciales (el
+6.º se rechaza aunque sea correcto, y con muchos intentos simultáneos como máximo 5 llegan a verificar
+la clave). Si las credenciales resultan correctas, la reserva se libera.
 
 | # | Condición | Respuesta | Efecto en contadores |
 |---|---|---|---|
 | 1 | Redis no responde | 503 `servicio-no-disponible` | — |
-| 2 | `lim:fallos:correo` ≥ 5 o `lim:fallos:ip` ≥ 5 | 429 `demasiados-intentos`, `Retry-After` = mayor TTL restante | — |
-| 3 | Correo inexistente, usuario inactivo o clave incorrecta | 401 `no-autenticado` (mismo cuerpo y tiempo similar: argon2 contra huella ficticia) | +1 correo, +1 IP |
-| 4 | Credenciales correctas y `lim:envios:usuario` ≥ 3 | 429 `demasiados-intentos`, `Retry-After` | — |
-| 5 | Credenciales correctas | 200 `DesafioOtp`; vence los códigos anteriores; envía el nuevo | +1 envíos |
-| 6 | Falla el envío del SMS | 503 `servicio-no-disponible` (el usuario puede reintentar) | el envío no cuenta |
+| 2 | Reserva del intento: `INCR` de `lim:fallos:correo` y `lim:fallos:ip` (atómico) da > 5 en alguno | 429 `demasiados-intentos`, `Retry-After` = mayor TTL restante; no se verifica la clave | el intento queda reservado |
+| 3 | Correo inexistente, usuario inactivo o clave incorrecta | 401 `no-autenticado` (mismo cuerpo y tiempo similar: argon2 contra huella ficticia) | la reserva queda como fallo |
+| 4 | Credenciales correctas (se libera el intento) y la reserva del envío (`INCR` de `lim:envios:usuario`) da > 3 | 429 `demasiados-intentos`, `Retry-After` | — |
+| 5 | Credenciales correctas | 200 `DesafioOtp`; vence los códigos anteriores; envía el nuevo | intento liberado; envío reservado |
+| 6 | Falla el envío del SMS | 503 `servicio-no-disponible` (el usuario puede reintentar) | se libera la reserva del envío |
 
 ## Tabla de decisiones de `verificar-otp`
 
 | # | Condición | Respuesta | Efecto |
 |---|---|---|---|
-| 1 | Límites superados para el correo del desafío o la IP | 429 | — |
-| 2 | `desafioId` inexistente, de otro propósito, vencido, usado o con 5 intentos | 401 | +1 fallos (correo e IP) si el desafío existe; si no, solo IP |
-| 3 | Código incorrecto | 401 | `intentos+1`; +1 correo, +1 IP |
+| 1 | Reserva del intento (correo del desafío e IP) da > 5 | 429; no se verifica el código | el intento queda reservado |
+| 2 | `desafioId` inexistente, de otro propósito, vencido, usado o con 5 intentos | 401 | la reserva queda como fallo (correo e IP si el desafío existe; si no, solo IP) |
+| 3 | Código incorrecto | 401 | `intentos+1`; la reserva queda como fallo |
 | 4 | Usuario desactivado entre el paso 1 y el 2 | 401 | — |
-| 5 | Código correcto | 200 `SesionPersonal` (`debeCambiarClave` según el usuario) + cookie | `usado_en = now`; sesión con `vence_maximo_en = now + 8 h` |
+| 5 | Código correcto | 200 `SesionPersonal` (`debeCambiarClave` según el usuario) + cookie | intento liberado; `usado_en = now`; sesión con `vence_maximo_en = now + 8 h` |
 
 ## `renovar`
 

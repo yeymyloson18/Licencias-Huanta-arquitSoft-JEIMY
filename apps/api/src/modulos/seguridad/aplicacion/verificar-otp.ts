@@ -39,14 +39,15 @@ export class VerificarOtp {
     // Los fallos del código suman al mismo contador que los de la clave (por correo y por IP).
     const correo = usuario?.correo ?? null;
 
-    const fallos = await this.d.limitador.consultarFallos(correo, entrada.ip);
-    if (fallos.bloqueado) {
+    // Reserva atómica antes de verificar (ver IniciarSesion). Un desafío inexistente solo cuenta
+    // para el origen.
+    const reserva = await this.d.limitador.reservarIntento(correo, entrada.ip);
+    if (!reserva.permitido) {
       this.d.eventos.registrar('bloqueo-temporal', usuario ? { usuarioId: usuario.id } : {});
-      throw new ErrorDemasiadosIntentos(fallos.segundosRestantes);
+      throw new ErrorDemasiadosIntentos(reserva.segundosRestantes);
     }
 
     if (codigo === null) {
-      await this.d.limitador.registrarFallo(null, entrada.ip);
       this.d.eventos.registrar('inicio-sesion-fallido');
       throw new ErrorAutenticacion();
     }
@@ -60,10 +61,10 @@ export class VerificarOtp {
     await this.d.codigos.guardar(codigo);
 
     if (resultado !== 'CORRECTO') {
-      await this.d.limitador.registrarFallo(correo, entrada.ip);
       this.d.eventos.registrar('inicio-sesion-fallido', { usuarioId: codigo.usuarioId });
       throw new ErrorAutenticacion();
     }
+    await this.d.limitador.liberarIntento(correo, entrada.ip);
 
     if (usuario?.activo !== true) {
       this.d.eventos.registrar('inicio-sesion-fallido', { usuarioId: codigo.usuarioId });

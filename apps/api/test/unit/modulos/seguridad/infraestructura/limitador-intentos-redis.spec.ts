@@ -10,7 +10,10 @@ const protector = {
 } as unknown as ProtectorDatos;
 const hex = (texto: string) => Buffer.from(texto).toString('hex');
 
-/** Redis en memoria con lo que usa el limitador (MULTI, INCR, EXPIRE NX, GET, TTL). */
+/**
+ * Redis en memoria con lo que usa el limitador: MULTI (INCR, EXPIRE NX, TTL) y EVAL del script de
+ * liberación (decrementa solo las claves que existen).
+ */
 const redisFalso = (falla = false) => {
   const valores = new Map<string, number>();
   const ttls = new Map<string, number>();
@@ -18,7 +21,7 @@ const redisFalso = (falla = false) => {
   const fallar = <T>(valor: T) =>
     falla ? Promise.reject(new Error('redis caído')) : Promise.resolve(valor);
 
-  const lote = () => {
+  const multi = () => {
     const pendientes: (() => unknown)[] = [];
     const api = {
       incr: (clave: string) => {
@@ -40,14 +43,8 @@ const redisFalso = (falla = false) => {
         });
         return api;
       },
-      get: (clave: string) => {
-        pendientes.push(() => {
-          const valor = valores.get(clave);
-          return valor === undefined ? null : String(valor);
-        });
-        return api;
-      },
       ttl: (clave: string) => {
+        comandos.push(['ttl', clave]);
         pendientes.push(() => ttls.get(clave) ?? -2);
         return api;
       },
@@ -56,112 +53,143 @@ const redisFalso = (falla = false) => {
     return api;
   };
 
-  const redis = { multi: lote, pipeline: lote } as unknown as Redis;
+  const evaluar = (_script: string, cantidad: number, ...claves: string[]) => {
+    comandos.push(['eval', cantidad, ...claves]);
+    if (!falla) {
+      for (const clave of claves) {
+        const valor = valores.get(clave);
+        if (valor !== undefined) {
+          valores.set(clave, valor - 1);
+        }
+      }
+    }
+    return fallar(0);
+  };
+
+  const redis = { multi, eval: evaluar } as unknown as Redis;
   return { redis, valores, ttls, comandos };
 };
 
 const correo = Correo.crear('persona@ejemplo.pe');
+const claveCorreo = `lim:fallos:correo:${hex('persona@ejemplo.pe')}`;
 
 describe('LimitadorIntentosRedis (research.md §R-08)', () => {
-  it('registra el fallo en las claves del correo (HMAC) y de la IP, con EXPIRE 900 NX en un MULTI', async () => {
+  it('reserva el intento en las claves del correo (HMAC) y de la IP en un solo MULTI', async () => {
     const { redis, comandos } = redisFalso();
 
-    await new LimitadorIntentosRedis(redis, protector).registrarFallo(correo, '10.0.0.7');
+    await new LimitadorIntentosRedis(redis, protector).reservarIntento(correo, '10.0.0.7');
 
     expect(comandos).toEqual([
-      ['incr', `lim:fallos:correo:${hex('persona@ejemplo.pe')}`],
-      ['expire', `lim:fallos:correo:${hex('persona@ejemplo.pe')}`, 900, 'NX'],
+      ['incr', claveCorreo],
+      ['expire', claveCorreo, 900, 'NX'],
+      ['ttl', claveCorreo],
       ['incr', 'lim:fallos:ip:10.0.0.7'],
       ['expire', 'lim:fallos:ip:10.0.0.7', 900, 'NX'],
+      ['ttl', 'lim:fallos:ip:10.0.0.7'],
     ]);
   });
 
   it('nunca usa el correo en claro en las claves', async () => {
     const { redis, valores } = redisFalso();
 
-    await new LimitadorIntentosRedis(redis, protector).registrarFallo(correo, '10.0.0.7');
+    await new LimitadorIntentosRedis(redis, protector).reservarIntento(correo, '10.0.0.7');
 
     expect([...valores.keys()].join(' ')).not.toContain('persona@ejemplo.pe');
   });
 
-  it('el TTL se fija solo la primera vez (ventana fija de 15 minutos)', async () => {
+  it('el TTL se fija solo con el primer intento (ventana fija de 15 minutos)', async () => {
     const { redis, ttls } = redisFalso();
     const limitador = new LimitadorIntentosRedis(redis, protector);
-    await limitador.registrarFallo(null, '10.0.0.7');
+    await limitador.reservarIntento(null, '10.0.0.7');
     ttls.set('lim:fallos:ip:10.0.0.7', 120);
 
-    await limitador.registrarFallo(null, '10.0.0.7');
+    await limitador.reservarIntento(null, '10.0.0.7');
 
     expect(ttls.get('lim:fallos:ip:10.0.0.7')).toBe(120);
   });
 
-  it('con menos de 5 fallos no está bloqueado; con 5, sí, con el TTL restante', async () => {
+  it('permite las 5 primeras reservas y rechaza la 6.ª con el TTL restante', async () => {
     const { redis, ttls } = redisFalso();
     const limitador = new LimitadorIntentosRedis(redis, protector);
-    for (let i = 0; i < 4; i += 1) {
-      await limitador.registrarFallo(correo, '10.0.0.7');
+    for (let i = 0; i < 5; i += 1) {
+      await expect(limitador.reservarIntento(correo, '10.0.0.7')).resolves.toEqual({
+        permitido: true,
+        segundosRestantes: 0,
+      });
     }
-    await expect(limitador.consultarFallos(correo, '10.0.0.7')).resolves.toEqual({
-      bloqueado: false,
-      segundosRestantes: 0,
-    });
-
-    await limitador.registrarFallo(correo, '10.0.0.7');
-    ttls.set(`lim:fallos:correo:${hex('persona@ejemplo.pe')}`, 612);
-
-    await expect(limitador.consultarFallos(correo, '10.0.0.7')).resolves.toEqual({
-      bloqueado: true,
-      segundosRestantes: 900,
-    });
+    ttls.set(claveCorreo, 612);
     ttls.set('lim:fallos:ip:10.0.0.7', 300);
-    await expect(limitador.consultarFallos(correo, '10.0.0.7')).resolves.toEqual({
-      bloqueado: true,
+
+    await expect(limitador.reservarIntento(correo, '10.0.0.7')).resolves.toEqual({
+      permitido: false,
       segundosRestantes: 612,
     });
   });
 
-  it('5 fallos desde la misma IP bloquean otros correos (FR-007)', async () => {
+  it('el valor de cada INCR ya incluye la reserva: de 20 reservas simultáneas pasan solo 5', async () => {
+    const { redis } = redisFalso();
+    const limitador = new LimitadorIntentosRedis(redis, protector);
+
+    const resultados = await Promise.all(
+      Array.from({ length: 20 }, () => limitador.reservarIntento(correo, '10.0.0.7')),
+    );
+
+    expect(resultados.filter((r) => r.permitido)).toHaveLength(5);
+  });
+
+  it('liberar devuelve la reserva en las dos claves con un script atómico', async () => {
+    const { redis, valores, comandos } = redisFalso();
+    const limitador = new LimitadorIntentosRedis(redis, protector);
+    await limitador.reservarIntento(correo, '10.0.0.7');
+
+    await limitador.liberarIntento(correo, '10.0.0.7');
+
+    expect(comandos.at(-1)).toEqual(['eval', 2, claveCorreo, 'lim:fallos:ip:10.0.0.7']);
+    expect(valores.get(claveCorreo)).toBe(0);
+    expect(valores.get('lim:fallos:ip:10.0.0.7')).toBe(0);
+  });
+
+  it('5 intentos fallidos desde la misma IP bloquean otros correos (FR-007)', async () => {
     const { redis } = redisFalso();
     const limitador = new LimitadorIntentosRedis(redis, protector);
     for (let i = 0; i < 5; i += 1) {
-      await limitador.registrarFallo(Correo.crear(`p${String(i)}@ejemplo.pe`), '10.0.0.7');
+      await limitador.reservarIntento(Correo.crear(`p${String(i)}@ejemplo.pe`), '10.0.0.7');
     }
 
-    await expect(limitador.consultarFallos(correo, '10.0.0.7')).resolves.toMatchObject({
-      bloqueado: true,
+    await expect(limitador.reservarIntento(correo, '10.0.0.7')).resolves.toMatchObject({
+      permitido: false,
     });
-    await expect(limitador.consultarFallos(correo, '10.0.0.8')).resolves.toMatchObject({
-      bloqueado: false,
+    await expect(limitador.reservarIntento(correo, '10.0.0.8')).resolves.toMatchObject({
+      permitido: true,
     });
   });
 
-  it('cuenta los envíos de código por usuario y bloquea con 3 (FR-002a)', async () => {
+  it('reserva los envíos de código por usuario: pasan 3, el 4.º no (FR-002a)', async () => {
     const { redis, comandos } = redisFalso();
     const limitador = new LimitadorIntentosRedis(redis, protector);
     for (let i = 0; i < 3; i += 1) {
-      await limitador.registrarEnvio('u-1');
+      await expect(limitador.reservarEnvio('u-1')).resolves.toMatchObject({ permitido: true });
     }
 
     expect(comandos[0]).toEqual(['incr', 'lim:envios:usuario:u-1']);
-    await expect(limitador.consultarEnvios('u-1')).resolves.toMatchObject({ bloqueado: true });
-    await expect(limitador.consultarEnvios('u-2')).resolves.toMatchObject({ bloqueado: false });
+    await expect(limitador.reservarEnvio('u-1')).resolves.toMatchObject({ permitido: false });
+    await expect(limitador.reservarEnvio('u-2')).resolves.toMatchObject({ permitido: true });
+
+    await limitador.liberarEnvio('u-2');
+    expect(comandos.at(-1)).toEqual(['eval', 1, 'lim:envios:usuario:u-2']);
   });
 
   it('si Redis falla lanza ErrorLimitadorNoDisponible', async () => {
     const { redis } = redisFalso(true);
     const limitador = new LimitadorIntentosRedis(redis, protector);
 
-    await expect(limitador.consultarFallos(correo, '10.0.0.7')).rejects.toBeInstanceOf(
+    await expect(limitador.reservarIntento(correo, '10.0.0.7')).rejects.toBeInstanceOf(
       ErrorLimitadorNoDisponible,
     );
-    await expect(limitador.registrarFallo(correo, '10.0.0.7')).rejects.toBeInstanceOf(
+    await expect(limitador.liberarIntento(correo, '10.0.0.7')).rejects.toBeInstanceOf(
       ErrorLimitadorNoDisponible,
     );
-    await expect(limitador.consultarEnvios('u-1')).rejects.toBeInstanceOf(
-      ErrorLimitadorNoDisponible,
-    );
-    await expect(limitador.registrarEnvio('u-1')).rejects.toBeInstanceOf(
-      ErrorLimitadorNoDisponible,
-    );
+    await expect(limitador.reservarEnvio('u-1')).rejects.toBeInstanceOf(ErrorLimitadorNoDisponible);
+    await expect(limitador.liberarEnvio('u-1')).rejects.toBeInstanceOf(ErrorLimitadorNoDisponible);
   });
 });

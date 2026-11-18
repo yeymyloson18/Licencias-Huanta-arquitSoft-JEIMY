@@ -51,18 +51,21 @@ export class CambiarClave {
     if (sesion.usuarioId !== usuario.id) {
       throw new ErrorAutenticacion();
     }
-    const fallos = await this.sinFallarSiNoHayLimites(() =>
-      this.d.limitador.consultarFallos(usuario.correo, entrada.ip),
+    // Reserva atómica antes de verificar la clave actual (ver IniciarSesion).
+    const reserva = await this.sinFallarSiNoHayLimites(() =>
+      this.d.limitador.reservarIntento(usuario.correo, entrada.ip),
     );
-    if (fallos?.bloqueado === true) {
+    if (reserva?.permitido === false) {
       this.d.eventos.registrar('bloqueo-temporal', { usuarioId: usuario.id });
-      throw new ErrorDemasiadosIntentos(fallos.segundosRestantes);
+      throw new ErrorDemasiadosIntentos(reserva.segundosRestantes);
     }
     if (!(await this.d.hasher.verificar(entrada.claveActual, usuario.claveHash))) {
-      await this.sinFallarSiNoHayLimites(() =>
-        this.d.limitador.registrarFallo(usuario.correo, entrada.ip),
-      );
       throw new ErrorAutenticacion();
+    }
+    if (reserva !== null) {
+      await this.sinFallarSiNoHayLimites(() =>
+        this.d.limitador.liberarIntento(usuario.correo, entrada.ip),
+      );
     }
 
     const reglas = PoliticaClave.validar(entrada.claveNueva);

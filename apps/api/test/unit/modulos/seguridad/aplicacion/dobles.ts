@@ -17,8 +17,8 @@ import type { GeneradorSecretos } from '../../../../../src/modulos/seguridad/dom
 import type { HasherClaves } from '../../../../../src/modulos/seguridad/dominio/puertos/hasher-claves';
 import {
   ErrorLimitadorNoDisponible,
-  type EstadoLimite,
   type LimitadorIntentos,
+  type ResultadoReserva,
 } from '../../../../../src/modulos/seguridad/dominio/puertos/limitador-intentos';
 import type { ProtectorDatos } from '../../../../../src/modulos/seguridad/dominio/puertos/protector-datos';
 import type {
@@ -291,13 +291,16 @@ export const usuarioFicticio = (opciones: OpcionesUsuario = {}): Usuario => {
   return usuario;
 };
 
-/** Limitador en memoria: 5 fallos por correo o por IP, 3 envíos por usuario. */
+/**
+ * Limitador en memoria con reserva atómica: cada reserva suma y compara en un solo paso (5 intentos
+ * por correo o por IP, 3 envíos por usuario); liberar devuelve la reserva.
+ */
 export class LimitadorFalso implements LimitadorIntentos {
   readonly fallos = new Map<string, number>();
   readonly envios = new Map<string, number>();
   noDisponible = false;
 
-  private clavesFallo(correo: Correo | null, ip: string): string[] {
+  private clavesIntento(correo: Correo | null, ip: string): string[] {
     return [...(correo === null ? [] : [`correo:${correo.valor}`]), `ip:${ip}`];
   }
   private comprobar(): void {
@@ -305,26 +308,43 @@ export class LimitadorFalso implements LimitadorIntentos {
       throw new ErrorLimitadorNoDisponible();
     }
   }
-  consultarFallos(correo: Correo | null, ip: string): Promise<EstadoLimite> {
+  private reservar(
+    mapa: Map<string, number>,
+    claves: readonly string[],
+    maximo: number,
+    segundos: number,
+  ): Promise<ResultadoReserva> {
     this.comprobar();
-    const bloqueado = this.clavesFallo(correo, ip).some((c) => (this.fallos.get(c) ?? 0) >= 5);
-    return Promise.resolve({ bloqueado, segundosRestantes: bloqueado ? 600 : 0 });
+    let permitido = true;
+    for (const clave of claves) {
+      const cuenta = (mapa.get(clave) ?? 0) + 1;
+      mapa.set(clave, cuenta);
+      permitido &&= cuenta <= maximo;
+    }
+    return Promise.resolve({ permitido, segundosRestantes: permitido ? 0 : segundos });
   }
-  registrarFallo(correo: Correo | null, ip: string): Promise<void> {
+  private liberar(mapa: Map<string, number>, claves: readonly string[]): Promise<void> {
     this.comprobar();
-    for (const clave of this.clavesFallo(correo, ip)) {
-      this.fallos.set(clave, (this.fallos.get(clave) ?? 0) + 1);
+    for (const clave of claves) {
+      const cuenta = (mapa.get(clave) ?? 0) - 1;
+      if (cuenta <= 0) {
+        mapa.delete(clave);
+      } else {
+        mapa.set(clave, cuenta);
+      }
     }
     return Promise.resolve();
   }
-  consultarEnvios(usuarioId: string): Promise<EstadoLimite> {
-    this.comprobar();
-    const bloqueado = (this.envios.get(usuarioId) ?? 0) >= 3;
-    return Promise.resolve({ bloqueado, segundosRestantes: bloqueado ? 300 : 0 });
+  reservarIntento(correo: Correo | null, ip: string): Promise<ResultadoReserva> {
+    return this.reservar(this.fallos, this.clavesIntento(correo, ip), 5, 600);
   }
-  registrarEnvio(usuarioId: string): Promise<void> {
-    this.comprobar();
-    this.envios.set(usuarioId, (this.envios.get(usuarioId) ?? 0) + 1);
-    return Promise.resolve();
+  liberarIntento(correo: Correo | null, ip: string): Promise<void> {
+    return this.liberar(this.fallos, this.clavesIntento(correo, ip));
+  }
+  reservarEnvio(usuarioId: string): Promise<ResultadoReserva> {
+    return this.reservar(this.envios, [usuarioId], 3, 300);
+  }
+  liberarEnvio(usuarioId: string): Promise<void> {
+    return this.liberar(this.envios, [usuarioId]);
   }
 }

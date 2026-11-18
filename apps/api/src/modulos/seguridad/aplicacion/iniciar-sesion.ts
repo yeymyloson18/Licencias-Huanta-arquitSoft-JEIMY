@@ -45,33 +45,35 @@ export class IniciarSesion {
   }): Promise<DesafioInicioSesion> {
     const correo = this.leerCorreo(entrada.correo);
 
-    // Los límites van ANTES que las credenciales: el 6.º intento se rechaza aunque sea correcto.
-    const fallos = await this.d.limitador.consultarFallos(correo, entrada.ip);
-    if (fallos.bloqueado) {
+    // El intento se reserva de forma atómica ANTES de verificar nada: con muchos intentos a la vez,
+    // como máximo 5 llegan a verificar la clave, y el 6.º se rechaza aunque sea correcto.
+    const reserva = await this.d.limitador.reservarIntento(correo, entrada.ip);
+    if (!reserva.permitido) {
       this.d.eventos.registrar('bloqueo-temporal');
-      throw new ErrorDemasiadosIntentos(fallos.segundosRestantes);
+      throw new ErrorDemasiadosIntentos(reserva.segundosRestantes);
     }
 
     const usuario = correo === null ? null : await this.d.usuarios.obtenerPorCorreo(correo);
 
     if (usuario === null) {
       await this.d.hasher.verificarContraFicticia(entrada.clave);
-      await this.d.limitador.registrarFallo(correo, entrada.ip);
       this.d.eventos.registrar('inicio-sesion-fallido');
       throw new ErrorAutenticacion();
     }
 
     const claveCorrecta = await this.d.hasher.verificar(entrada.clave, usuario.claveHash);
     if (!claveCorrecta || !usuario.activo) {
-      await this.d.limitador.registrarFallo(correo, entrada.ip);
+      // El intento reservado queda contado como fallo.
       this.d.eventos.registrar('inicio-sesion-fallido', { usuarioId: usuario.id });
       throw new ErrorAutenticacion();
     }
+    // Credenciales correctas: se devuelve el intento; solo los fallos quedan contados.
+    await this.d.limitador.liberarIntento(correo, entrada.ip);
 
-    const envios = await this.d.limitador.consultarEnvios(usuario.id);
-    if (envios.bloqueado) {
+    const envio = await this.d.limitador.reservarEnvio(usuario.id);
+    if (!envio.permitido) {
       this.d.eventos.registrar('bloqueo-temporal', { usuarioId: usuario.id });
-      throw new ErrorDemasiadosIntentos(envios.segundosRestantes);
+      throw new ErrorDemasiadosIntentos(envio.segundosRestantes);
     }
 
     const ahora = this.d.reloj.ahora();
@@ -90,11 +92,11 @@ export class IniciarSesion {
     try {
       await this.d.enviador.enviar(usuario.celular, codigoEnClaro, usuario.id);
     } catch {
-      // Cualquier fallo del proveedor: el usuario puede pedir otro código (caso límite de la spec).
+      // Cualquier fallo del proveedor: el usuario puede pedir otro código (caso límite de la spec),
+      // y el envío reservado se devuelve (un fallo del proveedor no castiga al usuario).
+      await this.d.limitador.liberarEnvio(usuario.id);
       throw new ErrorEnvioOtp();
     }
-    // Solo cuenta el envío si salió (un fallo del proveedor no castiga al usuario).
-    await this.d.limitador.registrarEnvio(usuario.id);
 
     return {
       desafioId,

@@ -163,11 +163,19 @@ este documento se aparta de ella, lo dice y explica el motivo (siempre la consti
   - `lim:fallos:ip:<ip>`: fallos desde el mismo origen (FR-007).
   - `lim:envios:usuario:<usuarioId>`: códigos enviados (FR-002a), máximo 3.
 
-  Antes de comprobar credenciales se consulta si alguno superó su límite: con 5 fallos (o 3 envíos)
-  se responde **429** con `Retry-After` = TTL restante de la clave (redondeado hacia arriba) sin
-  evaluar los datos, así el 6.º intento se rechaza aunque sea correcto. Un inicio de sesión
-  completo con éxito no borra los contadores (evita que un atacante con una cuenta propia los
-  reinicie para el origen).
+  **Reserva atómica del intento** (corrige una condición de carrera de la primera versión, que
+  consultaba y después contaba: con 20 intentos simultáneos, los 20 llegaban a verificar la clave).
+  Antes de comprobar credenciales, cada intento se reserva con `INCR` + `EXPIRE … NX` + `TTL` en un
+  `MULTI`; el valor del `INCR` ya incluye ese intento, así que solo pasan los que obtienen un valor
+  ≤ 5 (≤ 3 para los envíos de código). Los demás reciben **429** con `Retry-After` = mayor TTL
+  restante (redondeado hacia arriba) sin evaluar los datos, así el 6.º intento se rechaza aunque sea
+  correcto. Si las credenciales (o el código) resultan correctas, el intento se **libera** con un
+  script Lua que decrementa solo las claves que siguen existiendo (si la ventana venció entre medio,
+  no crea un contador negativo sin vencimiento); igual con un envío de SMS que falló. Así solo los
+  fallos quedan contados, y un inicio de sesión con éxito no borra los fallos anteriores (evita que
+  un atacante con una cuenta propia los reinicie para el origen). La prueba
+  `fuerza-bruta.e2e-spec.ts` lanza 20 intentos en paralelo y comprueba que como máximo 5 verifican
+  la clave.
 - **IP real**: `app.set('trust proxy', TRUST_PROXY_SALTOS)` (por defecto 1: nginx del portal, que ya
   envía `X-Forwarded-For`). Con el balanceador de producción delante de nginx se configura 2.
 - **Si Redis no responde**: el inicio de sesión responde 503 (fallar cerrado); sin contadores

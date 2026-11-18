@@ -2,8 +2,8 @@ import type Redis from 'ioredis';
 import type { Correo } from '../dominio/correo';
 import {
   ErrorLimitadorNoDisponible,
-  type EstadoLimite,
   type LimitadorIntentos,
+  type ResultadoReserva,
 } from '../dominio/puertos/limitador-intentos';
 import type { ProtectorDatos } from '../dominio/puertos/protector-datos';
 
@@ -11,13 +11,26 @@ const VENTANA_SEGUNDOS = 15 * 60;
 const MAXIMO_FALLOS = 5;
 const MAXIMO_ENVIOS = 3;
 
-const LIBRE: EstadoLimite = { bloqueado: false, segundosRestantes: 0 };
+/**
+ * Decrementa cada clave solo si todavía existe: si la ventana venció entre la reserva y la
+ * liberación, no crea un contador negativo sin vencimiento.
+ */
+const SCRIPT_LIBERAR = `
+for _, clave in ipairs(KEYS) do
+  if redis.call('EXISTS', clave) == 1 then
+    redis.call('DECR', clave)
+  end
+end
+return 0
+`;
 
 /**
- * Contadores de intentos en Redis, compartidos por todas las instancias (research.md §R-08): ventana
- * fija de 15 minutos que empieza con el primer intento (`INCR` + `EXPIRE … NX` en un `MULTI`). El
- * correo se identifica por su HMAC, nunca en claro. Si Redis no responde, lanza
- * `ErrorLimitadorNoDisponible` para que el inicio de sesión falle cerrado (FR-009).
+ * Contadores de intentos en Redis, compartidos por todas las instancias (research.md §R-08).
+ *
+ * Reserva atómica: `INCR` + `EXPIRE … NX` (+ `TTL`) en un `MULTI`; el valor que devuelve el `INCR` ya
+ * incluye este intento, así que con N peticiones simultáneas solo las que obtienen un valor ≤ límite
+ * pasan. La ventana es fija: 15 minutos desde el primer intento. El correo se identifica por su HMAC,
+ * nunca en claro. Si Redis no responde, lanza `ErrorLimitadorNoDisponible` (falla cerrado, FR-009).
  */
 export class LimitadorIntentosRedis implements LimitadorIntentos {
   constructor(
@@ -25,23 +38,23 @@ export class LimitadorIntentosRedis implements LimitadorIntentos {
     private readonly protector: ProtectorDatos,
   ) {}
 
-  consultarFallos(correo: Correo | null, ip: string): Promise<EstadoLimite> {
-    return this.consultar(this.clavesFallo(correo, ip), MAXIMO_FALLOS);
+  reservarIntento(correo: Correo | null, ip: string): Promise<ResultadoReserva> {
+    return this.reservar(this.clavesIntento(correo, ip), MAXIMO_FALLOS);
   }
 
-  registrarFallo(correo: Correo | null, ip: string): Promise<void> {
-    return this.incrementar(this.clavesFallo(correo, ip));
+  liberarIntento(correo: Correo | null, ip: string): Promise<void> {
+    return this.liberar(this.clavesIntento(correo, ip));
   }
 
-  consultarEnvios(usuarioId: string): Promise<EstadoLimite> {
-    return this.consultar([claveEnvios(usuarioId)], MAXIMO_ENVIOS);
+  reservarEnvio(usuarioId: string): Promise<ResultadoReserva> {
+    return this.reservar([claveEnvios(usuarioId)], MAXIMO_ENVIOS);
   }
 
-  registrarEnvio(usuarioId: string): Promise<void> {
-    return this.incrementar([claveEnvios(usuarioId)]);
+  liberarEnvio(usuarioId: string): Promise<void> {
+    return this.liberar([claveEnvios(usuarioId)]);
   }
 
-  private clavesFallo(correo: Correo | null, ip: string): string[] {
+  private clavesIntento(correo: Correo | null, ip: string): string[] {
     const claves = [`lim:fallos:ip:${ip}`];
     if (correo !== null) {
       const hmac = Buffer.from(this.protector.hmac(correo.valor)).toString('hex');
@@ -50,42 +63,40 @@ export class LimitadorIntentosRedis implements LimitadorIntentos {
     return claves;
   }
 
-  private async incrementar(claves: readonly string[]): Promise<void> {
+  private async reservar(claves: readonly string[], maximo: number): Promise<ResultadoReserva> {
+    let resultados: [Error | null, unknown][];
     try {
       const lote = this.redis.multi();
       for (const clave of claves) {
-        lote.incr(clave).expire(clave, VENTANA_SEGUNDOS, 'NX');
-      }
-      comprobarResultados(await lote.exec());
-    } catch {
-      throw new ErrorLimitadorNoDisponible();
-    }
-  }
-
-  private async consultar(claves: readonly string[], maximo: number): Promise<EstadoLimite> {
-    let resultados: [Error | null, unknown][] | null;
-    try {
-      const lote = this.redis.pipeline();
-      for (const clave of claves) {
-        lote.get(clave).ttl(clave);
+        lote.incr(clave).expire(clave, VENTANA_SEGUNDOS, 'NX').ttl(clave);
       }
       resultados = comprobarResultados(await lote.exec());
     } catch {
       throw new ErrorLimitadorNoDisponible();
     }
 
-    let bloqueado = false;
+    let permitido = true;
     let segundos = 0;
     for (let i = 0; i < claves.length; i += 1) {
-      const cuenta = Number(resultados[i * 2]?.[1] ?? 0);
-      if (cuenta >= maximo) {
-        bloqueado = true;
-        const ttl = Number(resultados[i * 2 + 1]?.[1] ?? -1);
+      const cuenta = Number(resultados[i * 3]?.[1] ?? 0);
+      if (cuenta > maximo) {
+        permitido = false;
+        const ttl = Number(resultados[i * 3 + 2]?.[1] ?? -1);
         // Sin TTL (no debería pasar) se asume la ventana completa.
         segundos = Math.max(segundos, ttl > 0 ? Math.ceil(ttl) : VENTANA_SEGUNDOS);
       }
     }
-    return bloqueado ? { bloqueado, segundosRestantes: segundos } : LIBRE;
+    return permitido
+      ? { permitido, segundosRestantes: 0 }
+      : { permitido, segundosRestantes: segundos };
+  }
+
+  private async liberar(claves: readonly string[]): Promise<void> {
+    try {
+      await this.redis.eval(SCRIPT_LIBERAR, claves.length, ...claves);
+    } catch {
+      throw new ErrorLimitadorNoDisponible();
+    }
   }
 }
 

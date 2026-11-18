@@ -4,6 +4,7 @@ import request, { type Response } from 'supertest';
 import type { App } from 'supertest/types';
 import { PrismaServicio } from '../../src/compartido/infraestructura/prisma.servicio';
 import { REDIS_CLIENTE } from '../../src/compartido/infraestructura/redis.proveedor';
+import { HasherClavesArgon2 } from '../../src/modulos/seguridad/infraestructura/hasher-claves-argon2';
 import { crearAplicacionDePrueba } from '../apoyo/aplicacion-prueba';
 import { limpiarSeguridad } from '../apoyo/limpiar-seguridad';
 import { leerOtpSimulado, limpiarClavesSeguridad } from '../apoyo/redis-prueba';
@@ -144,6 +145,32 @@ describe('Bloqueo ante intentos fallidos (historia 4)', () => {
     }
 
     await esperarBloqueo(await iniciar(instanciaB, usuario.correo, usuario.clave));
+    await esperarBloqueo(await iniciar(instanciaA, usuario.correo, usuario.clave));
+  });
+
+  it('con 20 intentos en paralelo, como máximo 5 llegan a verificar la clave (reserva atómica)', async () => {
+    const usuario = await crearUsuarioDePrueba(prisma);
+    const verificaciones = jest.spyOn(HasherClavesArgon2.prototype, 'verificar');
+
+    try {
+      const respuestas = await Promise.all(
+        Array.from({ length: 20 }, (_, i) =>
+          iniciar(i % 2 === 0 ? instanciaA : instanciaB, usuario.correo, 'ClaveIncorrecta2026'),
+        ),
+      );
+
+      expect(verificaciones.mock.calls.length).toBeLessThanOrEqual(5);
+      const estados = respuestas.map((r) => r.status);
+      expect(estados.filter((estado) => estado === 401)).toHaveLength(
+        verificaciones.mock.calls.length,
+      );
+      expect(estados.filter((estado) => estado === 429).length).toBeGreaterThanOrEqual(15);
+      expect(estados.every((estado) => estado === 401 || estado === 429)).toBe(true);
+    } finally {
+      verificaciones.mockRestore();
+    }
+
+    // Y el bloqueo sigue: ni siquiera la clave correcta pasa.
     await esperarBloqueo(await iniciar(instanciaA, usuario.correo, usuario.clave));
   });
 
