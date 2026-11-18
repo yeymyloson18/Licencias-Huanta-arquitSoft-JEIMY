@@ -35,6 +35,8 @@ interface FormularioReceta {
   readonly plazoItseDias: string;
   /** '' = vigencia indeterminada. */
   readonly vigenciaMeses: string;
+  /** Si es `false`, el público no la ve ni la propone el asistente (historia 4). */
+  readonly activa: boolean;
   readonly requisitos: readonly RequisitoFormulario[];
 }
 
@@ -137,6 +139,7 @@ const desdeReceta = (receta: RecetaAdmin): FormularioReceta => ({
   ordenItse: receta.ordenItse ?? '',
   plazoItseDias: aTexto(receta.plazoItseDias),
   vigenciaMeses: aTexto(receta.vigenciaMeses),
+  activa: receta.activa,
   requisitos: receta.requisitos.map((requisito) => ({
     clave: nuevaClave(),
     id: requisito.id,
@@ -202,6 +205,11 @@ const compararConGuardado = (receta: RecetaAdmin, formulario: FormularioReceta):
 
   if (formulario.calificacion !== receta.calificacion) {
     cambios.calificacion = formulario.calificacion;
+  }
+
+  // Un borrador anterior a este campo no lo trae: se conserva lo guardado.
+  if (typeof formulario.activa === 'boolean' && formulario.activa !== receta.activa) {
+    cambios.activa = formulario.activa;
   }
 
   if (receta.tipo === 'LICENCIA') {
@@ -606,6 +614,24 @@ export function EditarReceta() {
             }}
           />
         )}
+
+        <div className="campo editar-receta__activa">
+          <label className="editar-receta__casilla" htmlFor={`${idBase}-activa`}>
+            <input
+              id={`${idBase}-activa`}
+              type="checkbox"
+              checked={formulario.activa}
+              aria-describedby={`${idBase}-activa-ayuda`}
+              onChange={(evento) => {
+                cambiar({ activa: evento.target.checked });
+              }}
+            />
+            Activa
+          </label>
+          <p className="campo__ayuda" id={`${idBase}-activa-ayuda`}>
+            Si la desactivas, no se mostrará al público ni la propondrá el asistente.
+          </p>
+        </div>
 
         <fieldset
           className="editar-receta__requisitos"

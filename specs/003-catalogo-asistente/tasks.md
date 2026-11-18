@@ -370,7 +370,7 @@ la ficha responde 404 y el asistente da `RECETA_NO_DISPONIBLE`; al reactivarla v
 
 ### Pruebas de la historia 4 ⚠️
 
-- [ ] T051 [P] [US4] Prueba de integración `int/desactivar-receta.e2e-spec.ts`, que restaura `LIC-06` en `afterEach`:
+- [X] T051 [P] [US4] Prueba de integración `int/desactivar-receta.e2e-spec.ts`, que restaura `LIC-06` en `afterEach`:
   - **Desactivar**: `PUT LIC-06 {"activa":false}` como administrador → 200 con `activa=false`, y la fila de `cambio_receta` con `{"activa":{"antes":true,"despues":false}}`. Después:
     - la lista pública no incluye `LIC-06`;
     - `GET /catalogo/recetas/LIC-06` → 404;
@@ -378,10 +378,12 @@ la ficha responde 404 y el asistente da `RECETA_NO_DISPONIBLE`; al reactivarla v
     - `GET /admin/catalogo/recetas/LIC-06` → 200 con `activa=false`.
   - **Reactivar**: `PUT {"activa":true}` → todo vuelve, y hay una segunda fila de registro.
   - **Caché**: los cambios se ven sin esperar al TTL, porque la caché se invalida al guardar.
+  _Nota de implementación:_ antes de cada guardado se llenan las cachés (lista, ficha y propuesta) para comprobar la invalidación. Se agregó un caso: desactivar una receta ya desactivada no crea otro registro (FR-022). No se encontraron huecos en la lógica de US1 a US3.
 
 ### Implementación de la historia 4
 
-- [ ] T052 [US4] En `web/paginas/admin/EditarReceta.tsx` agregar el interruptor "Activa", un `checkbox` con su etiqueta y la ayuda "Si la desactivas, no se mostrará al público ni la propondrá el asistente". En `web/paginas/admin/Catalogo.tsx`, distinguir las desactivadas con texto, no solo con color. Ampliar `EditarReceta.test.tsx` y `Catalogo.test.tsx`. Si T051 encuentra un hueco en la lógica de US1 a US3, corregirlo en su archivo y agregar la prueba que lo reproduce
+- [X] T052 [US4] En `web/paginas/admin/EditarReceta.tsx` agregar el interruptor "Activa", un `checkbox` con su etiqueta y la ayuda "Si la desactivas, no se mostrará al público ni la propondrá el asistente". En `web/paginas/admin/Catalogo.tsx`, distinguir las desactivadas con texto, no solo con color. Ampliar `EditarReceta.test.tsx` y `Catalogo.test.tsx`. Si T051 encuentra un hueco en la lógica de US1 a US3, corregirlo en su archivo y agregar la prueba que lo reproduce
+  _Nota de implementación:_ el catálogo ya mostraba el estado como texto desde T048; ahora dice "Desactivada (no se muestra al público)". Volver a marcar "Activa" sin guardar no cuenta como cambio, y un borrador de antes de este campo conserva el estado guardado.
 
 **Punto de control**: las cuatro historias funcionan de forma independiente.
 

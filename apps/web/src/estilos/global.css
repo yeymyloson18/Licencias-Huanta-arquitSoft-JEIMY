@@ -697,6 +697,12 @@ video {
   margin-top: 0.5rem;
 }
 
+/* Interruptor "Activa" (historia 4): separado de los datos del TUPA. */
+.editar-receta__activa {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-borde);
+}
+
 .editar-receta__casilla {
   display: inline-flex;
   align-items: center;

@@ -82,7 +82,7 @@ export function Catalogo() {
                   <dd
                     className={`catalogo-admin__estado${receta.activa ? '' : ' catalogo-admin__estado--inactiva'}`}
                   >
-                    {receta.activa ? 'Activa' : 'Desactivada'}
+                    {receta.activa ? 'Activa' : 'Desactivada (no se muestra al público)'}
                   </dd>
                 </div>
               </dl>

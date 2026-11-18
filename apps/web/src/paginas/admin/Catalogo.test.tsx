@@ -62,7 +62,12 @@ describe('Catálogo del administrador (/admin/catalogo)', () => {
     expect(primera.getByText('S/ 177.10')).toBeInTheDocument();
     expect(primera.getByText('2 días hábiles')).toBeInTheDocument();
     expect(primera.getByText('Activa')).toBeInTheDocument();
-    expect(within(elementos[5] as HTMLElement).getByText('Desactivada')).toBeInTheDocument();
+    // El estado se escribe (no solo con color) y dice qué significa (historia 4).
+    expect(
+      within(elementos[5] as HTMLElement).getByText('Desactivada (no se muestra al público)'),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/^Desactivada/)).toHaveLength(1);
+    expect(screen.getAllByText('Activa')).toHaveLength(11);
     expect(within(elementos[8] as HTMLElement).getByText('Gratuito')).toBeInTheDocument();
     expect(within(elementos[9] as HTMLElement).getByText('Plazo no aplica')).toBeInTheDocument();
   });

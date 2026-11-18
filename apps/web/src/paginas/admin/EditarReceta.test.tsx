@@ -314,6 +314,48 @@ describe('Edición de una receta (/admin/catalogo/:codigo)', () => {
     expect(sessionStorage.getItem('catalogo:borrador:LIC-02')).toBeNull();
   });
 
+  it('el interruptor "Activa" explica su efecto y desactivar envía solo activa=false', async () => {
+    const llamadas = simular();
+    await abrir();
+
+    const activa = screen.getByRole('checkbox', { name: 'Activa' });
+    expect(activa).toBeChecked();
+    expect(activa).toHaveAccessibleDescription(
+      'Si la desactivas, no se mostrará al público ni la propondrá el asistente.',
+    );
+    await userEvent.click(activa);
+    await guardar();
+
+    await screen.findByText(/Cambios guardados/);
+    expect(cuerpoPut(llamadas)).toEqual([{ activa: false }]);
+    expect(screen.getByRole('checkbox', { name: 'Activa' })).not.toBeChecked();
+  });
+
+  it('una receta desactivada se muestra sin marcar y se puede reactivar', async () => {
+    const llamadas = simular({ [RUTA_GET]: () => json(receta({ activa: false })) });
+    await abrir();
+
+    const activa = screen.getByRole('checkbox', { name: 'Activa' });
+    expect(activa).not.toBeChecked();
+    await userEvent.click(activa);
+    await guardar();
+
+    await screen.findByText(/Cambios guardados/);
+    expect(cuerpoPut(llamadas)).toEqual([{ activa: true }]);
+  });
+
+  it('volver a marcar "Activa" sin guardar no cuenta como cambio', async () => {
+    const llamadas = simular();
+    await abrir();
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Activa' }));
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Activa' }));
+    await guardar();
+
+    expect(await screen.findByText('No hay cambios para guardar.')).toBeInTheDocument();
+    expect(cuerpoPut(llamadas)).toEqual([]);
+  });
+
   it('si la receta no se puede cargar permite reintentar', async () => {
     let intentos = 0;
     simular({
