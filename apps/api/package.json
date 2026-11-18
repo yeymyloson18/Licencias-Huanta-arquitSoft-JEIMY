@@ -8,9 +8,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "start": "node dist/main.js",
     "crear-administrador": "node dist/modulos/seguridad/presentacion/cli/crear-administrador.js",
-    "test": "jest",
+    "test": "jest --selectProjects unit && jest --selectProjects integracion --runInBand",
     "test:unit": "jest --selectProjects unit",
-    "test:integracion": "jest --selectProjects integracion",
+    "test:integracion": "jest --selectProjects integracion --runInBand",
     "cobertura": "jest --selectProjects unit --coverage"
   },
   "dependencies": {

@@ -19,6 +19,8 @@ const config: Config = {
       transform,
     },
     {
+      // Comparten PostgreSQL y Redis y limpian el esquema seguridad entre pruebas: se ejecutan en
+      // serie (--runInBand en los scripts test y test:integracion de package.json).
       displayName: 'integracion',
       testEnvironment: 'node',
       testMatch: ['<rootDir>/test/integracion/**/*.e2e-spec.ts'],
