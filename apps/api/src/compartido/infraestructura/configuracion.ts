@@ -2,8 +2,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 
-// Configuración validada al arrancar (research.md §R-15). Los errores nombran las variables
-// inválidas, nunca sus valores, para no exponer credenciales en los logs (principio VII).
+// Configuración validada al arrancar (research.md §R-15 de la 001 y §R-16 de la 002). Los errores
+// nombran las variables inválidas, nunca sus valores, para no exponer credenciales en los logs
+// (principio VII).
 
 export const CONFIGURACION = Symbol('CONFIGURACION');
 
@@ -21,6 +22,18 @@ const leerVersionPaquete = (): string => {
 const enteroPositivo = (porDefecto: number) =>
   z.coerce.number().int().positive().default(porDefecto);
 
+const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
+
+/** Texto base64 que decodifica a `minimo`..`maximo` bytes. */
+const claveBase64 = (minimo: number, maximo = Number.MAX_SAFE_INTEGER) =>
+  z
+    .string()
+    .regex(BASE64)
+    .refine((texto) => {
+      const bytes = Buffer.from(texto, 'base64').length;
+      return bytes >= minimo && bytes <= maximo;
+    });
+
 const esquemaConfiguracion = z.object({
   DATABASE_URL: z.url(),
   REDIS_URL: z.url(),
@@ -28,7 +41,23 @@ const esquemaConfiguracion = z.object({
   CATALOGO_CACHE_TTL_SEGUNDOS: enteroPositivo(300),
   SALUD_TIMEOUT_MS: enteroPositivo(2000),
   VERSION_SERVICIO: z.string().min(1).optional(),
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  JWT_SECRETO: z.string().refine((texto) => Buffer.byteLength(texto) >= 32),
+  CLAVE_CIFRADO_DATOS: claveBase64(32, 32),
+  CLAVE_HMAC_DATOS: claveBase64(32),
+  ENVIO_OTP: z.enum(['simulado', 'sms']).default('simulado'),
+  TRUST_PROXY_SALTOS: z.coerce.number().int().min(0).default(1),
 });
+
+// Valores ficticios de .env.example: prohibidos en producción (research.md §R-16 de la 002).
+const VALORES_DE_EJEMPLO: Readonly<Record<string, string>> = {
+  JWT_SECRETO: 'desarrollo-jwt-solo-no-usar-en-produccion',
+  CLAVE_CIFRADO_DATOS: 'ZGVzYXJyb2xsby1jaWZyYWRvLW5vLXVzYXItcHJvZCE=',
+  CLAVE_HMAC_DATOS: 'ZGVzYXJyb2xsby1obWFjLXNvbG8tbm8tdXNhci1lbi1wcm9kdWNjaW9u',
+};
+
+export type Entorno = 'development' | 'test' | 'production';
+export type ModoEnvioOtp = 'simulado' | 'sms';
 
 export interface Configuracion {
   readonly urlBaseDeDatos: string;
@@ -37,11 +66,24 @@ export interface Configuracion {
   readonly catalogoCacheTtlSegundos: number;
   readonly saludTimeoutMs: number;
   readonly versionServicio: string;
+  readonly entorno: Entorno;
+  readonly jwtSecreto: string;
+  readonly claveCifradoDatos: Buffer;
+  readonly claveHmacDatos: Buffer;
+  readonly envioOtp: ModoEnvioOtp;
+  readonly trustProxySaltos: number;
 }
 
 export class ErrorConfiguracion extends Error {
-  constructor(readonly variables: readonly string[]) {
-    super(`Configuración inválida. Revise las variables: ${variables.join(', ')}`);
+  constructor(
+    readonly variables: readonly string[],
+    readonly avisos: readonly string[] = [],
+  ) {
+    super(
+      [`Configuración inválida. Revise las variables: ${variables.join(', ')}`, ...avisos].join(
+        '. ',
+      ),
+    );
     this.name = 'ErrorConfiguracion';
   }
 }
@@ -61,6 +103,31 @@ export const cargarConfiguracion = (
   }
 
   const datos = resultado.data;
+  const variables: string[] = [];
+  const avisos: string[] = [];
+
+  if (datos.ENVIO_OTP === 'sms') {
+    variables.push('ENVIO_OTP');
+    avisos.push('No hay proveedor de SMS configurado');
+  }
+
+  if (datos.NODE_ENV === 'production') {
+    if (datos.ENVIO_OTP === 'simulado') {
+      variables.push('ENVIO_OTP');
+      avisos.push('El envío simulado del código no se permite en producción');
+    }
+    for (const [variable, valorEjemplo] of Object.entries(VALORES_DE_EJEMPLO)) {
+      if (datos[variable as keyof typeof datos] === valorEjemplo) {
+        variables.push(variable);
+        avisos.push(`${variable} tiene el valor de ejemplo de .env.example`);
+      }
+    }
+  }
+
+  if (variables.length > 0) {
+    throw new ErrorConfiguracion([...new Set(variables)], avisos);
+  }
+
   return {
     urlBaseDeDatos: datos.DATABASE_URL,
     urlRedis: datos.REDIS_URL,
@@ -68,5 +135,11 @@ export const cargarConfiguracion = (
     catalogoCacheTtlSegundos: datos.CATALOGO_CACHE_TTL_SEGUNDOS,
     saludTimeoutMs: datos.SALUD_TIMEOUT_MS,
     versionServicio: datos.VERSION_SERVICIO ?? leerVersionPaquete(),
+    entorno: datos.NODE_ENV,
+    jwtSecreto: datos.JWT_SECRETO,
+    claveCifradoDatos: Buffer.from(datos.CLAVE_CIFRADO_DATOS, 'base64'),
+    claveHmacDatos: Buffer.from(datos.CLAVE_HMAC_DATOS, 'base64'),
+    envioOtp: datos.ENVIO_OTP,
+    trustProxySaltos: datos.TRUST_PROXY_SALTOS,
   };
 };

@@ -1,6 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Inicio } from './paginas/Inicio';
+import { BrowserRouter } from 'react-router';
+import { RutasAplicacion } from './Aplicacion';
+import { ProveedorSesion } from './sesion/ProveedorSesion';
 import './estilos/global.css';
 
 const contenedor = document.getElementById('raiz');
@@ -10,6 +12,10 @@ if (!contenedor) {
 
 createRoot(contenedor).render(
   <StrictMode>
-    <Inicio />
+    <BrowserRouter>
+      <ProveedorSesion>
+        <RutasAplicacion />
+      </ProveedorSesion>
+    </BrowserRouter>
   </StrictMode>,
 );

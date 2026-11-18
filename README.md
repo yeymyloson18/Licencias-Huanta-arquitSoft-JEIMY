@@ -60,6 +60,101 @@ Auditoría Lighthouse 12 del portal (<http://localhost:8080>, modo móvil, 17/11
 Para repetirla: `npx lighthouse http://localhost:8080 --form-factor=mobile --view` (el mínimo
 exigido es 90 en accesibilidad y en buenas prácticas, SC-006).
 
+Auditoría Lighthouse 12 de las pantallas de seguridad (funcionalidad 002, modo móvil, 18/11/2026,
+stack recién clonado y con las cabeceras de seguridad activas):
+
+| Pantalla                               | Rendimiento | Accesibilidad | Buenas prácticas | SEO |
+| -------------------------------------- | ----------- | ------------- | ---------------- | --- |
+| `/ingresar`                            | 99          | 100           | 96               | 91  |
+| `/cambiar-clave` (con clave temporal)  | 99          | 100           | 100              | 91  |
+| `/admin/usuarios` (como administrador) | 99          | 100           | 100              | 91  |
+
+El 96 de `/ingresar` se debe a un único aviso: al abrir el portal se llama a `POST /auth/renovar`
+para recuperar la sesión, y sin sesión responde 401, que el navegador anota en la consola. El portal
+no puede saber antes si existe la cookie porque es `HttpOnly` a propósito (no se lee desde
+JavaScript), así que se acepta. Las pantallas con sesión se auditan pasando la cookie
+`refresh_personal` con `--extra-headers`.
+
+Escaneo base de OWASP ZAP (`zap-baseline.py`, 18/11/2026) contra el portal: **0 alertas de riesgo
+alto o medio** (65 reglas sin hallazgos). El primer escaneo encontró 2 medias (sin
+`Content-Security-Policy` y sin protección contra clickjacking) y 5 bajas (cabeceras
+`X-Content-Type-Options`, `Permissions-Policy` y `Cross-Origin-*`, y la versión de nginx en
+`Server`); se corrigieron con `apps/web/cabeceras-seguridad.conf`, `server_tokens off` y quitando
+`X-Powered-By` de la API. Quedan 3 alertas **informativas**, justificadas:
+
+| Alerta (id)                            | Por qué se acepta                                                                                                                               |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Comentarios sospechosos (10027)        | Es el texto `query` dentro del código minificado de `openapi-fetch`, no un comentario con información interna.                                  |
+| Contenido almacenable en caché (10049) | Son los archivos de `/assets/` con hash en el nombre; se guardan en caché a propósito. Las respuestas de la API usan `Cache-Control: no-store`. |
+| Aplicación web moderna (10109)         | Solo informa que el portal es una SPA, lo que limita la exploración automática de ZAP.                                                          |
+
+Para repetirlo (el informe `zap-informe.html` no se versiona):
+`docker run --rm -t -v "${PWD}:/zap/wrk" ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://host.docker.internal:8080 -r zap-informe.html`.
+
+Tiempos de las tareas del personal (funcionalidad 002), medidos en el navegador sobre un clon limpio
+recorriendo el portal con datos ficticios. Incluyen el tiempo de leer el código simulado en Redis:
+
+| Tarea                                                                            | Tiempo | Objetivo |
+| -------------------------------------------------------------------------------- | ------ | -------- |
+| Iniciar sesión en dos pasos desde que se abre `/ingresar` (SC-001)               | 42 s   | < 1 min  |
+| Primer ingreso de un usuario nuevo hasta cambiar la clave y ver el menú (SC-008) | 54 s   | < 2 min  |
+| Crear un usuario con dos roles en `/admin/usuarios` (SC-009)                     | 38 s   | < 2 min  |
+
+### Crear el primer administrador
+
+En una instalación nueva no hay usuarios. Con el sistema levantado, cree el primer administrador
+(ninguna clave real queda en el repositorio):
+
+```bash
+docker compose -f infra/docker-compose.yml exec api npm run crear-administrador
+```
+
+El comando pide correo, nombre completo, celular (9 dígitos) y clave (sin mostrarla, dos veces), e
+imprime solo el id del usuario creado. Si ya existe un administrador activo, no hace ningún cambio.
+El administrador deberá cambiar la clave en su primer ingreso.
+
+> Prefiera el modo interactivo: también acepta las variables `ADMIN_CORREO`, `ADMIN_NOMBRE`,
+> `ADMIN_CELULAR` y `ADMIN_CLAVE` (por ejemplo, con `exec -e ...`), pero así la clave queda en el
+> historial de la terminal.
+
+### Inicio de sesión del personal (desarrollo)
+
+El personal ingresa en <http://localhost:8080/ingresar> en dos pasos: correo y clave, y luego un
+código de 6 dígitos que vale 5 minutos. Mientras no haya proveedor de SMS (`ENVIO_OTP=simulado`),
+el código no se envía: se guarda en Redis y en desarrollo se lee con:
+
+```bash
+docker compose -f infra/docker-compose.yml exec redis redis-cli GET dev:otp:<usuarioId>
+```
+
+El `<usuarioId>` es el que imprime `crear-administrador` (o el que muestra la gestión de usuarios).
+Con una clave temporal, el portal lleva a `/cambiar-clave` antes de cualquier otra pantalla. Tras 5
+intentos fallidos con el mismo correo o desde la misma IP, el ingreso se bloquea 15 minutos.
+
+El administrador gestiona al personal en <http://localhost:8080/admin/usuarios>: alta con clave
+temporal, edición, roles, desactivación y asignación de una clave temporal a quien olvidó la suya.
+
+### Variables de entorno de seguridad
+
+La funcionalidad 002 agrega estas variables (están en `.env.example` y Docker Compose las trae por
+defecto):
+
+| Variable              | Para qué sirve                                                                      |
+| --------------------- | ----------------------------------------------------------------------------------- |
+| `JWT_SECRETO`         | Firma del token de acceso de 15 minutos (al menos 32 bytes)                         |
+| `CLAVE_CIFRADO_DATOS` | Clave AES-256-GCM con la que se cifran el correo y el celular (base64, 32 bytes)    |
+| `CLAVE_HMAC_DATOS`    | Huella HMAC para buscar por correo sin descifrar y para guardar el código OTP       |
+| `ENVIO_OTP`           | `simulado` (desarrollo y pruebas); `sms` queda reservado para cuando haya proveedor |
+| `TRUST_PROXY_SALTOS`  | Cuántos proxies hay delante de la API, para conocer la IP real en los límites       |
+| `NODE_ENV`            | `production` activa las comprobaciones de arranque descritas abajo                  |
+
+**Por qué no tienen valores reales:** el repositorio es público para el curso y cualquier clave
+escrita en él deja de ser secreta. Los valores de `.env.example` son ficticios y dicen
+"desarrollo" en su contenido. La API **se niega a arrancar** si una clave es demasiado corta (en
+cualquier entorno) o si se pide `ENVIO_OTP=sms` sin proveedor; con `NODE_ENV=production`, además,
+si alguna clave es igual a la de ejemplo o si `ENVIO_OTP=simulado`. En producción las
+claves reales se entregan como variables del servidor y nunca se suben al repositorio.
+
 ### Cómo detenerlo
 
 ```bash
@@ -182,6 +277,8 @@ Todo cambio entra a `main` desde una rama propia mediante un pull request con lo
 | Sin recursos de reconsideración ni apelación               | Quedan fuera del alcance del sistema.                                                                                                                                                                               |
 | Sin anulación de pagos en el sistema                       | Se evita el error con una pantalla de confirmación para el cajero; un número de recibo mal digitado lo corrige la jefatura (RF24). Anular un pago ya registrado sigue el procedimiento de caja de la Municipalidad. |
 | Sin bitácora ni versionado del catálogo                    | El administrador actualiza las recetas; cada esquela guarda el monto con el que se generó.                                                                                                                          |
+| La búsqueda de usuarios usa `POST /usuarios/busqueda`      | Un `GET ?texto=` dejaría el nombre o el correo en la URL, que queda en logs de proxies e historial del navegador (principio VII; research.md §R-13 de la 002). El listado sin texto sigue siendo `GET /usuarios`.   |
+| El correo del personal se guarda cifrado                   | Por eso solo se puede buscar por el correo **completo** (se compara su huella HMAC), no por un fragmento; el nombre sí admite fragmentos (research.md §R-04 de la 002).                                             |
 
 ## Mejoras para la Fase 2 (fuera del Sprint 1)
 

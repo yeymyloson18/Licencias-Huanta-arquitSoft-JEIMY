@@ -1,6 +1,6 @@
 # Contrato de la API REST
 
-El contrato completo está en [`openapi.yaml`](openapi.yaml) (OpenAPI 3.1): **46 operaciones en 42 rutas**, agrupadas
+El contrato completo está en [`openapi.yaml`](openapi.yaml) (OpenAPI 3.1): **49 operaciones en 45 rutas**, agrupadas
 por los 9 módulos del monolito. Es la fuente única de verdad entre el Portal Web y el Backend (RC08):
 
 - El backend NestJS valida cada petición y respuesta contra este archivo (pruebas de contrato, criterio 5).
@@ -15,7 +15,7 @@ Para verlo ahora mismo: abre [editor.swagger.io](https://editor.swagger.io) y pe
 |---|---|---|
 | Versión | Prefijo `/api/v1` | Cambios incompatibles irán en `/api/v2` sin romper el Portal. |
 | Nombres | Recursos en español y plural (`/expedientes`); acciones del dominio como subrecurso con POST (`/expedientes/{n}/aprobar`) | Las decisiones del evaluador son eventos del negocio, no simples ediciones. |
-| Datos personales | DNI/RUC, celular y dirección viajan solo en el cuerpo de un POST, nunca en la URL | Las URL quedan en logs y en el historial del navegador (Ley N.° 29733). |
+| Datos personales | DNI/RUC, celular y dirección viajan solo en el cuerpo de un POST, nunca en la URL; las búsquedas por nombre o correo también usan POST con cuerpo (`POST /usuarios/busqueda`) | Las URL quedan en logs y en el historial del navegador (Ley N.° 29733). |
 | Errores | `application/problem+json` (RFC 9457), sin datos personales | EQ-04. |
 | Consulta fallida | Responde 404 sin decir si falló el número o el documento | Evita adivinar expedientes (EQ-04). |
 | Límite de intentos | 5 fallos en 15 minutos → 429 con `Retry-After` | ADR-007. |
@@ -31,6 +31,28 @@ Para verlo ahora mismo: abre [editor.swagger.io](https://editor.swagger.io) y pe
 | `bearerPersonal` | Personal municipal | Correo + clave + OTP por SMS (RF16) | 15 min, renovable | Lo que permiten sus roles (RF17) |
 | `tokenIdentidad` | Administrado que presenta en línea | DNI/RUC validado + OTP al celular (RF06) | 15 min | Subir documentos, presentar y subsanar **su** solicitud |
 | `tokenConsulta` | Administrado que consulta | Número de expediente + DNI/RUC (RF03) | 15 min | Leer **ese** expediente y descargar su esquela o licencia |
+
+**Renovación del personal (cookie `refresh_personal`).** El token de acceso del personal se renueva con
+un refresh token opaco que **no viaja en el cuerpo**: va en la cookie `refresh_personal`
+(`HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth`), así un ataque XSS no puede robarlo. Cada
+renovación la rota; reutilizar una cookie ya rotada cierra todas las sesiones del usuario. La sesión
+dura como máximo 8 horas y se cierra tras 30 minutos sin renovar. Al cerrar sesión, el token de acceso
+de esa sesión deja de servir al instante. El portal guarda el token de acceso solo en memoria.
+
+### Tipos de problema
+
+Los errores usan `application/problem+json`; el campo `type` es `https://licencias.example.pe/errores/<sufijo>`:
+
+| Sufijo | Estado | Cuándo |
+|---|---|---|
+| `no-autenticado` | 401 | Sin sesión válida o credenciales incorrectas (mismo mensaje para correo, clave o código) |
+| `sin-permiso` | 403 | Ningún rol admitido |
+| `debe-cambiar-clave` | 403 | El usuario tiene una clave temporal pendiente de cambio |
+| `demasiados-intentos` | 429 | 5 fallos o 3 códigos en 15 minutos; incluye `Retry-After` |
+| `ultimo-administrador` | 409 | La operación dejaría al sistema sin administradores activos |
+| `correo-en-uso` | 409 | El correo ya pertenece a otro usuario |
+| `validacion` | 422 | Datos inválidos; `errores[]` por campo, sin repetir el valor |
+| `servicio-no-disponible` | 503 | El inicio de sesión no puede comprobar los límites o enviar el código |
 
 ## Matriz de permisos por rol (propuesta para EQ-04)
 
@@ -63,7 +85,7 @@ Pendiente: aprobar esta matriz con la Municipalidad (estado del escenario EQ-04)
 
 | Módulo | Operaciones |
 |---|---|
-| Seguridad y Usuarios | `iniciarSesion`, `verificarOtpPersonal`, `renovarSesion`, `cerrarSesion`, `verificarIdentidadAdministrado`, `verificarOtpAdministrado`, `listarUsuarios`, `crearUsuario`, `actualizarUsuario`, `asignarRoles` |
+| Seguridad y Usuarios | `iniciarSesion`, `verificarOtpPersonal`, `renovarSesion`, `cerrarSesion`, `verificarIdentidadAdministrado`, `verificarOtpAdministrado`, `cambiarClave`, `listarUsuarios`, `buscarUsuarios`, `crearUsuario`, `actualizarUsuario`, `asignarRoles`, `asignarClaveTemporal` |
 | Catálogo y Asistente | `listarRecetas`, `obtenerReceta`, `actualizarReceta`, `obtenerPreguntasAsistente`, `proponerLicencia` |
 | Trámites | `subirDocumento`, `presentarSolicitud`, `listarExpedientes`, `consultarEstado`, `obtenerExpediente`, `obtenerTitularParaCaja`, `confirmarNivelRiesgo`, `aprobarEvaluacion`, `observarExpediente`, `denegarExpediente`, `subsanarObservacion`, `auditoriaTramites`, `descargarDocumento` |
 | Pagos en caja | `consultarEsquela`, `descargarEsquela`, `registrarPagoEnCaja`, `corregirNumeroRecibo`, `auditoriaPagos` |

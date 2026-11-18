@@ -170,3 +170,236 @@ video {
     grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
   }
 }
+
+/* ---- Formularios del personal (funcionalidad 002, contracts/portal-seguridad.md) ---- */
+
+.aviso--info {
+  margin: var(--espacio);
+  border-color: var(--color-primario);
+}
+
+.formulario {
+  max-width: 28rem;
+  margin: 0 auto;
+}
+
+.formulario form {
+  display: grid;
+  gap: var(--espacio);
+}
+
+.formulario .aviso {
+  margin-bottom: var(--espacio);
+}
+
+.campo {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.campo__etiqueta {
+  font-weight: 600;
+}
+
+.campo__entrada {
+  width: 100%;
+  min-height: 2.75rem; /* área táctil cómoda */
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-texto-suave);
+  border-radius: calc(var(--radio) / 2);
+  font: inherit;
+  color: var(--color-texto);
+  background-color: var(--color-superficie);
+}
+
+.campo__entrada[aria-invalid='true'] {
+  border-color: var(--color-error-borde);
+}
+
+.campo__ayuda {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-texto-suave);
+}
+
+.campo__error {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-error-borde);
+}
+
+.formulario__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.boton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.boton--secundario {
+  border: 1px solid var(--color-primario);
+  color: var(--color-primario);
+  background-color: var(--color-superficie);
+}
+
+.boton--secundario:hover {
+  color: #ffffff;
+}
+
+/* ---- Menú del personal (FR-026) ---- */
+
+.menu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem var(--espacio);
+  padding: 0.5rem var(--espacio);
+  border-bottom: 1px solid var(--color-borde);
+  background-color: var(--color-superficie);
+}
+
+.menu__usuario {
+  font-weight: 600;
+}
+
+.menu__opciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menu__opciones a {
+  display: inline-block;
+  min-height: 2.75rem; /* área táctil cómoda */
+  padding: 0.6rem 0;
+  color: var(--color-primario);
+  font-weight: 600;
+}
+
+.menu .boton {
+  margin-left: auto;
+}
+
+/* ---- Gestión de usuarios (historia 5) ---- */
+
+.barra-usuarios {
+  display: grid;
+  gap: var(--espacio);
+  margin-bottom: var(--espacio);
+}
+
+.barra-usuarios__fila {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.lista-usuarios {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--espacio);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tarjeta-usuario {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.tarjeta-usuario p {
+  margin: 0;
+}
+
+.tarjeta-usuario__nombre {
+  font-weight: 700;
+}
+
+.tarjeta-usuario__correo {
+  color: var(--color-texto-suave);
+  overflow-wrap: anywhere;
+}
+
+.etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.etiqueta {
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  color: var(--color-primario-oscuro);
+  background-color: #e3edf7;
+}
+
+.estado {
+  font-weight: 600;
+}
+
+.estado--activo {
+  color: #1e6b34;
+}
+
+.estado--inactivo {
+  color: var(--color-error-borde);
+}
+
+.roles {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: var(--espacio);
+  border: 1px solid var(--color-borde);
+  border-radius: calc(var(--radio) / 2);
+}
+
+.casilla {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem; /* área táctil cómoda */
+}
+
+.casilla input {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.formulario__seccion {
+  display: grid;
+  gap: var(--espacio);
+  margin-top: calc(var(--espacio) * 2);
+  padding-top: var(--espacio);
+  border-top: 1px solid var(--color-borde);
+}
+
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio);
+  margin-top: var(--espacio);
+}
+
+@media (min-width: 768px) {
+  .barra-usuarios {
+    grid-template-columns: 2fr 1fr auto;
+    align-items: end;
+  }
+
+  .lista-usuarios {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

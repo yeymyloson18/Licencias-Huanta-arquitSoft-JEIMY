@@ -25,7 +25,9 @@ RUN npm run generar && npm run build -w apps/api
 
 # ---- Dependencias de producción (incluye el CLI de Prisma para migrate deploy) ----
 FROM base AS dependencias-produccion
-RUN npm ci -w apps/api --omit=dev --no-audit --no-fund
+# npm puede dejar paquetes anidados en el workspace (conflicto de versiones); la carpeta se crea
+# siempre para que la etapa final la pueda copiar aunque esté vacía.
+RUN npm ci -w apps/api --omit=dev --no-audit --no-fund && mkdir -p apps/api/node_modules
 
 # ---- Imagen final ----
 FROM node:24-alpine AS final
@@ -34,6 +36,7 @@ ENV NODE_ENV=production \
     PATH=/app/node_modules/.bin:$PATH
 WORKDIR /app/apps/api
 COPY --from=dependencias-produccion --chown=node:node /app/node_modules /app/node_modules
+COPY --from=dependencias-produccion --chown=node:node /app/apps/api/node_modules /app/apps/api/node_modules
 # Cliente Prisma generado en la etapa de build (no lo genera `npm ci --omit=dev`).
 COPY --from=build --chown=node:node /app/node_modules/.prisma /app/node_modules/.prisma
 COPY --from=build --chown=node:node /app/apps/api/dist ./dist

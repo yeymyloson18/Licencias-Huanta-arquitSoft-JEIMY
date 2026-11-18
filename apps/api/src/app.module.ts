@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { CompartidoModule } from './compartido/compartido.module';
 import { CatalogoModule } from './modulos/catalogo/catalogo.module';
+import { SeguridadModule } from './modulos/seguridad/seguridad.module';
 import { SaludModule } from './operacion/salud/salud.module';
 
 @Module({
-  imports: [CompartidoModule, SaludModule, CatalogoModule],
+  imports: [CompartidoModule, SeguridadModule, SaludModule, CatalogoModule],
 })
 export class AppModule {}

@@ -19,5 +19,6 @@ RUN npm run generar && npm run build -w apps/web
 # ---- Imagen final ----
 FROM nginx:1-alpine AS final
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
+COPY apps/web/cabeceras-seguridad.conf /etc/nginx/snippets/cabeceras-seguridad.conf
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html
 EXPOSE 80

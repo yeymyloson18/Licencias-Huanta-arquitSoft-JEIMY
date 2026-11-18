@@ -2,6 +2,11 @@
 -- Sistema de Trámite de Licencias de Funcionamiento – Municipalidad Provincial de Huanta
 -- Modelo físico de datos (PostgreSQL 16)
 --
+-- Este archivo describe el ESTADO ACTUAL del esquema, después de aplicar todas las migraciones de
+-- apps/api/prisma/migrations/ (0001 = versión inicial de este archivo; 0003 = seguridad y usuarios).
+-- La prueba esquema-equivalente.e2e-spec.ts verifica que una base creada con este archivo y una
+-- base migrada son iguales. Para cambiar el esquema: nueva migración + actualizar este archivo.
+--
 -- Reglas del modelo (ver modelo-entidad-relacion.md):
 --   * Una sola base de datos (RC09) con un ESQUEMA por módulo (ADR-001).
 --   * Las claves foráneas solo existen DENTRO de un esquema. Entre módulos se guarda el
@@ -64,23 +69,35 @@ CREATE TABLE seguridad.rol (
 );
 
 CREATE TABLE seguridad.usuario (
-    id              uuid         PRIMARY KEY DEFAULT gen_random_uuid(),
-    correo          varchar(120) NOT NULL UNIQUE,
-    nombre_completo varchar(150) NOT NULL,
-    clave_hash      varchar(255) NOT NULL,              -- argon2id
-    celular_cifrado bytea        NOT NULL,              -- destino del OTP
-    activo          boolean      NOT NULL DEFAULT true,
-    creado_en       timestamptz  NOT NULL DEFAULT now(),
-    actualizado_en  timestamptz  NOT NULL DEFAULT now()
+    id                 uuid         PRIMARY KEY DEFAULT gen_random_uuid(),
+    nombre_completo    varchar(150) NOT NULL,
+    clave_hash         varchar(255) NOT NULL,              -- argon2id
+    celular_cifrado    bytea        NOT NULL,              -- destino del OTP
+    activo             boolean      NOT NULL DEFAULT true,
+    creado_en          timestamptz  NOT NULL DEFAULT now(),
+    actualizado_en     timestamptz  NOT NULL DEFAULT now(),
+    correo_cifrado     bytea        NOT NULL,              -- AES-256-GCM (MD3)
+    correo_hmac        bytea        NOT NULL UNIQUE,       -- búsqueda exacta e inicio de sesión
+    debe_cambiar_clave boolean      NOT NULL DEFAULT false, -- clave temporal (FR-022)
+    version_seguridad  integer      NOT NULL DEFAULT 1 CHECK (version_seguridad > 0) -- revocación inmediata (FR-011, FR-015)
 );
 
+-- Historial de asignaciones de roles (FR-019): las asignaciones retiradas se conservan.
 CREATE TABLE seguridad.usuario_rol (
     usuario_id      uuid         NOT NULL REFERENCES seguridad.usuario (id) ON DELETE CASCADE,
     rol_codigo      varchar(20)  NOT NULL REFERENCES seguridad.rol (codigo),
-    asignado_por    uuid         NOT NULL,
+    asignado_por    uuid         NOT NULL,              -- ref. lógica a seguridad.usuario
     asignado_en     timestamptz  NOT NULL DEFAULT now(),
-    PRIMARY KEY (usuario_id, rol_codigo)
+    id              uuid         PRIMARY KEY DEFAULT gen_random_uuid(),
+    retirado_por    uuid         NULL,                  -- ref. lógica a seguridad.usuario
+    retirado_en     timestamptz  NULL,
+    CONSTRAINT ck_usuario_rol_retiro CHECK ((retirado_por IS NULL) = (retirado_en IS NULL))
 );
+-- Un rol vigente por usuario una sola vez; contar administradores activos rápido (FR-020).
+CREATE UNIQUE INDEX ux_usuario_rol_vigente ON seguridad.usuario_rol (usuario_id, rol_codigo)
+    WHERE retirado_en IS NULL;
+CREATE INDEX ix_usuario_rol_admin_vigente ON seguridad.usuario_rol (rol_codigo)
+    WHERE retirado_en IS NULL;
 
 -- Un código OTP vence a los 5 minutos y admite 5 intentos (diseño interno de módulos).
 CREATE TABLE seguridad.codigo_otp (
@@ -113,13 +130,17 @@ CREATE TABLE seguridad.verificacion_identidad (
 
 -- Refresh tokens del personal (permite cerrar sesión y revocar).
 CREATE TABLE seguridad.sesion (
-    id              uuid         PRIMARY KEY DEFAULT gen_random_uuid(),
-    usuario_id      uuid         NOT NULL REFERENCES seguridad.usuario (id) ON DELETE CASCADE,
-    refresh_hash    varchar(255) NOT NULL,
-    creada_en       timestamptz  NOT NULL DEFAULT now(),
-    vence_en        timestamptz  NOT NULL,
-    revocada_en     timestamptz
+    id                    uuid         PRIMARY KEY DEFAULT gen_random_uuid(),
+    usuario_id            uuid         NOT NULL REFERENCES seguridad.usuario (id) ON DELETE CASCADE,
+    refresh_hash          varchar(255) NOT NULL,           -- SHA-256 del refresh vigente
+    creada_en             timestamptz  NOT NULL DEFAULT now(),
+    revocada_en           timestamptz,
+    vence_maximo_en       timestamptz  NOT NULL,           -- creada_en + 8 horas (FR-003)
+    ultima_actividad_en   timestamptz  NOT NULL DEFAULT now(), -- última renovación (FR-003a)
+    refresh_anterior_hash varchar(255) NULL,               -- detección de reutilización
+    rotada_en             timestamptz  NULL
 );
+CREATE INDEX ix_sesion_usuario_vigente ON seguridad.sesion (usuario_id) WHERE revocada_en IS NULL;
 
 -- -------------------------------------------------------------------------------------
 -- CATÁLOGO Y ASISTENTE DE RUTA (RF01, RF02, RF05, RF21, ADR-002)

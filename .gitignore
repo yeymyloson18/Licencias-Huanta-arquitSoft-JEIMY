@@ -6,3 +6,8 @@ dist/
 coverage/
 packages/contracts/src/generado/
 infra/.env
+*.log
+
+# Informes del escaneo OWASP ZAP (research.md §R-18 de la 002)
+zap-informe.html
+zap-informe.json
