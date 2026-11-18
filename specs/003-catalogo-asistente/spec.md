@@ -79,8 +79,8 @@ respuestas y comprobar que cada una propone la licencia esperada con sus datos d
 6. **Dado** que ya ve una propuesta, **Cuando** pulsa "Empezar de nuevo", **Entonces** se borran sus
    respuestas y vuelve a la primera pregunta.
 7. **Dado** que respondió "Otro negocio", "No" y "No lo sé", **Cuando** termina, **Entonces** no se
-   le propone ninguna licencia: ve que no se pudo determinar porque falta conocer el nivel de riesgo
-   y la sugerencia de acudir a la municipalidad.
+   le propone ninguna licencia: ve que no se pudo determinar su licencia con sus respuestas y la
+   sugerencia de acudir a la municipalidad.
 8. **Dado** un conjunto de respuestas para el que ninguna regla coincide, **Cuando** termina,
    **Entonces** el sistema le dice con claridad que no pudo determinar su licencia y le sugiere acudir
    a la Subgerencia de Comercio, Licencias y Control Sanitario, sin mostrar una licencia equivocada.
