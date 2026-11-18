@@ -68,25 +68,36 @@ erDiagram
 
     USUARIO {
         uuid id PK
-        varchar correo UK
+        bytea correo_cifrado "AES-256-GCM"
+        bytea correo_hmac UK
         varchar nombre_completo
         varchar clave_hash "argon2id"
         bytea celular_cifrado
         boolean activo
+        boolean debe_cambiar_clave "clave temporal"
+        integer version_seguridad "revocación inmediata"
     }
     ROL {
         varchar codigo PK "MESA_PARTES, EVALUADOR, INSPECTOR, CAJA, JEFATURA, ADMINISTRADOR"
         varchar nombre
     }
     USUARIO_ROL {
-        uuid usuario_id PK,FK
-        varchar rol_codigo PK,FK
+        uuid id PK
+        uuid usuario_id FK
+        varchar rol_codigo FK
+        uuid asignado_por
+        timestamptz asignado_en
+        uuid retirado_por "NULL si vigente"
+        timestamptz retirado_en "NULL si vigente"
     }
     SESION {
         uuid id PK
         uuid usuario_id FK
-        varchar refresh_hash
-        timestamptz vence_en
+        varchar refresh_hash "SHA-256"
+        varchar refresh_anterior_hash "detecta reutilización"
+        timestamptz vence_maximo_en "8 horas"
+        timestamptz ultima_actividad_en "30 minutos"
+        timestamptz revocada_en
     }
     CODIGO_OTP {
         uuid id PK
@@ -229,9 +240,9 @@ No se dibujan las tablas sin relaciones: `comun.evento_pendiente`, `comun.ejecuc
 | Tabla | Para qué sirve | Columnas clave y reglas |
 |---|---|---|
 | `rol` | Los 6 roles del personal (RF17). | `codigo` con `CHECK` de los 6 valores. |
-| `usuario` | Personal municipal (RF22). | `correo` único; `clave_hash` con argon2id; `celular_cifrado` para el OTP; `activo` permite desactivar sin borrar. |
-| `usuario_rol` | Un usuario puede tener varios roles. | PK `(usuario_id, rol_codigo)`; guarda quién asignó y cuándo. |
-| `sesion` | Refresh tokens del personal. | `refresh_hash` (nunca el token en claro); `revocada_en` para cerrar sesión. |
+| `usuario` | Personal municipal (RF22). | `correo_cifrado` + `correo_hmac` único (MD3); `clave_hash` con argon2id; `celular_cifrado` para el OTP; `activo` permite desactivar sin borrar; `debe_cambiar_clave` para la clave temporal; `version_seguridad` para revocar al instante. |
+| `usuario_rol` | Un usuario puede tener varios roles; historial de asignaciones (FR-019). | Historial: `id` propio, `retirado_por`/`retirado_en`; un rol vigente por usuario con índice único parcial (`ux_usuario_rol_vigente`); guarda quién asignó y cuándo. |
+| `sesion` | Refresh tokens del personal. | `refresh_hash` (nunca el token en claro); `vence_maximo_en` (8 h), `ultima_actividad_en` (30 min), rotación con `refresh_anterior_hash`/`rotada_en`; `revocada_en` para cerrar sesión. |
 | `codigo_otp` | Códigos de un solo uso (RF06, RF16). | Vence a los 5 min; `intentos` ≤ 5; `codigo_hash`, nunca el código en claro. |
 | `verificacion_identidad` | Resultado de validar DNI/RUC con el servicio externo + OTP del administrado. | `resultado_servicio`: `VALIDO`, `NO_VALIDO`, `NO_DISPONIBLE`; `confirmada_en` se llena al verificar el OTP. |
 

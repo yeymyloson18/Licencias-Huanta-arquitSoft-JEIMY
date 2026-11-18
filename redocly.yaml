@@ -6,7 +6,8 @@ extends:
 
 rules:
   # /salud solo responde 200 o 503 (no tiene entradas que validar) y /asistente/preguntas
-  # es una lectura pública sin parámetros: no tienen respuestas 4xx que declarar.
+  # es una lectura pública sin parámetros: no tienen respuestas 4xx que declarar. Tampoco
+  # /auth/cerrar-sesion, que es idempotente y siempre responde 204 (funcionalidad 002).
   operation-4xx-response: warn
   # La descarga de documentos responde 302 hacia una URL firmada; no hay respuesta 2xx.
   operation-2xx-response: warn

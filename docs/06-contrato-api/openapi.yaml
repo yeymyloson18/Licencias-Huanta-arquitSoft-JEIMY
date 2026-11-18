@@ -56,6 +56,10 @@ paths:
       tags: [Seguridad]
       operationId: iniciarSesion
       summary: Paso 1 del inicio de sesión del personal. Valida correo y clave, y envía un OTP por SMS (RF16).
+      description: |
+        Antes de comprobar las credenciales se revisan los límites (5 fallos en 15 minutos por correo y
+        por origen; 3 códigos por usuario en 15 minutos): si se superaron, responde 429 aunque los datos
+        sean correctos. Correo inexistente, usuario inactivo y clave incorrecta responden el mismo 401.
       security: []
       requestBody:
         required: true
@@ -69,13 +73,15 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/DesafioOtp' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
         '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
 
   /auth/verificar-otp:
     post:
       tags: [Seguridad]
       operationId: verificarOtpPersonal
-      summary: Paso 2 del inicio de sesión. Verifica el OTP y entrega los tokens.
+      summary: Paso 2 del inicio de sesión. Verifica el OTP, entrega el token de acceso y deja el refresh token en una cookie.
       security: []
       requestBody:
         required: true
@@ -84,31 +90,32 @@ paths:
             schema: { $ref: '#/components/schemas/VerificacionOtp' }
       responses:
         '200':
-          description: Sesión iniciada.
+          description: Sesión iniciada. El refresh token viaja solo en la cookie `refresh_personal`.
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/CookieRefresh' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SesionPersonal' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
         '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
 
   /auth/renovar:
     post:
       tags: [Seguridad]
       operationId: renovarSesion
-      summary: Renueva el token de acceso con el refresh token.
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [refreshToken]
-              properties:
-                refreshToken: { type: string }
+      summary: Renueva el token de acceso con la cookie `refresh_personal` y la rota.
+      description: |
+        Sin cuerpo. Responde 401 si la cookie falta, la sesión fue revocada, pasaron 8 horas desde el
+        inicio de sesión o más de 30 minutos desde la última renovación. Reutilizar una cookie ya rotada
+        (más de 10 segundos después de la rotación) cierra todas las sesiones del usuario.
+      security: [{ cookieRefresh: [] }]
       responses:
         '200':
-          description: Nuevo par de tokens.
+          description: Nuevo token de acceso; la cookie se reemplaza por una nueva (rotación).
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/CookieRefresh' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SesionPersonal' }
@@ -118,11 +125,40 @@ paths:
     post:
       tags: [Seguridad]
       operationId: cerrarSesion
-      summary: Revoca el refresh token actual.
-      security: [{ bearerPersonal: [] }]
+      summary: Cierra la sesión de la cookie `refresh_personal`; su token de acceso deja de servir al instante.
+      description: Idempotente. Funciona aunque el token de acceso haya vencido.
+      security: [{ cookieRefresh: [] }]
       responses:
-        '204': { description: Sesión cerrada. }
+        '204':
+          description: Sesión cerrada; la cookie se borra.
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/CookieRefresh' }
+
+  /auth/cambiar-clave:
+    post:
+      tags: [Seguridad]
+      operationId: cambiarClave
+      summary: Cambia la clave del usuario autenticado; obligatorio cuando la clave es temporal (FR-022).
+      description: |
+        Única operación permitida con `debeCambiarClave = true`. La clave actual incorrecta cuenta como
+        intento fallido. Al terminar se cierran las demás sesiones del usuario y se entrega un token nuevo.
+      security: [{ bearerPersonal: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CambioClave' }
+      responses:
+        '200':
+          description: Clave cambiada; nuevo token de acceso y cookie rotada.
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/CookieRefresh' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SesionPersonal' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
 
   /identidad/verificar:
     post:
@@ -215,7 +251,42 @@ paths:
               schema: { $ref: '#/components/schemas/Usuario' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
-        '409': { $ref: '#/components/responses/Conflicto' }
+        '409':
+          description: El correo ya está en uso (`type` termina en `correo-en-uso`).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
+
+  /usuarios/busqueda:
+    post:
+      tags: [Usuarios]
+      operationId: buscarUsuarios
+      summary: Busca personal por un fragmento del nombre o por el correo completo (rol ADMINISTRADOR).
+      description: |
+        Usa POST para que el texto buscado (un dato personal) no aparezca en la URL, los logs ni el
+        historial del navegador (Ley N.° 29733).
+      security: [{ bearerPersonal: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BusquedaUsuarios' }
+      responses:
+        '200':
+          description: Página de usuarios que coinciden.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginacion'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items: { $ref: '#/components/schemas/Usuario' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
         '422': { $ref: '#/components/responses/NoProcesable' }
 
   /usuarios/{usuarioId}:
@@ -227,7 +298,8 @@ paths:
     patch:
       tags: [Usuarios]
       operationId: actualizarUsuario
-      summary: Cambia el nombre, el celular o activa/desactiva un usuario (RF22).
+      summary: Cambia el nombre, el celular o activa/desactiva un usuario (RF22). El correo no se puede cambiar.
+      description: Desactivar a un usuario cierra al instante todas sus sesiones (FR-011).
       security: [{ bearerPersonal: [] }]
       requestBody:
         required: true
@@ -236,8 +308,9 @@ paths:
             schema:
               type: object
               minProperties: 1
+              additionalProperties: false
               properties:
-                nombreCompleto: { type: string, maxLength: 150 }
+                nombreCompleto: { type: string, minLength: 3, maxLength: 150 }
                 celular: { $ref: '#/components/schemas/Celular' }
                 activo: { type: boolean }
       responses:
@@ -249,6 +322,8 @@ paths:
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/UltimoAdministrador' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
 
   /usuarios/{usuarioId}/roles:
     parameters:
@@ -259,7 +334,10 @@ paths:
     put:
       tags: [Usuarios]
       operationId: asignarRoles
-      summary: Reemplaza los roles de un usuario (RF17, RF22).
+      summary: Reemplaza los roles vigentes de un usuario (RF17, RF22).
+      description: |
+        Los roles que dejan de estar se marcan como retirados (quién y cuándo) y se conservan en el
+        historial (FR-019). El cambio vale desde la siguiente operación del usuario (FR-015).
       security: [{ bearerPersonal: [] }]
       requestBody:
         required: true
@@ -283,6 +361,39 @@ paths:
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/UltimoAdministrador' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
+
+  /usuarios/{usuarioId}/clave-temporal:
+    parameters:
+      - name: usuarioId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [Usuarios]
+      operationId: asignarClaveTemporal
+      summary: Asigna una clave temporal a un usuario que olvidó la suya (FR-022b).
+      description: |
+        La clave anterior deja de servir, se cierran todas las sesiones del usuario y en su siguiente
+        ingreso deberá cambiar la clave. El administrador la entrega en persona.
+      security: [{ bearerPersonal: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [claveTemporal]
+              additionalProperties: false
+              properties:
+                claveTemporal: { $ref: '#/components/schemas/Clave' }
+      responses:
+        '204': { description: Clave temporal asignada. }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
 
   # ===================================================================== CATÁLOGO
   /catalogo/recetas:
@@ -1187,7 +1298,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Token de acceso del personal (15 minutos). Incluye el id y los roles.
+      description: Token de acceso del personal (15 minutos). Incluye el id del usuario, el id de la sesión y los roles; nunca datos personales.
     tokenIdentidad:
       type: http
       scheme: bearer
@@ -1198,6 +1309,18 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Token de 15 minutos para leer un solo expediente después de la consulta pública (RF03).
+    cookieRefresh:
+      type: apiKey
+      in: cookie
+      name: refresh_personal
+      description: Refresh token opaco del personal en una cookie HttpOnly, Secure y SameSite=Strict con Path=/api/v1/auth. JavaScript no puede leerla.
+
+  headers:
+    CookieRefresh:
+      description: |
+        `refresh_personal=<valor>; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Max-Age=<segundos hasta el máximo de 8 horas>`.
+        Al cerrar sesión se envía con `Max-Age=0` para borrarla.
+      schema: { type: string }
 
   parameters:
     Pagina:
@@ -1282,11 +1405,21 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problema' }
     DemasiadosIntentos:
-      description: Se superaron 5 intentos fallidos en 15 minutos (ADR-007).
+      description: Se superaron 5 intentos fallidos o 3 envíos de código en 15 minutos (ADR-007, FR-002a).
       headers:
         Retry-After:
           schema: { type: integer }
           description: Segundos para volver a intentar.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
+    UltimoAdministrador:
+      description: La operación dejaría al sistema sin ningún administrador activo (`type` termina en `ultimo-administrador`, FR-020).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
+    ServicioNoDisponible:
+      description: El inicio de sesión no puede comprobar los límites de intentos o enviar el código en este momento.
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problema' }
@@ -1318,6 +1451,13 @@ components:
       type: string
       pattern: '^9[0-9]{8}$'
       example: '987654321'
+    Clave:
+      type: string
+      format: password
+      minLength: 12
+      maxLength: 128
+      pattern: '^(?=.*[A-Za-z])(?=.*[0-9]).+$'
+      description: Al menos 12 caracteres, con letras y números (FR-022a).
     Soles:
       type: string
       pattern: '^[0-9]+\.[0-9]{2}$'
@@ -1363,7 +1503,7 @@ components:
       required: [correo, clave]
       properties:
         correo: { type: string, format: email }
-        clave: { type: string, minLength: 10, maxLength: 128, format: password }
+        clave: { type: string, minLength: 1, maxLength: 128, format: password }
     DesafioOtp:
       type: object
       required: [desafioId, venceEn, celularEnmascarado]
@@ -1379,12 +1519,20 @@ components:
         codigo: { type: string, pattern: '^[0-9]{6}$' }
     SesionPersonal:
       type: object
-      required: [accessToken, refreshToken, expiraEn, usuario]
+      description: El refresh token no viaja en el cuerpo; va en la cookie `refresh_personal`.
+      required: [accessToken, expiraEn, debeCambiarClave, usuario]
       properties:
         accessToken: { type: string }
-        refreshToken: { type: string }
-        expiraEn: { type: integer, description: Segundos de vida del accessToken. }
+        expiraEn: { type: integer, description: Segundos de vida del accessToken (900). }
+        debeCambiarClave: { type: boolean, description: 'Si es true, solo se permite cambiar la clave (FR-022).' }
         usuario: { $ref: '#/components/schemas/Usuario' }
+    CambioClave:
+      type: object
+      required: [claveActual, claveNueva]
+      additionalProperties: false
+      properties:
+        claveActual: { type: string, format: password, minLength: 1, maxLength: 128 }
+        claveNueva: { $ref: '#/components/schemas/Clave' }
     TokenCorto:
       type: object
       required: [token, expiraEn]
@@ -1412,27 +1560,39 @@ components:
     # ------------------------------------------------------------- usuarios
     Usuario:
       type: object
-      required: [id, correo, nombreCompleto, roles, activo]
+      required: [id, correo, nombreCompleto, celularEnmascarado, roles, activo, debeCambiarClave]
       properties:
         id: { type: string, format: uuid }
         correo: { type: string, format: email }
         nombreCompleto: { type: string }
+        celularEnmascarado: { type: string, example: '9*****321', description: El celular nunca se devuelve completo (FR-028). }
         roles:
           type: array
           items: { $ref: '#/components/schemas/Rol' }
         activo: { type: boolean }
+        debeCambiarClave: { type: boolean }
     NuevoUsuario:
       type: object
-      required: [correo, nombreCompleto, celular, roles]
+      required: [correo, nombreCompleto, celular, claveTemporal, roles]
+      additionalProperties: false
       properties:
-        correo: { type: string, format: email }
-        nombreCompleto: { type: string, maxLength: 150 }
+        correo: { type: string, format: email, maxLength: 120 }
+        nombreCompleto: { type: string, minLength: 3, maxLength: 150 }
         celular: { $ref: '#/components/schemas/Celular' }
+        claveTemporal: { $ref: '#/components/schemas/Clave' }
         roles:
           type: array
           minItems: 1
           uniqueItems: true
           items: { $ref: '#/components/schemas/Rol' }
+    BusquedaUsuarios:
+      type: object
+      additionalProperties: false
+      properties:
+        texto: { type: string, minLength: 2, maxLength: 150, description: Fragmento del nombre o correo completo. }
+        activo: { type: boolean }
+        pagina: { type: integer, minimum: 1, default: 1 }
+        porPagina: { type: integer, minimum: 1, maximum: 100, default: 20 }
 
     # ------------------------------------------------------------- catálogo
     RecetaResumen:
