@@ -1,6 +1,6 @@
 /** Regla de la política de clave que una clave no cumple. */
 export type ReglaClaveIncumplida =
-  'LONGITUD_MINIMA' | 'LONGITUD_MAXIMA' | 'SIN_LETRA' | 'SIN_NUMERO';
+  'LONGITUD_MINIMA' | 'LONGITUD_MAXIMA' | 'SIN_LETRA' | 'SIN_NUMERO' | 'IGUAL_A_LA_ACTUAL';
 
 const MINIMO = 12;
 const MAXIMO = 128;
@@ -12,6 +12,7 @@ const DESCRIPCIONES: Readonly<Record<ReglaClaveIncumplida, string>> = {
   LONGITUD_MAXIMA: `Debe tener como máximo ${String(MAXIMO)} caracteres`,
   SIN_LETRA: 'Debe incluir al menos una letra',
   SIN_NUMERO: 'Debe incluir al menos un número',
+  IGUAL_A_LA_ACTUAL: 'No puede ser igual a la clave actual',
 };
 
 /** Política de clave (FR-022a): 12 a 128 caracteres, con al menos una letra y un número. */

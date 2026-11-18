@@ -8,15 +8,13 @@ import type { ProtectorDatos } from '../dominio/puertos/protector-datos';
 import type { RepositorioUsuarios } from '../dominio/puertos/repositorio-usuarios';
 import { esRol } from '../dominio/rol';
 import { Usuario } from '../dominio/usuario';
+import { aBytes } from './uuid';
 
 const conRolesVigentes = {
   usuario_rol: { where: { retirado_en: null } },
 } satisfies Prisma.usuarioInclude;
 
 type FilaUsuario = Prisma.usuarioGetPayload<{ include: typeof conRolesVigentes }>;
-
-/** Copia a un `Uint8Array` con `ArrayBuffer` propio, el tipo que espera Prisma para `bytea`. */
-const aBytes = (datos: Uint8Array): Uint8Array<ArrayBuffer> => new Uint8Array(datos);
 
 /**
  * Adaptador de `seguridad.usuario` y `seguridad.usuario_rol` (solo el esquema propio, principio III).

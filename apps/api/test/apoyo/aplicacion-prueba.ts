@@ -1,4 +1,4 @@
-import type { INestApplication, LoggerService } from '@nestjs/common';
+import type { INestApplication, LoggerService, Type } from '@nestjs/common';
 import { Test, type TestingModuleBuilder } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 import { configurarAplicacion } from '../../src/configurar-aplicacion';
@@ -36,14 +36,27 @@ export interface AplicacionDePrueba {
   readonly logger: LoggerCapturador;
 }
 
+export interface OpcionesAplicacionDePrueba {
+  /** Permite reemplazar proveedores (por ejemplo, el reloj) antes de compilar. */
+  readonly ajustar?: (constructor: TestingModuleBuilder) => TestingModuleBuilder;
+  /** Controladores solo de prueba (por ejemplo, operaciones protegidas de ejemplo). */
+  readonly controladores?: readonly Type[];
+}
+
 /**
  * Crea la aplicación completa (mismo AppModule y misma configuración que `main.ts`) con el logger
- * capturador. `ajustar` permite reemplazar proveedores (por ejemplo, el reloj) antes de compilar.
+ * capturador.
  */
 export const crearAplicacionDePrueba = async (
-  ajustar: (constructor: TestingModuleBuilder) => TestingModuleBuilder = (c) => c,
+  opciones: OpcionesAplicacionDePrueba = {},
 ): Promise<AplicacionDePrueba> => {
-  const modulo = await ajustar(Test.createTestingModule({ imports: [AppModule] })).compile();
+  const ajustar = opciones.ajustar ?? ((constructor) => constructor);
+  const modulo = await ajustar(
+    Test.createTestingModule({
+      imports: [AppModule],
+      controllers: [...(opciones.controladores ?? [])],
+    }),
+  ).compile();
   const logger = new LoggerCapturador();
   const app = modulo.createNestApplication({ logger });
   configurarAplicacion(app);
