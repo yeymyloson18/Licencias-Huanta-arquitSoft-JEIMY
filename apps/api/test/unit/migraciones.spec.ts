@@ -2,26 +2,27 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-// Control de las migraciones versionadas (research.md de la 002, §R-15):
-// - 0001 ya está aplicada en todos los entornos: se congela con su SHA-256. docs/05-modelo-de-datos/
-//   esquema.sql ahora describe el estado ACTUAL, y su equivalencia con las migraciones la verifica la
-//   prueba de integración esquema-equivalente.e2e-spec.ts.
-// - 0002 sigue siendo copia literal de datos-semilla.sql.
+// Control de las migraciones versionadas (research.md §R-15 de la 002 y §R-08 de la 003):
+// - Las migraciones ya aplicadas en todos los entornos se congelan con su SHA-256: 0001 (esquema
+//   inicial) y 0002 (datos semilla iniciales). Los cambios van en migraciones nuevas.
+// - docs/05-modelo-de-datos/esquema.sql y datos-semilla.sql describen el estado ACTUAL; su
+//   equivalencia con las migraciones (estructura y datos de referencia) la verifica la prueba de
+//   integración esquema-equivalente.e2e-spec.ts.
 const raizApi = join(__dirname, '..', '..');
-const raizRepo = join(raizApi, '..', '..');
 
 const leerNormalizado = (ruta: string): string => readFileSync(ruta, 'utf8').replace(/\r\n/g, '\n');
 
-const SHA256_0001 = 'ef535126ebd7a61c3da5f92b43d7509424bb2a3505ef27debee3cbd6ece5a06b';
+const huellaDe = (migracion: string): string =>
+  createHash('sha256')
+    .update(leerNormalizado(join(raizApi, 'prisma/migrations', migracion, 'migration.sql')))
+    .digest('hex');
 
 describe('Migraciones versionadas', () => {
   it('0001_esquema_inicial no cambió (ya está aplicada)', () => {
-    const contenido = leerNormalizado(
-      join(raizApi, 'prisma/migrations/0001_esquema_inicial/migration.sql'),
-    );
-    const huella = createHash('sha256').update(contenido).digest('hex');
-
-    if (huella !== SHA256_0001) {
+    if (
+      huellaDe('0001_esquema_inicial') !==
+      'ef535126ebd7a61c3da5f92b43d7509424bb2a3505ef27debee3cbd6ece5a06b'
+    ) {
       throw new Error(
         '0001 ya está aplicada: no se edita; cree una migración nueva y actualice ' +
           'docs/05-modelo-de-datos/esquema.sql.',
@@ -29,16 +30,14 @@ describe('Migraciones versionadas', () => {
     }
   });
 
-  it('0002_datos_semilla coincide con docs/05-modelo-de-datos/datos-semilla.sql', () => {
-    const migracion = leerNormalizado(
-      join(raizApi, 'prisma/migrations/0002_datos_semilla/migration.sql'),
-    );
-    const documento = leerNormalizado(join(raizRepo, 'docs/05-modelo-de-datos/datos-semilla.sql'));
-
-    if (migracion !== documento) {
+  it('0002_datos_semilla no cambió (ya está aplicada)', () => {
+    if (
+      huellaDe('0002_datos_semilla') !==
+      '199c574f5d60a73f9f7afdca1a9cf31210916e49b104d1f94bbf0b9ef443ad50'
+    ) {
       throw new Error(
-        'La migración 0002_datos_semilla no coincide con datos-semilla.sql. ' +
-          'Copie el archivo de docs/ a la migración (o viceversa) en el mismo PR.',
+        '0002 ya está aplicada: no se edita; cree una migración nueva y actualice ' +
+          'docs/05-modelo-de-datos/datos-semilla.sql.',
       );
     }
   });

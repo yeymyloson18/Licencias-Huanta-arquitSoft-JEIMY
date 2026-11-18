@@ -38,6 +38,7 @@ erDiagram
     %% ===== Catálogo y Asistente =====
     RECETA ||--|{ REQUISITO : "exige"
     RECETA ||--o{ REGLA_ASISTENTE : "es resultado de"
+    RECETA ||--o{ CAMBIO_RECETA : "registra"
 
     %% ===== Trámites =====
     EXPEDIENTE ||--o{ DOCUMENTO : "adjunta"
@@ -136,6 +137,13 @@ erDiagram
         smallint prioridad UK
         jsonb condiciones
         varchar codigo_receta FK
+    }
+    CAMBIO_RECETA {
+        bigint id PK
+        varchar codigo_receta FK
+        uuid usuario_id "sin FK (MD2)"
+        timestamptz cambiado_en
+        jsonb cambios "antes y despues"
     }
     EXPEDIENTE {
         uuid id PK
@@ -251,9 +259,10 @@ No se dibujan las tablas sin relaciones: `comun.evento_pendiente`, `comun.ejecuc
 | Tabla | Para qué sirve | Columnas clave y reglas |
 |---|---|---|
 | `receta` | Un procedimiento del TUPA: las 9 licencias y los 3 trámites conectados (ADR-002). | `tasa` (0 = gratuito), `plazo_dias`, `tipo_plazo`, `calificacion`, `orden_itse`, `vigencia_meses` (NULL = indeterminada); `codigo_tupa` y `pagina_tupa` para trazar al TUPA. |
-| `requisito` | Documentos que exige cada receta (RF04). | `condicion`: `SIEMPRE`, `CON_REPRESENTANTE`, `GIRO_ESPECIAL`, `SIN_PLANOS_VIGENTES`; con eso el formulario dinámico decide qué pedir. |
-| `pregunta_asistente` | Las 3 preguntas del asistente (RF01). | `opciones` en JSON. |
-| `regla_asistente` | Convierte las respuestas en una receta. | Se evalúan por `prioridad`; gana la primera cuyas `condiciones` están contenidas en las respuestas (`@>` de JSONB). |
+| `requisito` | Documentos que exige cada receta (RF04). | `condicion`: `SIEMPRE`, `CON_REPRESENTANTE`, `GIRO_ESPECIAL`, `SIN_PLANOS_VIGENTES`; con eso el formulario dinámico decide qué pedir. `UNIQUE (codigo_receta, orden)` es diferible para reordenar en una transacción; el `id` se conserva al editar porque lo usarán los documentos de la 004. |
+| `cambio_receta` | Registro inmutable de cada modificación de una receta (RF21, funcionalidad 003). | Quién (`usuario_id`, sin FK, MD2), cuándo (`cambiado_en`) y qué (`cambios`: `{campo: {antes, despues}}`, nunca vacío). Se escribe en la misma transacción que el cambio; nunca se actualiza ni se borra. |
+| `pregunta_asistente` | Las preguntas del asistente (RF01). | `opciones` en JSON; `NIVEL_RIESGO` incluye "No lo sé" (`NO_SE`), que ninguna regla usa. |
+| `regla_asistente` | Convierte las respuestas en una receta. | Se evalúan por `prioridad`; gana la primera cuyas `condiciones` están todas contenidas en las respuestas. La evaluación la hace el dominio de la aplicación (motor de reglas puro, 003), no SQL. |
 
 ### Esquema `tramites` (Trámites)
 

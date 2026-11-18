@@ -17,6 +17,14 @@ class RepositorioEnMemoria implements RepositorioCatalogo {
       this.recetas.filter((receta) => filtro.tipo === undefined || receta.tipo === filtro.tipo),
     );
   }
+  // ListarRecetas no usa la lectura completa.
+  obtener(): Promise<null> {
+    return Promise.resolve(null);
+  }
+
+  listarTodas(): Promise<never[]> {
+    return Promise.resolve([]);
+  }
 }
 
 const lic01 = crearReceta({

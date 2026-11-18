@@ -6,8 +6,9 @@ import { Client } from 'pg';
 // docs/05-modelo-de-datos/esquema.sql describe el estado ACTUAL del modelo y las migraciones de
 // prisma/migrations/ son su historia (research.md de la 002, §R-15). Esta prueba crea una base
 // temporal con esquema.sql + datos-semilla.sql y la compara con la base migrada de DATABASE_URL:
-// columnas, restricciones e índices de los esquemas del sistema. Requiere un usuario con permiso
-// para crear bases (el de Docker Compose y el del CI lo tienen).
+// columnas, restricciones e índices de los esquemas del sistema y, desde la 003, también los datos
+// de las tablas de referencia (research.md §R-08 de la 003). Requiere un usuario con permiso para
+// crear bases (el de Docker Compose y el del CI lo tienen).
 
 process.env.DATABASE_URL ??=
   'postgresql://licencias:cambiar_en_produccion_solo_desarrollo@localhost:5432/licencias';
@@ -87,6 +88,32 @@ const diferencias = (migrada: Map<string, string>, referencia: Map<string, strin
   });
 };
 
+// Tablas de referencia cuyos datos describe datos-semilla.sql. Se excluyen las columnas que cambian
+// con el uso (identidades y quién/cuándo actualizó).
+interface TablaReferencia {
+  readonly tabla: string;
+  readonly excluir: readonly string[];
+  readonly orden: string;
+}
+
+const TABLAS_REFERENCIA: readonly TablaReferencia[] = [
+  { tabla: 'seguridad.rol', excluir: [], orden: 'codigo' },
+  { tabla: 'catalogo.receta', excluir: ['actualizada_por', 'actualizada_en'], orden: 'codigo' },
+  { tabla: 'catalogo.requisito', excluir: ['id'], orden: 'codigo_receta, orden' },
+  { tabla: 'catalogo.pregunta_asistente', excluir: [], orden: 'codigo' },
+  { tabla: 'catalogo.regla_asistente', excluir: ['id'], orden: 'prioridad' },
+];
+
+/** Filas de la tabla como JSON normalizado (jsonb), en orden de su clave natural. */
+const leerFilas = async (cliente: Client, { tabla, excluir, orden }: TablaReferencia) => {
+  // `tabla` y `orden` son constantes de esta prueba, no entradas externas.
+  const resultado = await cliente.query<{ fila: string }>(
+    `SELECT (to_jsonb(t) - $1::text[])::text AS fila FROM ${tabla} t ORDER BY ${orden}`,
+    [excluir],
+  );
+  return resultado.rows.map((registro) => registro.fila);
+};
+
 describe('docs/05-modelo-de-datos/esquema.sql equivale a las migraciones', () => {
   const urlMigrada = process.env.DATABASE_URL ?? '';
   const baseReferencia = `licencias_ref_${randomBytes(4).toString('hex')}`;
@@ -122,4 +149,24 @@ describe('docs/05-modelo-de-datos/esquema.sql equivale a las migraciones', () =>
       );
     }
   });
+
+  it.each(TABLAS_REFERENCIA.map((tabla) => [tabla.tabla, tabla] as const))(
+    'los datos de %s coinciden con datos-semilla.sql',
+    async (nombre, tabla) => {
+      const filasMigradas = await leerFilas(migrada, tabla);
+      const filasReferencia = await leerFilas(referencia, tabla);
+
+      const total = Math.max(filasMigradas.length, filasReferencia.length);
+      for (let indice = 0; indice < total; indice += 1) {
+        if (filasMigradas[indice] !== filasReferencia[indice]) {
+          throw new Error(
+            `Los datos de ${nombre} difieren de datos-semilla.sql en la fila ${String(indice + 1)}. ` +
+              'Actualice datos-semilla.sql o cree una migración:\n' +
+              `    migraciones:       ${filasMigradas[indice] ?? '(no existe)'}\n` +
+              `    datos-semilla.sql: ${filasReferencia[indice] ?? '(no existe)'}`,
+          );
+        }
+      }
+    },
+  );
 });

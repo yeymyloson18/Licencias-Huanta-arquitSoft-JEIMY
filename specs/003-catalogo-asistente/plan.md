@@ -108,7 +108,7 @@ pantallas del portal y 1 script de carga.
 - `compartido`, solo la validación de `CATALOGO_CACHE_TTL_SEGUNDOS`.
 - `seguridad` no cambia: solo se usa su fachada.
 
-**Cambios en el contrato OpenAPI**: 2 operaciones nuevas, 5 modificadas, 3 esquemas nuevos y 1
+**Cambios en el contrato OpenAPI**: 2 operaciones nuevas, 5 modificadas, 5 esquemas nuevos y 1
 modificado ([detalle](./contracts/openapi-cambios.md)).
 
 **Cambios en el modelo de datos**: la tabla `catalogo.cambio_receta`, la restricción

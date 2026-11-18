@@ -41,7 +41,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-licencias}:${POSTGRES_PASSWORD:-cambiar_en_produccion_solo_desarrollo}@postgres:5432/${POSTGRES_DB:-licencias}
       REDIS_URL: redis://redis:6379
       PUERTO_API: 3000
-      CATALOGO_CACHE_TTL_SEGUNDOS: ${CATALOGO_CACHE_TTL_SEGUNDOS:-300}
+      # Máximo 240: Redis 240 s + navegador 60 s = 5 min (FR-024 de la 003)
+      CATALOGO_CACHE_TTL_SEGUNDOS: ${CATALOGO_CACHE_TTL_SEGUNDOS:-240}
       SALUD_TIMEOUT_MS: ${SALUD_TIMEOUT_MS:-2000}
       # Seguridad (002): valores por defecto FICTICIOS de desarrollo, iguales a .env.example.
       NODE_ENV: ${NODE_ENV:-development}

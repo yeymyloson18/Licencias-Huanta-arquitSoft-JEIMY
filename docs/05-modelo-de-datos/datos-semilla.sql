@@ -2,6 +2,9 @@
 -- Datos semilla: roles y catálogo de recetas del TUPA 2024
 -- Fuente: docs/01-analisis-de-sistema/09-validacion-del-tupa.md (páginas impresas del TUPA)
 -- Se ejecuta después de esquema.sql.
+-- Describe los datos semilla ACTUALES: el estado después de todas las migraciones (0002 = versión
+-- inicial; 0004 = opción "No lo sé" del asistente). La prueba esquema-equivalente.e2e-spec.ts
+-- compara estos datos con la base migrada (research.md §R-08 de la 003).
 -- =====================================================================================
 
 INSERT INTO seguridad.rol (codigo, nombre) VALUES
@@ -79,7 +82,8 @@ INSERT INTO catalogo.pregunta_asistente (codigo, orden, texto, opciones) VALUES
      '[{"valor":"SI","texto":"Sí"},{"valor":"NO","texto":"No"}]'),
     ('NIVEL_RIESGO', 3, '¿Qué nivel de riesgo tiene tu actividad según la matriz de riesgo?',
      '[{"valor":"BAJO","texto":"Bajo"},{"valor":"MEDIO","texto":"Medio"},
-       {"valor":"ALTO","texto":"Alto"},{"valor":"MUY_ALTO","texto":"Muy alto"}]');
+       {"valor":"ALTO","texto":"Alto"},{"valor":"MUY_ALTO","texto":"Muy alto"},
+       {"valor":"NO_SE","texto":"No lo sé"}]');
 
 INSERT INTO catalogo.regla_asistente (prioridad, condiciones, codigo_receta) VALUES
     (10, '{"TIPO_ESTABLECIMIENTO":"BODEGA"}',                                    'LIC-09'),

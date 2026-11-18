@@ -42,20 +42,20 @@ RecetaAdmin:
 
 ResultadoAsistente:
   oneOf:
-    - type: object
-      required: [resultado, receta]
-      additionalProperties: false
-      properties:
-        resultado: { const: PROPUESTA }
-        receta: { $ref: '#/components/schemas/Receta' }
-    - type: object
-      required: [resultado, motivo]
-      additionalProperties: false
-      properties:
-        resultado: { const: NO_DETERMINADA }
-        motivo: { type: string, enum: [SIN_REGLA, RECETA_NO_DISPONIBLE] }
-  discriminator: { propertyName: resultado }
+    - $ref: '#/components/schemas/PropuestaLicencia'
+    - $ref: '#/components/schemas/LicenciaNoDeterminada'
+  discriminator:
+    propertyName: resultado
+    mapping:
+      PROPUESTA: '#/components/schemas/PropuestaLicencia'
+      NO_DETERMINADA: '#/components/schemas/LicenciaNoDeterminada'
+
+PropuestaLicencia:        # { resultado: PROPUESTA, receta: Receta }, additionalProperties: false
+LicenciaNoDeterminada:    # { resultado: NO_DETERMINADA, motivo: SIN_REGLA | RECETA_NO_DISPONIBLE }
 ```
+
+Las dos variantes son esquemas con nombre (no en línea) porque `redocly lint`
+(`no-illogical-composition-keywords`) exige un `$ref` para que el `discriminator` pueda elegirlas.
 
 `RecetaEditable` (se modifica):
 

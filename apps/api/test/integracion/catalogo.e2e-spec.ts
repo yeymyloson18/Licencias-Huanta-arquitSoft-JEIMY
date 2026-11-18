@@ -7,6 +7,8 @@ import { AppModule } from '../../src/app.module';
 import { PrismaServicio } from '../../src/compartido/infraestructura/prisma.servicio';
 import { REDIS_CLIENTE } from '../../src/compartido/infraestructura/redis.proveedor';
 import { configurarAplicacion } from '../../src/configurar-aplicacion';
+import { REPOSITORIO_CATALOGO } from '../../src/modulos/catalogo/catalogo.module';
+import type { RepositorioCatalogo } from '../../src/modulos/catalogo/dominio/repositorio-catalogo';
 import { esperarCumpleContrato } from '../apoyo/validarContrato';
 
 // Requiere PostgreSQL con las migraciones aplicadas (esquema + datos semilla) y Redis.
@@ -126,19 +128,19 @@ describe('GET /api/v1/catalogo/recetas', () => {
     },
   );
 
-  it('guarda el resultado en Redis con un TTL de 300 s', async () => {
+  it('guarda el resultado en Redis con un TTL de 240 s como máximo (FR-024 de la 003)', async () => {
     await consultar('?tipo=LICENCIA');
 
     const ttl = await redis.ttl('catalogo:recetas:LICENCIA');
-    expect(ttl).toBeGreaterThan(290);
-    expect(ttl).toBeLessThanOrEqual(300);
+    expect(ttl).toBeGreaterThan(0);
+    expect(ttl).toBeLessThanOrEqual(240);
   });
 
   it('un cambio de tasa en el catálogo se refleja sin tocar código (EQ-06)', async () => {
     try {
       await consultar('?tipo=LICENCIA');
       await prisma.receta.update({ where: { codigo: 'LIC-01' }, data: { tasa: '160.00' } });
-      await borrarCache(); // equivale a que venza el TTL de 300 s
+      await borrarCache(); // equivale a que venza el TTL de 240 s
 
       const respuesta = await consultar('?tipo=LICENCIA');
 
@@ -150,5 +152,60 @@ describe('GET /api/v1/catalogo/recetas', () => {
       await prisma.receta.update({ where: { codigo: 'LIC-01' }, data: { tasa: '159.50' } });
       await borrarCache();
     }
+  });
+
+  describe('lectura completa de recetas (fase 2 de la 003)', () => {
+    const borrarFichas = async () => {
+      const claves = await redis.keys('catalogo:receta:*');
+      if (claves.length > 0) {
+        await redis.del(...claves);
+      }
+    };
+
+    beforeEach(borrarFichas);
+    afterAll(borrarFichas);
+
+    it('obtener devuelve LIC-03 completa, con requisitos en orden, y la guarda en caché', async () => {
+      const repositorio = app.get<RepositorioCatalogo>(REPOSITORIO_CATALOGO);
+
+      const receta = await repositorio.obtener('LIC-03');
+
+      expect(receta?.calificacion).toBe('EVALUACION_PREVIA_SILENCIO_POSITIVO');
+      expect(receta?.ordenItse).toBe('PREVIA');
+      expect(receta?.requisitos.length).toBeGreaterThanOrEqual(8);
+      const ordenes = receta?.requisitos.map((requisito) => requisito.orden) ?? [];
+      expect(ordenes).toEqual([...ordenes].sort((a, b) => a - b));
+      expect(receta?.requisitos.every((requisito) => requisito.id !== null)).toBe(true);
+
+      const ttl = await redis.ttl('catalogo:receta:LIC-03');
+      expect(ttl).toBeGreaterThan(0);
+      expect(ttl).toBeLessThanOrEqual(240);
+    });
+
+    it('obtener devuelve null para un código que no existe', async () => {
+      const repositorio = app.get<RepositorioCatalogo>(REPOSITORIO_CATALOGO);
+      expect(await repositorio.obtener('LIC-00')).toBeNull();
+    });
+
+    it('listarTodas devuelve las 12 recetas ordenadas por código', async () => {
+      const repositorio = app.get<RepositorioCatalogo>(REPOSITORIO_CATALOGO);
+
+      const recetas = await repositorio.listarTodas();
+
+      expect(recetas.map((receta) => receta.codigo.valor)).toEqual([
+        'CGI-01',
+        'DUP-01',
+        'LIC-01',
+        'LIC-02',
+        'LIC-03',
+        'LIC-04',
+        'LIC-05',
+        'LIC-06',
+        'LIC-07',
+        'LIC-08',
+        'LIC-09',
+        'TRF-01',
+      ]);
+    });
   });
 });

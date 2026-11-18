@@ -153,6 +153,64 @@ video {
   font-weight: 600;
 }
 
+/* Ficha de una licencia (funcionalidad 003): propuesta del asistente y /licencias/:codigo. */
+.ficha {
+  padding: var(--espacio);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background-color: var(--color-superficie);
+}
+
+.ficha__nombre {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+  line-height: 1.3;
+}
+
+.ficha__datos {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  margin: 0 0 var(--espacio);
+}
+
+.ficha__dato dt {
+  font-size: 0.875rem;
+  color: var(--color-texto-suave);
+}
+
+.ficha__dato dd {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.ficha__subtitulo {
+  margin: 0 0 0.5rem;
+  font-size: 1.0625rem;
+}
+
+.ficha__requisitos {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.ficha__requisitos li + li {
+  margin-top: 0.5rem;
+}
+
+.ficha__condicion {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--color-texto-suave);
+}
+
+@media (min-width: 480px) {
+  .ficha__datos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (min-width: 768px) {
   .cabecera {
     padding: calc(var(--espacio) * 2) calc(var(--espacio) * 2);

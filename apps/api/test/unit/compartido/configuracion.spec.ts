@@ -37,7 +37,7 @@ describe('cargarConfiguracion', () => {
       urlBaseDeDatos: base.DATABASE_URL,
       urlRedis: base.REDIS_URL,
       puertoApi: 3000,
-      catalogoCacheTtlSegundos: 300,
+      catalogoCacheTtlSegundos: 240,
       saludTimeoutMs: 2000,
       entorno: 'development',
       envioOtp: 'simulado',
@@ -64,6 +64,26 @@ describe('cargarConfiguracion', () => {
     expect(configuracion.saludTimeoutMs).toBe(1500);
     expect(configuracion.versionServicio).toBe('2.1.0');
     expect(configuracion.trustProxySaltos).toBe(2);
+  });
+
+  describe('CATALOGO_CACHE_TTL_SEGUNDOS (FR-024 de la 003: máximo 5 minutos en total)', () => {
+    it('vale 240 por defecto', () => {
+      expect(cargarConfiguracion(base).catalogoCacheTtlSegundos).toBe(240);
+    });
+
+    it('acepta 240', () => {
+      const configuracion = cargarConfiguracion({ ...base, CATALOGO_CACHE_TTL_SEGUNDOS: '240' });
+      expect(configuracion.catalogoCacheTtlSegundos).toBe(240);
+    });
+
+    it('rechaza 241 nombrando la variable y explicando el límite', () => {
+      const mensaje = mensajeDe(() =>
+        cargarConfiguracion({ ...base, CATALOGO_CACHE_TTL_SEGUNDOS: '241' }),
+      );
+
+      expect(mensaje).toContain('CATALOGO_CACHE_TTL_SEGUNDOS');
+      expect(mensaje).toContain('TTL de Redis + 60 s del navegador no puede superar 5 minutos');
+    });
   });
 
   it('acepta TRUST_PROXY_SALTOS=0', () => {

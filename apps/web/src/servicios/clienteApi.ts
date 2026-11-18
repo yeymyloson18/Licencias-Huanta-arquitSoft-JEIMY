@@ -4,6 +4,7 @@ import { obtenerToken, type SesionPersonal } from '../sesion/almacen-sesion';
 import { renovarSesion } from '../sesion/renovacion';
 
 export type RecetaResumen = components['schemas']['RecetaResumen'];
+export type Receta = components['schemas']['Receta'];
 export type DesafioOtp = components['schemas']['DesafioOtp'];
 export type { SesionPersonal };
 

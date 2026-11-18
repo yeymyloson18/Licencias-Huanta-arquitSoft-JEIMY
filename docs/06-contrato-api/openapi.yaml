@@ -412,7 +412,7 @@ paths:
         '200':
           description: Recetas.
           headers:
-            Cache-Control: { schema: { type: string }, description: 'public, max-age=300' }
+            Cache-Control: { schema: { type: string }, description: 'public, max-age=60 (Redis guarda 240 s; en total, 5 minutos como máximo; FR-024 de la 003)' }
           content:
             application/json:
               schema:
@@ -427,18 +427,32 @@ paths:
       tags: [Catálogo]
       operationId: obtenerReceta
       summary: Requisitos, tasa y plazo de una licencia (RF02, RF05).
+      description: Público. Responde 404 si la receta no existe o está desactivada (mismo cuerpo en los dos casos).
       security: []
       responses:
         '200':
-          description: Receta completa.
+          description: Receta completa (requisitos en orden).
+          headers:
+            Cache-Control: { schema: { type: string }, description: 'public, max-age=60' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Receta' }
-        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '404':
+          description: La receta no existe o está desactivada.
+          headers:
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
     put:
       tags: [Catálogo]
       operationId: actualizarReceta
       summary: Actualiza una receta cuando cambia el TUPA, sin programar (RF21, EQ-06). Borra su clave de la caché.
+      description: >-
+        Solo ADMINISTRADOR. Gana el último que guarda (sin If-Match). Si no hay cambios reales, responde
+        200 con la receta actual y no registra nada. Cada cambio queda en el registro de cambios de la
+        receta, en la misma transacción (FR-021).
       security: [{ bearerPersonal: [] }]
       requestBody:
         required: true
@@ -448,9 +462,11 @@ paths:
       responses:
         '200':
           description: Receta actualizada.
+          headers:
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Receta' }
+              schema: { $ref: '#/components/schemas/RecetaAdmin' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
@@ -460,11 +476,13 @@ paths:
     get:
       tags: [Catálogo]
       operationId: obtenerPreguntasAsistente
-      summary: Las 3 preguntas del asistente de ruta (RF01).
+      summary: Las preguntas del asistente de ruta, con sus opciones tal como están en el catálogo (RF01).
       security: []
       responses:
         '200':
           description: Preguntas en orden.
+          headers:
+            Cache-Control: { schema: { type: string }, description: 'public, max-age=60' }
           content:
             application/json:
               schema:
@@ -476,6 +494,10 @@ paths:
       tags: [Catálogo]
       operationId: proponerLicencia
       summary: Propone la licencia según las respuestas y devuelve requisitos, tasa y plazo (RF01, RF02).
+      description: >-
+        Evalúa las reglas por prioridad y toma la primera que coincide. Si ninguna coincide, o si la
+        receta propuesta está desactivada, responde 200 con resultado NO_DETERMINADA. 422 solo para
+        respuestas inválidas (falta una pregunta, sobra un código o un valor no está entre las opciones).
       security: []
       requestBody:
         required: true
@@ -492,11 +514,54 @@ paths:
                   example: { TIPO_ESTABLECIMIENTO: OTRO, ES_CESIONARIO: 'NO', NIVEL_RIESGO: MEDIO }
       responses:
         '200':
-          description: Licencia propuesta.
+          description: Licencia propuesta o aviso de que no se pudo determinar.
+          headers:
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Receta' }
+              schema: { $ref: '#/components/schemas/ResultadoAsistente' }
         '422': { $ref: '#/components/responses/NoProcesable' }
+
+  /admin/catalogo/recetas:
+    get:
+      tags: [Catálogo]
+      operationId: listarRecetasAdmin
+      summary: Las recetas del catálogo, activas y desactivadas, ordenadas por código (RF21).
+      description: Solo ADMINISTRADOR.
+      security: [{ bearerPersonal: [] }]
+      responses:
+        '200':
+          description: Recetas.
+          headers:
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RecetaAdminResumen' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /admin/catalogo/recetas/{codigoReceta}:
+    parameters:
+      - $ref: '#/components/parameters/CodigoReceta'
+    get:
+      tags: [Catálogo]
+      operationId: obtenerRecetaAdmin
+      summary: Receta completa para editarla, aunque esté desactivada (RF21).
+      description: Solo ADMINISTRADOR.
+      security: [{ bearerPersonal: [] }]
+      responses:
+        '200':
+          description: Receta completa.
+          headers:
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecetaAdmin' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
 
   # ===================================================================== TRÁMITES
   /documentos:
@@ -1624,26 +1689,77 @@ components:
             requisitos:
               type: array
               items: { $ref: '#/components/schemas/Requisito' }
+    RecetaAdminResumen:
+      allOf:
+        - $ref: '#/components/schemas/RecetaResumen'
+        - type: object
+          required: [activa, actualizadaEn]
+          properties:
+            activa: { type: boolean }
+            actualizadaEn: { type: string, format: date-time }
+    RecetaAdmin:
+      allOf:
+        - $ref: '#/components/schemas/Receta'
+        - type: object
+          required: [activa, actualizadaEn]
+          properties:
+            activa: { type: boolean }
+            actualizadaEn: { type: string, format: date-time }
+    ResultadoAsistente:
+      description: Resultado del asistente de ruta. NO_DETERMINADA no es un error (FR-006).
+      oneOf:
+        - $ref: '#/components/schemas/PropuestaLicencia'
+        - $ref: '#/components/schemas/LicenciaNoDeterminada'
+      discriminator:
+        propertyName: resultado
+        mapping:
+          PROPUESTA: '#/components/schemas/PropuestaLicencia'
+          NO_DETERMINADA: '#/components/schemas/LicenciaNoDeterminada'
+    PropuestaLicencia:
+      type: object
+      required: [resultado, receta]
+      additionalProperties: false
+      properties:
+        resultado: { type: string, const: PROPUESTA }
+        receta: { $ref: '#/components/schemas/Receta' }
+    LicenciaNoDeterminada:
+      type: object
+      required: [resultado, motivo]
+      additionalProperties: false
+      properties:
+        resultado: { type: string, const: NO_DETERMINADA }
+        motivo: { type: string, enum: [SIN_REGLA, RECETA_NO_DISPONIBLE] }
     RecetaEditable:
       type: object
-      description: Campos que el administrador puede cambiar cuando se modifica el TUPA.
+      description: >-
+        Campos que el administrador puede cambiar cuando se modifica el TUPA. Los demás (código, nombre,
+        tipo, ruta, código y página del TUPA) no se editan. La calificación y el orden del ITSE deben
+        corresponder a la ruta de la licencia (FR-019).
       minProperties: 1
+      additionalProperties: false
       properties:
         tasa: { $ref: '#/components/schemas/Soles' }
         plazoDias: { type: integer, minimum: 1 }
         calificacion: { type: string, enum: [APROBACION_AUTOMATICA, EVALUACION_PREVIA_SILENCIO_POSITIVO, SERVICIO_EXCLUSIVO] }
-        ordenItse: { type: string, enum: [POSTERIOR, PREVIA, DENTRO_6_MESES] }
-        plazoItseDias: { type: integer, minimum: 1 }
-        vigenciaMeses: { type: [integer, 'null'] }
+        ordenItse: { type: [string, 'null'], enum: [POSTERIOR, PREVIA, DENTRO_6_MESES, null] }
+        plazoItseDias: { type: [integer, 'null'], minimum: 1 }
+        vigenciaMeses: { type: [integer, 'null'], minimum: 1, description: null = indeterminada }
         activa: { type: boolean }
         requisitos:
           type: array
+          minItems: 1
+          maxItems: 30
+          description: >-
+            Reemplaza la lista completa. El orden lo da la posición. Con id se conserva ese requisito;
+            sin id se crea uno nuevo; los que faltan se borran.
           items:
             type: object
-            required: [orden, descripcion, condicion]
+            required: [descripcion, condicion]
+            additionalProperties: false
             properties:
-              orden: { type: integer, minimum: 1 }
-              descripcion: { type: string }
+              id: { type: integer }
+              orden: { type: integer, minimum: 1, deprecated: true, description: Se ignora; manda la posición en la lista. }
+              descripcion: { type: string, minLength: 1, maxLength: 500 }
               obligatorio: { type: boolean, default: true }
               condicion: { type: string, enum: [SIEMPRE, CON_REPRESENTANTE, GIRO_ESPECIAL, SIN_PLANOS_VIGENTES] }
     Requisito:
