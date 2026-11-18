@@ -22,7 +22,7 @@ El menú del personal agrega "Catálogo" para el rol ADMINISTRADOR.
   primera sin respuesta válida, y se descartan los parámetros desconocidos o inválidos.
 - **Cada pregunta:**
   - `<h1>` con el texto de la pregunta, que recibe el foco al llegar;
-  - el avance "Pregunta N de 3" en una región `aria-live="polite"`;
+  - el avance "Pregunta N de M" (M = número de preguntas que devuelve la API, nunca fijo) en una región `aria-live="polite"`;
   - las opciones como `radio` dentro de un `fieldset` y su `legend`.
 - **Botones:**
   - "Siguiente": deshabilitado mientras no haya una opción elegida.
