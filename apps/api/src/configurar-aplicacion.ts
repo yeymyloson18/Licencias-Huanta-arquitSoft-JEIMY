@@ -11,6 +11,8 @@ export const configurarAplicacion = (app: INestApplication): void => {
   // IP real del cliente detrás del nginx del portal (y del balanceador en producción) para los
   // límites de intentos por origen (FR-007, research.md §R-08 de la 002).
   (app as NestExpressApplication).set('trust proxy', configuracion.trustProxySaltos);
+  // No anunciar el framework (escaneo OWASP ZAP, research.md §R-18 de la 002).
+  (app as NestExpressApplication).disable('x-powered-by');
   // Lee la cookie refresh_personal (research.md §R-05 de la 002).
   app.use(cookieParser());
 

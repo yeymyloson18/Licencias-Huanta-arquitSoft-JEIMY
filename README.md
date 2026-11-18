@@ -60,6 +60,46 @@ Auditoría Lighthouse 12 del portal (<http://localhost:8080>, modo móvil, 17/11
 Para repetirla: `npx lighthouse http://localhost:8080 --form-factor=mobile --view` (el mínimo
 exigido es 90 en accesibilidad y en buenas prácticas, SC-006).
 
+Auditoría Lighthouse 12 de las pantallas de seguridad (funcionalidad 002, modo móvil, 18/11/2026,
+stack recién clonado y con las cabeceras de seguridad activas):
+
+| Pantalla                               | Rendimiento | Accesibilidad | Buenas prácticas | SEO |
+| -------------------------------------- | ----------- | ------------- | ---------------- | --- |
+| `/ingresar`                            | 99          | 100           | 96               | 91  |
+| `/cambiar-clave` (con clave temporal)  | 99          | 100           | 100              | 91  |
+| `/admin/usuarios` (como administrador) | 99          | 100           | 100              | 91  |
+
+El 96 de `/ingresar` se debe a un único aviso: al abrir el portal se llama a `POST /auth/renovar`
+para recuperar la sesión, y sin sesión responde 401, que el navegador anota en la consola. El portal
+no puede saber antes si existe la cookie porque es `HttpOnly` a propósito (no se lee desde
+JavaScript), así que se acepta. Las pantallas con sesión se auditan pasando la cookie
+`refresh_personal` con `--extra-headers`.
+
+Escaneo base de OWASP ZAP (`zap-baseline.py`, 18/11/2026) contra el portal: **0 alertas de riesgo
+alto o medio** (65 reglas sin hallazgos). El primer escaneo encontró 2 medias (sin
+`Content-Security-Policy` y sin protección contra clickjacking) y 5 bajas (cabeceras
+`X-Content-Type-Options`, `Permissions-Policy` y `Cross-Origin-*`, y la versión de nginx en
+`Server`); se corrigieron con `apps/web/cabeceras-seguridad.conf`, `server_tokens off` y quitando
+`X-Powered-By` de la API. Quedan 3 alertas **informativas**, justificadas:
+
+| Alerta (id)                            | Por qué se acepta                                                                                                                               |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Comentarios sospechosos (10027)        | Es el texto `query` dentro del código minificado de `openapi-fetch`, no un comentario con información interna.                                  |
+| Contenido almacenable en caché (10049) | Son los archivos de `/assets/` con hash en el nombre; se guardan en caché a propósito. Las respuestas de la API usan `Cache-Control: no-store`. |
+| Aplicación web moderna (10109)         | Solo informa que el portal es una SPA, lo que limita la exploración automática de ZAP.                                                          |
+
+Para repetirlo (el informe `zap-informe.html` no se versiona):
+`docker run --rm -t -v "${PWD}:/zap/wrk" ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://host.docker.internal:8080 -r zap-informe.html`.
+
+Tiempos de las tareas del personal (funcionalidad 002), medidos en el navegador sobre un clon limpio
+recorriendo el portal con datos ficticios. Incluyen el tiempo de leer el código simulado en Redis:
+
+| Tarea                                                                            | Tiempo | Objetivo |
+| -------------------------------------------------------------------------------- | ------ | -------- |
+| Iniciar sesión en dos pasos desde que se abre `/ingresar` (SC-001)               | 42 s   | < 1 min  |
+| Primer ingreso de un usuario nuevo hasta cambiar la clave y ver el menú (SC-008) | 54 s   | < 2 min  |
+| Crear un usuario con dos roles en `/admin/usuarios` (SC-009)                     | 38 s   | < 2 min  |
+
 ### Crear el primer administrador
 
 En una instalación nueva no hay usuarios. Con el sistema levantado, cree el primer administrador

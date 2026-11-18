@@ -300,5 +300,6 @@ describe('Datos personales fuera de respuestas, URLs y logs (SC-007)', () => {
     expect(celularCifrado.includes(persona.celular)).toBe(false);
     expect(fila.clave_hash.startsWith('$argon2id$')).toBe(true);
     expect(fila.clave_hash).not.toContain(persona.claveTemporal2);
-  });
+    // Recorre todos los flujos (unas diez operaciones argon2): más que los 5 s por defecto.
+  }, 60_000);
 });

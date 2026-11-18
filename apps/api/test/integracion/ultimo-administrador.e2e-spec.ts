@@ -13,6 +13,9 @@ import { esperarCumpleContrato } from '../apoyo/validarContrato';
 // a la vez (research.md §R-09: bloqueo de aplicación dentro de la transacción).
 
 const TIPO = 'https://licencias.example.pe/errores/ultimo-administrador';
+// Cada ronda crea dos administradores e inicia dos sesiones (argon2): 10 rondas superan los 5 s
+// por defecto de Jest en equipos cargados.
+const LIMITE_RONDAS_MS = 60_000;
 
 describe('Nunca sin administrador activo (FR-020, SC-006)', () => {
   let app: INestApplication<App>;
@@ -60,40 +63,48 @@ describe('Nunca sin administrador activo (FR-020, SC-006)', () => {
     await expect(administradoresActivos()).resolves.toBe(1);
   });
 
-  it('con dos administradores que se quitan su propio rol a la vez: exactamente un 200 y un 409 (x10)', async () => {
-    for (let ronda = 0; ronda < 10; ronda += 1) {
-      await limpiarSeguridad(prisma);
-      await limpiarClavesSeguridad(redis);
-      const a = await clienteConRoles(app, prisma, redis, ['ADMINISTRADOR', 'JEFATURA']);
-      const b = await clienteConRoles(app, prisma, redis, ['ADMINISTRADOR', 'JEFATURA']);
+  it(
+    'con dos administradores que se quitan su propio rol a la vez: exactamente un 200 y un 409 (x10)',
+    async () => {
+      for (let ronda = 0; ronda < 10; ronda += 1) {
+        await limpiarSeguridad(prisma);
+        await limpiarClavesSeguridad(redis);
+        const a = await clienteConRoles(app, prisma, redis, ['ADMINISTRADOR', 'JEFATURA']);
+        const b = await clienteConRoles(app, prisma, redis, ['ADMINISTRADOR', 'JEFATURA']);
 
-      const respuestas = await Promise.all([
-        a.pedir('put', `/usuarios/${a.usuario.id}/roles`, { roles: ['JEFATURA'] }),
-        b.pedir('put', `/usuarios/${b.usuario.id}/roles`, { roles: ['JEFATURA'] }),
-      ]);
+        const respuestas = await Promise.all([
+          a.pedir('put', `/usuarios/${a.usuario.id}/roles`, { roles: ['JEFATURA'] }),
+          b.pedir('put', `/usuarios/${b.usuario.id}/roles`, { roles: ['JEFATURA'] }),
+        ]);
 
-      expect(respuestas.map((r) => r.status).sort()).toEqual([200, 409]);
-      await expect(administradoresActivos()).resolves.toBe(1);
-    }
-  });
+        expect(respuestas.map((r) => r.status).sort()).toEqual([200, 409]);
+        await expect(administradoresActivos()).resolves.toBe(1);
+      }
+    },
+    LIMITE_RONDAS_MS,
+  );
 
-  it('con dos administradores que se quitan el rol uno al otro a la vez, queda exactamente uno (x10)', async () => {
-    for (let ronda = 0; ronda < 10; ronda += 1) {
-      await limpiarSeguridad(prisma);
-      await limpiarClavesSeguridad(redis);
-      const a = await clienteConRoles(app, prisma, redis, ['ADMINISTRADOR', 'JEFATURA']);
-      const b = await clienteConRoles(app, prisma, redis, ['ADMINISTRADOR', 'JEFATURA']);
+  it(
+    'con dos administradores que se quitan el rol uno al otro a la vez, queda exactamente uno (x10)',
+    async () => {
+      for (let ronda = 0; ronda < 10; ronda += 1) {
+        await limpiarSeguridad(prisma);
+        await limpiarClavesSeguridad(redis);
+        const a = await clienteConRoles(app, prisma, redis, ['ADMINISTRADOR', 'JEFATURA']);
+        const b = await clienteConRoles(app, prisma, redis, ['ADMINISTRADOR', 'JEFATURA']);
 
-      const respuestas = await Promise.all([
-        a.pedir('put', `/usuarios/${b.usuario.id}/roles`, { roles: ['JEFATURA'] }),
-        b.pedir('put', `/usuarios/${a.usuario.id}/roles`, { roles: ['JEFATURA'] }),
-      ]);
+        const respuestas = await Promise.all([
+          a.pedir('put', `/usuarios/${b.usuario.id}/roles`, { roles: ['JEFATURA'] }),
+          b.pedir('put', `/usuarios/${a.usuario.id}/roles`, { roles: ['JEFATURA'] }),
+        ]);
 
-      // Una gana (200). La otra recibe 409 (la regla) o 403 (si llegó cuando ya no era admin).
-      const estados = respuestas.map((r) => r.status).sort();
-      expect(estados[0]).toBe(200);
-      expect([403, 409]).toContain(estados[1]);
-      await expect(administradoresActivos()).resolves.toBe(1);
-    }
-  });
+        // Una gana (200). La otra recibe 409 (la regla) o 403 (si llegó cuando ya no era admin).
+        const estados = respuestas.map((r) => r.status).sort();
+        expect(estados[0]).toBe(200);
+        expect([403, 409]).toContain(estados[1]);
+        await expect(administradoresActivos()).resolves.toBe(1);
+      }
+    },
+    LIMITE_RONDAS_MS,
+  );
 });
