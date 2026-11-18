@@ -22,6 +22,7 @@ const config: Config = {
       displayName: 'integracion',
       testEnvironment: 'node',
       testMatch: ['<rootDir>/test/integracion/**/*.e2e-spec.ts'],
+      setupFiles: ['<rootDir>/test/apoyo/entorno-pruebas.ts'],
       transform,
       testTimeout: 15000,
     },

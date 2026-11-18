@@ -1,4 +1,5 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, Logger } from '@nestjs/common';
+import { ErrorProblema } from './error-problema';
 
 // Convierte cualquier error en `application/problem+json` (RFC 9457, esquema `Problema` del
 // contrato). Nunca devuelve trazas, mensajes internos ni datos personales (FR-011, principio VII).
@@ -25,6 +26,7 @@ export class ErrorValidacion extends Error {
 }
 
 interface RespuestaHttp {
+  setHeader(nombre: string, valor: string): unknown;
   status(codigo: number): RespuestaHttp;
   type(tipo: string): RespuestaHttp;
   send(cuerpo: string): unknown;
@@ -46,6 +48,10 @@ const TIPO_GENERICO = 'about:blank';
 const TIPO_VALIDACION = 'https://licencias.example.pe/errores/validacion';
 
 export const aProblema = (excepcion: unknown): Problema => {
+  if (excepcion instanceof ErrorProblema) {
+    return { type: excepcion.type, title: excepcion.titulo, status: excepcion.status };
+  }
+
   if (excepcion instanceof ErrorValidacion) {
     return {
       type: TIPO_VALIDACION,
@@ -71,16 +77,19 @@ export class FiltroProblema implements ExceptionFilter {
 
   catch(excepcion: unknown, host: ArgumentsHost): void {
     const problema = aProblema(excepcion);
+    const respuesta = host.switchToHttp().getResponse<RespuestaHttp>();
 
-    if (problema.status >= 500) {
+    if (problema.status >= 500 && !(excepcion instanceof ErrorProblema)) {
       // Solo el tipo de error: el mensaje podría contener datos de conexión.
       const nombre = excepcion instanceof Error ? excepcion.name : typeof excepcion;
       this.registro.error(`Error no controlado (${nombre})`);
     }
 
-    host
-      .switchToHttp()
-      .getResponse<RespuestaHttp>()
+    if (excepcion instanceof ErrorProblema && excepcion.reintentarEnSegundos !== undefined) {
+      respuesta.setHeader('Retry-After', String(excepcion.reintentarEnSegundos));
+    }
+
+    respuesta
       .status(problema.status)
       .type('application/problem+json')
       .send(JSON.stringify(problema));

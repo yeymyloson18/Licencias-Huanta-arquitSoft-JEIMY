@@ -1,4 +1,5 @@
 import { ArgumentsHost, HttpException, Logger, NotFoundException } from '@nestjs/common';
+import { ErrorProblema } from '../../../src/compartido/presentacion/error-problema';
 import {
   aProblema,
   ErrorValidacion,
@@ -10,6 +11,11 @@ const crearHost = () => {
     codigo: 0,
     tipo: '',
     cuerpo: '',
+    cabeceras: {} as Record<string, string>,
+    setHeader(nombre: string, valor: string) {
+      this.cabeceras[nombre] = valor;
+      return this;
+    },
     status(codigo: number) {
       this.codigo = codigo;
       return this;
@@ -63,6 +69,29 @@ describe('aProblema', () => {
   it('no incluye errores fuera de un 422', () => {
     expect(aProblema(new NotFoundException()).errores).toBeUndefined();
   });
+
+  it.each([
+    [ErrorProblema.noAutenticado(), 401, 'no-autenticado'],
+    [ErrorProblema.sinPermiso(), 403, 'sin-permiso'],
+    [ErrorProblema.debeCambiarClave(), 403, 'debe-cambiar-clave'],
+    [ErrorProblema.demasiadosIntentos(60), 429, 'demasiados-intentos'],
+    [ErrorProblema.ultimoAdministrador(), 409, 'ultimo-administrador'],
+    [ErrorProblema.correoEnUso(), 409, 'correo-en-uso'],
+    [ErrorProblema.servicioNoDisponible(), 503, 'servicio-no-disponible'],
+  ])('traduce ErrorProblema a su tipo, estado y título (%#)', (error, status, sufijo) => {
+    const problema = aProblema(error);
+
+    expect(problema.status).toBe(status);
+    expect(problema.type).toBe(`https://licencias.example.pe/errores/${sufijo}`);
+    expect(problema.title.length).toBeGreaterThan(0);
+    expect(problema.detail).toBeUndefined();
+  });
+
+  it('usa el mismo título para todo no autenticado, sin decir qué dato falló (FR-005)', () => {
+    expect(aProblema(ErrorProblema.noAutenticado()).title).toBe(
+      'Correo, clave o código incorrectos, o la sesión terminó',
+    );
+  });
 });
 
 describe('FiltroProblema', () => {
@@ -80,6 +109,26 @@ describe('FiltroProblema', () => {
       status: 422,
       errores: [{ campo: 'tipo' }],
     });
+  });
+
+  it('agrega Retry-After en segundos cuando el problema lo indica', () => {
+    const { host, respuesta } = crearHost();
+
+    new FiltroProblema().catch(ErrorProblema.demasiadosIntentos(125), host);
+
+    expect(respuesta.codigo).toBe(429);
+    expect(respuesta.cabeceras['Retry-After']).toBe('125');
+    expect(JSON.parse(respuesta.cuerpo)).not.toHaveProperty('reintentarEnSegundos');
+  });
+
+  it('no registra como error no controlado un 503 controlado', () => {
+    const { host, respuesta } = crearHost();
+    const error = jest.spyOn(Logger.prototype, 'error');
+
+    new FiltroProblema().catch(ErrorProblema.servicioNoDisponible(), host);
+
+    expect(respuesta.codigo).toBe(503);
+    expect(error).not.toHaveBeenCalled();
   });
 
   it('registra los 500 sin el mensaje original', () => {
