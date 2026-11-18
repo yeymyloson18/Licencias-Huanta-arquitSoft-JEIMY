@@ -55,10 +55,11 @@ export class CrearPrimerAdministrador {
     const correo = leer('correo', invalidos, () => Correo.crear(datos.correo));
     const nombre = leer('nombre', invalidos, () => NombreCompleto.crear(datos.nombre));
     const celular = leer('celular', invalidos, () => Celular.crear(datos.celular));
-    if (correo === null || nombre === null || celular === null) {
-      throw new ErrorDatosInvalidos(invalidos);
-    }
     const reglas = PoliticaClave.validar(datos.clave);
+    if (correo === null || nombre === null || celular === null) {
+      // Un solo mensaje con todos los campos inválidos, también la clave si no cumple la política.
+      throw new ErrorDatosInvalidos(reglas.length > 0 ? [...invalidos, 'clave'] : invalidos);
+    }
     if (reglas.length > 0) {
       throw new ErrorClaveInvalida(reglas);
     }

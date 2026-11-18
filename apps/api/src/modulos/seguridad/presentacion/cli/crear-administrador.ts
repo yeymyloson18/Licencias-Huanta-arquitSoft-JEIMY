@@ -40,6 +40,9 @@ const VARIABLES = [
 type Variable = (typeof VARIABLES)[number]['variable'];
 
 const crearContextoPorDefecto = () =>
+  // NestJS declara las opciones como clase (no exportada), pero su API documentada recibe un
+  // objeto literal; sin logger, el comando solo imprime los mensajes del contrato.
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-class-instance-assignment
   NestFactory.createApplicationContext(AppModule, { logger: false });
 
 /** Reúne los datos de las variables de entorno y, si hay terminal, pregunta los que falten. */

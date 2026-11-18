@@ -60,6 +60,29 @@ Auditoría Lighthouse 12 del portal (<http://localhost:8080>, modo móvil, 17/11
 Para repetirla: `npx lighthouse http://localhost:8080 --form-factor=mobile --view` (el mínimo
 exigido es 90 en accesibilidad y en buenas prácticas, SC-006).
 
+### Crear el primer administrador
+
+En una instalación nueva no hay usuarios. Con el sistema levantado, cree el primer administrador
+(ninguna clave real queda en el repositorio):
+
+```bash
+docker compose -f infra/docker-compose.yml exec api npm run crear-administrador
+```
+
+El comando pide correo, nombre completo, celular (9 dígitos) y clave (sin mostrarla, dos veces), e
+imprime solo el id del usuario creado. Si ya existe un administrador activo, no hace ningún cambio.
+El administrador deberá cambiar la clave en su primer ingreso.
+
+> Prefiera el modo interactivo: también acepta las variables `ADMIN_CORREO`, `ADMIN_NOMBRE`,
+> `ADMIN_CELULAR` y `ADMIN_CLAVE` (por ejemplo, con `exec -e ...`), pero así la clave queda en el
+> historial de la terminal.
+
+Mientras no haya proveedor de SMS, el código de inicio de sesión se simula. En desarrollo se lee con:
+
+```bash
+docker compose -f infra/docker-compose.yml exec redis redis-cli GET dev:otp:<usuarioId>
+```
+
 ### Cómo detenerlo
 
 ```bash
