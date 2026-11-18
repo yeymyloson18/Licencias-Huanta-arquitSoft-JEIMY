@@ -2,6 +2,7 @@ import { Outlet, Route, Routes, useLocation } from 'react-router';
 import { Menu } from './componentes/Menu';
 import { RutaProtegida } from './componentes/RutaProtegida';
 import { Usuarios } from './paginas/admin/Usuarios';
+import { Asistente } from './paginas/Asistente';
 import { CambiarClave } from './paginas/CambiarClave';
 import { Ingresar } from './paginas/Ingresar';
 import { Inicio } from './paginas/Inicio';
@@ -37,6 +38,7 @@ export function RutasAplicacion() {
     <Routes>
       <Route element={<Diseno />}>
         <Route path="/" element={<Inicio />} />
+        <Route path="/asistente" element={<Asistente />} />
         <Route path="/ingresar" element={<Ingresar />} />
         <Route
           path="/admin/usuarios"

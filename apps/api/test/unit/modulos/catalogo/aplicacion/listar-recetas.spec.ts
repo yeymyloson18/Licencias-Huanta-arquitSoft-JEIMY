@@ -25,6 +25,10 @@ class RepositorioEnMemoria implements RepositorioCatalogo {
   listarTodas(): Promise<never[]> {
     return Promise.resolve([]);
   }
+
+  obtenerAsistente(): Promise<{ preguntas: never[]; reglas: never[] }> {
+    return Promise.resolve({ preguntas: [], reglas: [] });
+  }
 }
 
 const lic01 = crearReceta({

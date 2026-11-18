@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import { TarjetaLicencia } from '../componentes/TarjetaLicencia';
 import { listarLicencias, type RecetaResumen } from '../servicios/clienteApi';
 
@@ -32,6 +33,9 @@ export function Inicio() {
         <p className="cabecera__descripcion">
           Conozca la tasa y el plazo de cada licencia según el TUPA 2024.
         </p>
+        <Link to="/asistente" className="boton boton--claro">
+          ¿Qué licencia necesito?
+        </Link>
       </header>
 
       <main className="contenido">

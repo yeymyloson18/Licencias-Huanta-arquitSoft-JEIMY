@@ -308,6 +308,95 @@ video {
   color: #ffffff;
 }
 
+/* Botón sobre la cabecera azul (enlace al asistente, funcionalidad 003). */
+.boton--claro {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.75rem;
+  color: var(--color-primario-oscuro);
+  background-color: var(--color-superficie);
+  text-decoration: none;
+}
+
+.boton--claro:hover {
+  color: var(--color-primario-oscuro);
+  background-color: var(--color-fondo);
+}
+
+/* ---- Asistente de ruta (funcionalidad 003) ---- */
+
+.asistente {
+  max-width: 40rem;
+}
+
+.asistente__avance {
+  margin: 0 0 0.5rem;
+  font-size: 0.9375rem;
+  color: var(--color-texto-suave);
+}
+
+.asistente__titulo {
+  margin: 0 0 var(--espacio);
+  font-size: 1.375rem;
+  line-height: 1.3;
+}
+
+.asistente__titulo:focus {
+  outline: none;
+}
+
+.asistente__titulo:focus-visible {
+  outline: 3px solid var(--color-foco);
+  outline-offset: 2px;
+}
+
+.asistente__opciones {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.asistente__opciones legend {
+  padding: 0;
+}
+
+.asistente__opcion {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.75rem; /* área táctil cómoda */
+  padding: 0.75rem var(--espacio);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background-color: var(--color-superficie);
+  cursor: pointer;
+}
+
+.asistente__opcion:has(input:checked) {
+  border-color: var(--color-primario);
+  box-shadow: 0 0 0 1px var(--color-primario);
+}
+
+.asistente__opcion input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.asistente__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: var(--espacio);
+}
+
+.asistente__resultado .aviso {
+  margin-bottom: var(--espacio);
+}
+
 /* ---- Menú del personal (FR-026) ---- */
 
 .menu {

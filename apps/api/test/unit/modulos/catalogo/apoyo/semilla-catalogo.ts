@@ -1,5 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type {
+  DatosAsistente,
+  OpcionPregunta,
+} from '../../../../../src/modulos/catalogo/dominio/pregunta-asistente';
 import type { DatosRecetaCompleta } from '../../../../../src/modulos/catalogo/dominio/receta-completa';
 import type { DatosRequisito } from '../../../../../src/modulos/catalogo/dominio/requisito';
 
@@ -165,4 +169,40 @@ export const leerSemillaCatalogo = (): DatosRecetaCompleta[] => {
     );
   }
   return recetas;
+};
+
+/** Preguntas y reglas del asistente tal como las deja datos-semilla.sql (FR-002, SC-002). */
+export const leerSemillaAsistente = (): DatosAsistente => {
+  const sql = readFileSync(RUTA_SEMILLA, 'utf8').replace(/\r\n/g, '\n');
+
+  const bloquePreguntas =
+    /INSERT INTO catalogo\.pregunta_asistente \(codigo, orden, texto, opciones\) VALUES([\s\S]*?\]'\));/.exec(
+      sql,
+    )?.[1];
+  const bloqueReglas =
+    /INSERT INTO catalogo\.regla_asistente \(prioridad, condiciones, codigo_receta\) VALUES([\s\S]*?\));/.exec(
+      sql,
+    )?.[1];
+  if (bloquePreguntas === undefined || bloqueReglas === undefined) {
+    throw new Error(
+      'No se encontraron las preguntas o las reglas del asistente en datos-semilla.sql',
+    );
+  }
+
+  const preguntas = leerTuplas(bloquePreguntas).map(([codigo, orden, texto, opciones]) => ({
+    codigo: comoTexto(codigo, 'codigo'),
+    orden: Number(orden),
+    texto: comoTexto(texto, 'texto'),
+    opciones: JSON.parse(comoTexto(opciones, 'opciones')) as OpcionPregunta[],
+  }));
+  const reglas = leerTuplas(bloqueReglas).map(([prioridad, condiciones, codigoReceta]) => ({
+    prioridad: Number(prioridad),
+    condiciones: JSON.parse(comoTexto(condiciones, 'condiciones')) as Record<string, string>,
+    codigoReceta: comoTexto(codigoReceta, 'codigo_receta'),
+  }));
+
+  if (preguntas.length === 0 || reglas.length === 0) {
+    throw new Error('datos-semilla.sql no tiene preguntas o reglas del asistente');
+  }
+  return { preguntas, reglas };
 };

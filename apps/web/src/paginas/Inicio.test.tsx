@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { components } from '@licencias/contracts';
+import { MemoryRouter } from 'react-router';
 import { Inicio } from './Inicio';
 
 type RecetaResumen = components['schemas']['RecetaResumen'];
@@ -39,12 +40,32 @@ describe('Página de inicio del catálogo', () => {
   it('pide solo las licencias al backend', async () => {
     fetchSimulado.mockResolvedValue(respuestaJson(nueveLicencias));
 
-    render(<Inicio />);
+    render(
+      <MemoryRouter>
+        <Inicio />
+      </MemoryRouter>,
+    );
 
     await screen.findAllByRole('listitem');
     expect(fetchSimulado).toHaveBeenCalledTimes(1);
     expect(urlDeLlamada(fetchSimulado.mock.calls[0] ?? [])).toMatch(
       /\/api\/v1\/catalogo\/recetas\?tipo=LICENCIA$/,
+    );
+  });
+
+  it('ofrece el asistente de ruta con el botón "¿Qué licencia necesito?" (003)', async () => {
+    fetchSimulado.mockResolvedValue(respuestaJson(nueveLicencias));
+
+    render(
+      <MemoryRouter>
+        <Inicio />
+      </MemoryRouter>,
+    );
+
+    await screen.findAllByRole('listitem');
+    expect(screen.getByRole('link', { name: '¿Qué licencia necesito?' })).toHaveAttribute(
+      'href',
+      '/asistente',
     );
   });
 
@@ -56,7 +77,11 @@ describe('Página de inicio del catálogo', () => {
       }),
     );
 
-    render(<Inicio />);
+    render(
+      <MemoryRouter>
+        <Inicio />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByRole('status')).toHaveTextContent('Cargando licencias…');
     responder(respuestaJson(nueveLicencias));
@@ -67,7 +92,11 @@ describe('Página de inicio del catálogo', () => {
   it('lista las 9 licencias con nombre, tasa en soles y plazo', async () => {
     fetchSimulado.mockResolvedValue(respuestaJson(nueveLicencias));
 
-    render(<Inicio />);
+    render(
+      <MemoryRouter>
+        <Inicio />
+      </MemoryRouter>,
+    );
 
     const elementos = await screen.findAllByRole('listitem');
     expect(elementos).toHaveLength(9);
@@ -81,7 +110,11 @@ describe('Página de inicio del catálogo', () => {
   it('muestra un mensaje claro si el catálogo llega vacío', async () => {
     fetchSimulado.mockResolvedValue(respuestaJson([]));
 
-    render(<Inicio />);
+    render(
+      <MemoryRouter>
+        <Inicio />
+      </MemoryRouter>,
+    );
 
     expect(
       await screen.findByText(
@@ -98,7 +131,11 @@ describe('Página de inicio del catálogo', () => {
   ])('ante %s muestra que el catálogo no está disponible', async (_, respuesta) => {
     fetchSimulado.mockImplementation(respuesta);
 
-    render(<Inicio />);
+    render(
+      <MemoryRouter>
+        <Inicio />
+      </MemoryRouter>,
+    );
 
     const alerta = await screen.findByRole('alert');
     expect(alerta).toHaveTextContent(
@@ -112,7 +149,11 @@ describe('Página de inicio del catálogo', () => {
       .mockRejectedValueOnce(new TypeError('Failed to fetch'))
       .mockResolvedValueOnce(respuestaJson(nueveLicencias));
 
-    render(<Inicio />);
+    render(
+      <MemoryRouter>
+        <Inicio />
+      </MemoryRouter>,
+    );
     await userEvent.click(await screen.findByRole('button', { name: 'Reintentar' }));
 
     expect(await screen.findAllByRole('listitem')).toHaveLength(9);

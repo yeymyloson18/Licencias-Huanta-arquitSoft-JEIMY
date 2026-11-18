@@ -1,5 +1,11 @@
 import type { Prisma } from '@prisma/client';
 import type { PrismaServicio } from '../../../compartido/infraestructura/prisma.servicio';
+import type {
+  DatosAsistente,
+  OpcionPregunta,
+  PreguntaAsistente,
+  ReglaAsistente,
+} from '../dominio/pregunta-asistente';
 import { crearReceta, esRuta, esTipoReceta, type Receta, type Ruta } from '../dominio/receta';
 import { crearRecetaCompleta, type RecetaCompleta } from '../dominio/receta-completa';
 import type { FiltroRecetas, RepositorioCatalogo } from '../dominio/repositorio-catalogo';
@@ -52,6 +58,30 @@ const aRecetaCompleta = (fila: FilaRecetaCompleta): RecetaCompleta =>
     actualizadaEn: fila.actualizada_en.toISOString(),
   });
 
+const esObjeto = (valor: unknown): valor is Record<string, unknown> =>
+  typeof valor === 'object' && valor !== null && !Array.isArray(valor);
+
+/** `opciones` es jsonb: se valida su forma al cruzar la frontera (FR-002). */
+const leerOpciones = (codigo: string, valor: unknown): OpcionPregunta[] => {
+  if (!Array.isArray(valor)) {
+    throw new Error(`Opciones inválidas en la pregunta ${codigo}`);
+  }
+  return valor.map((opcion: unknown) => {
+    if (!esObjeto(opcion) || typeof opcion.valor !== 'string' || typeof opcion.texto !== 'string') {
+      throw new Error(`Opción inválida en la pregunta ${codigo}`);
+    }
+    return { valor: opcion.valor, texto: opcion.texto };
+  });
+};
+
+/** `condiciones` es jsonb: un objeto de textos (código de pregunta → valor). */
+const leerCondiciones = (prioridad: number, valor: unknown): Record<string, string> => {
+  if (!esObjeto(valor) || Object.values(valor).some((dato) => typeof dato !== 'string')) {
+    throw new Error(`Condiciones inválidas en la regla de prioridad ${String(prioridad)}`);
+  }
+  return valor as Record<string, string>;
+};
+
 /** Adaptador: lee el esquema `catalogo` (solo el esquema propio del módulo, principio III). */
 export class RepositorioCatalogoPostgres implements RepositorioCatalogo {
   constructor(private readonly prisma: PrismaServicio) {}
@@ -85,5 +115,26 @@ export class RepositorioCatalogoPostgres implements RepositorioCatalogo {
       ...CON_REQUISITOS,
     });
     return filas.map(aRecetaCompleta);
+  }
+
+  async obtenerAsistente(): Promise<DatosAsistente> {
+    const [filasPreguntas, filasReglas] = await Promise.all([
+      this.prisma.pregunta_asistente.findMany({ orderBy: { orden: 'asc' } }),
+      this.prisma.regla_asistente.findMany({ orderBy: { prioridad: 'asc' } }),
+    ]);
+
+    const preguntas: PreguntaAsistente[] = filasPreguntas.map((fila) => ({
+      codigo: fila.codigo,
+      orden: fila.orden,
+      texto: fila.texto,
+      opciones: leerOpciones(fila.codigo, fila.opciones),
+    }));
+    const reglas: ReglaAsistente[] = filasReglas.map((fila) => ({
+      prioridad: fila.prioridad,
+      condiciones: leerCondiciones(fila.prioridad, fila.condiciones),
+      codigoReceta: fila.codigo_receta,
+    }));
+
+    return { preguntas, reglas };
   }
 }

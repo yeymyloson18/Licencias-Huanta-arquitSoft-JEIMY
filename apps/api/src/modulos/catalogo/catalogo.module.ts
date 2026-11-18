@@ -4,17 +4,20 @@ import { CONFIGURACION, type Configuracion } from '../../compartido/infraestruct
 import { PrismaServicio } from '../../compartido/infraestructura/prisma.servicio';
 import { REDIS_CLIENTE } from '../../compartido/infraestructura/redis.proveedor';
 import { ListarRecetas } from './aplicacion/listar-recetas';
+import { ObtenerPreguntas } from './aplicacion/obtener-preguntas';
+import { ProponerLicencia } from './aplicacion/proponer-licencia';
 import type { RepositorioCatalogo } from './dominio/repositorio-catalogo';
 import { FachadaCatalogo } from './fachada';
 import { RepositorioCatalogoConCache } from './infraestructura/repositorio-catalogo-con-cache';
 import { RepositorioCatalogoPostgres } from './infraestructura/repositorio-catalogo-postgres';
+import { AsistenteController } from './presentacion/asistente.controller';
 import { CatalogoController } from './presentacion/catalogo.controller';
 
 // Raíz de composición del módulo Catálogo: Postgres → envuelto por la caché → caso de uso.
 export const REPOSITORIO_CATALOGO = Symbol('REPOSITORIO_CATALOGO');
 
 @Module({
-  controllers: [CatalogoController],
+  controllers: [CatalogoController, AsistenteController],
   providers: [
     {
       provide: REPOSITORIO_CATALOGO,
@@ -34,6 +37,16 @@ export const REPOSITORIO_CATALOGO = Symbol('REPOSITORIO_CATALOGO');
       provide: ListarRecetas,
       inject: [REPOSITORIO_CATALOGO],
       useFactory: (repositorio: RepositorioCatalogo) => new ListarRecetas(repositorio),
+    },
+    {
+      provide: ObtenerPreguntas,
+      inject: [REPOSITORIO_CATALOGO],
+      useFactory: (repositorio: RepositorioCatalogo) => new ObtenerPreguntas(repositorio),
+    },
+    {
+      provide: ProponerLicencia,
+      inject: [REPOSITORIO_CATALOGO],
+      useFactory: (repositorio: RepositorioCatalogo) => new ProponerLicencia(repositorio),
     },
     {
       provide: FachadaCatalogo,

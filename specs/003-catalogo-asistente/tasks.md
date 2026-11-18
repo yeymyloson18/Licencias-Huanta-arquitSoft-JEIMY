@@ -140,18 +140,20 @@ o `NO_DETERMINADA` ([contracts/asistente.md](./contracts/asistente.md)); en el p
 
 ### Pruebas de la historia 1 ⚠️
 
-- [ ] T018 [P] [US1] Prueba unitaria `test-cat/dominio/motor-reglas-asistente.spec.ts`:
+- [X] T018 [P] [US1] Prueba unitaria `test-cat/dominio/motor-reglas-asistente.spec.ts`:
   - **Tabla `it.each` de las 30 combinaciones** (3 × 2 × 5) con las preguntas y reglas de la semilla, cargadas como datos de la prueba, y el resultado esperado de la tabla de verdad de [contracts/asistente.md](./contracts/asistente.md). En particular, `OTRO` + `SI` + `BAJO` da `LIC-01` y `OTRO` + cualquiera + `NO_SE` da `NO_DETERMINADA / SIN_REGLA`.
   - **`validarRespuestas`** detecta tres errores, cada uno con su código de pregunta: una pregunta faltante, un código desconocido y un valor fuera de las opciones.
   - **La prioridad manda** sobre el orden en que llegan las reglas.
   - **Una regla sin condiciones** coincide con cualquier respuesta.
-- [ ] T019 [P] [US1] Prueba unitaria `test-cat/aplicacion/proponer-licencia.spec.ts` con dobles del repositorio:
+  — *Nota de implementación: las preguntas y reglas se leen de `datos-semilla.sql` con `leerSemillaAsistente` (`test-cat/apoyo/semilla-catalogo.ts`), así la tabla de 30 combinaciones prueba los datos reales. `proponerLicencia` valida las respuestas y lanza `ErrorRespuestasInvalidas` con todos los errores.*
+- [X] T019 [P] [US1] Prueba unitaria `test-cat/aplicacion/proponer-licencia.spec.ts` con dobles del repositorio:
   - con respuestas válidas y la receta activa → `PROPUESTA` con la receta completa;
   - si la primera regla apunta a una receta desactivada → `NO_DETERMINADA / RECETA_NO_DISPONIBLE`, **sin** evaluar la regla siguiente (el doble verifica que solo se pidió esa receta);
   - con respuestas inválidas → error de validación con `campo = respuestas.<CODIGO>`.
 
   Prueba `test-cat/aplicacion/obtener-preguntas.spec.ts`: devuelve las preguntas ordenadas por `orden`.
-- [ ] T020 [P] [US1] Prueba de integración `int/asistente.e2e-spec.ts`, que borra antes las claves `catalogo:*`. Cada respuesta se valida contra el contrato.
+  — *Nota de implementación: se agregó el doble `test-cat/apoyo/repositorio-catalogo-falso.ts` (cargado con la semilla y con `desactivar(codigo)`), reutilizable en US2 a US4.*
+- [X] T020 [P] [US1] Prueba de integración `int/asistente.e2e-spec.ts`, que borra antes las claves `catalogo:*`. Cada respuesta se valida contra el contrato.
   - **`GET /asistente/preguntas`**:
     - 3 preguntas;
     - `NIVEL_RIESGO` con 5 opciones, la última `NO_SE`;
@@ -168,19 +170,21 @@ o `NO_DETERMINADA` ([contracts/asistente.md](./contracts/asistente.md)); en el p
 
 ### Implementación de la historia 1
 
-- [ ] T021 [P] [US1] Crear `cat/dominio/pregunta-asistente.ts` (`PreguntaAsistente`, `OpcionPregunta`, `ReglaAsistente`) y `cat/dominio/motor-reglas-asistente.ts`. Este último tiene `validarRespuestas(preguntas, respuestas): ErrorRespuesta[]` y `proponerLicencia(preguntas, reglas, respuestas): ResultadoMotor`: ordena por prioridad ascendente, toma la primera regla cuyas condiciones son todas iguales a las respuestas y devuelve `PROPUESTA` con el código, o `NO_DETERMINADA / SIN_REGLA` (research §R-02). Debe hacer pasar T018
-- [ ] T022 [US1] Ampliar el puerto `cat/dominio/repositorio-catalogo.ts` con `obtenerAsistente(): Promise<{ preguntas: PreguntaAsistente[]; reglas: ReglaAsistente[] }>`:
+- [X] T021 [P] [US1] Crear `cat/dominio/pregunta-asistente.ts` (`PreguntaAsistente`, `OpcionPregunta`, `ReglaAsistente`) y `cat/dominio/motor-reglas-asistente.ts`. Este último tiene `validarRespuestas(preguntas, respuestas): ErrorRespuesta[]` y `proponerLicencia(preguntas, reglas, respuestas): ResultadoMotor`: ordena por prioridad ascendente, toma la primera regla cuyas condiciones son todas iguales a las respuestas y devuelve `PROPUESTA` con el código, o `NO_DETERMINADA / SIN_REGLA` (research §R-02). Debe hacer pasar T018
+- [X] T022 [US1] Ampliar el puerto `cat/dominio/repositorio-catalogo.ts` con `obtenerAsistente(): Promise<{ preguntas: PreguntaAsistente[]; reglas: ReglaAsistente[] }>`:
   - en `repositorio-catalogo-postgres.ts`, leer `pregunta_asistente` ordenada por `orden` y `regla_asistente` ordenada por `prioridad`, y validar en la frontera que `opciones` es un arreglo de `{ valor, texto }` y que `condiciones` es un objeto de textos;
   - en `repositorio-catalogo-con-cache.ts`, guardar el resultado en la clave `catalogo:asistente`;
   - agregar los casos de caché a `test-cat/infraestructura/repositorio-catalogo-con-cache.spec.ts`.
-- [ ] T023 [US1] Crear `cat/aplicacion/obtener-preguntas.ts` y `cat/aplicacion/proponer-licencia.ts`. `ProponerLicencia` valida las respuestas, ejecuta el motor y, si hay propuesta, llama a `repositorio.obtener(codigo)`; si la receta es `null` o tiene `activa=false`, devuelve `NO_DETERMINADA / RECETA_NO_DISPONIBLE`. Ninguno de los dos registra las respuestas (FR-009). Deben hacer pasar T019
-- [ ] T024 [US1] Crear `cat/presentacion/asistente.controller.ts` con:
+- [X] T023 [US1] Crear `cat/aplicacion/obtener-preguntas.ts` y `cat/aplicacion/proponer-licencia.ts`. `ProponerLicencia` valida las respuestas, ejecuta el motor y, si hay propuesta, llama a `repositorio.obtener(codigo)`; si la receta es `null` o tiene `activa=false`, devuelve `NO_DETERMINADA / RECETA_NO_DISPONIBLE`. Ninguno de los dos registra las respuestas (FR-009). Deben hacer pasar T019
+- [X] T024 [US1] Crear `cat/presentacion/asistente.controller.ts` con:
   - `GET asistente/preguntas` (`Cache-Control: public, max-age=60`);
   - `POST asistente/proponer`, que valida con zod la forma `{ respuestas: Record<string, string> }` (422 `campo=respuestas`), traduce los errores de dominio a `ErrorValidacion` con `campo=respuestas.<CODIGO>`, responde `ResultadoAsistente` con `Cache-Control: no-store` y mapea la receta al esquema `Receta`, con requisitos `{ id, orden, descripcion, obligatorio, condicion }`.
 
   Registrar el controlador y los casos de uso con `useFactory` en `cat/catalogo.module.ts`. Debe hacer pasar T020
-- [ ] T025 [P] [US1] Agregar a `web/servicios/clienteApi.ts` las funciones `obtenerPreguntas()` y `proponerLicencia(respuestas)`, con los tipos `PreguntaAsistente` y `ResultadoAsistente` del contrato; si el servicio no está disponible, lanzan `CatalogoNoDisponible`
-- [ ] T026 [US1] Prueba `web/paginas/Asistente.test.tsx` y página `web/paginas/Asistente.tsx`, según [contracts/portal-catalogo.md](./contracts/portal-catalogo.md):
+  — *Nota de implementación: `cat/presentacion/mapear-receta.ts` se creó aquí y no en T030, como sugería el hallazgo O1 del análisis; T030 solo debe reutilizarlo.*
+- [X] T025 [P] [US1] Agregar a `web/servicios/clienteApi.ts` las funciones `obtenerPreguntas()` y `proponerLicencia(respuestas)`, con los tipos `PreguntaAsistente` y `ResultadoAsistente` del contrato; si el servicio no está disponible, lanzan `CatalogoNoDisponible`
+  — *Nota de implementación: las tres lecturas públicas comparten `leerCatalogo` (límite de 10 s y `CatalogoNoDisponible`); `listarLicencias` conserva su comportamiento.*
+- [X] T026 [US1] Prueba `web/paginas/Asistente.test.tsx` y página `web/paginas/Asistente.tsx`, según [contracts/portal-catalogo.md](./contracts/portal-catalogo.md):
   - el estado vive en la query (`useSearchParams`) y se descartan los parámetros desconocidos o inválidos;
   - una pregunta por pantalla, con su `<h1>` enfocado al llegar, "Pregunta N de M" en `aria-live="polite"` (M = número de preguntas recibidas de la API, **nunca un 3 fijo**; FR-002, FR-003) y las opciones como `radio` en un `fieldset`/`legend`;
   - "Siguiente" está deshabilitado sin opción; "Volver" quita la última respuesta y deja marcada la anterior; "Empezar de nuevo" limpia la URL;
@@ -188,7 +192,8 @@ o `NO_DETERMINADA` ([contracts/asistente.md](./contracts/asistente.md)); en el p
   - si el servicio no está disponible, mensaje con "Reintentar"; mientras carga, los botones quedan desactivados.
 
   Las pruebas cubren todo lo anterior, incluida la recarga con la URL a medias, y un caso con 2 y otro con 4 preguntas falsas que comprueba que el avance dice "de 2" y "de 4" y que la propuesta se pide al responder la última
-- [ ] T027 [US1] Agregar la ruta pública `/asistente` en `web/Aplicacion.tsx` y el botón "¿Qué licencia necesito?" en `web/paginas/Inicio.tsx`, que lleva a `/asistente`. Actualizar `web/paginas/Inicio.test.tsx`
+  — *Nota de implementación: la pregunta va en un `<div>` y "Siguiente" es `type="button"`: un `<form>` con envío falla en jsdom con React 19 (`FormData` con `submitter`) y no aporta nada, porque no se envía un formulario. Los textos del asistente tutean, igual que las preguntas del catálogo. El `<h1>` de cada pregunta va dentro del `<legend>`, así el grupo de opciones queda nombrado por la pregunta.*
+- [X] T027 [US1] Agregar la ruta pública `/asistente` en `web/Aplicacion.tsx` y el botón "¿Qué licencia necesito?" en `web/paginas/Inicio.tsx`, que lleva a `/asistente`. Actualizar `web/paginas/Inicio.test.tsx`
 
 **Punto de control**: la historia 1 funciona sola. Es el MVP: un ciudadano descubre su licencia desde el celular.
 

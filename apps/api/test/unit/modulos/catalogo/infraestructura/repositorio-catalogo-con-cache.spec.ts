@@ -14,7 +14,7 @@ import {
   RepositorioCatalogoConCache,
   type ClienteCache,
 } from '../../../../../src/modulos/catalogo/infraestructura/repositorio-catalogo-con-cache';
-import { leerSemillaCatalogo } from '../apoyo/semilla-catalogo';
+import { leerSemillaAsistente, leerSemillaCatalogo } from '../apoyo/semilla-catalogo';
 
 const lic01 = crearReceta({
   codigo: 'LIC-01',
@@ -66,6 +66,7 @@ class RedisFalso implements ClienteCache {
 
 const completas = leerSemillaCatalogo().map(crearRecetaCompleta);
 const lic03 = completas.find((receta) => receta.codigo.valor === 'LIC-03') as RecetaCompleta;
+const asistente = leerSemillaAsistente();
 
 const crearInterno = (recetas: Receta[], completasInternas: RecetaCompleta[] = completas) => {
   const interno = {
@@ -76,6 +77,7 @@ const crearInterno = (recetas: Receta[], completasInternas: RecetaCompleta[] = c
       Promise.resolve(completasInternas.find((r) => r.codigo.valor === codigo) ?? null),
     ),
     listarTodas: jest.fn(() => Promise.resolve(completasInternas)),
+    obtenerAsistente: jest.fn(() => Promise.resolve(asistente)),
   };
   return interno satisfies RepositorioCatalogo;
 };
@@ -258,5 +260,51 @@ describe('RepositorioCatalogoConCache', () => {
 
     expect(recetas).toHaveLength(12);
     expect(redis.llamadasSet).toHaveLength(0);
+  });
+
+  describe('obtenerAsistente (preguntas y reglas, clave catalogo:asistente)', () => {
+    it('si no está en caché, lo lee de la base y lo guarda con el TTL configurado', async () => {
+      const redis = new RedisFalso();
+      const interno = crearInterno([]);
+
+      const datos = await new RepositorioCatalogoConCache(interno, redis, 240).obtenerAsistente();
+
+      expect(datos).toEqual(asistente);
+      expect(redis.llamadasSet).toEqual([
+        ['catalogo:asistente', JSON.stringify(asistente), 'EX', 240],
+      ]);
+    });
+
+    it('si está en caché, lo devuelve sin consultar la base', async () => {
+      const redis = new RedisFalso();
+      redis.datos.set('catalogo:asistente', JSON.stringify(asistente));
+      const interno = crearInterno([]);
+
+      const datos = await new RepositorioCatalogoConCache(interno, redis, 240).obtenerAsistente();
+
+      expect(interno.obtenerAsistente).not.toHaveBeenCalled();
+      expect(datos.preguntas).toHaveLength(3);
+    });
+
+    it('ignora un valor con forma inesperada y consulta la base', async () => {
+      const redis = new RedisFalso();
+      redis.datos.set('catalogo:asistente', '{"preguntas":"no es lista"}');
+      const interno = crearInterno([]);
+
+      await new RepositorioCatalogoConCache(interno, redis, 240).obtenerAsistente();
+
+      expect(interno.obtenerAsistente).toHaveBeenCalledTimes(1);
+    });
+
+    it('si Redis no está disponible, lee de la base sin propagar el error', async () => {
+      const redis = new RedisFalso();
+      redis.fallarGet = true;
+      const interno = crearInterno([]);
+
+      const datos = await new RepositorioCatalogoConCache(interno, redis, 240).obtenerAsistente();
+
+      expect(datos).toEqual(asistente);
+      expect(advertencia).toHaveBeenCalledWith('Caché del catálogo no disponible');
+    });
   });
 });

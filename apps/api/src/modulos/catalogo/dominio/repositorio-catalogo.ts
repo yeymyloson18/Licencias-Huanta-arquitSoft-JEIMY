@@ -1,3 +1,4 @@
+import type { DatosAsistente } from './pregunta-asistente';
 import type { Receta, TipoReceta } from './receta';
 import type { RecetaCompleta } from './receta-completa';
 
@@ -15,4 +16,7 @@ export interface RepositorioCatalogo {
 
   /** Todas las recetas completas, activas y desactivadas, ordenadas por código (administración). */
   listarTodas(): Promise<RecetaCompleta[]>;
+
+  /** Preguntas (ordenadas por `orden`) y reglas (ordenadas por `prioridad`) del asistente. */
+  obtenerAsistente(): Promise<DatosAsistente>;
 }

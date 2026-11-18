@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import type { DatosAsistente } from '../dominio/pregunta-asistente';
 import { aDatosReceta, crearReceta, type DatosReceta, type Receta } from '../dominio/receta';
 import {
   aDatosRecetaCompleta,
@@ -18,7 +19,15 @@ export interface ClienteCache {
 export const CLAVES_CACHE_CATALOGO = {
   lista: (tipo: FiltroRecetas['tipo']): string => `catalogo:recetas:${tipo ?? 'TODOS'}`,
   receta: (codigo: string): string => `catalogo:receta:${codigo}`,
+  asistente: 'catalogo:asistente',
 } as const;
+
+/** Comprobación mínima de un valor del asistente leído de la caché. */
+const esDatosAsistente = (valor: unknown): valor is DatosAsistente =>
+  typeof valor === 'object' &&
+  valor !== null &&
+  Array.isArray((valor as DatosAsistente).preguntas) &&
+  Array.isArray((valor as DatosAsistente).reglas);
 
 /**
  * Decorator con cache-aside sobre el repositorio del catálogo (research.md §R-05 de la 001 y §R-06
@@ -69,6 +78,26 @@ export class RepositorioCatalogoConCache implements RepositorioCatalogo {
 
   listarTodas(): Promise<RecetaCompleta[]> {
     return this.interno.listarTodas();
+  }
+
+  /** Las preguntas y reglas solo cambian por migración: no se invalidan, vencen con el TTL. */
+  async obtenerAsistente(): Promise<DatosAsistente> {
+    const clave = CLAVES_CACHE_CATALOGO.asistente;
+
+    const enCache = await this.leer(clave, (valor) => {
+      const datos: unknown = JSON.parse(valor);
+      if (!esDatosAsistente(datos)) {
+        throw new Error('Valor del asistente con forma inesperada');
+      }
+      return datos;
+    });
+    if (enCache) {
+      return enCache;
+    }
+
+    const datos = await this.interno.obtenerAsistente();
+    await this.guardar(clave, JSON.stringify(datos));
+    return datos;
   }
 
   private async leer<T>(clave: string, convertir: (valor: string) => T): Promise<T | null> {

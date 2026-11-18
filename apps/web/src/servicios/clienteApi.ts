@@ -5,6 +5,8 @@ import { renovarSesion } from '../sesion/renovacion';
 
 export type RecetaResumen = components['schemas']['RecetaResumen'];
 export type Receta = components['schemas']['Receta'];
+export type PreguntaAsistente = components['schemas']['PreguntaAsistente'];
+export type ResultadoAsistente = components['schemas']['ResultadoAsistente'];
 export type DesafioOtp = components['schemas']['DesafioOtp'];
 export type { SesionPersonal };
 
@@ -61,19 +63,21 @@ export class CatalogoNoDisponible extends Error {
   }
 }
 
-/** Licencias del catálogo (solo tipo LICENCIA). Aborta a los 10 s. */
-export async function listarLicencias(): Promise<RecetaResumen[]> {
+/**
+ * Ejecuta una lectura pública del catálogo con límite de 10 s. Cualquier falla (red, tiempo, estado
+ * distinto de 200) se convierte en `CatalogoNoDisponible`, sin detalles técnicos (FR-015).
+ */
+async function leerCatalogo<T>(
+  peticion: (signal: AbortSignal) => Promise<{ data?: T; response: Response }>,
+): Promise<T> {
   const controlador = new AbortController();
   const temporizador = setTimeout(() => {
     controlador.abort();
   }, TIEMPO_LIMITE_MS);
 
   try {
-    const { data, response } = await cliente.GET('/catalogo/recetas', {
-      params: { query: { tipo: 'LICENCIA' } },
-      signal: controlador.signal,
-    });
-    if (response.status !== 200 || !data) {
+    const { data, response } = await peticion(controlador.signal);
+    if (response.status !== 200 || data === undefined) {
       throw new CatalogoNoDisponible();
     }
     return data;
@@ -83,6 +87,26 @@ export async function listarLicencias(): Promise<RecetaResumen[]> {
     clearTimeout(temporizador);
   }
 }
+
+/** Licencias del catálogo (solo tipo LICENCIA). Aborta a los 10 s. */
+export const listarLicencias = (): Promise<RecetaResumen[]> =>
+  leerCatalogo((signal) =>
+    cliente.GET('/catalogo/recetas', { params: { query: { tipo: 'LICENCIA' } }, signal }),
+  );
+
+// ----------------------------------------------------------------------------- asistente (003)
+
+/** Preguntas del asistente en orden, con sus opciones del catálogo (contracts/asistente.md). */
+export const obtenerPreguntas = (): Promise<PreguntaAsistente[]> =>
+  leerCatalogo((signal) => cliente.GET('/asistente/preguntas', { signal }));
+
+/** Propuesta del asistente: `PROPUESTA` con la receta o `NO_DETERMINADA` (FR-005, FR-006). */
+export const proponerLicencia = (
+  respuestas: Readonly<Record<string, string>>,
+): Promise<ResultadoAsistente> =>
+  leerCatalogo((signal) =>
+    cliente.POST('/asistente/proponer', { body: { respuestas: { ...respuestas } }, signal }),
+  );
 
 // ----------------------------------------------------------------------------- autenticación
 
