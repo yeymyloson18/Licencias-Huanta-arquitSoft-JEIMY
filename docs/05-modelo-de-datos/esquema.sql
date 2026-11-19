@@ -4,7 +4,8 @@
 --
 -- Este archivo describe el ESTADO ACTUAL del esquema, después de aplicar todas las migraciones de
 -- apps/api/prisma/migrations/ (0001 = versión inicial de este archivo; 0003 = seguridad y usuarios; 0004 = catálogo y asistente;
--- 0005 = requisitos de los trámites conectados; 0006 = solicitud y consulta del trámite).
+-- 0005 = requisitos de los trámites conectados; 0006 = solicitud y consulta del trámite;
+-- 0007 = amplía el propósito del código OTP).
 -- La prueba esquema-equivalente.e2e-spec.ts verifica que una base creada con este archivo y una
 -- base migrada son iguales. Para cambiar el esquema: nueva migración + actualizar este archivo.
 --
@@ -103,7 +104,7 @@ CREATE INDEX ix_usuario_rol_admin_vigente ON seguridad.usuario_rol (rol_codigo)
 -- Un código OTP vence a los 5 minutos y admite 5 intentos (diseño interno de módulos).
 CREATE TABLE seguridad.codigo_otp (
     id              uuid         PRIMARY KEY DEFAULT gen_random_uuid(),
-    proposito       varchar(20)  NOT NULL CHECK (proposito IN ('INICIO_SESION', 'IDENTIDAD_ADMINISTRADO')),
+    proposito       varchar(25)  NOT NULL CHECK (proposito IN ('INICIO_SESION', 'IDENTIDAD_ADMINISTRADO')),
     usuario_id      uuid         REFERENCES seguridad.usuario (id),   -- solo personal municipal
     destino_hmac    bytea        NOT NULL,              -- celular al que se envió (sin guardarlo en claro)
     codigo_hash     varchar(255) NOT NULL,

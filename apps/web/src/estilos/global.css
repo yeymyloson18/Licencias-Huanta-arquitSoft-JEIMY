@@ -714,3 +714,104 @@ video {
   width: 1.25rem;
   height: 1.25rem;
 }
+
+/* ------------------------------------------------------------ trámite en línea (004) */
+
+.tramite__paso {
+  margin: 0 0 var(--espacio);
+  font-size: 1.15rem;
+}
+
+.tramite__licencia {
+  margin: 0 0 var(--espacio);
+}
+
+.ficha__accion {
+  margin-top: calc(var(--espacio) * 1.5);
+}
+
+.ficha__accion .boton,
+.comprobante__acciones .boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.documentos {
+  display: grid;
+  gap: var(--espacio);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.documento {
+  display: grid;
+  gap: 0.5rem;
+  padding: var(--espacio);
+  border: 1px solid var(--color-borde);
+  border-radius: 0.5rem;
+}
+
+.documento__nombre {
+  margin: 0;
+}
+
+.documento__subir {
+  justify-self: start;
+  cursor: pointer;
+}
+
+/* El input real queda oculto a la vista pero accesible; la etiqueta hace de botón (≥ 44 px). */
+.documento__archivo,
+.solo-lectores {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* El foco del input oculto se muestra en su etiqueta-botón. */
+.documento__subir:has(+ .documento__archivo:focus-visible) {
+  outline: 3px solid currentcolor;
+  outline-offset: 2px;
+}
+
+.documento__estado {
+  margin: 0;
+  min-height: 1.25rem;
+}
+
+.comprobante__etiqueta {
+  margin: 0;
+}
+
+.comprobante__numero {
+  margin: 0.25rem 0 var(--espacio);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+
+@media print {
+  .menu,
+  .aviso,
+  .comprobante__acciones {
+    display: none;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .tarjeta {
+    border: none;
+    box-shadow: none;
+  }
+}

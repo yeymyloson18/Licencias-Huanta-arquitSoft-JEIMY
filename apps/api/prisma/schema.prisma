@@ -270,7 +270,7 @@ model feriado {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model codigo_otp {
   id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  proposito              String                   @db.VarChar(20)
+  proposito              String                   @db.VarChar(25)
   usuario_id             String?                  @db.Uuid
   destino_hmac           Bytes
   codigo_hash            String                   @db.VarChar(255)

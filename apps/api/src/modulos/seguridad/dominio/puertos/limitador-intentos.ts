@@ -35,3 +35,17 @@ export interface LimitadorIntentos {
   /** Devuelve un envío reservado que no se pudo hacer (falló el proveedor). */
   liberarEnvio(usuarioId: string): Promise<void>;
 }
+
+/**
+ * Límites de la verificación de identidad del administrado (FR-006 de la 004, research §R-07): el
+ * mismo algoritmo atómico y que falla cerrado que el inicio de sesión, con contadores propios. Las
+ * huellas llegan en hexadecimal; nunca el documento ni el celular en claro.
+ */
+export interface LimitadorIntentosIdentidad {
+  /** 5 intentos por documento (exista o no) y 5 por origen en 15 minutos. */
+  reservarIntentoIdentidad(documentoHmac: string | null, ip: string): Promise<ResultadoReserva>;
+  liberarIntentoIdentidad(documentoHmac: string | null, ip: string): Promise<void>;
+  /** 3 envíos de código por celular en 15 minutos. */
+  reservarEnvioIdentidad(celularHmac: string): Promise<ResultadoReserva>;
+  liberarEnvioIdentidad(celularHmac: string): Promise<void>;
+}

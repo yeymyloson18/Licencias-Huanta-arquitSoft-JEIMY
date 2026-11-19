@@ -68,6 +68,10 @@ describe('Ficha pública de una licencia (/licencias/:codigo)', () => {
     ]);
     expect(llamadas.map((llamada) => llamada.clave)).toContain('GET /catalogo/recetas/LIC-03');
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Detalle de la licencia');
+    expect(within(ficha).getByRole('link', { name: 'Presentar solicitud' })).toHaveAttribute(
+      'href',
+      '/tramite/identidad?licencia=LIC-03',
+    );
   });
 
   it('muestra "Cargando la licencia…" mientras espera', async () => {

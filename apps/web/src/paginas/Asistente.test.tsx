@@ -113,9 +113,13 @@ describe('Asistente de ruta (/asistente)', () => {
     expect(
       await screen.findByRole('heading', { name: 'Esta es la licencia que te corresponde' }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('article', { name: 'Licencia de funcionamiento – riesgo medio' }),
-    ).toBeInTheDocument();
+    const ficha = screen.getByRole('article', {
+      name: 'Licencia de funcionamiento – riesgo medio',
+    });
+    expect(within(ficha).getByRole('link', { name: 'Presentar solicitud' })).toHaveAttribute(
+      'href',
+      '/tramite/identidad?licencia=LIC-02',
+    );
     expect(screen.getByText(/Esta propuesta es orientativa/)).toBeInTheDocument();
     const pedido = llamadas.find((llamada) => llamada.clave === 'POST /asistente/proponer');
     expect(pedido?.cuerpo).toEqual({ respuestas: { P1: 'A', P2: 'A', P3: 'A' } });

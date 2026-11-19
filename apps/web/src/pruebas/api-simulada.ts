@@ -23,6 +23,15 @@ export interface LlamadaRegistrada {
   readonly cuerpo: unknown;
 }
 
+/** JSON si lo es; si no (por ejemplo, multipart), el texto tal cual. */
+const leerCuerpo = (texto: string): unknown => {
+  try {
+    return JSON.parse(texto) as unknown;
+  } catch {
+    return texto;
+  }
+};
+
 /** Instala el fetch simulado y devuelve el registro de llamadas. */
 export const simularApi = (manejadores: Record<string, Manejador>): LlamadaRegistrada[] => {
   const llamadas: LlamadaRegistrada[] = [];
@@ -34,7 +43,7 @@ export const simularApi = (manejadores: Record<string, Manejador>): LlamadaRegis
     llamadas.push({
       clave,
       autorizacion: peticion.headers.get('Authorization'),
-      cuerpo: texto === '' ? undefined : (JSON.parse(texto) as unknown),
+      cuerpo: texto === '' ? undefined : leerCuerpo(texto),
     });
     const manejador = manejadores[clave];
     return manejador ? manejador(peticion) : new Response(null, { status: 404 });

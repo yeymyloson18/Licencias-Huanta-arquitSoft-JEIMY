@@ -3,6 +3,7 @@ import type { Correo } from '../dominio/correo';
 import {
   ErrorLimitadorNoDisponible,
   type LimitadorIntentos,
+  type LimitadorIntentosIdentidad,
   type ResultadoReserva,
 } from '../dominio/puertos/limitador-intentos';
 import type { ProtectorDatos } from '../../../compartido/dominio/protector-datos';
@@ -32,7 +33,7 @@ return 0
  * pasan. La ventana es fija: 15 minutos desde el primer intento. El correo se identifica por su HMAC,
  * nunca en claro. Si Redis no responde, lanza `ErrorLimitadorNoDisponible` (falla cerrado, FR-009).
  */
-export class LimitadorIntentosRedis implements LimitadorIntentos {
+export class LimitadorIntentosRedis implements LimitadorIntentos, LimitadorIntentosIdentidad {
   constructor(
     private readonly redis: Redis,
     private readonly protector: ProtectorDatos,
@@ -52,6 +53,24 @@ export class LimitadorIntentosRedis implements LimitadorIntentos {
 
   liberarEnvio(usuarioId: string): Promise<void> {
     return this.liberar([claveEnvios(usuarioId)]);
+  }
+
+  // --- Identidad del administrado (004, research §R-07): contadores propios, mismas reglas.
+
+  reservarIntentoIdentidad(documentoHmac: string | null, ip: string): Promise<ResultadoReserva> {
+    return this.reservar(clavesIdentidad(documentoHmac, ip), MAXIMO_FALLOS);
+  }
+
+  liberarIntentoIdentidad(documentoHmac: string | null, ip: string): Promise<void> {
+    return this.liberar(clavesIdentidad(documentoHmac, ip));
+  }
+
+  reservarEnvioIdentidad(celularHmac: string): Promise<ResultadoReserva> {
+    return this.reservar([`lim:identidad:envios:${celularHmac}`], MAXIMO_ENVIOS);
+  }
+
+  liberarEnvioIdentidad(celularHmac: string): Promise<void> {
+    return this.liberar([`lim:identidad:envios:${celularHmac}`]);
   }
 
   private clavesIntento(correo: Correo | null, ip: string): string[] {
@@ -101,6 +120,11 @@ export class LimitadorIntentosRedis implements LimitadorIntentos {
 }
 
 const claveEnvios = (usuarioId: string) => `lim:envios:usuario:${usuarioId}`;
+
+const clavesIdentidad = (documentoHmac: string | null, ip: string): string[] => [
+  ...(documentoHmac === null ? [] : [`lim:identidad:documento:${documentoHmac}`]),
+  `lim:identidad:ip:${ip}`,
+];
 
 const comprobarResultados = (
   resultados: [Error | null, unknown][] | null,

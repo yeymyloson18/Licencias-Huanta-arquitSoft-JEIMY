@@ -177,46 +177,47 @@ auditoría y evento; el doble envío devuelve el mismo número.
 
 ### Pruebas de la historia 1 ⚠️
 
-- [ ] T017 [P] [US1] Pruebas unitarias en `test-seg/aplicacion/verificar-identidad-administrado.spec.ts`
+- [X] T017 [P] [US1] Pruebas unitarias en `test-seg/aplicacion/verificar-identidad-administrado.spec.ts`
   y `test-seg/aplicacion/verificar-otp-administrado.spec.ts` con dobles: `COINCIDE` crea la
   verificación (solo huellas) y envía el código; `NO_COINCIDE` no envía código y su error no nombra
   el dato; `NO_DISPONIBLE` → error de servicio no disponible; con representante, se comprueban las
   dos identidades (research §R-01); límite de intentos (5 por documento y 5 por origen, 3 envíos por
   celular) que falla cerrado; código correcto → token con `jti` = verificación; incorrecto o vencido
   → no autenticado
-- [ ] T018 [P] [US1] Prueba unitaria `test-seg/aplicacion/confirmar-identidad-en-linea.spec.ts`: token
+- [X] T018 [P] [US1] Prueba unitaria `test-seg/aplicacion/confirmar-identidad-en-linea.spec.ts`: token
   válido y la misma identidad (huellas de documento, RUC, celular y representante) → `{
   verificacionId }`; token vencido, de otra audiencia o con identidad distinta → rechazo
-- [ ] T019 [P] [US1] Prueba unitaria `test-tra/dominio/politica-requisitos.spec.ts`: lee las 9
+  _Nota de implementación:_ las pruebas de `ConfirmarIdentidadEnLinea` quedaron en `test-seg/aplicacion/verificar-otp-administrado.spec.ts`, junto a las del código (comparten los dobles de `dobles-identidad.ts`). Se agregó `identidad-comun.spec.ts` para el umbral de cobertura por archivo.
+- [X] T019 [P] [US1] Prueba unitaria `test-tra/dominio/politica-requisitos.spec.ts`: lee las 9
   licencias de `docs/05-modelo-de-datos/datos-semilla.sql` (apoyo `semilla-catalogo.ts` de la 003) y,
   con y sin representante, comprueba `SIEMPRE` → obligatorio, `CON_REPRESENTANTE` → obligatorio con
   representante y "no aplica" sin él, `GIRO_ESPECIAL` y `SIN_PLANOS_VIGENTES` → opcional (aclaración
   3, SC-006); `faltantes` devuelve los obligatorios sin documento y rechaza documentos de requisitos
   que no aplican o no son de la receta
-- [ ] T020 [P] [US1] Pruebas unitarias en `test-tra/dominio/tipo-archivo.spec.ts` (firmas de PDF,
+- [X] T020 [P] [US1] Pruebas unitarias en `test-tra/dominio/tipo-archivo.spec.ts` (firmas de PDF,
   JPEG y PNG; texto, ZIP, ejecutable y archivo vacío → no permitido) y
   `test-tra/dominio/expediente.spec.ts` (se crea solo REGISTRADO, ruta de la receta, primer registro
   del historial; establecimiento con giro ≤ 150, dirección ≤ 300, zona ≤ 60, área > 0; licencia de
   bodega (ruta C) con área > 50 m² → error en `areaM2`; receta no `LICENCIA` → error)
-- [ ] T021 [P] [US1] Pruebas unitarias en `test-tra/aplicacion/subir-documento.spec.ts` y
+- [X] T021 [P] [US1] Pruebas unitarias en `test-tra/aplicacion/subir-documento.spec.ts` y
   `test-tra/aplicacion/presentar-solicitud.spec.ts` con dobles de la unidad de trabajo, el almacén,
   la huella, el reloj y las fachadas: tipo y tamaño; misma clave y cuerpo → mismo expediente; misma
   clave con otro cuerpo → error en `Idempotency-Key`; receta desactivada → error en `codigoReceta`;
   documento de otro solicitante o de más de 24 h → error en su requisito; faltantes → un error por
   requisito; permiso ya usado → conflicto; todo correcto → expediente, historial, auditoría
   `PRESENTAR_EN_LINEA`, evento `SolicitudPresentada` sin datos personales
-- [ ] T022 [P] [US1] Prueba de integración `int/identidad-administrado.e2e-spec.ts`: 200 `DesafioOtp`
+- [X] T022 [P] [US1] Prueba de integración `int/identidad-administrado.e2e-spec.ts`: 200 `DesafioOtp`
   con celular enmascarado; 422 único para datos que no coinciden; 503 con el DNI `49999999`; código
   leído de Redis → 200 `TokenCorto` con `expiraEn = 900`; código incorrecto → 401; 6.º intento
   fallido → 429 con `Retry-After`; con Redis sin respuesta → 503 (falla cerrado); el token no sirve
   como token del personal; repetir la verificación da un desafío nuevo y el código del desafío
   anterior → 401; el 4.º envío al mismo celular en 15 min → 429; con representante, un documento del
   representante que no coincide → 422
-- [ ] T023 [P] [US1] Prueba de integración `int/documentos.e2e-spec.ts`: PDF, JPG y PNG reales → 201
+- [X] T023 [P] [US1] Prueba de integración `int/documentos.e2e-spec.ts`: PDF, JPG y PNG reales → 201
   con `sha256` correcto; texto renombrado a `.pdf` → 415; 11 MB → 413; sin archivo → 422; sin token →
   401; sesión CAJA → 403; un `documentoId` subido con otra verificación no sirve al presentar
   (SC-008)
-- [ ] T024 [P] [US1] Prueba de integración `int/presentar-solicitud.e2e-spec.ts` (en línea): flujo
+- [X] T024 [P] [US1] Prueba de integración `int/presentar-solicitud.e2e-spec.ts` (en línea): flujo
   completo de `LIC-02` → 201 con `EXP-AAAA-NNNNNN`, ruta A, REGISTRADO, `Location`; en la base:
   `receta_al_presentar` con la tasa vigente, datos personales cifrados, historial, auditoría y evento;
   sin un requisito obligatorio → 422 por requisito; con representante, la carta poder es obligatoria;
@@ -227,75 +228,81 @@ auditoría y evento; el doble envío devuelve el mismo número.
   presentar → 422 en ese requisito nuevo, y después de restaurar la receta → 201 con la receta
   vigente en `receta_al_presentar`; atomicidad: un `CHECK` temporal que rechaza el historial deja sin
   expediente, documentos, auditoría, evento ni clave
-- [ ] T025 [P] [US1] Prueba de integración `int/idempotencia-expediente.e2e-spec.ts`: la misma clave y
+- [X] T025 [P] [US1] Prueba de integración `int/idempotencia-expediente.e2e-spec.ts`: la misma clave y
   cuerpo enviada 10 veces en paralelo → un solo expediente y todas las respuestas con el mismo número
   (SC-007); misma clave con otro cuerpo → 422; `timeout` explícito de 60 000 ms
+  _Nota de implementación:_ con 10 envíos simultáneos, los perdedores podían encontrar los documentos ya tomados por el ganador (422). `PresentarSolicitud` vuelve a leer la clave de idempotencia antes de rechazar por documentos y, si el ganador ya registró, responde el mismo expediente (200). Estable en 3 de 3 corridas.
 
 ### Implementación de la historia 1
 
-- [ ] T026 [US1] En `seguridad`: puerto `seg/dominio/puertos/servicio-identificacion.ts` (`verificar`
+- [X] T026 [US1] En `seguridad`: puerto `seg/dominio/puertos/servicio-identificacion.ts` (`verificar`
   → `COINCIDE | NO_COINCIDE | NO_DISPONIBLE`), adaptador
   `seg/infraestructura/servicio-identificacion-simulado.ts` con la tabla de
   [quickstart.md](./quickstart.md) y tiempo de espera de 3 s, y repositorio
   `seg/infraestructura/repositorio-verificaciones-postgres.ts` (guarda solo huellas,
   `resultado_servicio` `VALIDO`/`NO_VALIDO`/`NO_DISPONIBLE`)
-- [ ] T027 [US1] Ampliar `seg/dominio/puertos/limitador-intentos.ts` y
+  _Nota de implementación:_ la columna `seguridad.codigo_otp.proposito` era `varchar(20)` y `IDENTIDAD_ADMINISTRADO` tiene 22 caracteres (el CHECK de la 0001 ya lo admitía). Se agregó la migración `0007_codigo_otp_proposito` (`varchar(25)`, recreando el CHECK con el mismo nombre para que `esquema.sql` siga equivalente) y se actualizaron `esquema.sql` y `schema.prisma`; las migraciones 0001 a 0006 no se editaron.
+- [X] T027 [US1] Ampliar `seg/dominio/puertos/limitador-intentos.ts` y
   `seg/infraestructura/limitador-intentos-redis.ts` con `reservarIntentoIdentidad(documentoHmac, ip)`,
   `liberarIntentoIdentidad`, `reservarEnvioIdentidad(celularHmac)` y `liberarEnvioIdentidad`, con el
   mismo algoritmo atómico y falla cerrado de la 002, y ampliar su spec
-- [ ] T028 [US1] Crear `seg/aplicacion/verificar-identidad-administrado.ts`,
+- [X] T028 [US1] Crear `seg/aplicacion/verificar-identidad-administrado.ts`,
   `verificar-otp-administrado.ts` y `confirmar-identidad-en-linea.ts`; ampliar el emisor de tokens
   (`seg/dominio/puertos/emisor-tokens.ts` y `seg/infraestructura/emisor-tokens-jwt.ts`) con
   `firmarIdentidad` / `verificarIdentidad` (audiencia `identidad-administrado`, 900 s, `jti` =
   verificación) sin que el guard del personal acepte ese token. Deben pasar T017 y T018
-- [ ] T029 [US1] Crear `seg/presentacion/identidad.controller.ts` (`POST identidad/verificar` y
+- [X] T029 [US1] Crear `seg/presentacion/identidad.controller.ts` (`POST identidad/verificar` y
   `identidad/verificar-otp`, zod con los patrones del contrato, `Cache-Control: no-store`) y exponer
   en `seg/fachada.ts` `confirmarIdentidadEnLinea(token, identidad)` y un guard
   `TokenIdentidadGuard` para los controladores de `tramites`. Debe pasar T022
-- [ ] T030 [P] [US1] Crear en `tra/dominio/` `politica-requisitos.ts` (`clasificarRequisitos`,
+- [X] T030 [P] [US1] Crear en `tra/dominio/` `politica-requisitos.ts` (`clasificarRequisitos`,
   `faltantes`), `tipo-archivo.ts` (`detectarTipoArchivo`), `receta-al-presentar.ts`,
   `establecimiento.ts` y `expediente.ts` (agregado y `RegistroHistorial`). Deben pasar T019 y T020
-- [ ] T031 [US1] Crear los puertos `tra/dominio/puertos/almacen-archivos.ts`,
+- [X] T031 [US1] Crear los puertos `tra/dominio/puertos/almacen-archivos.ts`,
   `unidad-de-trabajo-tramites.ts` y `repositorio-documentos-temporales.ts`, y los casos de uso
   `tra/aplicacion/subir-documento.ts` y `tra/aplicacion/presentar-solicitud.ts` (pasos de
   [contracts/identidad-y-solicitud.md](./contracts/identidad-y-solicitud.md)). Deben pasar T021
-- [ ] T032 [US1] Crear en `tra/infraestructura/`: `almacen-archivos-disco.ts` (nombres UUID dentro de
+- [X] T032 [US1] Crear en `tra/infraestructura/`: `almacen-archivos-disco.ts` (nombres UUID dentro de
   `ALMACEN_ARCHIVOS_RUTA`, nunca el nombre original), `huella-sha256.ts`,
   `repositorio-documentos-temporales-postgres.ts` y `unidad-de-trabajo-tramites-postgres.ts`
   (`prisma.$transaction`: idempotencia, `nextval('tramites.numero_expediente_seq')`, expediente con
   datos cifrados con `PROTECTOR_DATOS`, documentos, historial, auditoría, `comun.evento_pendiente` y
   clave; unicidad de `verificacion_id` → conflicto; unicidad de la clave en paralelo → relee y
   devuelve el expediente existente)
-- [ ] T033 [US1] Crear `tra/presentacion/documentos.controller.ts` (`POST documentos`, Multer en
+- [X] T033 [US1] Crear `tra/presentacion/documentos.controller.ts` (`POST documentos`, Multer en
   memoria con `limits.fileSize = 10485760` → 413) y `tra/presentacion/expedientes.controller.ts`
   (`POST expedientes` en línea con `TokenIdentidadGuard`, `Idempotency-Key` obligatoria, zod
   `.strict()` de `NuevaSolicitud`, 201 con `Location` o 200 en el reintento, `Cache-Control:
   no-store`); cablear en `tra/tramites.module.ts`. Deben pasar T023, T024 y T025
-- [ ] T034 [P] [US1] Agregar a `web/servicios/clienteApi.ts` `verificarIdentidad`,
+  _Nota de implementación:_ `CatalogoModule` pasó a ser `@Global()` (como Seguridad): importarlo desde `tramites.module.ts` violaba la regla `aislamiento-entre-modulos`. Trámites inyecta solo `FachadaCatalogo` y `FachadaSeguridad`. El canal MESA_PARTES de `POST /expedientes` y de `POST /documentos` queda para la historia 3.
+- [X] T034 [P] [US1] Agregar a `web/servicios/clienteApi.ts` `verificarIdentidad`,
   `verificarCodigoIdentidad`, `subirDocumento` (multipart, con el token de identidad o la sesión),
   `presentarSolicitud` (con `Idempotency-Key`) y sus tipos del contrato; resultados como
   `ResultadoOperacion` de la 002, distinguiendo 401, 409, 413, 415, 429 y 503
-- [ ] T035 [US1] Crear `web/tramite/ContextoTramite.tsx` (token, identidad, vencimiento y borrador del
+  _Nota de implementación:_ las funciones del trámite usan un cliente sin el middleware de sesión del personal, para que el token de identidad nunca se mezcle con el del personal ni dispare la renovación de sesión. `subirDocumento` acepta por ahora solo el token de identidad (la sesión de MESA_PARTES llega con la historia 3).
+- [X] T035 [US1] Crear `web/tramite/ContextoTramite.tsx` (token, identidad, vencimiento y borrador del
   formulario solo en memoria, sin `localStorage` ni `sessionStorage`), montado **por encima de las
   rutas** en `web/Aplicacion.tsx` para que lo escrito sobreviva a la ida y vuelta por `/ingresar`, y
   la prueba `web/tramite/ContextoTramite.test.tsx`
-- [ ] T036 [US1] Prueba `web/paginas/tramite/Identidad.test.tsx` y página
+- [X] T036 [US1] Prueba `web/paginas/tramite/Identidad.test.tsx` y página
   `web/paginas/tramite/Identidad.tsx` según [contracts/portal-tramite.md](./contracts/portal-tramite.md):
   dos pasos, casilla de representante, código con `autocomplete="one-time-code"`, mensajes de 422,
   429 (con la hora) y 503 (mesa de partes), foco en el título de cada paso; "Enviar otro código"
   reenvía los datos en memoria sin pedirlos de nuevo y muestra el 429 con la hora; sin `licencia`
   válida, muestra el selector de licencias activas
-- [ ] T037 [US1] Prueba `web/paginas/tramite/Solicitud.test.tsx` y componente compartido
+- [X] T037 [US1] Prueba `web/paginas/tramite/Solicitud.test.tsx` y componente compartido
   `web/componentes/FormularioSolicitud.tsx` + página `web/paginas/tramite/Solicitud.tsx`: requisitos
   en el orden de la receta (de `GET /catalogo/recetas/{codigo}`), carta poder solo con
   representante, opcionales con su explicación, subida por documento con su estado y reemplazo,
   errores junto a cada campo y resumen enfocable, bodega > 50 m² marcada en el campo, "Presentar"
   desactivado mientras envía, misma `Idempotency-Key` en los reintentos, 401/409 → vuelve a la
   identidad conservando lo escrito en memoria
-- [ ] T038 [US1] Prueba `web/paginas/tramite/Comprobante.test.tsx` y página
+  _Nota de implementación:_ `pruebas/api-simulada.ts` ahora acepta cuerpos que no son JSON (multipart). La página `Solicitud` marca su propia salida para que, al descartar el permiso (401/409), no redirija a la identidad sin el aviso antes de que termine su navegación.
+- [X] T038 [US1] Prueba `web/paginas/tramite/Comprobante.test.tsx` y página
   `web/paginas/tramite/Comprobante.tsx`: número, licencia, ruta, estado, fecha y "Qué sigue"; botón
   "Imprimir" y estilos `@media print` en `web/estilos/global.css` sin estilos en línea
-- [ ] T039 [US1] Agregar las rutas `/tramite/identidad`, `/tramite/solicitud` y
+  _Nota de implementación:_ el comprobante recibe los datos en el estado de la navegación (memoria) y borra el trámite del contexto al montarse; al recargar conserva solo el número de la URL y un texto general.
+- [X] T039 [US1] Agregar las rutas `/tramite/identidad`, `/tramite/solicitud` y
   `/tramite/comprobante/:numero` en `web/Aplicacion.tsx` y el botón "Presentar solicitud" en
   `web/componentes/FichaLicencia.tsx` (lleva a `/tramite/identidad?licencia=<código>`); actualizar
   `FichaLicencia.test.tsx`, `Licencia.test.tsx` y `Asistente.test.tsx`

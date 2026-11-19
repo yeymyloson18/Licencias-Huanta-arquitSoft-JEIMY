@@ -1,4 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { MemoryRouter } from 'react-router';
 import type { Receta } from '../servicios/clienteApi';
 import { FichaLicencia } from './FichaLicencia';
 
@@ -83,9 +85,12 @@ const dato = (etiqueta: string) => {
   return termino?.nextElementSibling?.textContent.replace(/\s/g, ' ') ?? null;
 };
 
+// La ficha tiene un enlace del portal ("Presentar solicitud"): necesita el enrutador.
+const montar = (elemento: ReactElement) => render(<MemoryRouter>{elemento}</MemoryRouter>);
+
 describe('FichaLicencia', () => {
   it('muestra el nombre como título y los datos de una licencia de evaluación previa', () => {
-    render(<FichaLicencia receta={riesgoAlto} />);
+    montar(<FichaLicencia receta={riesgoAlto} />);
 
     expect(
       screen.getByRole('article', { name: 'Licencia de funcionamiento – riesgo alto' }),
@@ -98,7 +103,7 @@ describe('FichaLicencia', () => {
   });
 
   it('lista los requisitos en orden y etiqueta los condicionales', () => {
-    render(<FichaLicencia receta={riesgoAlto} />);
+    montar(<FichaLicencia receta={riesgoAlto} />);
 
     const items = within(screen.getByRole('list')).getAllByRole('listitem');
     expect(items).toHaveLength(4);
@@ -111,7 +116,7 @@ describe('FichaLicencia', () => {
   });
 
   it('muestra la bodega como gratuita, con ITSE dentro de 6 meses y provisional de 12 meses', () => {
-    render(<FichaLicencia receta={bodega} />);
+    montar(<FichaLicencia receta={bodega} />);
 
     expect(dato('Tasa')).toBe('Gratuito');
     expect(dato('Aprobación')).toBe('Aprobación automática');
@@ -120,7 +125,7 @@ describe('FichaLicencia', () => {
   });
 
   it('en un trámite conectado omite lo que no aplica (plazo, ITSE y vigencia), sin mostrar vacíos', () => {
-    render(<FichaLicencia receta={cambioDeGiro} />);
+    montar(<FichaLicencia receta={cambioDeGiro} />);
 
     expect(dato('Tasa')).toBe('S/ 46.20');
     expect(dato('Plazo')).toBeNull();
@@ -130,8 +135,23 @@ describe('FichaLicencia', () => {
   });
 
   it('indica el tipo de días cuando el plazo es en días calendario', () => {
-    render(<FichaLicencia receta={{ ...riesgoAlto, tipoPlazo: 'CALENDARIO', plazoDias: 10 }} />);
+    montar(<FichaLicencia receta={{ ...riesgoAlto, tipoPlazo: 'CALENDARIO', plazoDias: 10 }} />);
 
     expect(dato('Plazo')).toBe('10 días calendario');
+  });
+
+  it('en una licencia ofrece "Presentar solicitud" hacia la identidad con el código', () => {
+    montar(<FichaLicencia receta={riesgoAlto} />);
+
+    expect(screen.getByRole('link', { name: 'Presentar solicitud' })).toHaveAttribute(
+      'href',
+      '/tramite/identidad?licencia=LIC-03',
+    );
+  });
+
+  it('en un trámite conectado no ofrece presentar en línea', () => {
+    montar(<FichaLicencia receta={cambioDeGiro} />);
+
+    expect(screen.queryByRole('link', { name: 'Presentar solicitud' })).not.toBeInTheDocument();
   });
 });
