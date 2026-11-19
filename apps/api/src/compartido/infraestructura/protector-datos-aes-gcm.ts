@@ -1,5 +1,8 @@
 import { createCipheriv, createDecipheriv, createHmac, randomBytes } from 'node:crypto';
-import type { ProtectorDatos } from '../dominio/puertos/protector-datos';
+import type { ProtectorDatos } from '../dominio/protector-datos';
+
+/** Token de inyección del protector; lo provee `CompartidoModule` (research §R-06 de la 004). */
+export const PROTECTOR_DATOS = Symbol('PROTECTOR_DATOS');
 
 const ALGORITMO = 'aes-256-gcm';
 const BYTES_IV = 12;

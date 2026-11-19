@@ -43,6 +43,9 @@ COPY --from=build --chown=node:node /app/apps/api/dist ./dist
 COPY --chown=node:node apps/api/prisma ./prisma
 # package.json: la configuración toma de aquí la versión del servicio.
 COPY --chown=node:node apps/api/package.json ./
+# Carpeta del almacén de documentos (004): el volumen con nombre copia su dueño la primera vez, así
+# la API puede escribir sin ser root.
+RUN mkdir -p /var/lib/licencias/archivos && chown node:node /var/lib/licencias/archivos
 USER node
 EXPOSE 3000
 # Aplica las migraciones pendientes (cada una una sola vez, FR-004) y arranca la API.

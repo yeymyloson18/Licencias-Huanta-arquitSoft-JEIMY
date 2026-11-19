@@ -3,7 +3,8 @@
 -- Modelo físico de datos (PostgreSQL 16)
 --
 -- Este archivo describe el ESTADO ACTUAL del esquema, después de aplicar todas las migraciones de
--- apps/api/prisma/migrations/ (0001 = versión inicial de este archivo; 0003 = seguridad y usuarios; 0004 = catálogo y asistente).
+-- apps/api/prisma/migrations/ (0001 = versión inicial de este archivo; 0003 = seguridad y usuarios; 0004 = catálogo y asistente;
+-- 0005 = requisitos de los trámites conectados; 0006 = solicitud y consulta del trámite).
 -- La prueba esquema-equivalente.e2e-spec.ts verifica que una base creada con este archivo y una
 -- base migrada son iguales. Para cambiar el esquema: nueva migración + actualizar este archivo.
 --
@@ -125,7 +126,11 @@ CREATE TABLE seguridad.verificacion_identidad (
     resultado_servicio    varchar(20)  NOT NULL CHECK (resultado_servicio IN ('VALIDO', 'NO_VALIDO', 'NO_DISPONIBLE')),
     codigo_otp_id         uuid         REFERENCES seguridad.codigo_otp (id),
     confirmada_en         timestamptz,
-    creada_en             timestamptz  NOT NULL DEFAULT now()
+    creada_en             timestamptz  NOT NULL DEFAULT now(),
+    -- Huella del documento del representante, que también se comprueba con el servicio (004, §R-01).
+    representante_documento_hmac bytea,
+    CONSTRAINT verificacion_identidad_representante_check
+        CHECK (con_representante = (representante_documento_hmac IS NOT NULL))
 );
 
 -- Refresh tokens del personal (permite cerrar sesión y revocar).
@@ -253,8 +258,19 @@ CREATE TABLE tramites.expediente (
     evaluador_id            uuid,                               -- ref. lógica a seguridad.usuario
     registrado_por          uuid,                               -- personal de mesa de partes (canal presencial)
     actualizado_en          timestamptz   NOT NULL DEFAULT now(),
-    version                 integer       NOT NULL DEFAULT 1    -- bloqueo optimista
+    version                 integer       NOT NULL DEFAULT 1,   -- bloqueo optimista
+    -- Funcionalidad 004 (data-model.md §1)
+    receta_al_presentar     jsonb         NOT NULL,             -- tasa, plazo, calificación, ITSE y requisitos al presentar (FR-017)
+    verificacion_id         uuid,                               -- ref. lógica a seguridad.verificacion_identidad (en línea)
+    con_representante       boolean       NOT NULL DEFAULT false,
+    CONSTRAINT expediente_numero_formato_check CHECK (numero ~ '^EXP-[0-9]{4}-[0-9]{6}$'),
+    CONSTRAINT expediente_canal_verificacion_check CHECK ((canal = 'EN_LINEA') = (verificacion_id IS NOT NULL)),
+    CONSTRAINT expediente_canal_registrado_por_check CHECK ((canal = 'MESA_PARTES') = (registrado_por IS NOT NULL)),
+    CONSTRAINT expediente_representante_check CHECK (con_representante = (representante_cifrado IS NOT NULL))
 );
+-- Un permiso de identidad, un expediente (aclaración 2 de la 004, research §R-04).
+CREATE UNIQUE INDEX ux_expediente_verificacion ON tramites.expediente (verificacion_id)
+    WHERE verificacion_id IS NOT NULL;
 CREATE INDEX ix_expediente_consulta ON tramites.expediente (numero, documento_hmac);
 CREATE INDEX ix_expediente_ruc ON tramites.expediente (ruc_hmac);
 CREATE INDEX ix_expediente_estado ON tramites.expediente (estado, vence_plazo_en);
@@ -269,9 +285,34 @@ CREATE TABLE tramites.documento (
     tipo_mime           varchar(80)   NOT NULL CHECK (tipo_mime IN ('application/pdf', 'image/jpeg', 'image/png')),
     tamano_bytes        integer       NOT NULL CHECK (tamano_bytes BETWEEN 1 AND 10485760),  -- máx. 10 MB
     sha256              char(64)      NOT NULL,
-    subido_en           timestamptz   NOT NULL DEFAULT now()
+    subido_en           timestamptz   NOT NULL DEFAULT now(),
+    requisito_orden     smallint      NOT NULL                  -- orden en la receta al presentar (004)
 );
 CREATE INDEX ix_documento_expediente ON tramites.documento (expediente_id);
+
+-- Archivos subidos antes de presentar (FR-013 de la 004). Solo los usa quien los subió y se
+-- descartan a las 24 horas (FR-014, research §R-09).
+CREATE TABLE tramites.documento_temporal (
+    id                  uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
+    clave_almacen       varchar(300)  NOT NULL UNIQUE,          -- nombre aleatorio en el almacén, nunca el original
+    nombre_original     varchar(255)  NOT NULL,
+    tipo_mime           varchar(80)   NOT NULL CHECK (tipo_mime IN ('application/pdf', 'image/jpeg', 'image/png')),
+    tamano_bytes        integer       NOT NULL CHECK (tamano_bytes BETWEEN 1 AND 10485760),  -- máx. 10 MB
+    sha256              char(64)      NOT NULL,
+    verificacion_id     uuid,                                   -- subido en línea (ref. lógica, sin FK)
+    usuario_id          uuid,                                   -- subido en mesa de partes (ref. lógica, sin FK)
+    subido_en           timestamptz   NOT NULL DEFAULT now(),
+    CONSTRAINT documento_temporal_quien_check CHECK ((verificacion_id IS NULL) <> (usuario_id IS NULL))
+);
+CREATE INDEX ix_documento_temporal_subido_en ON tramites.documento_temporal (subido_en);
+
+-- La misma solicitud enviada dos veces no crea dos expedientes (FR-020 de la 004).
+CREATE TABLE tramites.clave_idempotencia (
+    clave               uuid          PRIMARY KEY,              -- cabecera Idempotency-Key
+    huella_cuerpo       char(64)      NOT NULL,                 -- SHA-256 del cuerpo canónico
+    expediente_id       uuid          NOT NULL REFERENCES tramites.expediente (id),
+    creada_en           timestamptz   NOT NULL DEFAULT now()
+);
 
 CREATE TABLE tramites.observacion (
     id                  bigint        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -297,12 +338,14 @@ CREATE INDEX ix_historial_expediente ON tramites.historial_estado (expediente_id
 
 CREATE TABLE tramites.auditoria (
     id                  bigint        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    usuario_id          uuid          NOT NULL,
+    usuario_id          uuid,                                   -- NULL solo al presentar en línea (004)
     accion              varchar(30)   NOT NULL CHECK (accion IN
-                        ('CONFIRMAR_RIESGO', 'CORREGIR_RIESGO', 'APROBAR', 'OBSERVAR', 'DENEGAR', 'REGISTRAR_PRESENCIAL')),
+                        ('CONFIRMAR_RIESGO', 'CORREGIR_RIESGO', 'APROBAR', 'OBSERVAR', 'DENEGAR', 'REGISTRAR_PRESENCIAL',
+                         'PRESENTAR_EN_LINEA', 'VER_DETALLE')),
     numero_expediente   varchar(20)   NOT NULL,
     detalle             jsonb,
-    ocurrido_en         timestamptz   NOT NULL DEFAULT now()
+    ocurrido_en         timestamptz   NOT NULL DEFAULT now(),
+    CONSTRAINT auditoria_usuario_check CHECK (accion = 'PRESENTAR_EN_LINEA' OR usuario_id IS NOT NULL)
 );
 CREATE INDEX ix_auditoria_tramites ON tramites.auditoria (numero_expediente, ocurrido_en);
 

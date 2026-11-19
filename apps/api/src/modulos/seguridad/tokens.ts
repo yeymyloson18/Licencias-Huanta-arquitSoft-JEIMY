@@ -3,7 +3,6 @@
 // (regla `sin-ciclos`).
 
 export const REPOSITORIO_USUARIOS = Symbol('REPOSITORIO_USUARIOS');
-export const PROTECTOR_DATOS = Symbol('PROTECTOR_DATOS');
 export const HASHER_CLAVES = Symbol('HASHER_CLAVES');
 export const GENERADOR_SECRETOS = Symbol('GENERADOR_SECRETOS');
 export const EMISOR_TOKENS = Symbol('EMISOR_TOKENS');

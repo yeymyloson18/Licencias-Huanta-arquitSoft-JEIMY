@@ -343,16 +343,17 @@ model usuario_rol {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model verificacion_identidad {
-  id                 String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tipo_documento     String      @db.VarChar(3)
-  documento_hmac     Bytes
-  ruc_hmac           Bytes
-  con_representante  Boolean     @default(false)
-  resultado_servicio String      @db.VarChar(20)
-  codigo_otp_id      String?     @db.Uuid
-  confirmada_en      DateTime?   @db.Timestamptz(6)
-  creada_en          DateTime    @default(now()) @db.Timestamptz(6)
-  codigo_otp         codigo_otp? @relation(fields: [codigo_otp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tipo_documento               String      @db.VarChar(3)
+  documento_hmac               Bytes
+  ruc_hmac                     Bytes
+  con_representante            Boolean     @default(false)
+  resultado_servicio           String      @db.VarChar(20)
+  codigo_otp_id                String?     @db.Uuid
+  confirmada_en                DateTime?   @db.Timestamptz(6)
+  creada_en                    DateTime    @default(now()) @db.Timestamptz(6)
+  representante_documento_hmac Bytes?
+  codigo_otp                   codigo_otp? @relation(fields: [codigo_otp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@schema("seguridad")
 }
@@ -360,7 +361,7 @@ model verificacion_identidad {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model AuditoriaTramites {
   id                BigInt   @id @default(autoincrement())
-  usuario_id        String   @db.Uuid
+  usuario_id        String?  @db.Uuid
   accion            String   @db.VarChar(30)
   numero_expediente String   @db.VarChar(20)
   detalle           Json?
@@ -382,6 +383,7 @@ model documento {
   tamano_bytes    Int
   sha256          String     @db.Char(64)
   subido_en       DateTime   @default(now()) @db.Timestamptz(6)
+  requisito_orden Int        @db.SmallInt
   expediente      expediente @relation(fields: [expediente_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([expediente_id], map: "ix_documento_expediente")
@@ -390,36 +392,40 @@ model documento {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model expediente {
-  id                      String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  numero                  String             @unique @db.VarChar(20)
-  codigo_receta           String             @db.VarChar(10)
-  ruta                    String             @db.Char(1)
-  nivel_riesgo_propuesto  String?            @db.VarChar(10)
-  nivel_riesgo_confirmado String?            @db.VarChar(10)
-  estado                  String             @default("REGISTRADO") @db.VarChar(30)
-  canal                   String             @db.VarChar(12)
-  expediente_origen       String?            @db.VarChar(20)
-  tipo_documento          String             @db.VarChar(3)
+  id                      String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  numero                  String               @unique @db.VarChar(20)
+  codigo_receta           String               @db.VarChar(10)
+  ruta                    String               @db.Char(1)
+  nivel_riesgo_propuesto  String?              @db.VarChar(10)
+  nivel_riesgo_confirmado String?              @db.VarChar(10)
+  estado                  String               @default("REGISTRADO") @db.VarChar(30)
+  canal                   String               @db.VarChar(12)
+  expediente_origen       String?              @db.VarChar(20)
+  tipo_documento          String               @db.VarChar(3)
   documento_cifrado       Bytes
   documento_hmac          Bytes
   ruc_cifrado             Bytes
   ruc_hmac                Bytes
-  nombre_titular          String             @db.VarChar(150)
-  razon_social            String?            @db.VarChar(200)
+  nombre_titular          String               @db.VarChar(150)
+  razon_social            String?              @db.VarChar(200)
   celular_cifrado         Bytes
   correo_cifrado          Bytes?
   representante_cifrado   Bytes?
-  nombre_comercial        String?            @db.VarChar(200)
-  giro                    String             @db.VarChar(150)
+  nombre_comercial        String?              @db.VarChar(200)
+  giro                    String               @db.VarChar(150)
   direccion_cifrada       Bytes
-  zona                    String             @db.VarChar(60)
-  area_m2                 Decimal?           @db.Decimal(8, 2)
-  presentado_en           DateTime           @default(now()) @db.Timestamptz(6)
-  vence_plazo_en          DateTime?          @db.Date
-  evaluador_id            String?            @db.Uuid
-  registrado_por          String?            @db.Uuid
-  actualizado_en          DateTime           @default(now()) @db.Timestamptz(6)
-  version                 Int                @default(1)
+  zona                    String               @db.VarChar(60)
+  area_m2                 Decimal?             @db.Decimal(8, 2)
+  presentado_en           DateTime             @default(now()) @db.Timestamptz(6)
+  vence_plazo_en          DateTime?            @db.Date
+  evaluador_id            String?              @db.Uuid
+  registrado_por          String?              @db.Uuid
+  actualizado_en          DateTime             @default(now()) @db.Timestamptz(6)
+  version                 Int                  @default(1)
+  receta_al_presentar     Json
+  verificacion_id         String?              @db.Uuid
+  con_representante       Boolean              @default(false)
+  clave_idempotencia      clave_idempotencia[]
   documento               documento[]
   historial_estado        historial_estado[]
   observacion             observacion[]
@@ -469,4 +475,30 @@ model cambio_receta {
 
   @@index([codigo_receta, cambiado_en], map: "ix_cambio_receta_receta")
   @@schema("catalogo")
+}
+
+model clave_idempotencia {
+  clave         String     @id @db.Uuid
+  huella_cuerpo String     @db.Char(64)
+  expediente_id String     @db.Uuid
+  creada_en     DateTime   @default(now()) @db.Timestamptz(6)
+  expediente    expediente @relation(fields: [expediente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("tramites")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model documento_temporal {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clave_almacen   String   @unique @db.VarChar(300)
+  nombre_original String   @db.VarChar(255)
+  tipo_mime       String   @db.VarChar(80)
+  tamano_bytes    Int
+  sha256          String   @db.Char(64)
+  verificacion_id String?  @db.Uuid
+  usuario_id      String?  @db.Uuid
+  subido_en       DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([subido_en], map: "ix_documento_temporal_subido_en")
+  @@schema("tramites")
 }

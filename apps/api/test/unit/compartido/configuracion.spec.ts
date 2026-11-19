@@ -1,3 +1,5 @@
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   cargarConfiguracion,
   ErrorConfiguracion,
@@ -83,6 +85,27 @@ describe('cargarConfiguracion', () => {
 
       expect(mensaje).toContain('CATALOGO_CACHE_TTL_SEGUNDOS');
       expect(mensaje).toContain('TTL de Redis + 60 s del navegador no puede superar 5 minutos');
+    });
+  });
+
+  describe('ALMACEN_ARCHIVOS_RUTA (004, research §R-08)', () => {
+    it('usa por defecto una carpeta dentro de los temporales del sistema', () => {
+      expect(cargarConfiguracion(base).almacenArchivosRuta).toBe(
+        join(tmpdir(), 'licencias-archivos'),
+      );
+    });
+
+    it('acepta una ruta absoluta', () => {
+      const ruta = join(tmpdir(), 'otra-carpeta');
+      expect(
+        cargarConfiguracion({ ...base, ALMACEN_ARCHIVOS_RUTA: ruta }).almacenArchivosRuta,
+      ).toBe(ruta);
+    });
+
+    it('rechaza una ruta relativa nombrando la variable', () => {
+      expect(
+        mensajeDe(() => cargarConfiguracion({ ...base, ALMACEN_ARCHIVOS_RUTA: 'archivos' })),
+      ).toContain('ALMACEN_ARCHIVOS_RUTA');
     });
   });
 

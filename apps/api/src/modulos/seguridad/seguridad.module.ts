@@ -21,12 +21,13 @@ import type { EnviadorOTP } from './dominio/puertos/enviador-otp';
 import type { GeneradorSecretos } from './dominio/puertos/generador-secretos';
 import type { HasherClaves } from './dominio/puertos/hasher-claves';
 import type { LimitadorIntentos } from './dominio/puertos/limitador-intentos';
-import type { ProtectorDatos } from './dominio/puertos/protector-datos';
 import type { RegistroEventosSeguridad } from './dominio/puertos/registro-eventos-seguridad';
 import type { Reloj } from './dominio/puertos/reloj';
 import type { RepositorioCodigosOtp } from './dominio/puertos/repositorio-codigos-otp';
 import type { RepositorioSesiones } from './dominio/puertos/repositorio-sesiones';
 import type { RepositorioUsuarios } from './dominio/puertos/repositorio-usuarios';
+import type { ProtectorDatos } from '../../compartido/dominio/protector-datos';
+import { PROTECTOR_DATOS } from '../../compartido/infraestructura/protector-datos-aes-gcm';
 import { ResolverUsuarioAutenticado } from './aplicacion/resolver-usuario-autenticado';
 import { AlmacenVersionSeguridadRedis } from './infraestructura/almacen-version-seguridad-redis';
 import { EmisorTokensJwt } from './infraestructura/emisor-tokens-jwt';
@@ -34,7 +35,6 @@ import { EnviadorOtpSimulado } from './infraestructura/enviador-otp-simulado';
 import { GeneradorSecretosCrypto } from './infraestructura/generador-secretos-crypto';
 import { HasherClavesArgon2 } from './infraestructura/hasher-claves-argon2';
 import { LimitadorIntentosRedis } from './infraestructura/limitador-intentos-redis';
-import { ProtectorDatosAesGcm } from './infraestructura/protector-datos-aes-gcm';
 import { RegistroEventosSeguridadLogger } from './infraestructura/registro-eventos-seguridad-logger';
 import { RelojSistema } from './infraestructura/reloj-sistema';
 import { RepositorioCodigosOtpPostgres } from './infraestructura/repositorio-codigos-otp-postgres';
@@ -51,7 +51,6 @@ import {
   GENERADOR_SECRETOS,
   HASHER_CLAVES,
   LIMITADOR_INTENTOS,
-  PROTECTOR_DATOS,
   REGISTRO_EVENTOS_SEGURIDAD,
   RELOJ,
   REPOSITORIO_CODIGOS_OTP,
@@ -67,12 +66,6 @@ import {
   controllers: [AuthController, UsuariosController],
   providers: [
     // ---------------------------------------------------------------- adaptadores
-    {
-      provide: PROTECTOR_DATOS,
-      inject: [CONFIGURACION],
-      useFactory: (configuracion: Configuracion): ProtectorDatos =>
-        new ProtectorDatosAesGcm(configuracion.claveCifradoDatos, configuracion.claveHmacDatos),
-    },
     { provide: HASHER_CLAVES, useFactory: (): HasherClaves => new HasherClavesArgon2() },
     {
       provide: GENERADOR_SECRETOS,

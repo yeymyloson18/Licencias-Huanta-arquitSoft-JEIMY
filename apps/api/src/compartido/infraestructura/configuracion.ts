@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { isAbsolute, join } from 'node:path';
 import { z } from 'zod';
 
 // Configuración validada al arrancar (research.md §R-15 de la 001 y §R-16 de la 002). Los errores
@@ -27,6 +28,11 @@ const enteroPositivo = (porDefecto: number) =>
 // puede guardarlas como mucho 240 s (research.md §R-06 de la 003).
 export const CATALOGO_CACHE_TTL_MAXIMO_SEGUNDOS = 240;
 
+// Funcionalidad 004 (research §R-08): carpeta del almacén de documentos, fuera de la carpeta pública
+// del portal y compartida por todas las instancias de la API. Debe ser una ruta absoluta; el
+// adaptador del almacén comprueba al arrancar que se puede crear y escribir.
+const ALMACEN_ARCHIVOS_POR_DEFECTO = join(tmpdir(), 'licencias-archivos');
+
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
 
 /** Texto base64 que decodifica a `minimo`..`maximo` bytes. */
@@ -52,6 +58,10 @@ const esquemaConfiguracion = z.object({
   CLAVE_HMAC_DATOS: claveBase64(32),
   ENVIO_OTP: z.enum(['simulado', 'sms']).default('simulado'),
   TRUST_PROXY_SALTOS: z.coerce.number().int().min(0).default(1),
+  ALMACEN_ARCHIVOS_RUTA: z
+    .string()
+    .refine((ruta) => isAbsolute(ruta))
+    .default(ALMACEN_ARCHIVOS_POR_DEFECTO),
 });
 
 // Valores ficticios de .env.example: prohibidos en producción (research.md §R-16 de la 002).
@@ -77,6 +87,7 @@ export interface Configuracion {
   readonly claveHmacDatos: Buffer;
   readonly envioOtp: ModoEnvioOtp;
   readonly trustProxySaltos: number;
+  readonly almacenArchivosRuta: string;
 }
 
 export class ErrorConfiguracion extends Error {
@@ -154,5 +165,6 @@ export const cargarConfiguracion = (
     claveHmacDatos: Buffer.from(datos.CLAVE_HMAC_DATOS, 'base64'),
     envioOtp: datos.ENVIO_OTP,
     trustProxySaltos: datos.TRUST_PROXY_SALTOS,
+    almacenArchivosRuta: datos.ALMACEN_ARCHIVOS_RUTA,
   };
 };

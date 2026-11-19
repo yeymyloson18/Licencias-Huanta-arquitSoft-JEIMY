@@ -1,7 +1,7 @@
 import type Redis from 'ioredis';
 import { Correo } from '../../../../../src/modulos/seguridad/dominio/correo';
 import { ErrorLimitadorNoDisponible } from '../../../../../src/modulos/seguridad/dominio/puertos/limitador-intentos';
-import type { ProtectorDatos } from '../../../../../src/modulos/seguridad/dominio/puertos/protector-datos';
+import type { ProtectorDatos } from '../../../../../src/compartido/dominio/protector-datos';
 import { LimitadorIntentosRedis } from '../../../../../src/modulos/seguridad/infraestructura/limitador-intentos-redis';
 
 /** HMAC falso: los bytes del texto, para poder leer la clave en hexadecimal. */

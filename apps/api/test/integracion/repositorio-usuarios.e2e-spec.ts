@@ -4,7 +4,7 @@ import { Celular } from '../../src/modulos/seguridad/dominio/celular';
 import { Correo } from '../../src/modulos/seguridad/dominio/correo';
 import { NombreCompleto } from '../../src/modulos/seguridad/dominio/nombre-completo';
 import { Usuario } from '../../src/modulos/seguridad/dominio/usuario';
-import { ProtectorDatosAesGcm } from '../../src/modulos/seguridad/infraestructura/protector-datos-aes-gcm';
+import { ProtectorDatosAesGcm } from '../../src/compartido/infraestructura/protector-datos-aes-gcm';
 import { RepositorioUsuariosPostgres } from '../../src/modulos/seguridad/infraestructura/repositorio-usuarios-postgres';
 import { limpiarSeguridad } from '../apoyo/limpiar-seguridad';
 

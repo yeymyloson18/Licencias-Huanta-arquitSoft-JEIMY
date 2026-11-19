@@ -6,7 +6,7 @@ import { NombreCompleto } from '../../src/modulos/seguridad/dominio/nombre-compl
 import type { Rol } from '../../src/modulos/seguridad/dominio/rol';
 import { Usuario } from '../../src/modulos/seguridad/dominio/usuario';
 import { HasherClavesArgon2 } from '../../src/modulos/seguridad/infraestructura/hasher-claves-argon2';
-import { ProtectorDatosAesGcm } from '../../src/modulos/seguridad/infraestructura/protector-datos-aes-gcm';
+import { ProtectorDatosAesGcm } from '../../src/compartido/infraestructura/protector-datos-aes-gcm';
 import { RepositorioUsuariosPostgres } from '../../src/modulos/seguridad/infraestructura/repositorio-usuarios-postgres';
 
 export interface OpcionesUsuarioDePrueba {

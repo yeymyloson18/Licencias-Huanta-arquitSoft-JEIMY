@@ -44,6 +44,7 @@ erDiagram
     EXPEDIENTE ||--o{ DOCUMENTO : "adjunta"
     EXPEDIENTE ||--o{ OBSERVACION : "recibe"
     EXPEDIENTE ||--|{ HISTORIAL_ESTADO : "registra"
+    EXPEDIENTE ||--o{ CLAVE_IDEMPOTENCIA : "evita duplicados"
 
     %% ===== Pagos en caja =====
     ESQUELA ||--o{ AUDITORIA_PAGOS : "audita"
@@ -113,6 +114,7 @@ erDiagram
         bytea ruc_hmac
         varchar resultado_servicio
         uuid codigo_otp_id FK
+        bytea representante_documento_hmac "004"
     }
     RECETA {
         varchar codigo PK "LIC-01 a LIC-09"
@@ -159,13 +161,32 @@ erDiagram
         date vence_plazo_en
         uuid evaluador_id
         integer version
+        jsonb receta_al_presentar "004"
+        uuid verificacion_id UK "004, un solo uso"
+        boolean con_representante "004"
     }
     DOCUMENTO {
         uuid id PK
         uuid expediente_id FK
         bigint requisito_id
+        smallint requisito_orden "004"
         varchar clave_almacen UK
         char sha256
+    }
+    DOCUMENTO_TEMPORAL {
+        uuid id PK
+        varchar clave_almacen UK
+        varchar tipo_mime
+        integer tamano_bytes "1 a 10485760"
+        char sha256
+        uuid verificacion_id "en línea"
+        uuid usuario_id "mesa de partes"
+        timestamptz subido_en "se descarta a las 24 h"
+    }
+    CLAVE_IDEMPOTENCIA {
+        uuid clave PK
+        char huella_cuerpo
+        uuid expediente_id FK
     }
     OBSERVACION {
         bigint id PK
@@ -252,7 +273,7 @@ No se dibujan las tablas sin relaciones: `comun.evento_pendiente`, `comun.ejecuc
 | `usuario_rol` | Un usuario puede tener varios roles; historial de asignaciones (FR-019). | Historial: `id` propio, `retirado_por`/`retirado_en`; un rol vigente por usuario con índice único parcial (`ux_usuario_rol_vigente`); guarda quién asignó y cuándo. |
 | `sesion` | Refresh tokens del personal. | `refresh_hash` (nunca el token en claro); `vence_maximo_en` (8 h), `ultima_actividad_en` (30 min), rotación con `refresh_anterior_hash`/`rotada_en`; `revocada_en` para cerrar sesión. |
 | `codigo_otp` | Códigos de un solo uso (RF06, RF16). | Vence a los 5 min; `intentos` ≤ 5; `codigo_hash`, nunca el código en claro. |
-| `verificacion_identidad` | Resultado de validar DNI/RUC con el servicio externo + OTP del administrado. | `resultado_servicio`: `VALIDO`, `NO_VALIDO`, `NO_DISPONIBLE`; `confirmada_en` se llena al verificar el OTP. |
+| `verificacion_identidad` | Resultado de validar DNI/RUC con el servicio externo + OTP del administrado. | `resultado_servicio`: `VALIDO`, `NO_VALIDO`, `NO_DISPONIBLE`; `confirmada_en` se llena al verificar el OTP; solo huellas HMAC (documento, RUC y, si actúa, el del representante, 004). El uso único del permiso lo garantiza `tramites.expediente.verificacion_id`. |
 
 ### Esquema `catalogo` (Catálogo y Asistente de ruta)
 
@@ -268,11 +289,13 @@ No se dibujan las tablas sin relaciones: `comun.evento_pendiente`, `comun.ejecuc
 
 | Tabla | Para qué sirve | Columnas clave y reglas |
 |---|---|---|
-| `expediente` | El trámite del administrado. | `numero` único (`EXP-AAAA-NNNNNN`); `estado` con los 13 estados del ciclo de vida; DNI/RUC, celular, correo y dirección cifrados; `documento_hmac` + `numero` permiten la consulta pública (RF03); `version` para bloqueo optimista. |
-| `documento` | Archivos adjuntos. | Solo PDF, JPG o PNG de hasta 10 MB; el archivo vive en el almacén de objetos (`clave_almacen`) y se guarda su `sha256`. |
+| `expediente` | El trámite del administrado. | `numero` único (`EXP-AAAA-NNNNNN`, correlativo que no se reinicia, con `CHECK` de formato); `estado` con los 13 estados del ciclo de vida; DNI/RUC, celular, correo, dirección y representante cifrados; `documento_hmac`/`ruc_hmac` + `numero` permiten la consulta pública (RF03); `receta_al_presentar` guarda la receta con la que se presentó (004); `verificacion_id` con índice único parcial: un permiso de identidad, un expediente; `CHECK` de canal (en línea con verificación, mesa de partes con `registrado_por`); `version` para bloqueo optimista. |
+| `documento` | Archivos adjuntos. | Solo PDF, JPG o PNG de hasta 10 MB; el archivo vive en el almacén (`clave_almacen`, volumen compartido por las instancias hasta la 010) y se guarda su `sha256` y el orden del requisito al presentar. |
+| `documento_temporal` | Archivos subidos antes de presentar (004). | Solo los usa quien los subió (`verificacion_id` o `usuario_id`, uno de los dos); se descartan a las 24 horas. |
+| `clave_idempotencia` | Evita expedientes duplicados (004). | `clave` = `Idempotency-Key`; con otra `huella_cuerpo` la misma clave se rechaza. |
 | `observacion` | Observaciones del evaluador y su subsanación. | `plazo_subsanar_en`; `subsanada_en` NULL = pendiente. |
 | `historial_estado` | Cada cambio de estado. | Base del tablero de tiempos de atención (RF19). |
-| `auditoria` | Decisiones del evaluador y registros presenciales (RF25). | Se escribe en la misma transacción que la decisión. |
+| `auditoria` | Decisiones del evaluador, presentaciones, registros presenciales y consultas del detalle (RF25). | Se escribe en la misma transacción que la operación; `usuario_id` solo es NULL al presentar en línea (`PRESENTAR_EN_LINEA`). Sin datos personales. |
 
 ### Esquema `pagos` (Pagos en caja)
 

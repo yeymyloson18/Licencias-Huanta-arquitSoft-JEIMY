@@ -5,7 +5,7 @@ import {
   type LimitadorIntentos,
   type ResultadoReserva,
 } from '../dominio/puertos/limitador-intentos';
-import type { ProtectorDatos } from '../dominio/puertos/protector-datos';
+import type { ProtectorDatos } from '../../../compartido/dominio/protector-datos';
 
 const VENTANA_SEGUNDOS = 15 * 60;
 const MAXIMO_FALLOS = 5;

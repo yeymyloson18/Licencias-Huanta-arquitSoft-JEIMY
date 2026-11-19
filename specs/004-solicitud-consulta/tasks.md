@@ -55,17 +55,19 @@ US1. US3 reutiliza el caso de uso de presentación de US1.
 
 **Propósito**: dejar listo el almacén de archivos y los límites de tamaño antes de tocar el código.
 
-- [ ] T001 Agregar `ALMACEN_ARCHIVOS_RUTA` a `apps/api/src/compartido/infraestructura/configuracion.ts`
+- [X] T001 Agregar `ALMACEN_ARCHIVOS_RUTA` a `apps/api/src/compartido/infraestructura/configuracion.ts`
   (por defecto una carpeta del sistema operativo de archivos temporales + `licencias-archivos`; error
   que nombra la variable si no se puede crear o escribir), con sus casos en
   `apps/api/test/unit/compartido/configuracion.spec.ts`
-- [ ] T002 [P] En `infra/docker-compose.yml`, agregar el volumen `archivos-tramites` montado en la API
+  _Nota de implementación:_ la configuración solo exige una ruta absoluta (sin efectos de disco al cargarla); la comprobación de que se puede crear y escribir queda para el adaptador del almacén (T032).
+- [X] T002 [P] En `infra/docker-compose.yml`, agregar el volumen `archivos-tramites` montado en la API
   **y en cualquier réplica** (`ALMACEN_ARCHIVOS_RUTA=/var/lib/licencias/archivos`) y documentar la
   variable en `.env.example` con el comentario "fuera de la carpeta pública del portal y compartido
   por todas las instancias de la API (research §R-08)"
-- [ ] T003 [P] En `apps/web/nginx.conf`, `client_max_body_size 11m;` en `location /api/` (10 MB del
+  _Nota de implementación:_ además, `apps/api/Dockerfile` crea `/var/lib/licencias/archivos` con dueño `node` antes de `USER node`, porque el volumen con nombre copia ese dueño y la API no corre como root.
+- [X] T003 [P] En `apps/web/nginx.conf`, `client_max_body_size 11m;` en `location /api/` (10 MB del
   archivo + encabezados del multipart, research §R-08)
-- [ ] T004 [P] Agregar `@types/multer` como dependencia de desarrollo de `apps/api` (`npm install -D
+- [X] T004 [P] Agregar `@types/multer` como dependencia de desarrollo de `apps/api` (`npm install -D
   -w apps/api @types/multer`); no agregar dependencias de ejecución
 
 ---
@@ -78,7 +80,7 @@ US1. US3 reutiliza el caso de uso de presentación de US1.
 
 ### Contrato y modelo de datos (principios II y III)
 
-- [ ] T005 Modificar `docs/06-contrato-api/openapi.yaml` exactamente según
+- [X] T005 Modificar `docs/06-contrato-api/openapi.yaml` exactamente según
   [contracts/openapi-cambios.md](./contracts/openapi-cambios.md): las 8 operaciones (respuestas,
   descripciones y `Cache-Control`), el parámetro `ClaveIdempotenciaObligatoria` en `POST
   /expedientes`, la descripción de `Expediente.direccion` ("solo para el personal con acceso al
@@ -87,11 +89,12 @@ US1. US3 reutiliza el caso de uso de presentación de US1.
   presentadoEn, siguientePaso), `EstadoPublico` (descripcionEstado, presentadoEn, historial;
   `tokenConsulta` opcional; `additionalProperties: false`) y `descargarDocumento` con 200 binario.
   `npm run contrato` sin advertencias
-- [ ] T006 [P] Actualizar `docs/06-contrato-api/README.md` con la matriz de permisos de
+  _Nota de implementación:_ `redocly lint` queda con 6 advertencias, todas anteriores a la 004 (antes eran 7); ninguna nueva.
+- [X] T006 [P] Actualizar `docs/06-contrato-api/README.md` con la matriz de permisos de
   [contracts/openapi-cambios.md](./contracts/openapi-cambios.md) y el nuevo conteo de operaciones
-- [ ] T007 Regenerar los tipos de `packages/contracts` y comprobar `npm run typecheck` en
+- [X] T007 Regenerar los tipos de `packages/contracts` y comprobar `npm run typecheck` en
   `apps/api` y `apps/web`
-- [ ] T008 Crear `apps/api/prisma/migrations/0006_solicitud_consulta/migration.sql` según
+- [X] T008 Crear `apps/api/prisma/migrations/0006_solicitud_consulta/migration.sql` según
   [data-model.md §1](./data-model.md), con comentarios en español que citen FR y research:
   - `tramites.expediente`: `receta_al_presentar jsonb NOT NULL`, `verificacion_id uuid NULL` con
     índice único parcial `WHERE verificacion_id IS NOT NULL`, `con_representante boolean NOT NULL
@@ -109,17 +112,17 @@ US1. US3 reutiliza el caso de uso de presentación de US1.
   - `seguridad.verificacion_identidad.representante_documento_hmac bytea NULL` con `CHECK
     (con_representante = (representante_documento_hmac IS NOT NULL))`.
   No tocar `0001` a `0005`
-- [ ] T009 [P] Actualizar `docs/05-modelo-de-datos/esquema.sql` con el estado después de `0006`
+- [X] T009 [P] Actualizar `docs/05-modelo-de-datos/esquema.sql` con el estado después de `0006`
   (dentro de cada `CREATE TABLE`, sin `ALTER`) y `docs/05-modelo-de-datos/modelo-entidad-relacion.md`
   (entidades `DOCUMENTO_TEMPORAL` y `CLAVE_IDEMPOTENCIA`, columnas nuevas y diccionario de
   `tramites`)
-- [ ] T010 Aplicar las migraciones en un PostgreSQL temporal, regenerar `apps/api/prisma/schema.prisma`
+- [X] T010 Aplicar las migraciones en un PostgreSQL temporal, regenerar `apps/api/prisma/schema.prisma`
   con `npx prisma db pull` conservando los nombres de modelo y `@@map` existentes, y `npx prisma
   generate`; comprobar `npm run typecheck` y que `int/esquema-equivalente.e2e-spec.ts` pasa
 
 ### Cifrado compartido (research §R-06)
 
-- [ ] T011 Mover `seg/dominio/puertos/protector-datos.ts` a
+- [X] T011 Mover `seg/dominio/puertos/protector-datos.ts` a
   `apps/api/src/compartido/dominio/protector-datos.ts` y
   `seg/infraestructura/protector-datos-aes-gcm.ts` a
   `apps/api/src/compartido/infraestructura/protector-datos-aes-gcm.ts` **sin cambiar** algoritmo,
@@ -128,31 +131,35 @@ US1. US3 reutiliza el caso de uso de presentación de US1.
   (`test/apoyo/usuarios-prueba.ts`, `test/unit/modulos/seguridad/...`) y mover su spec a
   `apps/api/test/unit/compartido/protector-datos-aes-gcm.spec.ts`. Las pruebas de la 002 deben pasar
   sin otros cambios. Ajustar `.dependency-cruiser.cjs` solo si la regla de `compartido` lo exige
+  _Nota de implementación:_ el token `PROTECTOR_DATOS` vive en `compartido/infraestructura/protector-datos-aes-gcm.ts` y no en `compartido/dominio/`: un archivo del dominio que solo se importa como tipo no se carga en las pruebas y rompía el umbral de cobertura por archivo. El dominio conserva solo la interfaz. Sin cambios en `.dependency-cruiser.cjs`.
 
 ### Fachadas y esqueleto de `tramites`
 
-- [ ] T012 [P] Agregar a `apps/api/src/modulos/catalogo/fachada.ts` `obtenerRecetaVigente(codigo):
+- [X] T012 [P] Agregar a `apps/api/src/modulos/catalogo/fachada.ts` `obtenerRecetaVigente(codigo):
   Promise<RecetaVigenteDto | null>`: devuelve la receta solo si existe, está `activa` y es de tipo
   `LICENCIA`, con `codigo`, `nombre`, `ruta`, `tasa`, `plazoDias`, `tipoPlazo`, `calificacion`,
   `ordenItse`, `plazoItseDias`, `vigenciaMeses` y `requisitos [{ id, orden, descripcion,
   obligatorio, condicion }]`; prueba en `apps/api/test/unit/modulos/catalogo/fachada.spec.ts` con el
   repositorio falso de la 003 (activa, desactivada, trámite conectado, inexistente)
-- [ ] T013 [P] Pruebas unitarias en `test-tra/dominio/numero-expediente.spec.ts`: `crear(2026, 1)` →
+  _Nota de implementación:_ el repositorio falso de la 003 deja los `id` de requisito en `null`; la prueba de la fachada les asigna `id` como lo haría la base.
+- [X] T013 [P] Pruebas unitarias en `test-tra/dominio/numero-expediente.spec.ts`: `crear(2026, 1)` →
   `EXP-2026-000001`; `crear(2027, 154)` → `EXP-2027-000154` (no se reinicia, aclaración 4);
   `normalizar(' exp-2026-000001 ')` → `EXP-2026-000001`; rechaza `EXP-26-1`, `EXP-2026-0000001` y
   textos vacíos; correlativo > 999999 → error de dominio
-- [ ] T014 [P] Crear `tra/dominio/numero-expediente.ts` (`NumeroExpediente`, patrón
+- [X] T014 [P] Crear `tra/dominio/numero-expediente.ts` (`NumeroExpediente`, patrón
   `^EXP-[0-9]{4}-[0-9]{6}$`) y `tra/dominio/error-dominio.ts`. Deben pasar T013
-- [ ] T015 Crear el esqueleto del módulo: `tra/tramites.module.ts` (importado en `app.module.ts`),
+- [X] T015 Crear el esqueleto del módulo: `tra/tramites.module.ts` (importado en `app.module.ts`),
   `tra/fachada.ts` vacía con su comentario de principio I, y los puertos de `tra/dominio/puertos/`:
   `reloj.ts`, `calculador-huella.ts` (`sha256(bytes)`) y `repositorio-expedientes.ts` (lecturas que
   completan las historias)
-- [ ] T016 [P] Crear el apoyo de pruebas `apps/api/test/apoyo/expedientes-prueba.ts`:
+  _Nota de implementación:_ se crearon `reloj.ts` y `calculador-huella.ts`; `repositorio-expedientes.ts` se crea con su primera lectura en US2 (T044), para no dejar una interfaz vacía.
+- [X] T016 [P] Crear el apoyo de pruebas `apps/api/test/apoyo/expedientes-prueba.ts`:
   `sembrarExpediente(prisma, protector, opciones)` inserta directamente un expediente válido (número,
   receta al presentar copiada del catálogo, titular ficticio cifrado con el protector de la
   aplicación, historial REGISTRADO) y `limpiarTramites(prisma)` borra `clave_idempotencia`,
   `documento`, `documento_temporal`, `historial_estado`, `auditoria`, `expediente` y los eventos
   `SolicitudPresentada`. Lo usan US2 y US4 para no depender de US1
+  _Nota de implementación:_ se agregó la prueba `int/apoyo-expedientes.e2e-spec.ts`, que comprueba lo sembrado contra las restricciones de la `0006` (formato del número, canal, permiso de un solo uso).
 
 **Punto de control**: contrato y migración aplicados, cifrado en `compartido`, `esquema-equivalente`
 en verde y las pruebas de la 002 y la 003 siguen pasando.

@@ -1,4 +1,4 @@
-import { ProtectorDatosAesGcm } from '../../../../../src/modulos/seguridad/infraestructura/protector-datos-aes-gcm';
+import { ProtectorDatosAesGcm } from '../../../src/compartido/infraestructura/protector-datos-aes-gcm';
 
 const clave = (relleno: string) => Buffer.alloc(32, relleno);
 const protector = new ProtectorDatosAesGcm(clave('c'), clave('h'));

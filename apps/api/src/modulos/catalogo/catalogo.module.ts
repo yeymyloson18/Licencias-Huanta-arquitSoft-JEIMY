@@ -84,8 +84,9 @@ export const REPOSITORIO_CATALOGO = Symbol('REPOSITORIO_CATALOGO');
     },
     {
       provide: FachadaCatalogo,
-      inject: [ListarRecetas],
-      useFactory: (listarRecetas: ListarRecetas) => new FachadaCatalogo(listarRecetas),
+      inject: [ListarRecetas, ObtenerFicha],
+      useFactory: (listarRecetas: ListarRecetas, obtenerFicha: ObtenerFicha) =>
+        new FachadaCatalogo(listarRecetas, obtenerFicha),
     },
   ],
   exports: [FachadaCatalogo],

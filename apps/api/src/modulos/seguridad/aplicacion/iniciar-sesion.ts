@@ -5,7 +5,7 @@ import { ErrorEnvioOtp, type EnviadorOTP } from '../dominio/puertos/enviador-otp
 import type { GeneradorSecretos } from '../dominio/puertos/generador-secretos';
 import type { HasherClaves } from '../dominio/puertos/hasher-claves';
 import type { LimitadorIntentos } from '../dominio/puertos/limitador-intentos';
-import type { ProtectorDatos } from '../dominio/puertos/protector-datos';
+import type { ProtectorDatos } from '../../../compartido/dominio/protector-datos';
 import type { RegistroEventosSeguridad } from '../dominio/puertos/registro-eventos-seguridad';
 import type { Reloj } from '../dominio/puertos/reloj';
 import type { RepositorioCodigosOtp } from '../dominio/puertos/repositorio-codigos-otp';
