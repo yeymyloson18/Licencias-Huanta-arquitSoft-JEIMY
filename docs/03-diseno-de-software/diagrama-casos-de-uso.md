@@ -123,8 +123,8 @@ La jefatura y el administrador también entran con CU11 (vista 2), como todo el 
 
 | CU | Caso de uso | Actor principal | HU | RF | Funcionalidad SDD | Estado |
 | --- | --- | --- | --- | --- | --- | --- |
-| CU01 | Usar el asistente de ruta | Administrado | HU01 | RF01 | 003 | Pendiente |
-| CU02 | Consultar requisitos, tasa y plazo | Administrado | HU01, HU03 | RF02, RF05 | 001 (lista) y 003 (detalle) | Parcial |
+| CU01 | Usar el asistente de ruta | Administrado | HU01 | RF01 | 003 | ✅ Hecho |
+| CU02 | Consultar requisitos, tasa y plazo | Administrado | HU01, HU03 | RF02, RF05 | 001 (lista) y 003 (detalle) | ✅ Hecho |
 | CU03 | Verificar identidad con OTP | Administrado | HU02 | RF06 | 004 | Pendiente |
 | CU04 | Presentar solicitud en línea | Administrado | HU02 | RF04, RF06, RF07 | 004 | Pendiente |
 | CU05 | Subsanar observación | Administrado | HU02, HU07 | RF04, RF09 | 004 y 006 | Pendiente |
@@ -146,7 +146,7 @@ La jefatura y el administrador también entran con CU11 (vista 2), como todo el 
 | CU21 | Corregir número de recibo | Jefatura | HU17 | RF24 | 005 | Pendiente |
 | CU22 | Consultar auditoría | Jefatura | HU17 | RF25 | 009 | Pendiente |
 | CU23 | Gestionar usuarios y roles | Administrador | HU15 | RF17, RF22 | 002 | ✅ Hecho |
-| CU24 | Actualizar recetas del catálogo | Administrador | HU14 | RF21 | 003 | Pendiente |
+| CU24 | Actualizar recetas del catálogo | Administrador | HU14 | RF21 | 003 | ✅ Hecho |
 | CU25 | Registrar feriados | Administrador | HU16 | RF23 | 008 | Pendiente |
 
 **Cobertura:** las 17 historias de usuario y los 25 requisitos funcionales tienen al menos un caso de
