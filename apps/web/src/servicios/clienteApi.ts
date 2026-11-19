@@ -4,6 +4,12 @@ import { obtenerToken, type SesionPersonal } from '../sesion/almacen-sesion';
 import { renovarSesion } from '../sesion/renovacion';
 
 export type RecetaResumen = components['schemas']['RecetaResumen'];
+export type Receta = components['schemas']['Receta'];
+export type PreguntaAsistente = components['schemas']['PreguntaAsistente'];
+export type ResultadoAsistente = components['schemas']['ResultadoAsistente'];
+export type RecetaAdminResumen = components['schemas']['RecetaAdminResumen'];
+export type RecetaAdmin = components['schemas']['RecetaAdmin'];
+export type RecetaEditable = components['schemas']['RecetaEditable'];
 export type DesafioOtp = components['schemas']['DesafioOtp'];
 export type { SesionPersonal };
 
@@ -60,19 +66,25 @@ export class CatalogoNoDisponible extends Error {
   }
 }
 
-/** Licencias del catálogo (solo tipo LICENCIA). Aborta a los 10 s. */
-export async function listarLicencias(): Promise<RecetaResumen[]> {
+/**
+ * Ejecuta una lectura pública del catálogo con límite de 10 s. Cualquier falla (red, tiempo, estado
+ * distinto de 200) se convierte en `CatalogoNoDisponible`, sin detalles técnicos (FR-015).
+ */
+async function leerCatalogo<T>(
+  peticion: (signal: AbortSignal) => Promise<{ data?: T; response: Response }>,
+  siNoEncontrada?: T,
+): Promise<T> {
   const controlador = new AbortController();
   const temporizador = setTimeout(() => {
     controlador.abort();
   }, TIEMPO_LIMITE_MS);
 
   try {
-    const { data, response } = await cliente.GET('/catalogo/recetas', {
-      params: { query: { tipo: 'LICENCIA' } },
-      signal: controlador.signal,
-    });
-    if (response.status !== 200 || !data) {
+    const { data, response } = await peticion(controlador.signal);
+    if (siNoEncontrada !== undefined && (response.status === 404 || response.status === 422)) {
+      return siNoEncontrada;
+    }
+    if (response.status !== 200 || data === undefined) {
       throw new CatalogoNoDisponible();
     }
     return data;
@@ -82,6 +94,40 @@ export async function listarLicencias(): Promise<RecetaResumen[]> {
     clearTimeout(temporizador);
   }
 }
+
+/** Licencias del catálogo (solo tipo LICENCIA). Aborta a los 10 s. */
+export const listarLicencias = (): Promise<RecetaResumen[]> =>
+  leerCatalogo((signal) =>
+    cliente.GET('/catalogo/recetas', { params: { query: { tipo: 'LICENCIA' } }, signal }),
+  );
+
+/**
+ * Ficha pública de una receta (historia 2 de la 003). Devuelve `null` si no existe, está
+ * desactivada (404) o el código no tiene el formato del TUPA (422): para el visitante es lo mismo.
+ */
+export const obtenerFicha = (codigo: string): Promise<Receta | null> =>
+  leerCatalogo<Receta | null>(
+    (signal) =>
+      cliente.GET('/catalogo/recetas/{codigoReceta}', {
+        params: { path: { codigoReceta: codigo } },
+        signal,
+      }),
+    null,
+  );
+
+// ----------------------------------------------------------------------------- asistente (003)
+
+/** Preguntas del asistente en orden, con sus opciones del catálogo (contracts/asistente.md). */
+export const obtenerPreguntas = (): Promise<PreguntaAsistente[]> =>
+  leerCatalogo((signal) => cliente.GET('/asistente/preguntas', { signal }));
+
+/** Propuesta del asistente: `PROPUESTA` con la receta o `NO_DETERMINADA` (FR-005, FR-006). */
+export const proponerLicencia = (
+  respuestas: Readonly<Record<string, string>>,
+): Promise<ResultadoAsistente> =>
+  leerCatalogo((signal) =>
+    cliente.POST('/asistente/proponer', { body: { respuestas: { ...respuestas } }, signal }),
+  );
 
 // ----------------------------------------------------------------------------- autenticación
 
@@ -261,3 +307,37 @@ export const asignarClaveTemporal = (usuarioId: string, claveTemporal: string) =
       }),
     true,
   );
+
+// ----------------------------------------------------------------------- catálogo: edición (003)
+
+/** Las 12 recetas, activas y desactivadas (solo ADMINISTRADOR). */
+export const listarRecetasAdmin = () =>
+  ejecutarOperacion<RecetaAdminResumen[]>(() => cliente.GET('/admin/catalogo/recetas'));
+
+/** Una receta para editarla, aunque esté desactivada (solo ADMINISTRADOR). */
+export const obtenerRecetaAdmin = (codigo: string) =>
+  ejecutarOperacion<RecetaAdmin>(() =>
+    cliente.GET('/admin/catalogo/recetas/{codigoReceta}', {
+      params: { path: { codigoReceta: codigo } },
+    }),
+  );
+
+/**
+ * Guarda los cambios de una receta. Además de los resultados de la 002, distingue la sesión vencida
+ * (401, ya intentada la renovación) para que la pantalla conserve lo escrito y lleve a ingresar.
+ */
+export const actualizarReceta = async (
+  codigo: string,
+  cambios: RecetaEditable,
+): Promise<ResultadoOperacion<RecetaAdmin> | { readonly tipo: 'no-autenticado' }> => {
+  let estado = 0;
+  const resultado = await ejecutarOperacion<RecetaAdmin>(async () => {
+    const respuesta = await cliente.PUT('/catalogo/recetas/{codigoReceta}', {
+      params: { path: { codigoReceta: codigo } },
+      body: cambios,
+    });
+    estado = respuesta.response.status;
+    return respuesta;
+  });
+  return estado === 401 ? { tipo: 'no-autenticado' } : resultado;
+};

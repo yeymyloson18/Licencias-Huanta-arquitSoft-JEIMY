@@ -1,10 +1,14 @@
 import { Outlet, Route, Routes, useLocation } from 'react-router';
 import { Menu } from './componentes/Menu';
 import { RutaProtegida } from './componentes/RutaProtegida';
+import { Catalogo } from './paginas/admin/Catalogo';
+import { EditarReceta } from './paginas/admin/EditarReceta';
 import { Usuarios } from './paginas/admin/Usuarios';
+import { Asistente } from './paginas/Asistente';
 import { CambiarClave } from './paginas/CambiarClave';
 import { Ingresar } from './paginas/Ingresar';
 import { Inicio } from './paginas/Inicio';
+import { Licencia } from './paginas/Licencia';
 import { useSesion } from './sesion/ProveedorSesion';
 
 interface EstadoNavegacion {
@@ -37,12 +41,30 @@ export function RutasAplicacion() {
     <Routes>
       <Route element={<Diseno />}>
         <Route path="/" element={<Inicio />} />
+        <Route path="/asistente" element={<Asistente />} />
+        <Route path="/licencias/:codigo" element={<Licencia />} />
         <Route path="/ingresar" element={<Ingresar />} />
         <Route
           path="/admin/usuarios"
           element={
             <RutaProtegida roles={['ADMINISTRADOR']}>
               <Usuarios />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/admin/catalogo"
+          element={
+            <RutaProtegida roles={['ADMINISTRADOR']}>
+              <Catalogo />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/admin/catalogo/:codigo"
+          element={
+            <RutaProtegida roles={['ADMINISTRADOR']}>
+              <EditarReceta />
             </RutaProtegida>
           }
         />

@@ -185,6 +185,80 @@ npm run contrato            # validación del contrato OpenAPI
 Las pruebas de integración usan `DATABASE_URL` y `REDIS_URL` (por defecto, `localhost:5432` y
 `localhost:6379`), así que basta con tener levantado el sistema con el comando único.
 
+## Asistente de ruta y catálogo (funcionalidad 003)
+
+- **Asistente "¿Qué licencia necesito?"** (`/asistente`, sin iniciar sesión): hace las preguntas del
+  catálogo, una por pantalla, y propone la licencia que corresponde con su tasa, plazo, inspección
+  ITSE y requisitos. La propuesta es orientativa: la municipalidad confirma el nivel de riesgo al
+  evaluar la solicitud. Si con las respuestas no se puede determinar la licencia (por ejemplo, "No
+  lo sé" en el nivel de riesgo), lo dice y sugiere acudir a la Subgerencia. Las respuestas viven en
+  la dirección de la página (sobreviven a una recarga) y no se guardan en el servidor.
+- **Ficha pública** (`/licencias/<código>`, por ejemplo `/licencias/LIC-03`): cada tarjeta del
+  inicio enlaza a la ficha de su licencia. Una receta desactivada responde "Esta licencia no está
+  disponible".
+- **Edición por el administrador** (`/admin/catalogo`, opción "Catálogo" del menú, solo rol
+  ADMINISTRADOR): cambia la tasa, el plazo, la calificación y el ITSE (solo con valores válidos para
+  la ruta), la vigencia, el estado activa/desactivada y los requisitos (agregar, quitar, reordenar),
+  **sin tocar código**. Un cambio inválido se rechaza completo, con el error junto a cada campo.
+  Cada guardado queda registrado en la misma operación: quién, cuándo y los valores antes y
+  después (`catalogo.cambio_receta`). Si dos administradores guardan a la vez, queda el último y
+  cada guardado tiene su registro.
+- **Tiempo máximo de propagación: 5 minutos.** Normalmente el cambio se ve en la siguiente
+  consulta, porque al guardar se borra la caché. Si Redis fallara justo en ese momento, el cambio se
+  ve como máximo en 5 minutos: 240 s de caché en Redis (`CATALOGO_CACHE_TTL_SEGUNDOS`, la API no
+  arranca con más de 240) + 60 s de caché del navegador (`Cache-Control: public, max-age=60`).
+- **Requisitos de los trámites conectados**: la migración `0005` carga los requisitos de TRF-01,
+  CGI-01 y DUP-01 según el documento 09 (TUPA págs. 384, 390 y 499), que la semilla inicial no traía.
+
+### Resultados de la funcionalidad 003
+
+Auditoría Lighthouse 12 (modo móvil, 18/11/2026, stack recién clonado con su propio nombre de
+proyecto de Compose; la pantalla de administración con la cookie `refresh_personal` en
+`--extra-headers`, como en la 002):
+
+| Pantalla                                                                   | Rendimiento | Accesibilidad | Buenas prácticas | SEO |
+| -------------------------------------------------------------------------- | ----------- | ------------- | ---------------- | --- |
+| `/asistente`                                                               | 99          | 100           | 96               | 91  |
+| `/asistente?TIPO_ESTABLECIMIENTO=OTRO&ES_CESIONARIO=NO&NIVEL_RIESGO=MEDIO` | 98          | 100           | 96               | 91  |
+| `/licencias/LIC-03`                                                        | 99          | 100           | 96               | 91  |
+| `/admin/catalogo/LIC-02` (como administrador)                              | 99          | 100           | 100              | 91  |
+
+El 96 tiene la misma causa aceptada en la 002: sin sesión, `POST /auth/renovar` responde 401 y el
+navegador lo anota en la consola. Con Chrome sin interfaz y una ventana de 360 px, ninguna página de
+la 003 (ni el inicio, ni las de administración) tiene desplazamiento horizontal.
+
+Prueba de carga de EQ-01 / SC-004 con k6 (`tests/carga/eq01-catalogo.js`, `grafana/k6:0.54.0`;
+50 % lista, 30 % ficha y 20 % preguntas + propuesta; cada usuario espera de 1 a 3 s entre
+consultas). Se ejecutó contra un stack aislado en Docker Desktop, en la misma computadora que k6:
+AMD Ryzen 7 5825U (8 núcleos, 16 hilos), 15.3 GB de RAM, Windows 11 (Docker con 16 CPU y 7.4 GB).
+
+| Usuarios virtuales | Duración       | Peticiones | p95 (meta < 2 s) | Errores (meta < 1 %) | Resultado |
+| ------------------ | -------------- | ---------- | ---------------- | -------------------- | --------- |
+| 100 (humo)         | 2 min + subida | 8,127      | 5.3 ms           | 0 %                  | Cumple    |
+| 1,000              | 2 min + subida | 81,108     | 6.4 ms           | 0.01 % (15)          | Cumple    |
+
+Con 1,000 usuarios la API usó cerca de 42 % de CPU y 183 MB de memoria, PostgreSQL casi nada (las
+lecturas salen de Redis) y Redis 9 %. Los 15 fallos no dejaron ningún error ni aviso en los registros
+de la API ni del portal: se atribuyen a la red de Docker Desktop entre el contenedor de k6 y el
+stack. La corrida es concluyente para esta computadora, pero como k6 y el sistema comparten la
+máquina, **SC-004 debe confirmarse en el entorno desplegado** con su propia red. Para repetirla:
+
+```bash
+docker run --rm -i -e BASE=http://host.docker.internal:3000/api/v1 -e USUARIOS=1000 -e DURACION=2m \
+  grafana/k6:0.54.0 run - < tests/carga/eq01-catalogo.js
+```
+
+Recorrido de la guía de validación (`specs/003-catalogo-asistente/quickstart.md`, escenarios 1 a 5
+y 7) en un clon con su propio nombre de proyecto y puertos, con un administrador ficticio: 24 de 24
+comprobaciones de la API correctas. También se comprobó el peor caso: con Redis detenido, guardar
+responde 200, la ficha ya muestra el valor nuevo y queda un aviso en el registro. Tiempos medidos en
+el navegador:
+
+| Tarea                                                                                        | Tiempo | Objetivo |
+| -------------------------------------------------------------------------------------------- | ------ | -------- |
+| Desde el inicio hasta ver la licencia propuesta, solo con el teclado (SC-001)                | 69 s   | ≤ 3 min  |
+| Desde el menú hasta guardar un cambio de tasa y de un requisito, con un error antes (SC-007) | 52 s   | ≤ 3 min  |
+
 ## Verificaciones automáticas
 
 Cada pull request y cada push a `main` ejecutan en GitHub Actions (`.github/workflows/ci.yml`)
@@ -275,23 +349,24 @@ están en el documento 8.
 
 ## Cambios de alcance (simplificación)
 
-| Cambio                                                     | Motivo                                                                                                                                                                                                              |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| El inspector trabaja siempre con internet desde su celular | Se elimina el modo sin conexión y la aplicación instalable.                                                                                                                                                         |
-| No hay pagos digitales                                     | El TUPA indica el pago en la caja municipal; el sistema genera una esquela de pago y el personal de caja registra el pago.                                                                                          |
-| Atributos de calidad reducidos a seis                      | Rendimiento, seguridad, disponibilidad, escalabilidad, usabilidad y mantenibilidad.                                                                                                                                 |
-| Sin integración con SIAF                                   | Queda fuera de alcance.                                                                                                                                                                                             |
-| Sin recursos de reconsideración ni apelación               | Quedan fuera del alcance del sistema.                                                                                                                                                                               |
-| Sin anulación de pagos en el sistema                       | Se evita el error con una pantalla de confirmación para el cajero; un número de recibo mal digitado lo corrige la jefatura (RF24). Anular un pago ya registrado sigue el procedimiento de caja de la Municipalidad. |
-| Sin bitácora ni versionado del catálogo                    | El administrador actualiza las recetas; cada esquela guarda el monto con el que se generó.                                                                                                                          |
-| La búsqueda de usuarios usa `POST /usuarios/busqueda`      | Un `GET ?texto=` dejaría el nombre o el correo en la URL, que queda en logs de proxies e historial del navegador (principio VII; research.md §R-13 de la 002). El listado sin texto sigue siendo `GET /usuarios`.   |
-| El correo del personal se guarda cifrado                   | Por eso solo se puede buscar por el correo **completo** (se compara su huella HMAC), no por un fragmento; el nombre sí admite fragmentos (research.md §R-04 de la 002).                                             |
+| Cambio                                                               | Motivo                                                                                                                                                                                                                                                  |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| El inspector trabaja siempre con internet desde su celular           | Se elimina el modo sin conexión y la aplicación instalable.                                                                                                                                                                                             |
+| No hay pagos digitales                                               | El TUPA indica el pago en la caja municipal; el sistema genera una esquela de pago y el personal de caja registra el pago.                                                                                                                              |
+| Atributos de calidad reducidos a seis                                | Rendimiento, seguridad, disponibilidad, escalabilidad, usabilidad y mantenibilidad.                                                                                                                                                                     |
+| Sin integración con SIAF                                             | Queda fuera de alcance.                                                                                                                                                                                                                                 |
+| Sin recursos de reconsideración ni apelación                         | Quedan fuera del alcance del sistema.                                                                                                                                                                                                                   |
+| Sin anulación de pagos en el sistema                                 | Se evita el error con una pantalla de confirmación para el cajero; un número de recibo mal digitado lo corrige la jefatura (RF24). Anular un pago ya registrado sigue el procedimiento de caja de la Municipalidad.                                     |
+| Registro de cambios del catálogo sin historial visible ni versionado | Cada cambio de una receta queda registrado (quién, cuándo, valores antes y después) en la misma operación; no hay pantalla para consultar ese historial ni versiones del catálogo para volver atrás. Cada esquela guarda el monto con el que se generó. |
+| Gana el último que guarda al editar una receta                       | Pocos administradores; el registro de cambios permite recuperar un valor sobrescrito (aclaración 5 de la 003).                                                                                                                                          |
+| La búsqueda de usuarios usa `POST /usuarios/busqueda`                | Un `GET ?texto=` dejaría el nombre o el correo en la URL, que queda en logs de proxies e historial del navegador (principio VII; research.md §R-13 de la 002). El listado sin texto sigue siendo `GET /usuarios`.                                       |
+| El correo del personal se guarda cifrado                             | Por eso solo se puede buscar por el correo **completo** (se compara su huella HMAC), no por un fragmento; el nombre sí admite fragmentos (research.md §R-04 de la 002).                                                                                 |
 
 ## Mejoras para la Fase 2 (fuera del Sprint 1)
 
-| Idea                               | Motivo para dejarla después                               |
-| ---------------------------------- | --------------------------------------------------------- |
-| Asistente por chat y WhatsApp      | Definido como Fase 2 desde el inicio (RC13).              |
-| Bitácora y versionado del catálogo | Mejora útil, pero no es necesaria para el trámite básico. |
+| Idea                                            | Motivo para dejarla después                                                                                                    |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Asistente por chat y WhatsApp                   | Definido como Fase 2 desde el inicio (RC13).                                                                                   |
+| Pantalla de historial y versionado del catálogo | El registro de cambios ya existe (funcionalidad 003); falta consultarlo desde el portal y poder volver a una versión anterior. |
 
 ## Curso: Arquitectura de Software – UNSCH 2026

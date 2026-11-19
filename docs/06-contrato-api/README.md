@@ -1,6 +1,6 @@
 # Contrato de la API REST
 
-El contrato completo está en [`openapi.yaml`](openapi.yaml) (OpenAPI 3.1): **49 operaciones en 45 rutas**, agrupadas
+El contrato completo está en [`openapi.yaml`](openapi.yaml) (OpenAPI 3.1): **51 operaciones en 47 rutas**, agrupadas
 por los 9 módulos del monolito. Es la fuente única de verdad entre el Portal Web y el Backend (RC08):
 
 - El backend NestJS valida cada petición y respuesta contra este archivo (pruebas de contrato, criterio 5).
@@ -22,6 +22,8 @@ Para verlo ahora mismo: abre [editor.swagger.io](https://editor.swagger.io) y pe
 | Concurrencia | Las decisiones del evaluador exigen `If-Match` con la versión del expediente → 412 si cambió | Dos evaluadores no se pisan. |
 | Reintentos seguros | `Idempotency-Key` al presentar solicitud y al registrar pago | Si la red falla, no se crea un expediente ni un pago duplicado. |
 | Montos | Texto con 2 decimales (`"159.50"`) | Evita errores de redondeo de los decimales binarios. |
+| Caché del catálogo | Las respuestas públicas del catálogo y del asistente llevan `Cache-Control: public, max-age=60` y Redis las guarda 240 s; al guardar una receta se borran sus claves. Las de administración, la propuesta del asistente y el 404 de una receta llevan `no-store` | Un cambio del TUPA se ve en la siguiente consulta y, aunque falle el borrado, en 5 minutos como máximo (FR-024 de la 003, EQ-06). |
+| Asistente de ruta | `POST /asistente/proponer` responde 200 con `resultado: PROPUESTA` (y la receta) o `resultado: NO_DETERMINADA` (y el `motivo`: `SIN_REGLA` o `RECETA_NO_DISPONIBLE`); 422 solo para respuestas inválidas | "No se pudo determinar" es un resultado válido del negocio, no un error (FR-006 de la 003). |
 | Archivos | Se suben primero a `POST /documentos` y la solicitud lleva los ids | La solicitud queda liviana y los archivos se validan uno por uno. |
 
 ## Tres tipos de token
@@ -86,7 +88,7 @@ Pendiente: aprobar esta matriz con la Municipalidad (estado del escenario EQ-04)
 | Módulo | Operaciones |
 |---|---|
 | Seguridad y Usuarios | `iniciarSesion`, `verificarOtpPersonal`, `renovarSesion`, `cerrarSesion`, `verificarIdentidadAdministrado`, `verificarOtpAdministrado`, `cambiarClave`, `listarUsuarios`, `buscarUsuarios`, `crearUsuario`, `actualizarUsuario`, `asignarRoles`, `asignarClaveTemporal` |
-| Catálogo y Asistente | `listarRecetas`, `obtenerReceta`, `actualizarReceta`, `obtenerPreguntasAsistente`, `proponerLicencia` |
+| Catálogo y Asistente | `listarRecetas`, `obtenerReceta`, `actualizarReceta`, `listarRecetasAdmin`, `obtenerRecetaAdmin`, `obtenerPreguntasAsistente`, `proponerLicencia` |
 | Trámites | `subirDocumento`, `presentarSolicitud`, `listarExpedientes`, `consultarEstado`, `obtenerExpediente`, `obtenerTitularParaCaja`, `confirmarNivelRiesgo`, `aprobarEvaluacion`, `observarExpediente`, `denegarExpediente`, `subsanarObservacion`, `auditoriaTramites`, `descargarDocumento` |
 | Pagos en caja | `consultarEsquela`, `descargarEsquela`, `registrarPagoEnCaja`, `corregirNumeroRecibo`, `auditoriaPagos` |
 | Inspecciones | `listarInspecciones`, `asignarInspector`, `registrarResultadoItse` |

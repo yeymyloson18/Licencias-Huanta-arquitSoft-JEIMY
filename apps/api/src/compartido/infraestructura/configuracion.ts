@@ -22,6 +22,11 @@ const leerVersionPaquete = (): string => {
 const enteroPositivo = (porDefecto: number) =>
   z.coerce.number().int().positive().default(porDefecto);
 
+// FR-024 de la 003: un cambio del catálogo debe verse en 5 minutos como máximo aunque falle la
+// invalidación. El navegador guarda las respuestas públicas 60 s (Cache-Control), así que Redis
+// puede guardarlas como mucho 240 s (research.md §R-06 de la 003).
+export const CATALOGO_CACHE_TTL_MAXIMO_SEGUNDOS = 240;
+
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
 
 /** Texto base64 que decodifica a `minimo`..`maximo` bytes. */
@@ -38,7 +43,7 @@ const esquemaConfiguracion = z.object({
   DATABASE_URL: z.url(),
   REDIS_URL: z.url(),
   PUERTO_API: enteroPositivo(3000),
-  CATALOGO_CACHE_TTL_SEGUNDOS: enteroPositivo(300),
+  CATALOGO_CACHE_TTL_SEGUNDOS: enteroPositivo(CATALOGO_CACHE_TTL_MAXIMO_SEGUNDOS),
   SALUD_TIMEOUT_MS: enteroPositivo(2000),
   VERSION_SERVICIO: z.string().min(1).optional(),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -105,6 +110,14 @@ export const cargarConfiguracion = (
   const datos = resultado.data;
   const variables: string[] = [];
   const avisos: string[] = [];
+
+  if (datos.CATALOGO_CACHE_TTL_SEGUNDOS > CATALOGO_CACHE_TTL_MAXIMO_SEGUNDOS) {
+    variables.push('CATALOGO_CACHE_TTL_SEGUNDOS');
+    avisos.push(
+      `CATALOGO_CACHE_TTL_SEGUNDOS no puede superar ${String(CATALOGO_CACHE_TTL_MAXIMO_SEGUNDOS)}: ` +
+        'TTL de Redis + 60 s del navegador no puede superar 5 minutos',
+    );
+  }
 
   if (datos.ENVIO_OTP === 'sms') {
     variables.push('ENVIO_OTP');

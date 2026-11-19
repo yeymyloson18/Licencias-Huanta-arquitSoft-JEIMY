@@ -38,6 +38,7 @@ model Receta {
   activa          Boolean           @default(true)
   actualizada_por String?           @db.Uuid
   actualizada_en  DateTime          @default(now()) @db.Timestamptz(6)
+  cambio_receta   cambio_receta[]
   regla_asistente regla_asistente[]
   requisito       requisito[]
 
@@ -455,4 +456,17 @@ model observacion {
   expediente        expediente @relation(fields: [expediente_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@schema("tramites")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model cambio_receta {
+  id            BigInt   @id @default(autoincrement())
+  codigo_receta String   @db.VarChar(10)
+  usuario_id    String   @db.Uuid
+  cambiado_en   DateTime @default(now()) @db.Timestamptz(6)
+  cambios       Json
+  receta        Receta   @relation(fields: [codigo_receta], references: [codigo], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([codigo_receta, cambiado_en], map: "ix_cambio_receta_receta")
+  @@schema("catalogo")
 }

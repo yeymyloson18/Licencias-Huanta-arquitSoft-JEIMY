@@ -3,7 +3,7 @@
 -- Modelo físico de datos (PostgreSQL 16)
 --
 -- Este archivo describe el ESTADO ACTUAL del esquema, después de aplicar todas las migraciones de
--- apps/api/prisma/migrations/ (0001 = versión inicial de este archivo; 0003 = seguridad y usuarios).
+-- apps/api/prisma/migrations/ (0001 = versión inicial de este archivo; 0003 = seguridad y usuarios; 0004 = catálogo y asistente).
 -- La prueba esquema-equivalente.e2e-spec.ts verifica que una base creada con este archivo y una
 -- base migrada son iguales. Para cambiar el esquema: nueva migración + actualizar este archivo.
 --
@@ -180,8 +180,20 @@ CREATE TABLE catalogo.requisito (
     condicion           varchar(30)   NOT NULL DEFAULT 'SIEMPRE' CHECK (condicion IN
                         ('SIEMPRE', 'CON_REPRESENTANTE', 'GIRO_ESPECIAL', 'SIN_PLANOS_VIGENTES')),
     acepta_archivo      boolean       NOT NULL DEFAULT true,
-    UNIQUE (codigo_receta, orden)
+    -- Diferible: se verifica al confirmar, para reordenar requisitos en una transacción (003, FR-020).
+    UNIQUE (codigo_receta, orden) DEFERRABLE INITIALLY DEFERRED
 );
+
+-- Registro inmutable de cada cambio de una receta (003, FR-021): quién, cuándo, antes y después.
+CREATE TABLE catalogo.cambio_receta (
+    id                  bigint        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    codigo_receta       varchar(10)   NOT NULL REFERENCES catalogo.receta (codigo),
+    usuario_id          uuid          NOT NULL,             -- ref. lógica a seguridad.usuario (sin FK)
+    cambiado_en         timestamptz   NOT NULL DEFAULT now(),
+    cambios             jsonb         NOT NULL               -- {"tasa":{"antes":"177.10","despues":"180.00"}}
+                        CHECK (jsonb_typeof(cambios) = 'object' AND cambios <> '{}'::jsonb)
+);
+CREATE INDEX ix_cambio_receta_receta ON catalogo.cambio_receta (codigo_receta, cambiado_en);
 
 -- Preguntas del asistente de 3 preguntas (RF01). Las reglas convierten respuestas en una receta.
 CREATE TABLE catalogo.pregunta_asistente (
