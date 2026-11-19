@@ -7,7 +7,7 @@ sin estilos en línea (CSP de la 002) y con controles de al menos 44 × 44 px.
 
 | Ruta | Acceso | Contenido |
 |---|---|---|
-| `/tramite/identidad?licencia=<código>` | pública | Confirmación de identidad en dos pasos (datos → código) |
+| `/tramite/identidad?licencia=<código>` | pública | Confirmación de identidad en dos pasos (datos → código). Sin `licencia` (o con una que no se puede presentar), muestra un selector con las licencias activas del catálogo |
 | `/tramite/solicitud?licencia=<código>` | con permiso de identidad en memoria | Formulario del titular, establecimiento y documentos |
 | `/tramite/comprobante/<número>` | después de presentar | Número, licencia, ruta, estado y qué sigue; botón "Imprimir" |
 | `/consulta` | pública | Formulario de consulta (POST) y resultado |

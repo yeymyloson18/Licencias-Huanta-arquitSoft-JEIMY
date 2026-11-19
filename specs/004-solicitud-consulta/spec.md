@@ -42,6 +42,9 @@ y el asistente de la funcionalidad 003 y la seguridad del personal de la funcion
 - P: ¿En la bandeja, los roles ven todos los expedientes o solo los de ciertos estados? → R: Mesa de
   partes, evaluador y jefatura ven todos los expedientes, con filtros por estado y ruta; la
   restricción por estado o por evaluador asignado, si hace falta, se decide en la 006.
+- P: Cuando actúa un representante, ¿también se comprueba su documento con el servicio de
+  identificación? → R: Sí (RF06 y ADR-007): se comprueban el titular y el representante; el código va
+  al celular de quien presenta y la carta poder la revisa el evaluador.
 
 ## Escenarios de usuario y pruebas *(obligatorio)*
 
@@ -239,9 +242,9 @@ comprobar que se rechaza.
 
 - **FR-001**: Antes de presentar en línea, el sistema DEBE pedir el RUC y, además, el DNI con su fecha
   de emisión o el carné de extranjería, y el número de celular del solicitante.
-- **FR-002**: El sistema DEBE comprobar los datos de identidad con el servicio de identificación
-  (DNI/RUC) y, solo si coinciden, enviar un código de 6 dígitos al celular indicado, válido por 5
-  minutos.
+- **FR-002**: El sistema DEBE comprobar los datos de identidad del titular y, si actúa, los del
+  representante con el servicio de identificación (DNI/RUC) y, solo si coinciden, enviar un código de
+  6 dígitos al celular indicado, válido por 5 minutos.
 - **FR-003**: Con el código correcto, el sistema DEBE habilitar al solicitante para presentar **una
   sola** solicitud durante 15 minutos, a nombre de la identidad confirmada. El permiso se gasta al
   crear el expediente: un reintento de esa misma solicitud devuelve el mismo expediente (FR-020) y
@@ -251,8 +254,8 @@ comprobar que se rechaza.
 - **FR-005**: Si el servicio de identificación no responde, el sistema DEBE informarlo con claridad,
   sugerir acudir a mesa de partes y NO DEBE permitir presentar sin identidad confirmada.
 - **FR-006**: Los intentos de verificación de identidad y de código DEBEN limitarse a 5 fallidos en 15
-  minutos, con bloqueo temporal; si el sistema no puede contar los intentos, DEBE rechazar la
-  verificación (falla cerrado).
+  minutos, con bloqueo temporal, y los envíos de código a 3 por celular en 15 minutos; si el sistema
+  no puede contar los intentos, DEBE rechazar la verificación (falla cerrado).
 - **FR-007**: Los mensajes de error de identidad NO DEBEN indicar cuál dato falló.
 
 **Formulario y documentos (CU04, RF04)**
@@ -270,7 +273,8 @@ comprobar que se rechaza.
   opcionales, con su explicación, sin preguntas adicionales; no bloquean la presentación y el
   evaluador decide si faltan (006).
 - **FR-011**: Si actúa un representante legal o apoderado, el formulario DEBE pedir también su
-  documento y la carta poder o el poder inscrito en SUNARP como documento adjunto.
+  documento, que se comprueba con el servicio de identificación (FR-002), y la carta poder o el poder
+  inscrito en SUNARP como documento adjunto.
 - **FR-012**: NO DEBE poder presentarse una solicitud a la que le falte el documento de un requisito
   obligatorio que aplica; el sistema DEBE señalar cada requisito faltante.
 - **FR-013**: Los documentos DEBEN subirse uno por uno antes de presentar. Solo se aceptan PDF, JPG o

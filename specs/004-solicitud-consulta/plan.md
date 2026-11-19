@@ -61,7 +61,8 @@ periódica usan `node:crypto` y temporizadores (research §R-08 y §R-09).
   `clave_idempotencia`, auditoría ampliada) y `seguridad` (`verificacion_identidad` ampliada), con la
   migración `0006`.
 - Redis 7 para los límites de intentos (identidad y consulta).
-- Archivos en un volumen de Docker (`ALMACEN_ARCHIVOS_RUTA`) detrás del puerto `AlmacenArchivos`.
+- Archivos en un volumen de Docker (`ALMACEN_ARCHIVOS_RUTA`) detrás del puerto `AlmacenArchivos`,
+  compartido por todas las instancias de la API: la API sigue sin estado (research §R-08).
 
 **Pruebas**:
 - Jest para el dominio y la aplicación: política de requisitos de las 9 licencias contra
@@ -93,8 +94,8 @@ del titular (research §R-12).
 - El expediente conserva la receta con la que se presentó (FR-017).
 
 **Escala y alcance**: miles de expedientes al año, con picos de pocas decenas por hora; 9 licencias
-presentables; 3 roles en la bandeja. El trabajo suma 2 operaciones nuevas de identidad, 6 de
-trámites (todas ya declaradas en el contrato y ajustadas), unos 9 casos de uso, 7 pantallas y 1
+presentables; 3 roles en la bandeja. El trabajo suma 2 operaciones de identidad y 6 de trámites
+que se implementan por primera vez (todas ya declaradas en el contrato y ajustadas), unos 9 casos de uso, 7 pantallas y 1
 script de carga.
 
 ## Verificación constitucional
@@ -103,7 +104,7 @@ script de carga.
 
 | Principio / puerta | Cómo lo cumple este plan | Estado |
 |---|---|---|
-| **I. Monolito modular con Clean Architecture** | `tramites` en sus cuatro capas; la política de requisitos, el número, la detección del tipo de archivo y los textos públicos son funciones puras del dominio. Transacción, almacén, limitador, reloj y huella detrás de puertos. `tramites` usa `catalogo` y `seguridad` solo por sus fachadas (`obtenerRecetaVigente`, `confirmarIdentidadEnLinea`, `verificarIdentidadPresencial`, `RequiereRoles`, `UsuarioActual`). El protector de datos pasa a `compartido` en lugar de importarse desde `seguridad` (research §R-06). | ✅ |
+| **I. Monolito modular con Clean Architecture** | `tramites` en sus cuatro capas; la política de requisitos, el número, la detección del tipo de archivo y los textos públicos son funciones puras del dominio. Transacción, almacén, limitador, reloj y huella detrás de puertos. `tramites` usa `catalogo` y `seguridad` solo por sus fachadas (`obtenerRecetaVigente`, `confirmarIdentidadEnLinea`, `verificarIdentidadPresencial`, `RequiereRoles`, `UsuarioActual`). El protector de datos pasa a `compartido` en lugar de importarse desde `seguridad` (research §R-06). La API sigue sin estado: los archivos van a un volumen compartido por todas las instancias (research §R-08). | ✅ |
 | **II. Contrato primero** | `openapi.yaml` y su README cambian primero ([detalle](./contracts/openapi-cambios.md)); se regeneran los tipos; Ajv valida cada respuesta de integración y CI corre `redocly lint`. | ✅ |
 | **III. Modelo de datos por módulo** | Cada módulo escribe solo su esquema: `tramites` (expediente, documentos, idempotencia, auditoría) y `seguridad` (verificación). Las referencias entre módulos son lógicas, sin FK (MD2). Migración versionada `0006` y `docs/05-modelo-de-datos/` en el mismo PR, verificados por `esquema-equivalente`. | ✅ |
 | **IV. TypeScript estricto y lenguaje del dominio** | `strict`, sin `any`; nombres en español: `Expediente`, `NumeroExpediente`, `RecetaAlPresentar`, `clasificarRequisitos`, `detectarTipoArchivo`, `TEXTO_ESTADO_PUBLICO`, `SubirDocumento`, `PresentarSolicitud`, `ConsultarEstado`, `ListarExpedientes`, `ObtenerDetalleExpediente`, `ServicioIdentificacion`, `AlmacenArchivos`, `LimitadorConsultas`, `UnidadDeTrabajoTramites`. | ✅ |

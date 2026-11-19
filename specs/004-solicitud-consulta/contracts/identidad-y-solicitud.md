@@ -10,6 +10,9 @@ Fuente de verdad: `openapi.yaml` (ver [openapi-cambios.md](./openapi-cambios.md)
 | 1 | `POST /identidad/verificar` con RUC, DNI + fecha de emisión (o CE), celular y, si actúa, el representante | El servicio de identificación compara. `COINCIDE` → se crea la verificación, se envía el código (5 min) y responde 200 `DesafioOtp` con el celular enmascarado. `NO_COINCIDE` → 422 con un mensaje que no dice qué dato falló. `NO_DISPONIBLE` → 503 "No pudimos verificar tu identidad en este momento. Puedes acudir a mesa de partes" |
 | 2 | `POST /identidad/verificar-otp` con `desafioId` y `codigo` | Correcto → 200 `TokenCorto` (`tokenIdentidad`, 900 s, un solo uso). Incorrecto o vencido → 401 |
 
+- **Otro código**: el portal repite `POST /identidad/verificar` con los datos que guarda en memoria;
+  se crea un desafío nuevo, el anterior deja de valer y cuenta para el límite de 3 envíos por celular
+  en 15 min.
 - **Intentos** (§R-07): 5 por huella del documento y 5 por origen en 15 min para cada paso; 3 envíos
   de código por huella del celular en 15 min. El 6.º → 429 con `Retry-After`. Si Redis no responde →
   503 (falla cerrado).

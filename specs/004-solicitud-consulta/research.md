@@ -41,7 +41,8 @@ y qué alternativas se descartaron.
     en la 0006, `representante_documento_hmac`. El celular queda como `destino_hmac` del código.
   - Al acertar el código se firma el `tokenIdentidad`: JWT de 15 minutos con audiencia
     `identidad-administrado` (distinta del token del personal, que no se acepta en su lugar ni al
-    revés) y `jti` = id de la verificación. No lleva datos personales.
+    revés) y `jti` = id de la verificación.     No lleva datos personales. "Un solo uso" significa un solo expediente (aclaración 2): mientras
+    dure, el mismo token sirve para subir varios documentos.
 - **Por qué**: cumple FR-001 a FR-003 con las piezas probadas de la 002 y sin guardar datos en claro.
 - **Alternativas**: un token opaco en Redis (otra pieza que puede fallar; el JWT ya existe en la
   002).
@@ -116,7 +117,10 @@ y qué alternativas se descartaron.
   - SHA-256 del contenido (`node:crypto`, en infraestructura) y guardado por el puerto
     `AlmacenArchivos`. Adaptador `AlmacenArchivosDisco` en un volumen de Docker
     (`ALMACEN_ARCHIVOS_RUTA`, fuera de la carpeta pública del portal), con nombres aleatorios (UUID)
-    sin el nombre original. El adaptador compatible con S3 queda para la 010.
+    sin el nombre original. La carpeta es un volumen compartido por todas las instancias de la API
+    (en Docker Compose, el mismo volumen montado en cada réplica): la API no guarda archivos propios,
+    así que puede escalar a varias instancias como exige la constitución (ADR-005). En la 010 se
+    cambia por un almacén compatible con S3 sin tocar los casos de uso.
   - La fila va a `tramites.documento_temporal` con quién lo subió (`verificacion_id` o
     `usuario_id`). Al presentar, solo se aceptan documentos temporales subidos por el mismo
     solicitante (misma verificación o mismo usuario) y con menos de 24 horas.
@@ -201,7 +205,7 @@ y qué alternativas se descartaron.
 
 ## R-14. Portal
 
-- **Decisión**: rutas `/tramite/identidad`, `/tramite/solicitud?licencia=<código>` y
+- **Decisión**: rutas `/tramite/identidad?licencia=<código>`, `/tramite/solicitud?licencia=<código>` y
   `/tramite/comprobante/<número>`; `/consulta`; `/personal/expedientes`,
   `/personal/expedientes/:numero` y `/personal/mesa-partes/nueva` con `RutaProtegida`. El
   `tokenIdentidad` y la identidad viven solo en la memoria de la pestaña (un contexto de React), nunca
