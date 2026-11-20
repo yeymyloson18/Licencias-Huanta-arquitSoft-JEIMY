@@ -5,7 +5,7 @@ import type { RepositorioEsquelas } from '../../../../../src/modulos/pagos/domin
 
 const T0 = new Date('2026-11-20T15:00:00.000Z');
 
-class EsquelasEnMemoria implements RepositorioEsquelas {
+class EsquelasEnMemoria implements Pick<RepositorioEsquelas, 'crearSiNoExiste'> {
   readonly esquelas = new Map<string, Esquela>();
   crearSiNoExiste(esquela: Esquela) {
     if (this.esquelas.has(esquela.numeroExpediente)) {

@@ -799,3 +799,98 @@ export const denegarExpediente = (numero: string, version: number, motivo: strin
 
 export const aprobarExpediente = (numero: string, version: number) =>
   decidir(numero, 'aprobar', version);
+
+// ----------------------------------------------------------------- caja (005)
+
+export type Esquela = components['schemas']['Esquela'];
+
+export type ResultadoEsquela =
+  | { readonly tipo: 'ok'; readonly esquela: Esquela }
+  | { readonly tipo: 'no-encontrada' }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' };
+
+/** Busca la esquela por su código (rol CAJA). El código no es dato personal. */
+export const consultarEsquela = async (codigo: string): Promise<ResultadoEsquela> => {
+  try {
+    const { data, response } = await cliente.GET('/esquelas/{codigoEsquela}', {
+      params: { path: { codigoEsquela: codigo.trim().toUpperCase() } },
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', esquela: data };
+    }
+    if (response.status === 404) {
+      return { tipo: 'no-encontrada' };
+    }
+    return response.status === 401 || response.status === 403
+      ? { tipo: 'sin-permiso' }
+      : { tipo: 'no-disponible' };
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** Solo el nombre del titular, para confirmar antes de registrar el pago (rol CAJA). */
+export const obtenerTitularParaCaja = async (
+  numeroExpediente: string,
+): Promise<{ readonly nombreTitular: string; readonly razonSocial: string | null } | null> => {
+  try {
+    const { data } = await cliente.GET('/expedientes/{numeroExpediente}/titular', {
+      params: { path: { numeroExpediente } },
+    });
+    return data === undefined
+      ? null
+      : { nombreTitular: data.nombreTitular, razonSocial: data.razonSocial ?? null };
+  } catch {
+    return null;
+  }
+};
+
+export type ResultadoPago =
+  | { readonly tipo: 'ok'; readonly esquela: Esquela }
+  | { readonly tipo: 'ya-pagada' }
+  | { readonly tipo: 'recibo-repetido' }
+  | { readonly tipo: 'no-corresponde'; readonly mensaje: string }
+  | { readonly tipo: 'invalido'; readonly mensaje: string }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' };
+
+/** Registra el pago con el número de recibo (rol CAJA). */
+export const registrarPago = async (
+  codigo: string,
+  numeroRecibo: string,
+): Promise<ResultadoPago> => {
+  try {
+    const { data, error, response } = await cliente.POST('/esquelas/{codigoEsquela}/pago', {
+      params: { path: { codigoEsquela: codigo } },
+      body: { numeroRecibo },
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', esquela: data };
+    }
+    switch (response.status) {
+      case 409: {
+        const tipo = tipoDeProblema(error);
+        if (tipo === 'esquela-ya-pagada') return { tipo: 'ya-pagada' };
+        if (tipo === 'recibo-repetido') return { tipo: 'recibo-repetido' };
+        return {
+          tipo: 'no-corresponde',
+          mensaje:
+            (error as { title?: string } | undefined)?.title ?? 'No se puede pagar esta esquela.',
+        };
+      }
+      case 422:
+        return {
+          tipo: 'invalido',
+          mensaje: erroresDe(error)[0]?.mensaje ?? 'Revisa el número de recibo.',
+        };
+      case 401:
+      case 403:
+        return { tipo: 'sin-permiso' };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};

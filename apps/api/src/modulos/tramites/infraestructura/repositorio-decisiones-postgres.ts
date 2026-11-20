@@ -90,16 +90,18 @@ export class RepositorioDecisionesPostgres implements RepositorioDecisiones {
           ocurrido_en: decision.en,
         },
       });
-      await tx.auditoriaTramites.create({
-        data: {
-          usuario_id: decision.usuarioId,
-          accion: decision.auditoria.accion,
-          numero_expediente: decision.numero,
-          detalle: decision.auditoria.detalle ?? undefined,
-          ocurrido_en: decision.en,
-        },
-      });
-      if (decision.observacion !== undefined) {
+      if (decision.auditoria !== null) {
+        await tx.auditoriaTramites.create({
+          data: {
+            usuario_id: decision.usuarioId,
+            accion: decision.auditoria.accion,
+            numero_expediente: decision.numero,
+            detalle: decision.auditoria.detalle ?? undefined,
+            ocurrido_en: decision.en,
+          },
+        });
+      }
+      if (decision.observacion !== undefined && decision.usuarioId !== null) {
         await tx.observacion.create({
           data: {
             expediente_id: decision.expedienteId,

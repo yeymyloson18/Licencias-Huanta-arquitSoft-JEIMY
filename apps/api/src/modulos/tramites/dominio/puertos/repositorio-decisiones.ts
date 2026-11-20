@@ -36,12 +36,14 @@ export interface Decision {
   readonly estadoEsperado: EstadoExpediente;
   readonly versionEsperada: number;
   readonly estadoNuevo: EstadoExpediente;
-  readonly usuarioId: string;
+  /** `null` = el sistema (por ejemplo, el paso a PAGADO al consumir `PagoRegistrado`). */
+  readonly usuarioId: string | null;
   readonly comentario: string | null;
+  /** `null` = sin auditoría de trámites (el pago ya tiene la suya en `pagos.auditoria`). */
   readonly auditoria: {
     readonly accion: AccionAuditoriaTramites;
     readonly detalle: Readonly<Record<string, string>> | null;
-  };
+  } | null;
   readonly cambios?: {
     readonly codigoReceta?: string;
     readonly ruta?: Ruta;

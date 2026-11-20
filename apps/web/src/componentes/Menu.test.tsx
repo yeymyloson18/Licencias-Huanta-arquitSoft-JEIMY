@@ -95,6 +95,27 @@ describe('Menú del personal', () => {
     expect(within(menu).queryByRole('link', { name: 'Expedientes' })).not.toBeInTheDocument();
   });
 
+  it('caja ve "Caja"; el evaluador no (005)', async () => {
+    simularApi(conSesion(['CAJA']));
+    montarEn('/');
+
+    const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+
+    expect(within(menu).getByRole('link', { name: 'Caja' })).toHaveAttribute(
+      'href',
+      '/personal/caja',
+    );
+  });
+
+  it('el evaluador no ve "Caja" (005)', async () => {
+    simularApi(conSesion(['EVALUADOR']));
+    montarEn('/');
+
+    const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+
+    expect(within(menu).queryByRole('link', { name: 'Caja' })).not.toBeInTheDocument();
+  });
+
   it('mesa de partes ve "Registrar solicitud" (004)', async () => {
     simularApi(conSesion(['MESA_PARTES']));
     montarEn('/');

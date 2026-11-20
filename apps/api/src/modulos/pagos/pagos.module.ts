@@ -1,24 +1,56 @@
 import { Module, type OnModuleInit } from '@nestjs/common';
 import { DespachadorEventos } from '../../compartido/infraestructura/despachador-eventos';
 import { PrismaServicio } from '../../compartido/infraestructura/prisma.servicio';
+import { FachadaTramites } from '../tramites/fachada';
+import { ConsultarEsquela, RegistrarPagoEnCaja } from './aplicacion/caja';
 import { GenerarEsquela } from './aplicacion/generar-esquela';
+import type { EstadoExpediente } from './dominio/puertos/estado-expediente';
+import type { RepositorioEsquelas } from './dominio/puertos/repositorio-esquelas';
+import { EstadoExpedienteFachada } from './infraestructura/estado-expediente-fachada';
 import { manejadorEsquelaSolicitada } from './infraestructura/manejador-esquela-solicitada';
 import { RelojSistema } from './infraestructura/reloj-sistema';
 import { RepositorioEsquelasPostgres } from './infraestructura/repositorio-esquelas-postgres';
+import { EsquelasController } from './presentacion/esquelas.controller';
 
 // Raíz de composición del módulo Pagos en caja (funcionalidad 005): esquela, PDF, registro y
-// corrección del pago y auditoría de pagos. Usa Trámites y Seguridad solo por sus fachadas, y
-// recibe `EsquelaSolicitada` por la cola de eventos (research §R-01).
+// corrección del pago y auditoría de pagos. Usa Trámites y Seguridad solo por sus fachadas (son
+// globales), y recibe `EsquelaSolicitada` por la cola de eventos (research §R-01).
 
 const reloj = new RelojSistema();
+const REPOSITORIO_ESQUELAS = Symbol('REPOSITORIO_ESQUELAS');
+const ESTADO_EXPEDIENTE = Symbol('ESTADO_EXPEDIENTE');
 
 @Module({
+  controllers: [EsquelasController],
   providers: [
     {
-      provide: GenerarEsquela,
+      provide: REPOSITORIO_ESQUELAS,
       inject: [PrismaServicio],
-      useFactory: (prisma: PrismaServicio) =>
-        new GenerarEsquela({ esquelas: new RepositorioEsquelasPostgres(prisma), reloj }),
+      useFactory: (prisma: PrismaServicio): RepositorioEsquelas =>
+        new RepositorioEsquelasPostgres(prisma),
+    },
+    {
+      provide: ESTADO_EXPEDIENTE,
+      inject: [FachadaTramites],
+      useFactory: (tramites: FachadaTramites): EstadoExpediente =>
+        new EstadoExpedienteFachada(tramites),
+    },
+    {
+      provide: GenerarEsquela,
+      inject: [REPOSITORIO_ESQUELAS],
+      useFactory: (esquelas: RepositorioEsquelas) => new GenerarEsquela({ esquelas, reloj }),
+    },
+    {
+      provide: ConsultarEsquela,
+      inject: [REPOSITORIO_ESQUELAS, ESTADO_EXPEDIENTE],
+      useFactory: (esquelas: RepositorioEsquelas, expedientes: EstadoExpediente) =>
+        new ConsultarEsquela({ esquelas, expedientes }),
+    },
+    {
+      provide: RegistrarPagoEnCaja,
+      inject: [REPOSITORIO_ESQUELAS, ESTADO_EXPEDIENTE],
+      useFactory: (esquelas: RepositorioEsquelas, expedientes: EstadoExpediente) =>
+        new RegistrarPagoEnCaja({ esquelas, expedientes, reloj }),
     },
   ],
 })

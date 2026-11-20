@@ -17,7 +17,7 @@ export interface EsquelaSolicitada {
 export class GenerarEsquela {
   constructor(
     private readonly dependencias: {
-      readonly esquelas: RepositorioEsquelas;
+      readonly esquelas: Pick<RepositorioEsquelas, 'crearSiNoExiste'>;
       readonly reloj: Reloj;
     },
   ) {}

@@ -131,14 +131,14 @@ PAGADO solo.
 
 ### Pruebas de la historia 2 ⚠️
 
-- [ ] T019 [P] [US2] Pruebas unitarias `test-pag/aplicacion/registrar-pago-en-caja.spec.ts` y
+- [X] T019 [P] [US2] Pruebas unitarias `test-pag/aplicacion/registrar-pago-en-caja.spec.ts` y
   `test-pag/dominio/numero-recibo.spec.ts`: recibo normalizado (mayúsculas, sin espacios, 4 a 30);
   expediente que no está PENDIENTE_PAGO → error; ya pagada → error; recibo repetido → error; éxito con
   auditoría y `PagoRegistrado`
-- [ ] T020 [P] [US2] Prueba unitaria `test-tra/aplicacion/aplicar-pago-registrado.spec.ts`:
+- [X] T020 [P] [US2] Prueba unitaria `test-tra/aplicacion/aplicar-pago-registrado.spec.ts`:
   PENDIENTE_PAGO → PAGADO con historial del sistema y el evento `EstadoExpedienteCambiado`; ya PAGADO →
   no cambia nada (ni repite el evento)
-- [ ] T021 [P] [US2] Prueba de integración `int/pago-en-caja.e2e-spec.ts`: CAJA consulta la esquela y
+- [X] T021 [P] [US2] Prueba de integración `int/pago-en-caja.e2e-spec.ts`: CAJA consulta la esquela y
   el titular; registra → 201 con auditoría y evento; tras procesar eventos, PAGADO; segundo pago → 409
   `esquela-ya-pagada`; 10 pagos en paralelo → un 201; recibo repetido → 409 `recibo-repetido`; recibo
   inválido → 422; expediente DENEGADO (esquela sembrada) → 409; código inexistente → 404; el manejador
@@ -146,17 +146,17 @@ PAGADO solo.
 
 ### Implementación de la historia 2
 
-- [ ] T022 [US2] `pag/dominio/numero-recibo.ts`, casos de uso `pag/aplicacion/consultar-esquela.ts` y
+- [X] T022 [US2] `pag/dominio/numero-recibo.ts`, casos de uso `pag/aplicacion/consultar-esquela.ts` y
   `registrar-pago-en-caja.ts` (transacción con `UPDATE` condicional, auditoría y `PagoRegistrado`),
   puerto `pag/dominio/puertos/estado-expediente.ts` con adaptador `pag/infraestructura/tramites-fachada.ts`.
   Deben pasar T019
-- [ ] T023 [US2] `tra/fachada.ts`: `estadoParaPago(numero)` y `nombreTitular(numero)`; caso de uso
+- [X] T023 [US2] `tra/fachada.ts`: `estadoParaPago(numero)` y `nombreTitular(numero)`; caso de uso
   `tra/aplicacion/aplicar-pago-registrado.ts` y su manejador de `PagoRegistrado` registrado desde
   `tramites.module.ts`. Deben pasar T020
-- [ ] T024 [US2] Controladores `pag/presentacion/esquelas.controller.ts` (`GET /esquelas/{codigo}` y
+- [X] T024 [US2] Controladores `pag/presentacion/esquelas.controller.ts` (`GET /esquelas/{codigo}` y
   `POST /esquelas/{codigo}/pago`, rol CAJA) y `GET /expedientes/{n}/titular` en `tramites` (rol CAJA,
   `no-store`). Deben pasar T021
-- [ ] T025 [US2] `web/servicios/clienteApi.ts` (`consultarEsquela`, `obtenerTitularParaCaja`,
+- [X] T025 [US2] `web/servicios/clienteApi.ts` (`consultarEsquela`, `obtenerTitularParaCaja`,
   `registrarPago`) y prueba + página `web/paginas/personal/Caja.tsx` (buscar, ver, confirmar, registrar;
   mensajes 404/409/422); ruta `/personal/caja` con `RutaProtegida roles={['CAJA']}` y opción "Caja" en
   `web/componentes/Menu.tsx` (actualizar `Menu.test.tsx`)

@@ -1,4 +1,11 @@
-import { Module } from '@nestjs/common';
+import { Global, Module, type OnModuleInit } from '@nestjs/common';
+import { DespachadorEventos } from '../../compartido/infraestructura/despachador-eventos';
+import { AplicarPagoRegistrado } from './aplicacion/aplicar-pago-registrado';
+import type { LectorParaCaja } from './dominio/puertos/lector-para-caja';
+import { FachadaTramites } from './fachada';
+import { LectorParaCajaPostgres } from './infraestructura/lector-para-caja-postgres';
+import { manejadorPagoRegistrado } from './infraestructura/manejador-pago-registrado';
+import { CajaController, LECTOR_PARA_CAJA } from './presentacion/caja.controller';
 import type { ProtectorDatos } from '../../compartido/dominio/protector-datos';
 import { CONFIGURACION, type Configuracion } from '../../compartido/infraestructura/configuracion';
 import { PrismaServicio } from '../../compartido/infraestructura/prisma.servicio';
@@ -54,6 +61,8 @@ const REPOSITORIO_DECISIONES = Symbol('REPOSITORIO_DECISIONES');
 const huella = new HuellaSha256();
 const reloj = new RelojSistema();
 
+// Es global para que Pagos inyecte `FachadaTramites` sin importar el interior de `tramites` (005).
+@Global()
 @Module({
   // `ConsultaController` va antes: `POST expedientes/consultar` es una ruta fija.
   controllers: [
@@ -62,6 +71,7 @@ const reloj = new RelojSistema();
     ExpedientesController,
     BandejaController,
     EvaluacionController,
+    CajaController,
   ],
   providers: [
     // Decisiones del evaluador (005).
@@ -188,6 +198,33 @@ const reloj = new RelojSistema();
           reloj,
         }),
     },
+    // Pago en caja (005): lectura para Pagos y paso a PAGADO al consumir `PagoRegistrado`.
+    {
+      provide: LECTOR_PARA_CAJA,
+      inject: [PrismaServicio],
+      useFactory: (prisma: PrismaServicio): LectorParaCaja => new LectorParaCajaPostgres(prisma),
+    },
+    {
+      provide: FachadaTramites,
+      inject: [LECTOR_PARA_CAJA],
+      useFactory: (lector: LectorParaCaja) => new FachadaTramites(lector),
+    },
+    {
+      provide: AplicarPagoRegistrado,
+      inject: [REPOSITORIO_DECISIONES],
+      useFactory: (decisiones: RepositorioDecisiones) =>
+        new AplicarPagoRegistrado({ decisiones, reloj }),
+    },
   ],
+  exports: [FachadaTramites],
 })
-export class TramitesModule {}
+export class TramitesModule implements OnModuleInit {
+  constructor(
+    private readonly despachador: DespachadorEventos,
+    private readonly aplicarPago: AplicarPagoRegistrado,
+  ) {}
+
+  onModuleInit(): void {
+    this.despachador.registrar('PagoRegistrado', manejadorPagoRegistrado(this.aplicarPago));
+  }
+}
