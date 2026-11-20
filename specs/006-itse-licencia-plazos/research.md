@@ -206,7 +206,7 @@ despliegue; el administrador puede corregirlos desde `/admin/feriados`.
 **Decisión**: el `tokenConsulta` de la 005 se emite también cuando el expediente tiene licencia
 (LICENCIA_EMITIDA, LICENCIA_PROVISIONAL, ITSE_POSTERIOR_PENDIENTE, FINALIZADO,
 DERIVADO_A_FISCALIZACION). `GET /licencias/{numero}` y `/pdf` usan el `ConsultaOPersonalGuard` (roles
-EVALUADOR y JEFATURA; con token, solo la licencia de ese expediente). La consulta pública trae
+MESA_PARTES, EVALUADOR y JEFATURA; con token, solo la licencia de ese expediente). La consulta pública trae
 `numeroLicencia`.
 
 ## R-19. Ruta B al registrarse el pago

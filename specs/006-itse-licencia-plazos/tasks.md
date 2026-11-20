@@ -35,25 +35,25 @@ que la implementación y deben fallar primero.
 
 ## Fase 2: Base (bloquea todas las historias)
 
-- [ ] T004 Actualizar `docs/06-contrato-api/openapi.yaml` y su README según
+- [X] T004 Actualizar `docs/06-contrato-api/openapi.yaml` y su README según
   [contracts/openapi-cambios.md](./contracts/openapi-cambios.md) (roles, fotos 1 a 5, certificado,
   `GET /inspecciones/inspectores`, `POST /plazos/alertas/{alertaId}/atender`, `id` y `atendidaPor` en
   `AlertaPlazo`, `numeroLicencia` en `Expediente`, `itseEstado` en `LicenciaPublica`, 403/422/503 y
   `plazoSubsanarEn` ignorado); regenerar `packages/contracts` y pasar `npm run contrato`
-- [ ] T005 Migración `apps/api/prisma/migrations/0010_itse_licencia_plazos/migration.sql` según
+- [X] T005 Migración `apps/api/prisma/migrations/0010_itse_licencia_plazos/migration.sql` según
   [data-model.md](./data-model.md) (`plazo_restante_dias` con `CHECK (… >= 0)`, `numero_certificado`
   varchar(30) y `certificado_emitido_en` date con su CHECK conjunto, `atendida_por` uuid, `evento_id`
   bigint UNIQUE y `reintentar_en` timestamptz en `mensaje`, 16 feriados de 2026 con
   `ON CONFLICT DO NOTHING`, y marcar como procesados los `EstadoExpedienteCambiado` pendientes de la 005 para no enviar avisos atrasados); actualizar `schema.prisma`, `docs/05-modelo-de-datos/esquema.sql`,
   `datos-semilla.sql` si corresponde y `modelo-entidad-relacion.md`; pasar la prueba
   `esquema-equivalente`
-- [ ] T006 [P] `com/infraestructura/despachador-eventos.ts`: el manejador recibe `(datos, { id })`
+- [X] T006 [P] `com/infraestructura/despachador-eventos.ts`: el manejador recibe `(datos, { id })`
   (research §R-02); prueba en `int/despachador-eventos.e2e-spec.ts`
-- [ ] T007 [P] `tra/dominio/maquina-estados.ts`: transiciones nuevas de [data-model.md](./data-model.md)
+- [X] T007 [P] `tra/dominio/maquina-estados.ts`: transiciones nuevas de [data-model.md](./data-model.md)
   §1 (INICIAR_INSPECCION_PREVIA, EMITIR_LICENCIA, EMITIR_LICENCIA_PROVISIONAL, ESPERAR_ITSE_POSTERIOR,
   FINALIZAR, DENEGAR_POR_ITSE, DERIVAR_A_FISCALIZACION) con sus pruebas en
   `test-tra/dominio/maquina-estados.spec.ts`
-- [ ] T008 [P] Ayudantes de prueba: `apps/api/test/apoyo/itse-prueba.ts` (`limpiar006`, `sembrarLicencia`,
+- [X] T008 [P] Ayudantes de prueba: `apps/api/test/apoyo/itse-prueba.ts` (`limpiar006`, `sembrarLicencia`,
   `sembrarInspeccion`) y limpieza de los eventos nuevos en `limpiarTramites`
 
 **Punto de control**: contrato, migración y piezas compartidas listas.
@@ -84,7 +84,7 @@ verificarla sin sesión.
 - [ ] T012 [P] [US1] Prueba de integración `int/licencia-verificacion.e2e-spec.ts`: verificación
   pública con datos mínimos y sin datos personales; 404 igual para inexistente y mal formado; 10 fallos
   → 429 con `Retry-After`; consulta pública con `numeroLicencia` y `tokenConsulta`; PDF con `%PDF`, el
-  código en el texto, sin documento ni dirección; token de otro expediente → 403; EVALUADOR y JEFATURA
+  código en el texto, sin documento ni dirección; token de otro expediente → 403; MESA_PARTES, EVALUADOR y JEFATURA
   → 200; CAJA → 403
 
 ### Implementación de la historia 1

@@ -3,10 +3,13 @@ import type { PrismaServicio } from './prisma.servicio';
 
 // Despachador de la cola de eventos `comun.evento_pendiente` (ADR-005, research §R-02 de la 005).
 // Cada módulo registra un manejador por tipo de evento; los tipos sin manejador quedan pendientes
-// para funcionalidades posteriores (por ejemplo, las notificaciones de la 006).
+// para funcionalidades posteriores.
 
-/** Procesa un evento. Debe ser idempotente: la entrega es "al menos una vez". */
-export type ManejadorEvento = (datos: unknown) => Promise<void>;
+/**
+ * Procesa un evento. Debe ser idempotente: la entrega es "al menos una vez". `meta.id` identifica el
+ * evento (sirve como clave de idempotencia, research §R-02 de la 006).
+ */
+export type ManejadorEvento = (datos: unknown, meta: { readonly id: bigint }) => Promise<void>;
 
 /** Clave del candado de PostgreSQL: solo una réplica de la API procesa a la vez. */
 const CLAVE_CANDADO = 4_005_001;
@@ -100,7 +103,7 @@ export class DespachadorEventos implements OnApplicationBootstrap, OnApplication
         for (const evento of eventos) {
           const manejador = this.manejadores.get(evento.tipo);
           try {
-            await manejador?.(evento.datos);
+            await manejador?.(evento.datos, { id: evento.id });
             await tx.$executeRaw`
               UPDATE comun.evento_pendiente SET procesado_en = now() WHERE id = ${evento.id}`;
             procesados += 1;

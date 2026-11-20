@@ -128,18 +128,20 @@ model foto {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model inspeccion {
-  id                String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  numero_expediente String                  @db.VarChar(20)
-  tipo              String                  @db.VarChar(15)
-  inspector_id      String?                 @db.Uuid
-  programada_para   DateTime?               @db.Date
-  estado            String                  @default("PENDIENTE") @db.VarChar(15)
-  resultado         String?                 @db.VarChar(15)
-  observaciones     String?
-  registrada_en     DateTime?               @db.Timestamptz(6)
-  creada_en         DateTime                @default(now()) @db.Timestamptz(6)
-  auditoria         AuditoriaInspecciones[]
-  foto              foto[]
+  id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  numero_expediente      String                  @db.VarChar(20)
+  tipo                   String                  @db.VarChar(15)
+  inspector_id           String?                 @db.Uuid
+  programada_para        DateTime?               @db.Date
+  estado                 String                  @default("PENDIENTE") @db.VarChar(15)
+  resultado              String?                 @db.VarChar(15)
+  observaciones          String?
+  registrada_en          DateTime?               @db.Timestamptz(6)
+  numero_certificado     String?                 @db.VarChar(30)
+  certificado_emitido_en DateTime?               @db.Date
+  creada_en              DateTime                @default(now()) @db.Timestamptz(6)
+  auditoria              AuditoriaInspecciones[]
+  foto                   foto[]
 
   @@unique([numero_expediente, tipo])
   @@index([inspector_id, estado], map: "ix_inspeccion_bandeja")
@@ -209,6 +211,8 @@ model mensaje {
   ultimo_error      String?
   creado_en         DateTime  @default(now()) @db.Timestamptz(6)
   enviado_en        DateTime? @db.Timestamptz(6)
+  evento_id         BigInt?   @unique(map: "mensaje_evento_id_key")
+  reintentar_en     DateTime? @db.Timestamptz(6)
 
   @@schema("notificaciones")
 }
@@ -252,6 +256,7 @@ model alerta {
   dias_habiles_restantes Int       @db.SmallInt
   generada_en            DateTime  @default(now()) @db.Timestamptz(6)
   atendida_en            DateTime? @db.Timestamptz(6)
+  atendida_por           String?   @db.Uuid
 
   @@unique([numero_expediente, vence_en])
   @@schema("plazos")
@@ -419,6 +424,7 @@ model expediente {
   area_m2                 Decimal?             @db.Decimal(8, 2)
   presentado_en           DateTime             @default(now()) @db.Timestamptz(6)
   vence_plazo_en          DateTime?            @db.Date
+  plazo_restante_dias     Int?                 @db.SmallInt
   evaluador_id            String?              @db.Uuid
   registrado_por          String?              @db.Uuid
   actualizado_en          DateTime             @default(now()) @db.Timestamptz(6)

@@ -3,7 +3,8 @@
 -- Fuente: docs/01-analisis-de-sistema/09-validacion-del-tupa.md (páginas impresas del TUPA)
 -- Se ejecuta después de esquema.sql.
 -- Describe los datos semilla ACTUALES: el estado después de todas las migraciones (0002 = versión
--- inicial; 0004 = opción "No lo sé" del asistente; 0005 = requisitos de los trámites conectados).
+-- inicial; 0004 = opción "No lo sé" del asistente; 0005 = requisitos de los trámites conectados;
+-- 0010 = feriados nacionales de 2026).
 -- La prueba esquema-equivalente.e2e-spec.ts compara estos datos con la base migrada (research.md
 -- §R-08 de la 003).
 -- =====================================================================================
@@ -104,3 +105,23 @@ INSERT INTO catalogo.regla_asistente (prioridad, condiciones, codigo_receta) VAL
     (41, '{"NIVEL_RIESGO":"MEDIO"}',                                             'LIC-02'),
     (42, '{"NIVEL_RIESGO":"ALTO"}',                                              'LIC-03'),
     (43, '{"NIVEL_RIESGO":"MUY_ALTO"}',                                          'LIC-04');
+
+-- Feriados nacionales de Perú de 2026 (migración 0010, funcionalidad 006; D. Leg. N.° 713 y
+-- modificatorias). Los registra el usuario de sistema 00000000-0000-0000-0000-000000000000.
+INSERT INTO plazos.feriado (fecha, descripcion, alcance, registrado_por) VALUES
+    ('2026-01-01', 'Año Nuevo',                           'NACIONAL', '00000000-0000-0000-0000-000000000000'),
+    ('2026-04-02', 'Jueves Santo',                        'NACIONAL', '00000000-0000-0000-0000-000000000000'),
+    ('2026-04-03', 'Viernes Santo',                       'NACIONAL', '00000000-0000-0000-0000-000000000000'),
+    ('2026-05-01', 'Día del Trabajo',                     'NACIONAL', '00000000-0000-0000-0000-000000000000'),
+    ('2026-06-07', 'Batalla de Arica y Día de la Bandera', 'NACIONAL', '00000000-0000-0000-0000-000000000000'),
+    ('2026-06-29', 'San Pedro y San Pablo',               'NACIONAL', '00000000-0000-0000-0000-000000000000'),
+    ('2026-07-23', 'Día de la Fuerza Aérea del Perú',     'NACIONAL', '00000000-0000-0000-0000-000000000000'),
+    ('2026-07-28', 'Fiestas Patrias',                     'NACIONAL', '00000000-0000-0000-0000-000000000000'),
+    ('2026-07-29', 'Fiestas Patrias',                     'NACIONAL', '00000000-0000-0000-0000-000000000000'),
+    ('2026-08-06', 'Batalla de Junín',                    'NACIONAL', '00000000-0000-0000-0000-000000000000'),
+    ('2026-08-30', 'Santa Rosa de Lima',                  'NACIONAL', '00000000-0000-0000-0000-000000000000'),
+    ('2026-10-08', 'Combate de Angamos',                  'NACIONAL', '00000000-0000-0000-0000-000000000000'),
+    ('2026-11-01', 'Todos los Santos',                    'NACIONAL', '00000000-0000-0000-0000-000000000000'),
+    ('2026-12-08', 'Inmaculada Concepción',               'NACIONAL', '00000000-0000-0000-0000-000000000000'),
+    ('2026-12-09', 'Batalla de Ayacucho',                 'NACIONAL', '00000000-0000-0000-0000-000000000000'),
+    ('2026-12-25', 'Navidad',                             'NACIONAL', '00000000-0000-0000-0000-000000000000');

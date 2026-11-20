@@ -10,6 +10,6 @@ Todas las pantallas se usan a 360 px sin desplazamiento horizontal. Nada persona
 | `/admin/feriados` | ADMINISTRADOR | Selector de año, lista, formulario (fecha, descripción, alcance) y "Eliminar" con confirmación en la página (sin diálogos del navegador) |
 | `/verificar/:codigo` | Pública | Datos mínimos de la licencia (o "No encontramos una licencia con ese código"; con 429, la hora para reintentar) |
 | `/consulta` | Pública | Con licencia: número y "Descargar licencia" (PDF con el `tokenConsulta`) |
-| `/personal/expedientes/:numero` | EVALUADOR, JEFATURA | Si tiene licencia: número y "Descargar licencia" |
+| `/personal/expedientes/:numero` | MESA_PARTES, EVALUADOR, JEFATURA | Si tiene licencia: número y "Descargar licencia" |
 
 Menú: "Inspecciones" (JEFATURA, INSPECTOR), "Alertas" (JEFATURA), "Feriados" (ADMINISTRADOR).

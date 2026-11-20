@@ -102,6 +102,7 @@ const TABLAS_REFERENCIA: readonly TablaReferencia[] = [
   { tabla: 'catalogo.requisito', excluir: ['id'], orden: 'codigo_receta, orden' },
   { tabla: 'catalogo.pregunta_asistente', excluir: [], orden: 'codigo' },
   { tabla: 'catalogo.regla_asistente', excluir: ['id'], orden: 'prioridad' },
+  { tabla: 'plazos.feriado', excluir: ['registrado_en'], orden: 'fecha' },
 ];
 
 /** Filas de la tabla como JSON normalizado (jsonb), en orden de su clave natural. */

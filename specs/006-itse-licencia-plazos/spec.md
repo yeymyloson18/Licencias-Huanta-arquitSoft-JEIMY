@@ -311,7 +311,7 @@ y comprobar que el reloj envía un solo aviso de vencimiento aunque corra varias
 - **FR-021**: El administrado MUST poder descargar el PDF de su licencia desde la consulta pública de
   la 004 cuando el expediente está en LICENCIA_EMITIDA, LICENCIA_PROVISIONAL, ITSE_POSTERIOR_PENDIENTE,
   FINALIZADO o DERIVADO_A_FISCALIZACION, con un permiso de lectura que sirve solo para su expediente.
-- **FR-022**: El personal (EVALUADOR, JEFATURA) MUST poder ver los datos de la licencia en el detalle
+- **FR-022**: El personal (MESA_PARTES, EVALUADOR, JEFATURA) MUST poder ver los datos de la licencia en el detalle
   del expediente y descargar su PDF.
 
 **Feriados y plazos**

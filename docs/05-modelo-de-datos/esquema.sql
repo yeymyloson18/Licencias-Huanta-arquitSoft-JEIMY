@@ -257,6 +257,8 @@ CREATE TABLE tramites.expediente (
     -- Plazos (RF08)
     presentado_en           timestamptz   NOT NULL DEFAULT now(),
     vence_plazo_en          date,
+    plazo_restante_dias     smallint      CONSTRAINT expediente_plazo_restante_check
+                                          CHECK (plazo_restante_dias IS NULL OR plazo_restante_dias >= 0), -- plazo suspendido (006)
     evaluador_id            uuid,                               -- ref. lógica a seguridad.usuario
     registrado_por          uuid,                               -- personal de mesa de partes (canal presencial)
     actualizado_en          timestamptz   NOT NULL DEFAULT now(),
@@ -398,9 +400,14 @@ CREATE TABLE inspecciones.inspeccion (
     observaciones       text,
     registrada_en       timestamptz,
     creada_en           timestamptz   NOT NULL DEFAULT now(),
+    -- Certificado ITSE que registra el inspector con el resultado favorable (006)
+    numero_certificado  varchar(30),
+    certificado_emitido_en date,
     UNIQUE (numero_expediente, tipo),
     CHECK ((estado = 'REALIZADA') = (resultado IS NOT NULL)),
-    CHECK (estado = 'PENDIENTE' OR inspector_id IS NOT NULL)
+    CHECK (estado = 'PENDIENTE' OR inspector_id IS NOT NULL),
+    CONSTRAINT inspeccion_certificado_check
+        CHECK ((numero_certificado IS NULL) = (certificado_emitido_en IS NULL))
 );
 CREATE INDEX ix_inspeccion_bandeja ON inspecciones.inspeccion (inspector_id, estado);
 
@@ -489,6 +496,7 @@ CREATE TABLE plazos.alerta (
     dias_habiles_restantes smallint   NOT NULL,
     generada_en         timestamptz   NOT NULL DEFAULT now(),
     atendida_en         timestamptz,
+    atendida_por        uuid,                                   -- jefatura que la atendió (006)
     UNIQUE (numero_expediente, vence_en)
 );
 
@@ -507,6 +515,8 @@ CREATE TABLE notificaciones.mensaje (
     intentos            smallint      NOT NULL DEFAULT 0,
     ultimo_error        text,
     creado_en           timestamptz   NOT NULL DEFAULT now(),
-    enviado_en          timestamptz
+    enviado_en          timestamptz,
+    evento_id           bigint        CONSTRAINT mensaje_evento_id_key UNIQUE, -- evento que lo originó (006)
+    reintentar_en       timestamptz                             -- espera entre reintentos (006)
 );
 CREATE INDEX ix_mensaje_pendiente ON notificaciones.mensaje (creado_en) WHERE estado = 'PENDIENTE';
