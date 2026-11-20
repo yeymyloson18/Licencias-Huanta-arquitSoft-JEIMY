@@ -244,21 +244,21 @@ descargar el PDF sin datos personales.
 
 ### Pruebas de la historia 6 ⚠️
 
-- [ ] T039 [P] [US6] Pruebas unitarias `test-pag/aplicacion/corregir-numero-recibo.spec.ts` y
+- [X] T039 [P] [US6] Pruebas unitarias `test-pag/aplicacion/corregir-numero-recibo.spec.ts` y
   `consultar-auditoria-pagos.spec.ts`; `test-tra/aplicacion/consultar-auditoria-expediente.spec.ts`
-- [ ] T040 [P] [US6] Prueba de integración `int/auditoria-pagos.e2e-spec.ts`: JEFATURA corrige con motivo
+- [X] T040 [P] [US6] Prueba de integración `int/auditoria-pagos.e2e-spec.ts`: JEFATURA corrige con motivo
   → 200 y `CORREGIR_RECIBO` con anterior y nuevo; sin motivo → 422; no pagada → 409; recibo repetido →
   409; `GET /pagos/auditoria?desde&hasta` ordenada y paginada; `GET /expedientes/{n}/auditoria` con las
   decisiones y `nombreUsuario`; sin datos del titular
 
 ### Implementación de la historia 6
 
-- [ ] T041 [US6] `pag/aplicacion/corregir-numero-recibo.ts`, `consultar-auditoria-pagos.ts` y
+- [X] T041 [US6] `pag/aplicacion/corregir-numero-recibo.ts`, `consultar-auditoria-pagos.ts` y
   `pag/presentacion/auditoria-pagos.controller.ts` (`PATCH …/recibo`, `GET /pagos/auditoria`, rol
   JEFATURA); nombres del personal por la fachada de seguridad (`nombresDeUsuarios`)
-- [ ] T042 [US6] `tra/aplicacion/consultar-auditoria-expediente.ts` y
+- [X] T042 [US6] `tra/aplicacion/consultar-auditoria-expediente.ts` y
   `tra/presentacion/auditoria.controller.ts` (rol JEFATURA). Deben pasar T040
-- [ ] T043 [US6] Prueba y página `web/paginas/personal/Auditoria.tsx` (filtro de fechas, paginación,
+- [X] T043 [US6] Prueba y página `web/paginas/personal/Auditoria.tsx` (filtro de fechas, paginación,
   "Corregir recibo" con motivo); ruta con `RutaProtegida roles={['JEFATURA']}`, opción "Auditoría" en el
   menú y sección de auditoría en el detalle para jefatura
 

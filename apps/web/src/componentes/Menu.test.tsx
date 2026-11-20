@@ -107,6 +107,18 @@ describe('Menú del personal', () => {
     );
   });
 
+  it('jefatura ve "Auditoría" (005)', async () => {
+    simularApi(conSesion(['JEFATURA']));
+    montarEn('/');
+
+    const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+
+    expect(within(menu).getByRole('link', { name: 'Auditoría' })).toHaveAttribute(
+      'href',
+      '/personal/auditoria',
+    );
+  });
+
   it('el evaluador no ve "Caja" (005)', async () => {
     simularApi(conSesion(['EVALUADOR']));
     montarEn('/');

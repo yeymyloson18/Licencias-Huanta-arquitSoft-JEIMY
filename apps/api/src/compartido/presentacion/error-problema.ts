@@ -153,4 +153,13 @@ export class ErrorProblema extends Error {
       'El expediente cambió mientras lo revisabas. Vuelve a cargarlo',
     );
   }
+
+  /** Otra corrección del recibo ganó la carrera (005, historia 6). */
+  static reciboCambiado(): ErrorProblema {
+    return new ErrorProblema(
+      'recibo-cambiado',
+      409,
+      'El recibo cambió mientras lo corregías. Vuelve a cargarlo',
+    );
+  }
 }

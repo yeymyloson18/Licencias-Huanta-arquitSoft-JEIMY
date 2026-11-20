@@ -997,3 +997,117 @@ export const subsanarObservacion = async (
     return { tipo: 'no-disponible' };
   }
 };
+
+// ----------------------------------------------------------------- auditoría (005)
+
+export type RegistroAuditoria = components['schemas']['RegistroAuditoria'];
+
+export type ResultadoAuditoriaPagos =
+  | {
+      readonly tipo: 'ok';
+      readonly total: number;
+      readonly pagina: number;
+      readonly porPagina: number;
+      readonly datos: readonly RegistroAuditoria[];
+    }
+  | { readonly tipo: 'invalido'; readonly mensaje: string }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' };
+
+/** Pagos y correcciones, del más reciente al más antiguo (rol JEFATURA). */
+export const consultarAuditoriaPagos = async (filtro: {
+  readonly desde: string | null;
+  readonly hasta: string | null;
+  readonly pagina: number;
+}): Promise<ResultadoAuditoriaPagos> => {
+  try {
+    const { data, error, response } = await cliente.GET('/pagos/auditoria', {
+      params: {
+        query: {
+          pagina: filtro.pagina,
+          porPagina: 20,
+          ...(filtro.desde === null ? {} : { desde: filtro.desde }),
+          ...(filtro.hasta === null ? {} : { hasta: filtro.hasta }),
+        },
+      },
+    });
+    if (response.ok && data !== undefined) {
+      return {
+        tipo: 'ok',
+        total: data.total,
+        pagina: data.pagina,
+        porPagina: data.porPagina,
+        datos: data.datos ?? [],
+      };
+    }
+    if (response.status === 422) {
+      return { tipo: 'invalido', mensaje: erroresDe(error)[0]?.mensaje ?? 'Revisa las fechas.' };
+    }
+    return response.status === 401 || response.status === 403
+      ? { tipo: 'sin-permiso' }
+      : { tipo: 'no-disponible' };
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+export type ResultadoCorreccionRecibo =
+  | { readonly tipo: 'ok'; readonly esquela: Esquela }
+  | { readonly tipo: 'invalido'; readonly mensaje: string }
+  | { readonly tipo: 'conflicto'; readonly mensaje: string }
+  | { readonly tipo: 'no-encontrada' }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' };
+
+/** Corrige un recibo mal digitado, con motivo (rol JEFATURA). */
+export const corregirRecibo = async (
+  codigo: string,
+  numeroRecibo: string,
+  motivo: string,
+): Promise<ResultadoCorreccionRecibo> => {
+  try {
+    const { data, error, response } = await cliente.PATCH('/esquelas/{codigoEsquela}/recibo', {
+      params: { path: { codigoEsquela: codigo.trim().toUpperCase() } },
+      body: { numeroRecibo, motivo },
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', esquela: data };
+    }
+    switch (response.status) {
+      case 422:
+        return { tipo: 'invalido', mensaje: erroresDe(error)[0]?.mensaje ?? 'Revisa los datos.' };
+      case 409:
+        return {
+          tipo: 'conflicto',
+          mensaje:
+            tipoDeProblema(error) === 'recibo-repetido'
+              ? 'Ese número de recibo ya está registrado en otra esquela.'
+              : ((error as { title?: string } | undefined)?.title ??
+                'No se puede corregir este recibo.'),
+        };
+      case 404:
+        return { tipo: 'no-encontrada' };
+      case 401:
+      case 403:
+        return { tipo: 'sin-permiso' };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** Decisiones registradas sobre un expediente (rol JEFATURA). `null` si no se pudo leer. */
+export const auditoriaDelExpediente = async (
+  numeroExpediente: string,
+): Promise<readonly RegistroAuditoria[] | null> => {
+  try {
+    const { data } = await cliente.GET('/expedientes/{numeroExpediente}/auditoria', {
+      params: { path: { numeroExpediente } },
+    });
+    return data ?? null;
+  } catch {
+    return null;
+  }
+};

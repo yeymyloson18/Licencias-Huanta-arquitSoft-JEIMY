@@ -2,7 +2,11 @@ import { Prisma } from '@prisma/client';
 import type { PrismaServicio } from '../../../compartido/infraestructura/prisma.servicio';
 import { Esquela } from '../dominio/esquela';
 import type {
+  CorreccionRecibo,
+  FiltroAuditoriaPagos,
+  PaginaAuditoriaPagos,
   RepositorioEsquelas,
+  ResultadoCorreccion,
   ResultadoRegistroPago,
 } from '../dominio/puertos/repositorio-esquelas';
 
@@ -15,7 +19,7 @@ const esReciboRepetido = (error: unknown): boolean =>
 
 /** Ya lo decidió otra transacción: el resultado viaja como excepción para deshacer la transacción. */
 class ResultadoAnticipado extends Error {
-  constructor(readonly resultado: ResultadoRegistroPago) {
+  constructor(readonly resultado: ResultadoRegistroPago | ResultadoCorreccion) {
     super(resultado);
   }
 }
@@ -98,12 +102,82 @@ export class RepositorioEsquelasPostgres implements RepositorioEsquelas {
       return 'REGISTRADO';
     } catch (error) {
       if (error instanceof ResultadoAnticipado) {
-        return error.resultado;
+        return error.resultado as ResultadoRegistroPago;
       }
       if (esReciboRepetido(error)) {
         return 'RECIBO_REPETIDO';
       }
       throw error;
     }
+  }
+
+  async corregirRecibo(correccion: CorreccionRecibo): Promise<ResultadoCorreccion> {
+    const datos = correccion.esquela.aDatos();
+    const nuevo = datos.pago?.numeroRecibo;
+    if (nuevo === undefined) {
+      throw new Error('corregirRecibo necesita una esquela pagada');
+    }
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // Solo si el recibo sigue siendo el que se leyó: dos correcciones a la vez no se pisan.
+        const { count } = await tx.esquela.updateMany({
+          where: { codigo: datos.codigo, numero_recibo: correccion.reciboAnterior },
+          data: { numero_recibo: nuevo },
+        });
+        if (count === 0) {
+          throw new ResultadoAnticipado('CAMBIO');
+        }
+        await tx.auditoriaPagos.create({
+          data: {
+            usuario_id: correccion.usuarioId,
+            accion: 'CORREGIR_RECIBO',
+            codigo_esquela: datos.codigo,
+            recibo_anterior: correccion.reciboAnterior,
+            recibo_nuevo: nuevo,
+            motivo: correccion.motivo,
+            ocurrido_en: correccion.en,
+          },
+        });
+      });
+      return 'CORREGIDO';
+    } catch (error) {
+      if (error instanceof ResultadoAnticipado) {
+        return error.resultado as ResultadoCorreccion;
+      }
+      if (esReciboRepetido(error)) {
+        return 'RECIBO_REPETIDO';
+      }
+      throw error;
+    }
+  }
+
+  async listarAuditoria(filtro: FiltroAuditoriaPagos): Promise<PaginaAuditoriaPagos> {
+    const donde = {
+      ocurrido_en: {
+        ...(filtro.desde === null ? {} : { gte: filtro.desde }),
+        ...(filtro.hasta === null ? {} : { lt: filtro.hasta }),
+      },
+    };
+    const [total, filas] = await this.prisma.$transaction([
+      this.prisma.auditoriaPagos.count({ where: donde }),
+      this.prisma.auditoriaPagos.findMany({
+        where: donde,
+        orderBy: [{ ocurrido_en: 'desc' }, { id: 'desc' }],
+        skip: (filtro.pagina - 1) * filtro.porPagina,
+        take: filtro.porPagina,
+      }),
+    ]);
+    return {
+      total,
+      datos: filas.map((fila) => ({
+        usuarioId: fila.usuario_id,
+        accion: fila.accion,
+        codigoEsquela: fila.codigo_esquela,
+        reciboAnterior: fila.recibo_anterior,
+        reciboNuevo: fila.recibo_nuevo,
+        motivo: fila.motivo,
+        ocurridoEn: fila.ocurrido_en,
+      })),
+    };
   }
 }

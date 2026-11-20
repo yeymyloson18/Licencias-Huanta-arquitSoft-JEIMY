@@ -18,7 +18,7 @@ export interface EsquelaParaCaja extends DatosEsquela {
 }
 
 export interface DependenciasCaja {
-  readonly esquelas: RepositorioEsquelas;
+  readonly esquelas: Pick<RepositorioEsquelas, 'obtener' | 'registrarPago'>;
   readonly expedientes: EstadoExpediente;
   readonly reloj: Reloj;
 }

@@ -12,6 +12,7 @@ import {
 } from './aplicacion/errores';
 import type { VerificarIdentidadPresencial } from './aplicacion/verificar-identidad-presencial';
 import type { EmisorTokensConsulta } from './dominio/puertos/emisor-tokens';
+import type { LectorNombresUsuarios } from './dominio/puertos/lector-nombres-usuarios';
 import type { DatosIdentidadAdministrado } from './dominio/identidad-administrado';
 
 export type { Rol } from './dominio/rol';
@@ -59,7 +60,15 @@ export class FachadaSeguridad {
     private readonly confirmarIdentidad: ConfirmarIdentidadEnLinea,
     private readonly identidadPresencial: VerificarIdentidadPresencial,
     private readonly emisorConsulta?: EmisorTokensConsulta,
+    private readonly lectorNombres?: LectorNombresUsuarios,
   ) {}
+
+  /** Nombre de cada usuario del personal, por id (auditoría de la 005). Los ids desconocidos se omiten. */
+  nombresDeUsuarios(ids: readonly string[]): Promise<ReadonlyMap<string, string>> {
+    return this.lectorNombres === undefined
+      ? Promise.resolve(new Map())
+      : this.lectorNombres.nombres(ids);
+  }
 
   /**
    * `tokenConsulta` de 15 minutos para leer un solo expediente después de la consulta pública

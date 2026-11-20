@@ -20,7 +20,7 @@ import type {
 const T0 = new Date('2026-11-20T15:00:00.000Z');
 
 /** Repositorio en memoria con las reglas de la base: pago único y recibo único. */
-class EsquelasEnMemoria implements RepositorioEsquelas {
+class EsquelasEnMemoria implements Pick<RepositorioEsquelas, 'obtener' | 'registrarPago'> {
   readonly esquelas = new Map<string, Esquela>();
   /** Simula que otro cajero pagó entre la lectura y el guardado. */
   carrera = false;

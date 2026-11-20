@@ -140,6 +140,38 @@ describe('Página Detalle del expediente', () => {
     );
   });
 
+  it('jefatura ve la auditoría del expediente con el usuario de cada decisión (005)', async () => {
+    montar({
+      'GET /expedientes/EXP-2026-000004': () => json(EXPEDIENTE),
+      'GET /expedientes/EXP-2026-000004/auditoria': () =>
+        json([
+          {
+            usuarioId: null,
+            nombreUsuario: null,
+            accion: 'PRESENTAR_EN_LINEA',
+            referencia: 'EXP-2026-000004',
+            detalle: null,
+            ocurridoEn: '2026-11-19T15:00:00.000Z',
+          },
+          {
+            usuarioId: '00000000-0000-4000-8000-0000000000e1',
+            nombreUsuario: 'Evaluador de Prueba',
+            accion: 'INICIAR_EVALUACION',
+            referencia: 'EXP-2026-000004',
+            detalle: null,
+            ocurridoEn: '2026-11-20T15:00:00.000Z',
+          },
+        ]),
+    });
+
+    const seccion = await screen.findByRole('region', { name: 'Auditoría del expediente' });
+
+    expect(
+      await within(seccion).findByText(/Empezó la revisión — Evaluador de Prueba/),
+    ).toBeInTheDocument();
+    expect(within(seccion).getByText(/Presentado en línea — El titular/)).toBeInTheDocument();
+  });
+
   it('sin esquela todavía (REGISTRADO) no ofrece descargarla (005)', async () => {
     montar({ 'GET /expedientes/EXP-2026-000004': () => json(EXPEDIENTE) });
 

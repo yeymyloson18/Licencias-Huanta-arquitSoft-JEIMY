@@ -46,6 +46,7 @@ import { IdentidadController } from './presentacion/identidad.controller';
 import { TokenIdentidadGuard } from './presentacion/token-identidad.guard';
 import { AlmacenVersionSeguridadRedis } from './infraestructura/almacen-version-seguridad-redis';
 import { EmisorTokensJwt } from './infraestructura/emisor-tokens-jwt';
+import { LectorNombresUsuariosPostgres } from './infraestructura/lector-nombres-usuarios-postgres';
 import { EnviadorOtpSimulado } from './infraestructura/enviador-otp-simulado';
 import { GeneradorSecretosCrypto } from './infraestructura/generador-secretos-crypto';
 import { HasherClavesArgon2 } from './infraestructura/hasher-claves-argon2';
@@ -433,12 +434,19 @@ import {
     },
     {
       provide: FachadaSeguridad,
-      inject: [ConfirmarIdentidadEnLinea, SERVICIO_IDENTIFICACION, EMISOR_TOKENS],
+      inject: [ConfirmarIdentidadEnLinea, SERVICIO_IDENTIFICACION, EMISOR_TOKENS, PrismaServicio],
       useFactory: (
         confirmar: ConfirmarIdentidadEnLinea,
         servicio: ServicioIdentificacion,
         emisor: EmisorTokensJwt,
-      ) => new FachadaSeguridad(confirmar, new VerificarIdentidadPresencial(servicio), emisor),
+        prisma: PrismaServicio,
+      ) =>
+        new FachadaSeguridad(
+          confirmar,
+          new VerificarIdentidadPresencial(servicio),
+          emisor,
+          new LectorNombresUsuariosPostgres(prisma),
+        ),
     },
     TokenIdentidadGuard,
     SolicitanteGuard,

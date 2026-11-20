@@ -6,6 +6,7 @@ import {
   obtenerExpediente,
 } from '../../servicios/clienteApi';
 import { AccionesEvaluador } from '../../componentes/AccionesEvaluador';
+import { AuditoriaExpediente } from '../../componentes/AuditoriaExpediente';
 import { DescargarEsquela } from '../../componentes/DescargarEsquela';
 import { useSesion } from '../../sesion/ProveedorSesion';
 import { ESTADOS, formatearFecha } from './Expedientes';
@@ -46,6 +47,7 @@ export function DetalleExpediente() {
   const [aviso, setAviso] = useState<string | null>(null);
   const { sesion } = useSesion();
   const esEvaluador = sesion?.usuario.roles.includes('EVALUADOR') ?? false;
+  const esJefatura = sesion?.usuario.roles.includes('JEFATURA') ?? false;
   // El PDF de la esquela lo descargan EVALUADOR, CAJA y JEFATURA (005).
   const puedeDescargarEsquela =
     sesion?.usuario.roles.some((rol) => ['EVALUADOR', 'CAJA', 'JEFATURA'].includes(rol)) ?? false;
@@ -213,6 +215,9 @@ export function DetalleExpediente() {
               ))}
             </ol>
           </article>
+        )}
+        {carga.tipo === 'lista' && esJefatura && (
+          <AuditoriaExpediente numero={carga.expediente.numero} />
         )}
         <p className="licencia__volver">
           <Link to="/personal/expedientes">Volver a la bandeja</Link>

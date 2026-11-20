@@ -19,6 +19,12 @@ import { DatosPagoConsultaFachadas } from './infraestructura/datos-pago-consulta
 import { SubsanarObservacion } from './aplicacion/subsanar-observacion';
 import { RepositorioSubsanacionPostgres } from './infraestructura/repositorio-subsanacion-postgres';
 import { SubsanacionController } from './presentacion/subsanacion.controller';
+import { ConsultarAuditoriaExpediente } from './aplicacion/consultar-auditoria-expediente';
+import {
+  LectorAuditoriaPostgres,
+  NombresPersonalFachada,
+} from './infraestructura/lector-auditoria-postgres';
+import { AuditoriaController } from './presentacion/auditoria.controller';
 import {
   DescargarDocumento,
   ListarExpedientes,
@@ -79,6 +85,7 @@ const reloj = new RelojSistema();
     EvaluacionController,
     CajaController,
     SubsanacionController,
+    AuditoriaController,
   ],
   providers: [
     // Decisiones del evaluador (005).
@@ -216,6 +223,16 @@ const reloj = new RelojSistema();
           documentos: new RepositorioDocumentosTemporalesPostgres(prisma),
           huella,
           reloj,
+        }),
+    },
+    // Auditoría del expediente para la jefatura (005, historia 6).
+    {
+      provide: ConsultarAuditoriaExpediente,
+      inject: [PrismaServicio, FachadaSeguridad],
+      useFactory: (prisma: PrismaServicio, seguridad: FachadaSeguridad) =>
+        new ConsultarAuditoriaExpediente({
+          lector: new LectorAuditoriaPostgres(prisma),
+          nombres: new NombresPersonalFachada(seguridad),
         }),
     },
     // Subsanación de la observación (005, historia 4).

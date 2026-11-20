@@ -1,7 +1,12 @@
 import { Global, Module, type OnModuleInit } from '@nestjs/common';
 import { DespachadorEventos } from '../../compartido/infraestructura/despachador-eventos';
 import { PrismaServicio } from '../../compartido/infraestructura/prisma.servicio';
+import { FachadaSeguridad } from '../seguridad/fachada';
 import { FachadaTramites } from '../tramites/fachada';
+import { ConsultarAuditoriaPagos } from './aplicacion/consultar-auditoria-pagos';
+import { CorregirNumeroRecibo } from './aplicacion/corregir-numero-recibo';
+import { NombresUsuariosFachada } from './infraestructura/nombres-usuarios-fachada';
+import { AuditoriaPagosController } from './presentacion/auditoria-pagos.controller';
 import { ConsultarEsquela, RegistrarPagoEnCaja } from './aplicacion/caja';
 import { DescargarPdfEsquela } from './aplicacion/descargar-pdf-esquela';
 import { GenerarEsquela } from './aplicacion/generar-esquela';
@@ -25,9 +30,21 @@ const ESTADO_EXPEDIENTE = Symbol('ESTADO_EXPEDIENTE');
 
 @Global()
 @Module({
-  controllers: [EsquelasController],
+  controllers: [EsquelasController, AuditoriaPagosController],
   exports: [FachadaPagos],
   providers: [
+    {
+      provide: CorregirNumeroRecibo,
+      inject: [REPOSITORIO_ESQUELAS, ESTADO_EXPEDIENTE],
+      useFactory: (esquelas: RepositorioEsquelas, expedientes: EstadoExpediente) =>
+        new CorregirNumeroRecibo({ esquelas, expedientes, reloj }),
+    },
+    {
+      provide: ConsultarAuditoriaPagos,
+      inject: [REPOSITORIO_ESQUELAS, FachadaSeguridad],
+      useFactory: (esquelas: RepositorioEsquelas, seguridad: FachadaSeguridad) =>
+        new ConsultarAuditoriaPagos({ esquelas, nombres: new NombresUsuariosFachada(seguridad) }),
+    },
     {
       provide: FachadaPagos,
       inject: [REPOSITORIO_ESQUELAS],
