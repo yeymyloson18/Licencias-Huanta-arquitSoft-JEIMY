@@ -5,7 +5,11 @@ import {
   type CompletarVencimientos,
   ESTADOS_PLAZO_CORRIENDO,
 } from './aplicacion/completar-vencimientos';
-import type { EstadoExpediente } from './dominio/estado-publico';
+import {
+  type EstadoExpediente,
+  esEstadoExpediente,
+  TEXTO_ESTADO_PUBLICO,
+} from './dominio/estado-publico';
 import type { RepositorioVencimientos } from './dominio/puertos/repositorio-vencimientos';
 import type { LectorParaCaja } from './dominio/puertos/lector-para-caja';
 import type { DatosParaLicencia, LectorParaModulos } from './dominio/puertos/lector-para-modulos';
@@ -71,6 +75,23 @@ export class FachadaTramites {
   /** Estado de cada expediente (alertas de la jefatura, 006). */
   estadosDe(numeros: readonly string[]): Promise<ReadonlyMap<string, EstadoExpediente>> {
     return this.plazosDeTramites().vencimientos.estadosDe(numeros);
+  }
+
+  /**
+   * Contacto del titular para el aviso (006): correo si lo dio y celular, descifrados. Quien lo pide
+   * lo vuelve a cifrar y nunca lo registra.
+   */
+  contactoTitular(
+    numeroExpediente: string,
+  ): Promise<{ readonly correo: string | null; readonly celular: string } | null> {
+    return this.modulos().contactoTitular(numeroExpediente);
+  }
+
+  /** El estado en lenguaje sencillo y qué sigue (los textos de la consulta pública). */
+  textoDeEstado(
+    estado: string,
+  ): { readonly descripcion: string; readonly siguientePaso: string } | null {
+    return esEstadoExpediente(estado) ? TEXTO_ESTADO_PUBLICO[estado] : null;
   }
 
   private plazosDeTramites() {

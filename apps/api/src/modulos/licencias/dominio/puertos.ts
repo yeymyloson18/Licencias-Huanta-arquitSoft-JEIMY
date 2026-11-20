@@ -37,6 +37,11 @@ export interface RepositorioLicencias {
     numeroExpediente: string,
     certificado: { readonly numero: string; readonly emitidoEn: Fecha },
   ): Promise<'REGISTRADO' | 'YA_EXISTIA' | 'SIN_LICENCIA'>;
+  /**
+   * Marca el aviso de los certificados de licencias vigentes que vencen entre `desde` y `hasta` y aún
+   * no fueron avisados, y publica `ItsePorVencer` por cada uno, en una sola sentencia (FR-034).
+   */
+  avisarCertificadosPorVencer(desde: Fecha, hasta: Fecha, en: Date): Promise<number>;
 }
 
 /** Puerto: PDF de la licencia con el QR que apunta a la verificación pública (FR-017). */

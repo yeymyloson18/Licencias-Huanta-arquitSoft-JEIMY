@@ -1,6 +1,7 @@
 import { Global, Module, type OnModuleInit } from '@nestjs/common';
 import { CONFIGURACION, type Configuracion } from '../../compartido/infraestructura/configuracion';
 import { PrismaServicio } from '../../compartido/infraestructura/prisma.servicio';
+import { FachadaLicencias } from '../licencias/fachada';
 import { FachadaTramites } from '../tramites/fachada';
 import { ConsultarAlertas, GenerarAlertas } from './aplicacion/alertas';
 import { CalcularPlazos, GestionarFeriados } from './aplicacion/feriados';
@@ -89,9 +90,12 @@ export class PlazosModule implements OnModuleInit {
   constructor(
     private readonly relojPlazos: RelojPlazos,
     private readonly generarAlertas: GenerarAlertas,
+    private readonly licencias: FachadaLicencias,
   ) {}
 
   onModuleInit(): void {
     this.relojPlazos.registrar('alertas-de-plazo', () => this.generarAlertas.ejecutar());
+    // 30 días antes del vencimiento del certificado ITSE, una sola vez (FR-034).
+    this.relojPlazos.registrar('aviso-itse', () => this.licencias.avisarCertificadosPorVencer());
   }
 }

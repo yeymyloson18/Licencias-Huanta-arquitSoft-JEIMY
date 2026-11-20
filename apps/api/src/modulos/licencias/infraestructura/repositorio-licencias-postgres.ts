@@ -163,6 +163,26 @@ export class RepositorioLicenciasPostgres implements RepositorioLicencias {
     return insertados > 0 ? 'REGISTRADO' : 'YA_EXISTIA';
   }
 
+  async avisarCertificadosPorVencer(desde: Fecha, hasta: Fecha, en: Date): Promise<number> {
+    // Una sola sentencia: marcar el aviso y publicar el evento son atómicos (un aviso por certificado).
+    return this.prisma.$executeRaw`
+      WITH marcados AS (
+        UPDATE licencias.certificado_itse c
+           SET aviso_enviado_en = ${en}
+          FROM licencias.licencia l
+         WHERE c.licencia_id = l.id
+           AND l.estado = 'VIGENTE'
+           AND c.aviso_enviado_en IS NULL
+           AND c.vence_en BETWEEN ${desde}::date AND ${hasta}::date
+        RETURNING l.numero_expediente, c.vence_en
+      )
+      INSERT INTO comun.evento_pendiente (tipo, datos)
+      SELECT 'ItsePorVencer',
+             jsonb_build_object('numeroExpediente', numero_expediente,
+                                'venceEn', to_char(vence_en, 'YYYY-MM-DD'))
+        FROM marcados`;
+  }
+
   /** El número de expediente que tendría la licencia (para releer tras una carrera). */
   private numeroExpedienteDe(armar: (correlativo: number) => Licencia): string {
     return armar(0).numeroExpediente;

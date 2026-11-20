@@ -78,7 +78,7 @@ describe('Reloj de plazos y alertas (historia 4 de la 006)', () => {
     await queVence(3);
     await queVence(1, 'OBSERVADO');
 
-    expect(await app.get(RelojPlazos).ejecutarPasada()).toEqual(['alertas-de-plazo']);
+    expect(await app.get(RelojPlazos).ejecutarPasada()).toEqual(['alertas-de-plazo', 'aviso-itse']);
 
     const alertas = await prisma.alerta.findMany({ orderBy: { vence_en: 'asc' } });
     expect(alertas.map((a) => [a.numero_expediente, a.dias_habiles_restantes])).toEqual([

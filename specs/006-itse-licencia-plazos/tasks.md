@@ -235,25 +235,30 @@ vence en 29 días → un solo aviso aunque el reloj corra dos veces.
 
 ### Pruebas de la historia 5 ⚠️
 
-- [ ] T039 [P] [US5] Pruebas unitarias `test-not/dominio/` (plantillas sin datos personales, canal
+- [X] T039 [P] [US5] Pruebas unitarias `test-not/dominio/` (plantillas sin datos personales, canal
   CORREO o SMS) y `test-not/aplicacion/` (un aviso por evento, reintentos con espera creciente hasta 5,
   luego FALLIDO)
-- [ ] T040 [P] [US5] Prueba de integración `int/avisos.e2e-spec.ts`: cambio de estado → un aviso
+- [X] T040 [P] [US5] Prueba de integración `int/avisos.e2e-spec.ts`: cambio de estado → un aviso
   cifrado y enviado al simulado (`dev:aviso:*`); evento repetido → un aviso; envío que falla →
   reintentos y FALLIDO; certificado que vence en 29 días → un solo `ITSE_POR_VENCER` con el reloj dos
   veces y con **dos aplicaciones a la vez** contra la misma base (SC-005)
 
 ### Implementación de la historia 5
 
-- [ ] T041 [US5] `not/dominio/` (`aviso.ts`, `plantillas.ts`, puerto `EnviadorMensajes`) y
+- [X] T041 [US5] `not/dominio/` (`aviso.ts`, `plantillas.ts`, puerto `EnviadorMensajes`) y
   `not/aplicacion/` (`crear-aviso.ts`, `enviar-avisos-pendientes.ts`); `tra/fachada.ts`
   `contactoTitular(numero)`. Deben pasar T039
-- [ ] T042 [US5] `not/infraestructura/` (repositorio, `enviador-simulado-redis.ts`,
+- [X] T042 [US5] `not/infraestructura/` (repositorio, `enviador-simulado-redis.ts`,
   `enviador-avisos.ts` con `AVISOS_INTERVALO_MS`, manejadores de `EstadoExpedienteCambiado` e
   `ItsePorVencer`); `lic/aplicacion/avisar-certificados-por-vencer.ts` llamado desde el reloj. Deben
   pasar T040
 
 **Punto de control**: los avisos llegan (simulados).
+
+> Nota de implementación: las plantillas viven en `not/dominio/aviso.ts`, los dos casos de uso en
+> `not/aplicacion/avisos.ts`, el enviador simulado y la tarea periódica en
+> `not/infraestructura/adaptadores.ts`, y el aviso del ITSE en `FachadaLicencias.avisarCertificadosPorVencer`
+> (una sola sentencia marca y publica), registrado como tarea del reloj de plazos.
 
 ---
 

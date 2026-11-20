@@ -63,6 +63,9 @@ class LicenciasEnMemoria implements RepositorioLicencias {
   registrarCertificado() {
     return Promise.resolve('REGISTRADO' as const);
   }
+  avisarCertificadosPorVencer() {
+    return Promise.resolve(0);
+  }
 }
 
 describe('EmitirLicencia (FR-001, FR-003 y FR-004 de la 006)', () => {

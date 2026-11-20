@@ -25,4 +25,8 @@ export interface LectorParaModulos {
   ): Promise<ReadonlyMap<string, { readonly giro: string; readonly nombreLicencia: string }>>;
   /** Dirección del local descifrada: solo para el inspector asignado (research §R-14 de la 006). */
   direccionDelLocal(numero: string): Promise<string | null>;
+  /** Correo (si lo dio) y celular descifrados: solo para crear el aviso, que los vuelve a cifrar (006). */
+  contactoTitular(
+    numero: string,
+  ): Promise<{ readonly correo: string | null; readonly celular: string } | null>;
 }

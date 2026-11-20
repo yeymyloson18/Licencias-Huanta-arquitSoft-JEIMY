@@ -81,4 +81,20 @@ export class LectorParaModulosPostgres implements LectorParaModulos {
     });
     return fila === null ? null : this.protector.descifrar(fila.direccion_cifrada);
   }
+
+  async contactoTitular(
+    numero: string,
+  ): Promise<{ readonly correo: string | null; readonly celular: string } | null> {
+    const fila = await this.prisma.expediente.findUnique({
+      where: { numero },
+      select: { correo_cifrado: true, celular_cifrado: true },
+    });
+    if (fila === null) {
+      return null;
+    }
+    return {
+      correo: fila.correo_cifrado === null ? null : this.protector.descifrar(fila.correo_cifrado),
+      celular: this.protector.descifrar(fila.celular_cifrado),
+    };
+  }
 }
