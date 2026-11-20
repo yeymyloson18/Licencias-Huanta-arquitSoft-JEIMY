@@ -1421,3 +1421,39 @@ export const atenderAlerta = async (
     return 'no-disponible';
   }
 };
+
+// ----------------------------------------------------------------- tablero de la jefatura (007)
+
+export type Tablero = components['schemas']['Tablero'];
+
+/** Tablero de un rango (sin fechas, el mes actual). Rol JEFATURA. */
+export const obtenerTablero = async (
+  rango: { readonly desde: string; readonly hasta: string } | null,
+): Promise<
+  | { readonly tipo: 'ok'; readonly tablero: Tablero }
+  | {
+      readonly tipo: 'invalido';
+      readonly errores: readonly { readonly campo: string; readonly mensaje: string }[];
+    }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' }
+> => {
+  try {
+    const { data, error, response } = await cliente.GET('/reportes/tablero', {
+      params: { query: rango ?? {} },
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', tablero: data };
+    }
+    if (response.status === 422) {
+      const errores = (error as { errores?: { campo: string; mensaje: string }[] } | undefined)
+        ?.errores;
+      return { tipo: 'invalido', errores: errores ?? [] };
+    }
+    return response.status === 401 || response.status === 403
+      ? { tipo: 'sin-permiso' }
+      : { tipo: 'no-disponible' };
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};

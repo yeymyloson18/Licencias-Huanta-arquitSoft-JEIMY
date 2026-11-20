@@ -14,6 +14,7 @@ import { Auditoria } from './paginas/personal/Auditoria';
 import { Feriados } from './paginas/admin/Feriados';
 import { Alertas } from './paginas/personal/Alertas';
 import { Caja } from './paginas/personal/Caja';
+import { Tablero } from './paginas/personal/Tablero';
 import { Inspecciones } from './paginas/personal/Inspecciones';
 import { ResultadoInspeccion } from './paginas/personal/ResultadoInspeccion';
 import { DetalleExpediente } from './paginas/personal/DetalleExpediente';
@@ -101,6 +102,14 @@ export function RutasAplicacion() {
               element={
                 <RutaProtegida roles={['ADMINISTRADOR']}>
                   <Feriados />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/personal/tablero"
+              element={
+                <RutaProtegida roles={['JEFATURA']}>
+                  <Tablero />
                 </RutaProtegida>
               }
             />

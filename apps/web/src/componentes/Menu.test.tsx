@@ -131,6 +131,26 @@ describe('Menú del personal', () => {
     expect(within(menu).getByRole('link', { name: etiqueta })).toHaveAttribute('href', ruta);
   });
 
+  it('solo jefatura ve "Tablero" (007)', async () => {
+    simularApi(conSesion(['JEFATURA']));
+    montarEn('/');
+    const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+    expect(within(menu).getByRole('link', { name: 'Tablero' })).toHaveAttribute(
+      'href',
+      '/personal/tablero',
+    );
+  });
+
+  it.each(['MESA_PARTES', 'EVALUADOR', 'CAJA', 'ADMINISTRADOR'])(
+    '%s no ve "Tablero" (007)',
+    async (rol) => {
+      simularApi(conSesion([rol]));
+      montarEn('/');
+      const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+      expect(within(menu).queryByRole('link', { name: 'Tablero' })).not.toBeInTheDocument();
+    },
+  );
+
   it('jefatura ve "Auditoría" (005)', async () => {
     simularApi(conSesion(['JEFATURA']));
     montarEn('/');

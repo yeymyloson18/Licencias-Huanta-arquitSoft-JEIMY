@@ -92,17 +92,17 @@ a mano (SC-002).
 
 ### Pruebas de la historia 1
 
-- [ ] T007 [P] [US1] Pruebas unitarias en `test-rep/dominio/` de:
+- [X] T007 [P] [US1] Pruebas unitarias en `test-rep/dominio/` de:
   - `RangoFechas`: mes actual, más de 366 días, `desde > hasta`, fechas inválidas;
   - `Atencion`: suspensiones recortadas, feriados, misma fecha = 0;
   - `Tablero`: promedios con un decimal, plazo 0 → `null`, receta sin atendidos → `null`;
   - `Centimos`: `"0.10" + "0.20" = "0.30"`, formato inválido.
-- [ ] T008 [P] [US1] Pruebas unitarias en `test-rep/aplicacion/obtener-tablero.spec.ts`:
+- [X] T008 [P] [US1] Pruebas unitarias en `test-rep/aplicacion/obtener-tablero.spec.ts`:
   - usa la caché si existe;
   - guarda 300 s;
   - con Redis caído calcula igual;
   - un solo `CalendarioHabil` por consulta.
-- [ ] T009 [P] [US1] Prueba de integración `int/reportes-tablero.e2e-spec.ts`:
+- [X] T009 [P] [US1] Prueba de integración `int/reportes-tablero.e2e-spec.ts`:
   - siembra expedientes, historial con observación y pago, esquelas pagadas y feriados;
   - comprueba conteos, promedios, porcentaje e ingresos exactos;
   - sin fechas → mes actual;
@@ -115,15 +115,15 @@ a mano (SC-002).
 
 ### Implementación de la historia 1
 
-- [ ] T010 [US1] `rep/dominio/` (`rango-fechas.ts`, `atencion.ts`, `tablero.ts`, `puertos.ts`) y
+- [X] T010 [US1] `rep/dominio/` (`rango-fechas.ts`, `tablero.ts` con los días de atención, `puertos.ts`) y
   `rep/aplicacion/obtener-tablero.ts`. Deben pasar T007 y T008.
-- [ ] T011 [US1] Infraestructura y presentación:
+- [X] T011 [US1] Infraestructura y presentación:
   - `rep/infraestructura/fuentes-fachadas.ts` y `cache-redis.ts`;
   - `rep/presentacion/reportes.controller.ts` (`GET /reportes/tablero`, JEFATURA);
   - cableado en `rep/reportes.module.ts`.
 
   Debe pasar T009.
-- [ ] T012 [P] [US1] Portal:
+- [X] T012 [P] [US1] Portal:
   - `web/componentes/GraficoBarras.tsx` (SVG accesible con `<title>`, resumen y tabla), con su prueba;
   - `web/servicios/clienteApi.ts` `obtenerTablero`;
   - `web/paginas/personal/Tablero.tsx` (rango, tres secciones, estados), con su prueba;
