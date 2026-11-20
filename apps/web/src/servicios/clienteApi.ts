@@ -951,3 +951,49 @@ export const guardarArchivo = (contenido: Blob, nombre: string): void => {
   enlace.remove();
   URL.revokeObjectURL(url);
 };
+
+// ----------------------------------------------------------------- subsanación (005)
+
+export type ResultadoSubsanacion =
+  | { readonly tipo: 'ok'; readonly expediente: ExpedienteRegistrado }
+  | { readonly tipo: 'invalido'; readonly errores: readonly ErrorCampo[] }
+  | { readonly tipo: 'no-autenticado' }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'ya-no-observado' }
+  | { readonly tipo: 'no-disponible' };
+
+/** Subsana en línea con el token de identidad del titular (historia 4 de la 005). */
+export const subsanarObservacion = async (
+  token: string,
+  numeroExpediente: string,
+  identidad: IdentidadSolicitud,
+  documentos: readonly { readonly requisitoId: number; readonly documentoId: string }[],
+): Promise<ResultadoSubsanacion> => {
+  try {
+    const { data, error, response } = await clientePublico.POST(
+      '/expedientes/{numeroExpediente}/subsanar',
+      {
+        params: { path: { numeroExpediente } },
+        headers: conIdentidad(token),
+        body: { identidad, documentos: [...documentos] },
+      },
+    );
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', expediente: data };
+    }
+    switch (response.status) {
+      case 422:
+        return { tipo: 'invalido', errores: erroresDe(error) };
+      case 401:
+        return { tipo: 'no-autenticado' };
+      case 403:
+        return { tipo: 'sin-permiso' };
+      case 409:
+        return { tipo: 'ya-no-observado' };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};

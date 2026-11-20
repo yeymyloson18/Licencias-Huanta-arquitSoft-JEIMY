@@ -55,6 +55,9 @@ const aRespuesta = (estado: EstadoPublico) => ({
   ...(estado.observacionesPendientes.length === 0
     ? {}
     : { observacionesPendientes: [...estado.observacionesPendientes] }),
+  ...(estado.requisitosSubsanables.length === 0
+    ? {}
+    : { requisitosSubsanables: estado.requisitosSubsanables.map((r) => ({ ...r })) }),
 });
 
 /** Consulta pública del estado del trámite (CU05 de la 004, contracts/consulta-y-bandeja.md). */

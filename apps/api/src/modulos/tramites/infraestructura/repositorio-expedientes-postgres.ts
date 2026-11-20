@@ -120,9 +120,17 @@ export class RepositorioExpedientesPostgres implements RepositorioExpedientes {
     if (fila === null) {
       return null;
     }
-    const receta = fila.receta_al_presentar as { nombre?: unknown } | null;
+    const receta = fila.receta_al_presentar as {
+      nombre?: unknown;
+      requisitos?: readonly { id?: unknown; descripcion?: unknown }[];
+    } | null;
     return {
       observacionesPendientes: fila.observacion.map((observacion) => observacion.descripcion),
+      requisitos: (receta?.requisitos ?? []).flatMap((requisito) =>
+        typeof requisito.id === 'number' && typeof requisito.descripcion === 'string'
+          ? [{ id: requisito.id, descripcion: requisito.descripcion }]
+          : [],
+      ),
       numero: fila.numero,
       estado: comoEstado(fila.estado),
       ruta: comoRuta(fila.ruta),

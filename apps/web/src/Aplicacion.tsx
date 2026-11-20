@@ -17,6 +17,7 @@ import { MesaPartes } from './paginas/personal/MesaPartes';
 import { Comprobante } from './paginas/tramite/Comprobante';
 import { Identidad } from './paginas/tramite/Identidad';
 import { Solicitud } from './paginas/tramite/Solicitud';
+import { Subsanar } from './paginas/tramite/Subsanar';
 import { useSesion } from './sesion/ProveedorSesion';
 import { ProveedorMesaPartes } from './tramite/ContextoMesaPartes';
 import { ProveedorTramite } from './tramite/ContextoTramite';
@@ -63,6 +64,7 @@ export function RutasAplicacion() {
             <Route path="/tramite/identidad" element={<Identidad />} />
             <Route path="/tramite/solicitud" element={<Solicitud />} />
             <Route path="/tramite/comprobante/:numero" element={<Comprobante />} />
+            <Route path="/tramite/subsanar/:numero" element={<Subsanar />} />
             <Route
               path="/admin/usuarios"
               element={

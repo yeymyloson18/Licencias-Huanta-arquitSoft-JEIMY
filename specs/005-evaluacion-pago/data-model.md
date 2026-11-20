@@ -1,7 +1,7 @@
 # Modelo de datos: Evaluación del expediente, esquela de pago y pago en caja
 
 La mayoría de las tablas ya existen en `docs/05-modelo-de-datos/esquema.sql`. La migración
-`0008_evaluacion_pago` hace solo tres cambios; las migraciones 0001 a 0007 no se editan.
+`0008_evaluacion_pago` hace solo tres cambios; las migraciones 0001 a 0007 no se editan (la 0009 se agregó al implementar la historia 4).
 
 ## Migración 0008
 
@@ -23,6 +23,18 @@ CREATE INDEX ix_evento_pendiente_por_procesar ON comun.evento_pendiente (id)
 
 El nombre real de la restricción del CHECK se comprueba contra la base migrada antes de escribir la
 migración (la prueba `esquema-equivalente` de la 004 compara `esquema.sql` con las migraciones).
+
+## Migración 0009 (descubierta al implementar la historia 4)
+
+La 0006 solo admite `usuario_id` nulo en la auditoría para `PRESENTAR_EN_LINEA`. La subsanación en
+línea la hace el titular, sin usuario del personal, así que `SUBSANAR` también debe admitirlo. Como la
+0008 ya estaba aplicada, el cambio va en una migración nueva:
+
+```sql
+ALTER TABLE tramites.auditoria DROP CONSTRAINT auditoria_usuario_check;
+ALTER TABLE tramites.auditoria ADD CONSTRAINT auditoria_usuario_check
+    CHECK (accion IN ('PRESENTAR_EN_LINEA', 'SUBSANAR') OR usuario_id IS NOT NULL);
+```
 
 ## 1. `tramites.expediente` (de la 004)
 

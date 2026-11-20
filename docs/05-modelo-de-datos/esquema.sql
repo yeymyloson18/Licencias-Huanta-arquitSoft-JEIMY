@@ -347,7 +347,7 @@ CREATE TABLE tramites.auditoria (
     numero_expediente   varchar(20)   NOT NULL,
     detalle             jsonb,
     ocurrido_en         timestamptz   NOT NULL DEFAULT now(),
-    CONSTRAINT auditoria_usuario_check CHECK (accion = 'PRESENTAR_EN_LINEA' OR usuario_id IS NOT NULL)
+    CONSTRAINT auditoria_usuario_check CHECK (accion IN ('PRESENTAR_EN_LINEA', 'SUBSANAR') OR usuario_id IS NOT NULL)
 );
 CREATE INDEX ix_auditoria_tramites ON tramites.auditoria (numero_expediente, ocurrido_en);
 

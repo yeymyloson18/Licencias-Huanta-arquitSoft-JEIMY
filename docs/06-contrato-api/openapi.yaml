@@ -2170,6 +2170,18 @@ components:
         observacionesPendientes:
           type: array
           items: { type: string }
+        requisitosSubsanables:
+          description: >-
+            Solo cuando el expediente está OBSERVADO: requisitos de la receta guardada al presentar a los que
+            se pueden adjuntar documentos al subsanar (005, historia 4).
+          type: array
+          items:
+            type: object
+            required: [id, descripcion]
+            additionalProperties: false
+            properties:
+              id: { type: integer }
+              descripcion: { type: string }
         tokenConsulta:
           description: Solo cuando el expediente está PENDIENTE_PAGO; sirve 15 minutos para descargar la esquela de ese expediente (005).
           $ref: '#/components/schemas/TokenCorto'

@@ -2,17 +2,13 @@ import { ErrorValidacionSolicitud, type ErrorCampoSolicitud } from '../dominio/e
 import { crearExpediente, type Establecimiento } from '../dominio/expediente';
 import { TEXTO_ESTADO_PUBLICO } from '../dominio/estado-publico';
 import {
-  campoRequisito,
   clasificarRequisitos,
   revisarAdjuntos,
   type DocumentoAdjunto,
 } from '../dominio/politica-requisitos';
 import type { CalculadorHuella } from '../dominio/puertos/calculador-huella';
 import type { CatalogoRecetas } from '../dominio/puertos/catalogo-recetas';
-import type {
-  DocumentoTemporal,
-  RepositorioDocumentosTemporales,
-} from '../dominio/puertos/repositorio-documentos-temporales';
+import type { RepositorioDocumentosTemporales } from '../dominio/puertos/repositorio-documentos-temporales';
 import type { Reloj } from '../dominio/puertos/reloj';
 import type {
   ExpedienteRegistrado,
@@ -28,6 +24,7 @@ import {
   ErrorIdentificacionNoDisponible,
   ErrorPermisoUsado,
 } from './errores';
+import { type CanalEntrante, revisarDocumentosTemporales } from './revisar-documentos';
 
 export interface DependenciasPresentarSolicitud {
   readonly unidad: UnidadDeTrabajoTramites;
@@ -58,9 +55,7 @@ export interface SolicitudEntrante {
  * Por dónde llega la solicitud: en línea, con la verificación de identidad del token; en mesa de
  * partes, con el usuario del personal que la registra (historia 3).
  */
-export type CanalEntrante =
-  | { readonly tipo: 'EN_LINEA'; readonly verificacionId: string }
-  | { readonly tipo: 'MESA_PARTES'; readonly usuarioId: string };
+export type { CanalEntrante } from './revisar-documentos';
 
 export interface PresentacionRegistrada extends ExpedienteRegistrado {
   readonly siguientePaso: string;
@@ -71,9 +66,6 @@ export type ResultadoPresentacion =
   | { readonly tipo: 'CREADO'; readonly expediente: PresentacionRegistrada }
   /** Reintento con la misma clave y el mismo cuerpo: el mismo expediente (FR-020). */
   | { readonly tipo: 'EXISTENTE'; readonly expediente: PresentacionRegistrada };
-
-/** Un documento temporal vence a las 24 horas (FR-014). */
-const VIDA_DOCUMENTO_MS = 24 * 60 * 60 * 1000;
 
 /** JSON con las claves ordenadas: el mismo cuerpo da la misma huella aunque cambie el orden. */
 const jsonCanonico = (valor: unknown): string => {
@@ -130,7 +122,7 @@ export class PresentarSolicitud {
     const clasificacion = clasificarRequisitos(receta.requisitos, conRepresentante);
     const errores: ErrorCampoSolicitud[] = [
       ...revisarAdjuntos(clasificacion, solicitud.documentos),
-      ...(await this.revisarDocumentos(solicitud.documentos, canal)),
+      ...(await revisarDocumentosTemporales(this.d, solicitud.documentos, canal)),
     ];
     if (errores.length > 0) {
       // Un envío simultáneo con la misma clave pudo llevarse ya los documentos: entonces es el mismo
@@ -293,41 +285,5 @@ export class PresentarSolicitud {
       ]);
     }
     return receta;
-  }
-
-  /** Cada documento debe existir, ser de quien presenta y tener menos de 24 horas. */
-  private async revisarDocumentos(
-    adjuntos: readonly DocumentoAdjunto[],
-    canal: CanalEntrante,
-  ): Promise<ErrorCampoSolicitud[]> {
-    if (adjuntos.length === 0) {
-      return [];
-    }
-    const encontrados = await this.d.documentos.obtenerVarios(
-      adjuntos.map((adjunto) => adjunto.documentoId),
-    );
-    const porId = new Map<string, DocumentoTemporal>(encontrados.map((doc) => [doc.id, doc]));
-    const ahora = this.d.reloj.ahora().getTime();
-    const errores: ErrorCampoSolicitud[] = [];
-    for (const adjunto of adjuntos) {
-      const documento = porId.get(adjunto.documentoId);
-      const esDelSolicitante =
-        canal.tipo === 'EN_LINEA'
-          ? documento?.verificacionId === canal.verificacionId
-          : documento?.usuarioId === canal.usuarioId;
-      if (documento === undefined || !esDelSolicitante) {
-        // Un documento ajeno se responde igual que uno inexistente: no se revela que existe.
-        errores.push({
-          campo: campoRequisito(adjunto.requisitoId),
-          mensaje: 'El documento no está disponible. Vuelve a subirlo',
-        });
-      } else if (ahora - documento.subidoEn.getTime() > VIDA_DOCUMENTO_MS) {
-        errores.push({
-          campo: campoRequisito(adjunto.requisitoId),
-          mensaje: 'El documento venció (más de 24 horas). Vuelve a subirlo',
-        });
-      }
-    }
-    return errores;
   }
 }

@@ -1,4 +1,5 @@
 import { type SyntheticEvent, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
 import { CampoFormulario } from '../componentes/CampoFormulario';
 import { DescargarEsquela } from '../componentes/DescargarEsquela';
 import { conPuntoFinal, formatearTasaFicha } from '../componentes/formato';
@@ -164,6 +165,14 @@ export function Consulta() {
                     <li key={texto}>{texto}</li>
                   ))}
                 </ul>
+                {estado.estado === 'OBSERVADO' && (
+                  <Link
+                    className="boton"
+                    to={`/tramite/identidad?subsanar=${encodeURIComponent(estado.numero)}`}
+                  >
+                    Subsanar
+                  </Link>
+                )}
               </>
             )}
             {estado.codigoEsquela && (

@@ -23,6 +23,8 @@ export interface EstadoPublico {
     readonly ocurridoEn: Date;
   }[];
   readonly observacionesPendientes: readonly string[];
+  /** Solo en OBSERVADO: a qué requisitos se pueden adjuntar documentos al subsanar. */
+  readonly requisitosSubsanables: readonly { readonly id: number; readonly descripcion: string }[];
   readonly esquela: {
     readonly codigo: string;
     readonly monto: string;
@@ -58,6 +60,7 @@ const aEstadoPublico = (
     })),
     observacionesPendientes:
       expediente.estado === 'OBSERVADO' ? expediente.observacionesPendientes : [],
+    requisitosSubsanables: expediente.estado === 'OBSERVADO' ? expediente.requisitos : [],
     ...pago,
   };
 };

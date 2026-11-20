@@ -211,21 +211,21 @@ descargar el PDF sin datos personales.
 
 ### Pruebas de la historia 4 ⚠️
 
-- [ ] T032 [P] [US4] Pruebas unitarias `test-tra/aplicacion/subsanar-observacion.spec.ts`: en línea con
+- [X] T032 [P] [US4] Pruebas unitarias `test-tra/aplicacion/subsanar-observacion.spec.ts`: en línea con
   la identidad del titular; con otra identidad → error sin datos; mesa de partes; sin documentos →
   error; requisito que no es de la receta → error; documento ajeno o vencido → error; no OBSERVADO →
   transición inválida
-- [ ] T033 [P] [US4] Prueba de integración `int/subsanacion.e2e-spec.ts`: titular confirma identidad,
+- [X] T033 [P] [US4] Prueba de integración `int/subsanacion.e2e-spec.ts`: titular confirma identidad,
   sube y subsana → 200 EN_EVALUACION con el documento agregado y `subsanada_en`; otra identidad → 403;
   MESA_PARTES → 200; EVALUADOR → 403; expediente REGISTRADO → 409
 
 ### Implementación de la historia 4
 
-- [ ] T034 [US4] `tra/aplicacion/subsanar-observacion.ts` (reutiliza la revisión de documentos de la
+- [X] T034 [US4] `tra/aplicacion/subsanar-observacion.ts` (reutiliza la revisión de documentos de la
   004) y su escritura en `repositorio-decisiones-postgres.ts`. Deben pasar T032
-- [ ] T035 [US4] `tra/presentacion/subsanacion.controller.ts` (`POST …/subsanar` con `SolicitanteGuard`).
+- [X] T035 [US4] `tra/presentacion/subsanacion.controller.ts` (`POST …/subsanar` con `SolicitanteGuard`).
   Debe pasar T033
-- [ ] T036 [US4] Portal: en `web/paginas/Consulta.tsx`, cuando está OBSERVADO, enlace "Subsanar" que
+- [X] T036 [US4] Portal: en `web/paginas/Consulta.tsx`, cuando está OBSERVADO, enlace "Subsanar" que
   lleva a confirmar la identidad (004) y a un formulario de documentos de subsanación
   (`web/paginas/tramite/Subsanar.tsx` + prueba) que reutiliza la subida de la 004
 

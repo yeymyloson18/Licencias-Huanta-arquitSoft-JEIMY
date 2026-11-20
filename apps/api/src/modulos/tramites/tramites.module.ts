@@ -16,6 +16,9 @@ import { FachadaCatalogo } from '../catalogo/fachada';
 import { FachadaPagos } from '../pagos/fachada';
 import { FachadaSeguridad } from '../seguridad/fachada';
 import { DatosPagoConsultaFachadas } from './infraestructura/datos-pago-consulta-fachadas';
+import { SubsanarObservacion } from './aplicacion/subsanar-observacion';
+import { RepositorioSubsanacionPostgres } from './infraestructura/repositorio-subsanacion-postgres';
+import { SubsanacionController } from './presentacion/subsanacion.controller';
 import {
   DescargarDocumento,
   ListarExpedientes,
@@ -74,6 +77,7 @@ const reloj = new RelojSistema();
     BandejaController,
     EvaluacionController,
     CajaController,
+    SubsanacionController,
   ],
   providers: [
     // Decisiones del evaluador (005).
@@ -204,6 +208,22 @@ const reloj = new RelojSistema();
           verificador: new VerificadorIdentidadFachada(seguridad),
           documentos: new RepositorioDocumentosTemporalesPostgres(prisma),
           huella,
+          reloj,
+        }),
+    },
+    // Subsanación de la observación (005, historia 4).
+    {
+      provide: SubsanarObservacion,
+      inject: [PrismaServicio, PROTECTOR_DATOS, FachadaSeguridad],
+      useFactory: (
+        prisma: PrismaServicio,
+        protector: ProtectorDatos,
+        seguridad: FachadaSeguridad,
+      ) =>
+        new SubsanarObservacion({
+          repositorio: new RepositorioSubsanacionPostgres(prisma, protector),
+          verificador: new VerificadorIdentidadFachada(seguridad),
+          documentos: new RepositorioDocumentosTemporalesPostgres(prisma),
           reloj,
         }),
     },

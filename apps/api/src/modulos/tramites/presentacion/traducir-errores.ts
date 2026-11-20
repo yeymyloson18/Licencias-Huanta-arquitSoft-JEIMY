@@ -10,11 +10,16 @@ import {
   ErrorVersionCambiada,
   ErrorYaObservado,
 } from '../aplicacion/errores';
+import { ErrorNoEsTitular } from '../aplicacion/subsanar-observacion';
 import { ErrorValidacionSolicitud } from '../dominio/errores';
 import { ErrorTransicionInvalida } from '../dominio/maquina-estados';
 
 /** Convierte los errores de Trámites en problemas del contrato (sin datos personales). */
 export const traducirErrorTramites = (error: unknown): unknown => {
+  if (error instanceof ErrorNoEsTitular) {
+    // Sin decir de quién es el expediente (contrato de `POST …/subsanar`).
+    return ErrorProblema.sinPermiso();
+  }
   if (error instanceof ErrorTransicionInvalida) {
     return ErrorProblema.transicionInvalida(error.estadoActual);
   }

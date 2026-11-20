@@ -28,6 +28,7 @@ interface EstadoConsultado {
   readonly esquelaPagada?: boolean;
   readonly tokenConsulta?: { readonly token: string; readonly expiraEn: number };
   readonly observacionesPendientes?: string[];
+  readonly requisitosSubsanables?: { id: number; descripcion: string }[];
 }
 
 /** supertest no junta un cuerpo binario por defecto. */
@@ -197,5 +198,7 @@ describe('PDF de la esquela y consulta con datos de pago (historia 3 de la 005)'
     expect(estadoPagado).toMatchObject({ codigoEsquela: pagado.codigo, esquelaPagada: false });
     expect(estadoObservado.observacionesPendientes).toEqual(['Falta el croquis de ubicación']);
     expect(estadoObservado.tokenConsulta).toBeUndefined();
+    expect(estadoObservado.requisitosSubsanables?.length).toBeGreaterThan(0);
+    expect(estadoPagado.requisitosSubsanables).toBeUndefined();
   });
 });

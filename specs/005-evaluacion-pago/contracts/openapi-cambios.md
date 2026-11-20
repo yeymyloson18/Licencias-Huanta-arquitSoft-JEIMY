@@ -14,7 +14,7 @@ Se hacen **antes** del código (principio II) y se validan con `npm run contrato
 | `POST /expedientes/{n}/subsanar` (`subsanarObservacion`) | Cuerpo: `identidad` (obligatoria con `tokenIdentidad`) y `documentos`; respuesta: vuelve a **EN_EVALUACION**; agrega 404 y 422 |
 | `GET /expedientes/{n}/auditoria` (`auditoriaTramites`) | Agrega 404; los registros llevan `nombreUsuario` y `referencia` = número de expediente |
 | `GET /expedientes/{n}/titular` (`obtenerTitularParaCaja`) | Sin cambios (rol CAJA); agrega `Cache-Control: no-store` |
-| `POST /expedientes/consultar` (`consultarEstado`) | `EstadoPublico` llena `codigoEsquela`, `montoEsquela`, `esquelaPagada` y `tokenConsulta` cuando el expediente está PENDIENTE_PAGO, y `observacionesPendientes` cuando está OBSERVADO |
+| `POST /expedientes/consultar` (`consultarEstado`) | `EstadoPublico` llena `codigoEsquela`, `montoEsquela`, `esquelaPagada` y `tokenConsulta` cuando el expediente está PENDIENTE_PAGO, y `observacionesPendientes` y `requisitosSubsanables` (id y descripción de la receta guardada, agregado al implementar la historia 4) cuando está OBSERVADO |
 | `GET /esquelas/{codigo}` (`consultarEsquela`) | Rol CAJA; agrega `estadoExpediente` y `nombreLicencia` al esquema `Esquela` |
 | `GET /esquelas/{codigo}/pdf` (`descargarEsquela`) | `tokenConsulta` del mismo expediente o sesión EVALUADOR, CAJA o JEFATURA; agrega 403; 202 mientras la esquela aún no existe |
 | `POST /esquelas/{codigo}/pago` (`registrarPagoEnCaja`) | Agrega 422 (recibo con formato inválido); 409 con `type` `esquela-ya-pagada`, `recibo-repetido` o `transicion-invalida` |

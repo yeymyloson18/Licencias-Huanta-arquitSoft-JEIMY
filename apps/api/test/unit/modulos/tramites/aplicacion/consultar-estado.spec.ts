@@ -22,6 +22,7 @@ const EXPEDIENTE: ExpedienteConsultado = {
   vencePlazoEn: null,
   historial: [{ estado: 'REGISTRADO', ocurridoEn: T0 }],
   observacionesPendientes: ['Falta el croquis'],
+  requisitos: [{ id: 11, descripcion: 'Croquis de ubicación' }],
 };
 
 /** Coincide si el documento es el DNI o el RUC del titular ficticio. */
@@ -108,6 +109,7 @@ describe('ConsultarEstado (CU05 de la 004)', () => {
           },
         ],
         observacionesPendientes: [],
+        requisitosSubsanables: [],
         esquela: null,
         tokenConsulta: null,
       },
@@ -151,6 +153,7 @@ describe('ConsultarEstado (CU05 de la 004)', () => {
       });
       expect(estado.tokenConsulta).toEqual({ token: 'token-ficticio', expiraEn: 900 });
       expect(estado.observacionesPendientes).toEqual([]);
+      expect(estado.requisitosSubsanables).toEqual([]);
     });
 
     it('PAGADO trae la esquela pero no el token', async () => {
@@ -165,6 +168,9 @@ describe('ConsultarEstado (CU05 de la 004)', () => {
       const estado = await conEstado('OBSERVADO');
 
       expect(estado.observacionesPendientes).toEqual(['Falta el croquis']);
+      expect(estado.requisitosSubsanables).toEqual([
+        { id: 11, descripcion: 'Croquis de ubicación' },
+      ]);
       expect(estado.esquela).toBeNull();
       expect(pedidos).toEqual([]);
     });

@@ -13,6 +13,8 @@ export interface ExpedienteConsultado {
   readonly historial: readonly { readonly estado: EstadoExpediente; readonly ocurridoEn: Date }[];
   /** Texto de las observaciones sin subsanar (005), de la más antigua a la más nueva. */
   readonly observacionesPendientes: readonly string[];
+  /** Requisitos de la receta guardada al presentar, en su orden (para subsanar, 005). */
+  readonly requisitos: readonly { readonly id: number; readonly descripcion: string }[];
 }
 
 type Ruta = 'A' | 'B' | 'C';
