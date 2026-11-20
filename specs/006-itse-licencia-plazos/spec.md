@@ -24,6 +24,23 @@ copias del sistema) y ADR-007 (verificación pública con datos mínimos). Issue
 de licencia de la 009 del plan original. Usa los expedientes de la 004, la evaluación y el pago de la
 005, el catálogo de la 003 (ruta, orden del ITSE, vigencia y plazo) y la seguridad de la 002.
 
+## Aclaraciones
+
+### Sesión 2026-11-20
+
+Por indicación de la usuaria, cada pregunta se respondió con la opción recomendada.
+
+- P: ¿El plazo del expediente sigue corriendo mientras espera el pago del administrado? → R: No. Se
+  suspende en PENDIENTE_PAGO igual que en OBSERVADO (el plazo del TUPA mide el tiempo de la
+  Municipalidad) y se reanuda al registrarse el pago, con los días hábiles que quedaban.
+- P: ¿Cada cuánto corre el reloj de plazos? → R: Cada hora (configurable) y al iniciar el sistema.
+- P: ¿Qué formato tiene el número del certificado ITSE? → R: De 4 a 30 caracteres (letras
+  mayúsculas, números, guiones y barras), normalizado a mayúsculas y sin espacios; único en el
+  sistema.
+- P: ¿Quién figura como emisor de la licencia? → R: La emisión es automática: la auditoría de
+  licencias la registra con usuario vacío. Quién aprobó (evaluador) o inspeccionó (inspector) ya queda
+  en la auditoría de trámites o de inspecciones.
+
 ## Escenarios de usuario y pruebas *(obligatorio)*
 
 ### Historia de usuario 1 - Emitir la licencia con QR y verificarla (Prioridad: P1)
@@ -137,6 +154,9 @@ el vencimiento se corre los días hábiles que estuvo observado.
 5. **Dado** un expediente que se observa, **cuando** se registra la observación, **entonces** el plazo
    para subsanar es de 2 días hábiles y el plazo del expediente queda suspendido; **cuando** se
    subsana, el vencimiento se corre tantos días hábiles como los que quedaban al observarlo.
+5a. **Dado** un expediente que pasa a esperar el pago, **cuando** se confirma el riesgo, **entonces**
+   su plazo queda suspendido; **cuando** se registra el pago, el vencimiento se recalcula con los días
+   hábiles que quedaban.
 6. **Dado** un plazo que cruza el fin de año o un fin de semana largo con feriados, **cuando** se
    calcula, **entonces** el resultado es correcto.
 
@@ -260,8 +280,10 @@ y comprobar que el reloj envía un solo aviso de vencimiento aunque corra varias
 - **FR-010**: Solo el inspector asignado MUST poder registrar el resultado (FAVORABLE o DESFAVORABLE),
   con observaciones (obligatorias si es desfavorable, hasta 2000 caracteres) y de 1 a 5 fotos JPG o
   PNG de hasta 10 MB cada una, cuyo tipo se comprueba por el contenido del archivo.
-- **FR-011**: Con resultado FAVORABLE, el inspector MUST registrar el número del certificado ITSE y su
-  fecha de emisión (no futura); el vencimiento MUST ser 2 años después de la emisión.
+- **FR-011**: Con resultado FAVORABLE, el inspector MUST registrar el número del certificado ITSE (de
+  4 a 30 caracteres: letras mayúsculas, números, guiones y barras; se normaliza a mayúsculas sin
+  espacios; único) y su fecha de emisión (no futura); el vencimiento MUST ser 2 años después de la
+  emisión.
 - **FR-012**: Una inspección MUST tener un solo resultado: un segundo registro MUST responder conflicto
   sin cambiar nada; las fotos se guardan con el mismo almacén de archivos de la 004.
 - **FR-013**: Cada asignación y cada resultado MUST quedar en la auditoría de inspecciones con el
@@ -278,8 +300,8 @@ y comprobar que el reloj envía un solo aviso de vencimiento aunque corra varias
 - **FR-016**: Un expediente MUST tener como máximo una licencia vigente.
 - **FR-017**: La licencia MUST tener un PDF con el código QR que apunta a la página pública de
   verificación, y sin documento, RUC, celular, correo ni dirección del titular.
-- **FR-018**: La emisión MUST quedar en la auditoría de licencias, con usuario vacío si fue
-  automática.
+- **FR-018**: La emisión es automática y MUST quedar en la auditoría de licencias con usuario vacío;
+  quién aprobó o inspeccionó queda en la auditoría de trámites o de inspecciones.
 - **FR-019**: La página pública de verificación MUST mostrar sin cuenta solo número, tipo, estado
   (VIGENTE o VENCIDA según la fecha), giro, zona, nombre comercial, titular público, fecha de emisión,
   vigencia y estado del certificado ITSE (sin certificado, vigente o vencido).
@@ -305,10 +327,13 @@ y comprobar que el reloj envía un solo aviso de vencimiento aunque corra varias
 - **FR-027**: Al observar un expediente, el plazo para subsanar MUST ser de 2 días hábiles y el plazo
   del expediente MUST suspenderse; al subsanar, el vencimiento MUST correrse los días hábiles que
   quedaban al observar.
+- **FR-027a**: Mientras el expediente espera el pago (PENDIENTE_PAGO), su plazo MUST suspenderse; al
+  registrarse el pago, el vencimiento MUST recalcularse con los días hábiles que quedaban.
 
 **Reloj y alertas**
 
-- **FR-028**: Una tarea periódica MUST generar una alerta cuando a un expediente en trámite (REGISTRADO,
+- **FR-028**: Una tarea que corre cada hora (configurable) y al iniciar el sistema MUST generar una
+  alerta cuando a un expediente en trámite (REGISTRADO,
   EN_EVALUACION, PAGADO, EN_INSPECCION o APROBADO) le quedan 2 días hábiles o menos, incluidos los ya
   vencidos.
 - **FR-029**: Aunque la tarea corra varias veces o en varias copias del sistema a la vez, MUST haber una
