@@ -8,6 +8,7 @@ import type {
   ExpedienteDetalle,
   ExpedienteResumen,
   FiltroBandeja,
+  NivelRiesgo,
   PaginaExpedientes,
   RepositorioExpedientes,
 } from '../dominio/puertos/repositorio-expedientes';
@@ -32,6 +33,9 @@ const nombreDeReceta = (receta: unknown, codigo: string): string => {
   const nombre = (receta as { nombre?: unknown } | null)?.nombre;
   return typeof nombre === 'string' ? nombre : codigo;
 };
+
+const comoNivel = (valor: string | null): NivelRiesgo | null =>
+  valor === 'BAJO' || valor === 'MEDIO' || valor === 'ALTO' || valor === 'MUY_ALTO' ? valor : null;
 
 const comoCanal = (valor: string): 'EN_LINEA' | 'MESA_PARTES' => {
   if (valor !== 'EN_LINEA' && valor !== 'MESA_PARTES') {
@@ -106,13 +110,27 @@ export class RepositorioExpedientesPostgres implements RepositorioExpedientes {
           select: { estado_nuevo: true, ocurrido_en: true },
           orderBy: { ocurrido_en: 'asc' },
         },
+        observacion: {
+          where: { subsanada_en: null },
+          select: { descripcion: true },
+          orderBy: { creada_en: 'asc' },
+        },
       },
     });
     if (fila === null) {
       return null;
     }
-    const receta = fila.receta_al_presentar as { nombre?: unknown } | null;
+    const receta = fila.receta_al_presentar as {
+      nombre?: unknown;
+      requisitos?: readonly { id?: unknown; descripcion?: unknown }[];
+    } | null;
     return {
+      observacionesPendientes: fila.observacion.map((observacion) => observacion.descripcion),
+      requisitos: (receta?.requisitos ?? []).flatMap((requisito) =>
+        typeof requisito.id === 'number' && typeof requisito.descripcion === 'string'
+          ? [{ id: requisito.id, descripcion: requisito.descripcion }]
+          : [],
+      ),
       numero: fila.numero,
       estado: comoEstado(fila.estado),
       ruta: comoRuta(fila.ruta),
@@ -147,7 +165,7 @@ export class RepositorioExpedientesPostgres implements RepositorioExpedientes {
 
   async obtenerDetalle(
     numero: NumeroExpediente,
-    lector: { readonly usuarioId: string; readonly en: Date },
+    lector: { readonly usuarioId: string; readonly en: Date } | null,
   ): Promise<ExpedienteDetalle | null> {
     return this.prisma.$transaction(async (tx) => {
       const fila = await tx.expediente.findUnique({
@@ -162,6 +180,12 @@ export class RepositorioExpedientesPostgres implements RepositorioExpedientes {
           direccion_cifrada: true,
           zona: true,
           area_m2: true,
+          nivel_riesgo_propuesto: true,
+          nivel_riesgo_confirmado: true,
+          observacion: {
+            select: { descripcion: true, plazo_subsanar_en: true, subsanada_en: true },
+            orderBy: { creada_en: 'asc' },
+          },
           documento: {
             select: { id: true, requisito_id: true, nombre_original: true, tipo_mime: true },
             orderBy: [{ requisito_orden: 'asc' }, { subido_en: 'asc' }],
@@ -181,14 +205,16 @@ export class RepositorioExpedientesPostgres implements RepositorioExpedientes {
         return null;
       }
       // Quién vio el detalle y cuándo (FR-036), en la misma transacción que la lectura.
-      await tx.auditoriaTramites.create({
-        data: {
-          usuario_id: lector.usuarioId,
-          accion: 'VER_DETALLE',
-          numero_expediente: fila.numero,
-          ocurrido_en: lector.en,
-        },
-      });
+      if (lector !== null) {
+        await tx.auditoriaTramites.create({
+          data: {
+            usuario_id: lector.usuarioId,
+            accion: 'VER_DETALLE',
+            numero_expediente: fila.numero,
+            ocurrido_en: lector.en,
+          },
+        });
+      }
       return {
         ...aResumen(fila),
         version: fila.version,
@@ -199,6 +225,13 @@ export class RepositorioExpedientesPostgres implements RepositorioExpedientes {
         direccion: this.protector.descifrar(fila.direccion_cifrada),
         zona: fila.zona,
         areaM2: fila.area_m2 === null ? null : Number(fila.area_m2),
+        nivelRiesgoPropuesto: comoNivel(fila.nivel_riesgo_propuesto),
+        nivelRiesgoConfirmado: comoNivel(fila.nivel_riesgo_confirmado),
+        observaciones: fila.observacion.map((observacion) => ({
+          descripcion: observacion.descripcion,
+          plazoSubsanarEn: observacion.plazo_subsanar_en,
+          subsanadaEn: observacion.subsanada_en,
+        })),
         documentos: fila.documento.map((documento) => ({
           id: documento.id,
           requisitoId: Number(documento.requisito_id),

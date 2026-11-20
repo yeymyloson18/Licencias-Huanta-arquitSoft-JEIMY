@@ -21,17 +21,20 @@ const EXPEDIENTE: ExpedienteConsultado = {
   presentadoEn: T0,
   vencePlazoEn: null,
   historial: [{ estado: 'REGISTRADO', ocurridoEn: T0 }],
+  observacionesPendientes: ['Falta el croquis'],
+  requisitos: [{ id: 11, descripcion: 'Croquis de ubicación' }],
 };
 
 /** Coincide si el documento es el DNI o el RUC del titular ficticio. */
 class ExpedientesEnMemoria implements Pick<RepositorioExpedientes, 'buscarParaConsulta'> {
   readonly busquedas: { numero: string; documento: string }[] = [];
+  expediente: ExpedienteConsultado = EXPEDIENTE;
 
   buscarParaConsulta(numero: NumeroExpediente, documento: string) {
     this.busquedas.push({ numero: numero.valor, documento });
     const coincide =
       numero.valor === EXPEDIENTE.numero && ['40000001', '10400000011'].includes(documento);
-    return Promise.resolve(coincide ? EXPEDIENTE : null);
+    return Promise.resolve(coincide ? this.expediente : null);
   }
 }
 
@@ -105,9 +108,72 @@ describe('ConsultarEstado (CU05 de la 004)', () => {
             ocurridoEn: T0,
           },
         ],
+        observacionesPendientes: [],
+        requisitosSubsanables: [],
+        esquela: null,
+        tokenConsulta: null,
       },
     });
     expect(JSON.stringify(resultado)).not.toMatch(/40000001|10400000011/);
+  });
+
+  describe('datos de pago y observaciones (005)', () => {
+    const pedidos: string[] = [];
+    const pago = {
+      esquelaDe: (numero: string) => {
+        pedidos.push(`esquela:${numero}`);
+        return Promise.resolve({ codigo: `ESQ-${numero}`, monto: '177.10', pagada: false });
+      },
+      tokenConsulta: (numero: string) => {
+        pedidos.push(`token:${numero}`);
+        return Promise.resolve({ token: 'token-ficticio', expiraEn: 900 });
+      },
+    };
+    const conEstado = async (estado: ExpedienteConsultado['estado']) => {
+      expedientes.expediente = { ...EXPEDIENTE, estado };
+      consultar = new ConsultarEstado({ expedientes, limitador, pago });
+      const resultado = await ejecutar('EXP-2026-000001', '40000001');
+      if (resultado.tipo !== 'ENCONTRADO') {
+        throw new Error('esperaba ENCONTRADO');
+      }
+      return resultado.estado;
+    };
+
+    beforeEach(() => {
+      pedidos.length = 0;
+    });
+
+    it('PENDIENTE_PAGO trae la esquela y el tokenConsulta', async () => {
+      const estado = await conEstado('PENDIENTE_PAGO');
+
+      expect(estado.esquela).toEqual({
+        codigo: 'ESQ-EXP-2026-000001',
+        monto: '177.10',
+        pagada: false,
+      });
+      expect(estado.tokenConsulta).toEqual({ token: 'token-ficticio', expiraEn: 900 });
+      expect(estado.observacionesPendientes).toEqual([]);
+      expect(estado.requisitosSubsanables).toEqual([]);
+    });
+
+    it('PAGADO trae la esquela pero no el token', async () => {
+      const estado = await conEstado('PAGADO');
+
+      expect(estado.esquela).not.toBeNull();
+      expect(estado.tokenConsulta).toBeNull();
+      expect(pedidos).toEqual(['esquela:EXP-2026-000001']);
+    });
+
+    it('OBSERVADO trae las observaciones y no pide datos de pago', async () => {
+      const estado = await conEstado('OBSERVADO');
+
+      expect(estado.observacionesPendientes).toEqual(['Falta el croquis']);
+      expect(estado.requisitosSubsanables).toEqual([
+        { id: 11, descripcion: 'Croquis de ubicación' },
+      ]);
+      expect(estado.esquela).toBeNull();
+      expect(pedidos).toEqual([]);
+    });
   });
 
   it('un acierto no suma al contador', async () => {

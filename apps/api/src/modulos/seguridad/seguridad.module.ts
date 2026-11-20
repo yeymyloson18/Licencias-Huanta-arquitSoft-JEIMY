@@ -39,12 +39,14 @@ import type { ServicioIdentificacion } from './dominio/puertos/servicio-identifi
 import { FachadaSeguridad } from './fachada';
 import { VerificarIdentidadPresencial } from './aplicacion/verificar-identidad-presencial';
 import { SolicitanteGuard } from './presentacion/solicitante.guard';
+import { ConsultaOPersonalGuard } from './presentacion/consulta-o-personal.guard';
 import { RepositorioVerificacionesPostgres } from './infraestructura/repositorio-verificaciones-postgres';
 import { ServicioIdentificacionSimulado } from './infraestructura/servicio-identificacion-simulado';
 import { IdentidadController } from './presentacion/identidad.controller';
 import { TokenIdentidadGuard } from './presentacion/token-identidad.guard';
 import { AlmacenVersionSeguridadRedis } from './infraestructura/almacen-version-seguridad-redis';
 import { EmisorTokensJwt } from './infraestructura/emisor-tokens-jwt';
+import { LectorNombresUsuariosPostgres } from './infraestructura/lector-nombres-usuarios-postgres';
 import { EnviadorOtpSimulado } from './infraestructura/enviador-otp-simulado';
 import { GeneradorSecretosCrypto } from './infraestructura/generador-secretos-crypto';
 import { HasherClavesArgon2 } from './infraestructura/hasher-claves-argon2';
@@ -432,12 +434,23 @@ import {
     },
     {
       provide: FachadaSeguridad,
-      inject: [ConfirmarIdentidadEnLinea, SERVICIO_IDENTIFICACION],
-      useFactory: (confirmar: ConfirmarIdentidadEnLinea, servicio: ServicioIdentificacion) =>
-        new FachadaSeguridad(confirmar, new VerificarIdentidadPresencial(servicio)),
+      inject: [ConfirmarIdentidadEnLinea, SERVICIO_IDENTIFICACION, EMISOR_TOKENS, PrismaServicio],
+      useFactory: (
+        confirmar: ConfirmarIdentidadEnLinea,
+        servicio: ServicioIdentificacion,
+        emisor: EmisorTokensJwt,
+        prisma: PrismaServicio,
+      ) =>
+        new FachadaSeguridad(
+          confirmar,
+          new VerificarIdentidadPresencial(servicio),
+          emisor,
+          new LectorNombresUsuariosPostgres(prisma),
+        ),
     },
     TokenIdentidadGuard,
     SolicitanteGuard,
+    ConsultaOPersonalGuard,
   ],
   // Lo que necesitan los guards de la fachada cuando otro módulo los usa.
   exports: [
@@ -447,6 +460,7 @@ import {
     RolesGuard,
     TokenIdentidadGuard,
     SolicitanteGuard,
+    ConsultaOPersonalGuard,
     FachadaSeguridad,
   ],
 })

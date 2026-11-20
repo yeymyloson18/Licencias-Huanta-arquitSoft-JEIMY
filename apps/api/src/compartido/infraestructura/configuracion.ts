@@ -62,6 +62,8 @@ const esquemaConfiguracion = z.object({
     .string()
     .refine((ruta) => isAbsolute(ruta))
     .default(ALMACEN_ARCHIVOS_POR_DEFECTO),
+  // Cada cuánto el despachador revisa la cola de eventos (005); 0 lo apaga (pruebas de integración).
+  DESPACHADOR_INTERVALO_MS: z.coerce.number().int().min(0).default(2000),
 });
 
 // Valores ficticios de .env.example: prohibidos en producción (research.md §R-16 de la 002).
@@ -88,6 +90,8 @@ export interface Configuracion {
   readonly envioOtp: ModoEnvioOtp;
   readonly trustProxySaltos: number;
   readonly almacenArchivosRuta: string;
+  /** 0 = sin temporizador (los eventos se procesan a mano, en las pruebas). */
+  readonly despachadorIntervaloMs: number;
 }
 
 export class ErrorConfiguracion extends Error {
@@ -166,5 +170,6 @@ export const cargarConfiguracion = (
     envioOtp: datos.ENVIO_OTP,
     trustProxySaltos: datos.TRUST_PROXY_SALTOS,
     almacenArchivosRuta: datos.ALMACEN_ARCHIVOS_RUTA,
+    despachadorIntervaloMs: datos.DESPACHADOR_INTERVALO_MS,
   };
 };

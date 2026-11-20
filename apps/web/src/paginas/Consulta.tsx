@@ -1,6 +1,8 @@
 import { type SyntheticEvent, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
 import { CampoFormulario } from '../componentes/CampoFormulario';
-import { conPuntoFinal } from '../componentes/formato';
+import { DescargarEsquela } from '../componentes/DescargarEsquela';
+import { conPuntoFinal, formatearTasaFicha } from '../componentes/formato';
 import { consultarEstado, type EstadoPublico } from '../servicios/clienteApi';
 
 // Consulta pública del estado (CU05 de la 004, contracts/portal-tramite.md). El número y el documento
@@ -154,6 +156,51 @@ export function Consulta() {
                 <h3 className="ficha__subtitulo">Qué sigue</h3>
                 <p>{conPuntoFinal(estado.siguientePaso)}</p>
               </>
+            )}
+            {estado.observacionesPendientes && estado.observacionesPendientes.length > 0 && (
+              <>
+                <h3 className="ficha__subtitulo">Observaciones por subsanar</h3>
+                <ul>
+                  {estado.observacionesPendientes.map((texto) => (
+                    <li key={texto}>{texto}</li>
+                  ))}
+                </ul>
+                {estado.estado === 'OBSERVADO' && (
+                  <Link
+                    className="boton"
+                    to={`/tramite/identidad?subsanar=${encodeURIComponent(estado.numero)}`}
+                  >
+                    Subsanar
+                  </Link>
+                )}
+              </>
+            )}
+            {estado.codigoEsquela && (
+              <>
+                <h3 className="ficha__subtitulo">Esquela de pago</h3>
+                <dl className="ficha__datos">
+                  <div className="ficha__dato">
+                    <dt>Código</dt>
+                    <dd>{estado.codigoEsquela}</dd>
+                  </div>
+                  {estado.montoEsquela && (
+                    <div className="ficha__dato">
+                      <dt>Monto</dt>
+                      <dd>{formatearTasaFicha(estado.montoEsquela)}</dd>
+                    </div>
+                  )}
+                  <div className="ficha__dato">
+                    <dt>Pago</dt>
+                    <dd>{estado.esquelaPagada ? 'Pagada' : 'Pendiente'}</dd>
+                  </div>
+                </dl>
+              </>
+            )}
+            {estado.tokenConsulta && (
+              <DescargarEsquela
+                codigo={estado.codigoEsquela ?? `ESQ-${estado.numero}`}
+                tokenConsulta={estado.tokenConsulta.token}
+              />
             )}
             <h3 className="ficha__subtitulo">Historial</h3>
             <ol className="consulta__historial">

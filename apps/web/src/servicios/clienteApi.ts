@@ -703,3 +703,411 @@ export const descargarDocumentoExpediente = async (
     return { tipo: 'no-disponible' };
   }
 };
+
+// ----------------------------------------------------------------- evaluación del expediente (005)
+
+export type ResultadoDecision =
+  | { readonly tipo: 'ok'; readonly expediente: Expediente }
+  | { readonly tipo: 'invalido'; readonly errores: readonly ErrorCampo[] }
+  /** La acción no corresponde al estado (409) o el expediente cambió (412): hay que recargarlo. */
+  | { readonly tipo: 'cambio'; readonly mensaje: string }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-encontrado' }
+  | { readonly tipo: 'no-disponible' };
+
+type AccionEvaluador = 'evaluacion' | 'riesgo' | 'observar' | 'denegar' | 'aprobar';
+
+/** Envía una decisión del evaluador con la versión leída en `If-Match` (research §R-05 de la 005). */
+const decidir = async (
+  numero: string,
+  accion: AccionEvaluador,
+  version: number,
+  cuerpo: Record<string, unknown> = {},
+): Promise<ResultadoDecision> => {
+  try {
+    const token = obtenerToken();
+    const pedir = () =>
+      globalThis.fetch(
+        new Request(
+          new URL(
+            `/api/v1/expedientes/${encodeURIComponent(numero)}/${accion}`,
+            window.location.origin,
+          ),
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'If-Match': String(version),
+              ...(obtenerToken() === null
+                ? {}
+                : { Authorization: `Bearer ${obtenerToken() ?? ''}` }),
+            },
+            body: JSON.stringify(cuerpo),
+          },
+        ),
+      );
+    let respuesta = await pedir();
+    if (respuesta.status === 401 && token !== null && (await renovarSesion())) {
+      respuesta = await pedir();
+    }
+    const datos: unknown = respuesta.headers.get('Content-Type')?.includes('json')
+      ? await respuesta.json()
+      : undefined;
+    if (respuesta.ok) {
+      return { tipo: 'ok', expediente: datos as Expediente };
+    }
+    switch (respuesta.status) {
+      case 422:
+        return { tipo: 'invalido', errores: erroresDe(datos) };
+      case 409:
+        return {
+          tipo: 'cambio',
+          mensaje:
+            tipoDeProblema(datos) === 'ya-observado'
+              ? 'Este expediente ya fue observado una vez.'
+              : 'Esta acción ya no corresponde al estado del expediente.',
+        };
+      case 412:
+        return { tipo: 'cambio', mensaje: 'El expediente cambió mientras lo revisabas.' };
+      case 401:
+      case 403:
+        return { tipo: 'sin-permiso' };
+      case 404:
+        return { tipo: 'no-encontrado' };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+export const iniciarEvaluacion = (numero: string, version: number) =>
+  decidir(numero, 'evaluacion', version);
+
+export const confirmarRiesgo = (
+  numero: string,
+  version: number,
+  datos: { readonly codigoReceta?: string; readonly comentario?: string },
+) => decidir(numero, 'riesgo', version, { ...datos });
+
+export const observarExpediente = (numero: string, version: number, descripcion: string) =>
+  decidir(numero, 'observar', version, { descripcion });
+
+export const denegarExpediente = (numero: string, version: number, motivo: string) =>
+  decidir(numero, 'denegar', version, { motivo });
+
+export const aprobarExpediente = (numero: string, version: number) =>
+  decidir(numero, 'aprobar', version);
+
+// ----------------------------------------------------------------- caja (005)
+
+export type Esquela = components['schemas']['Esquela'];
+
+export type ResultadoEsquela =
+  | { readonly tipo: 'ok'; readonly esquela: Esquela }
+  | { readonly tipo: 'no-encontrada' }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' };
+
+/** Busca la esquela por su código (rol CAJA). El código no es dato personal. */
+export const consultarEsquela = async (codigo: string): Promise<ResultadoEsquela> => {
+  try {
+    const { data, response } = await cliente.GET('/esquelas/{codigoEsquela}', {
+      params: { path: { codigoEsquela: codigo.trim().toUpperCase() } },
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', esquela: data };
+    }
+    if (response.status === 404) {
+      return { tipo: 'no-encontrada' };
+    }
+    return response.status === 401 || response.status === 403
+      ? { tipo: 'sin-permiso' }
+      : { tipo: 'no-disponible' };
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** Solo el nombre del titular, para confirmar antes de registrar el pago (rol CAJA). */
+export const obtenerTitularParaCaja = async (
+  numeroExpediente: string,
+): Promise<{ readonly nombreTitular: string; readonly razonSocial: string | null } | null> => {
+  try {
+    const { data } = await cliente.GET('/expedientes/{numeroExpediente}/titular', {
+      params: { path: { numeroExpediente } },
+    });
+    return data === undefined
+      ? null
+      : { nombreTitular: data.nombreTitular, razonSocial: data.razonSocial ?? null };
+  } catch {
+    return null;
+  }
+};
+
+export type ResultadoPago =
+  | { readonly tipo: 'ok'; readonly esquela: Esquela }
+  | { readonly tipo: 'ya-pagada' }
+  | { readonly tipo: 'recibo-repetido' }
+  | { readonly tipo: 'no-corresponde'; readonly mensaje: string }
+  | { readonly tipo: 'invalido'; readonly mensaje: string }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' };
+
+/** Registra el pago con el número de recibo (rol CAJA). */
+export const registrarPago = async (
+  codigo: string,
+  numeroRecibo: string,
+): Promise<ResultadoPago> => {
+  try {
+    const { data, error, response } = await cliente.POST('/esquelas/{codigoEsquela}/pago', {
+      params: { path: { codigoEsquela: codigo } },
+      body: { numeroRecibo },
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', esquela: data };
+    }
+    switch (response.status) {
+      case 409: {
+        const tipo = tipoDeProblema(error);
+        if (tipo === 'esquela-ya-pagada') return { tipo: 'ya-pagada' };
+        if (tipo === 'recibo-repetido') return { tipo: 'recibo-repetido' };
+        return {
+          tipo: 'no-corresponde',
+          mensaje:
+            (error as { title?: string } | undefined)?.title ?? 'No se puede pagar esta esquela.',
+        };
+      }
+      case 422:
+        return {
+          tipo: 'invalido',
+          mensaje: erroresDe(error)[0]?.mensaje ?? 'Revisa el número de recibo.',
+        };
+      case 401:
+      case 403:
+        return { tipo: 'sin-permiso' };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+// ----------------------------------------------------------------- PDF de la esquela (005)
+
+export type ResultadoPdfEsquela =
+  | { readonly tipo: 'ok'; readonly pdf: Blob; readonly nombre: string }
+  | { readonly tipo: 'en-generacion' }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' };
+
+/**
+ * Descarga el PDF de la esquela. Con `tokenConsulta` (administrado, de la consulta pública) o, si no se
+ * pasa, con la sesión del personal (renueva una vez ante un 401). 202 → todavía se está generando.
+ */
+export const descargarPdfEsquela = async (
+  codigo: string,
+  tokenConsulta?: string,
+): Promise<ResultadoPdfEsquela> => {
+  try {
+    const sesion = tokenConsulta === undefined ? obtenerToken() : null;
+    const pedir = () => {
+      const token = tokenConsulta ?? obtenerToken();
+      return globalThis.fetch(
+        new Request(
+          new URL(`/api/v1/esquelas/${encodeURIComponent(codigo)}/pdf`, window.location.origin),
+          { headers: token === null ? {} : { Authorization: `Bearer ${token}` } },
+        ),
+      );
+    };
+    let respuesta = await pedir();
+    if (respuesta.status === 401 && sesion !== null && (await renovarSesion())) {
+      respuesta = await pedir();
+    }
+    if (respuesta.status === 202) {
+      return { tipo: 'en-generacion' };
+    }
+    if (respuesta.ok) {
+      return { tipo: 'ok', pdf: await respuesta.blob(), nombre: `${codigo}.pdf` };
+    }
+    return respuesta.status === 401 || respuesta.status === 403
+      ? { tipo: 'sin-permiso' }
+      : { tipo: 'no-disponible' };
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** Entrega el archivo al navegador como descarga. */
+export const guardarArchivo = (contenido: Blob, nombre: string): void => {
+  const url = URL.createObjectURL(contenido);
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = nombre;
+  document.body.append(enlace);
+  enlace.click();
+  enlace.remove();
+  URL.revokeObjectURL(url);
+};
+
+// ----------------------------------------------------------------- subsanación (005)
+
+export type ResultadoSubsanacion =
+  | { readonly tipo: 'ok'; readonly expediente: ExpedienteRegistrado }
+  | { readonly tipo: 'invalido'; readonly errores: readonly ErrorCampo[] }
+  | { readonly tipo: 'no-autenticado' }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'ya-no-observado' }
+  | { readonly tipo: 'no-disponible' };
+
+/** Subsana en línea con el token de identidad del titular (historia 4 de la 005). */
+export const subsanarObservacion = async (
+  token: string,
+  numeroExpediente: string,
+  identidad: IdentidadSolicitud,
+  documentos: readonly { readonly requisitoId: number; readonly documentoId: string }[],
+): Promise<ResultadoSubsanacion> => {
+  try {
+    const { data, error, response } = await clientePublico.POST(
+      '/expedientes/{numeroExpediente}/subsanar',
+      {
+        params: { path: { numeroExpediente } },
+        headers: conIdentidad(token),
+        body: { identidad, documentos: [...documentos] },
+      },
+    );
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', expediente: data };
+    }
+    switch (response.status) {
+      case 422:
+        return { tipo: 'invalido', errores: erroresDe(error) };
+      case 401:
+        return { tipo: 'no-autenticado' };
+      case 403:
+        return { tipo: 'sin-permiso' };
+      case 409:
+        return { tipo: 'ya-no-observado' };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+// ----------------------------------------------------------------- auditoría (005)
+
+export type RegistroAuditoria = components['schemas']['RegistroAuditoria'];
+
+export type ResultadoAuditoriaPagos =
+  | {
+      readonly tipo: 'ok';
+      readonly total: number;
+      readonly pagina: number;
+      readonly porPagina: number;
+      readonly datos: readonly RegistroAuditoria[];
+    }
+  | { readonly tipo: 'invalido'; readonly mensaje: string }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' };
+
+/** Pagos y correcciones, del más reciente al más antiguo (rol JEFATURA). */
+export const consultarAuditoriaPagos = async (filtro: {
+  readonly desde: string | null;
+  readonly hasta: string | null;
+  readonly pagina: number;
+}): Promise<ResultadoAuditoriaPagos> => {
+  try {
+    const { data, error, response } = await cliente.GET('/pagos/auditoria', {
+      params: {
+        query: {
+          pagina: filtro.pagina,
+          porPagina: 20,
+          ...(filtro.desde === null ? {} : { desde: filtro.desde }),
+          ...(filtro.hasta === null ? {} : { hasta: filtro.hasta }),
+        },
+      },
+    });
+    if (response.ok && data !== undefined) {
+      return {
+        tipo: 'ok',
+        total: data.total,
+        pagina: data.pagina,
+        porPagina: data.porPagina,
+        datos: data.datos ?? [],
+      };
+    }
+    if (response.status === 422) {
+      return { tipo: 'invalido', mensaje: erroresDe(error)[0]?.mensaje ?? 'Revisa las fechas.' };
+    }
+    return response.status === 401 || response.status === 403
+      ? { tipo: 'sin-permiso' }
+      : { tipo: 'no-disponible' };
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+export type ResultadoCorreccionRecibo =
+  | { readonly tipo: 'ok'; readonly esquela: Esquela }
+  | { readonly tipo: 'invalido'; readonly mensaje: string }
+  | { readonly tipo: 'conflicto'; readonly mensaje: string }
+  | { readonly tipo: 'no-encontrada' }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' };
+
+/** Corrige un recibo mal digitado, con motivo (rol JEFATURA). */
+export const corregirRecibo = async (
+  codigo: string,
+  numeroRecibo: string,
+  motivo: string,
+): Promise<ResultadoCorreccionRecibo> => {
+  try {
+    const { data, error, response } = await cliente.PATCH('/esquelas/{codigoEsquela}/recibo', {
+      params: { path: { codigoEsquela: codigo.trim().toUpperCase() } },
+      body: { numeroRecibo, motivo },
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', esquela: data };
+    }
+    switch (response.status) {
+      case 422:
+        return { tipo: 'invalido', mensaje: erroresDe(error)[0]?.mensaje ?? 'Revisa los datos.' };
+      case 409:
+        return {
+          tipo: 'conflicto',
+          mensaje:
+            tipoDeProblema(error) === 'recibo-repetido'
+              ? 'Ese número de recibo ya está registrado en otra esquela.'
+              : ((error as { title?: string } | undefined)?.title ??
+                'No se puede corregir este recibo.'),
+        };
+      case 404:
+        return { tipo: 'no-encontrada' };
+      case 401:
+      case 403:
+        return { tipo: 'sin-permiso' };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** Decisiones registradas sobre un expediente (rol JEFATURA). `null` si no se pudo leer. */
+export const auditoriaDelExpediente = async (
+  numeroExpediente: string,
+): Promise<readonly RegistroAuditoria[] | null> => {
+  try {
+    const { data } = await cliente.GET('/expedientes/{numeroExpediente}/auditoria', {
+      params: { path: { numeroExpediente } },
+    });
+    return data ?? null;
+  } catch {
+    return null;
+  }
+};

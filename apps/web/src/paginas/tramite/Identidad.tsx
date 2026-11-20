@@ -78,6 +78,9 @@ type EstadoLicencias =
 export function Identidad() {
   const navegar = useNavigate();
   const [parametros] = useSearchParams();
+  // 005: con `?subsanar=EXP-…` se confirma la identidad para subsanar, sin elegir licencia.
+  const subsanarParametro = parametros.get('subsanar') ?? '';
+  const paraSubsanar = /^EXP-[0-9]{4}-[0-9]{6}$/.test(subsanarParametro) ? subsanarParametro : null;
   const tramite = useTramite();
   const idSelector = useId();
   const titulo = useRef<HTMLHeadingElement>(null);
@@ -150,7 +153,7 @@ export function Identidad() {
 
   const alEnviarDatos = (evento: SyntheticEvent) => {
     evento.preventDefault();
-    if (elegida === undefined) {
+    if (paraSubsanar === null && elegida === undefined) {
       setErrores({ licencia: 'Elige la licencia que solicitas' });
       setError('Revisa los datos marcados.');
       return;
@@ -177,7 +180,11 @@ export function Identidad() {
     if (resultado.tipo === 'ok') {
       setCodigo('');
       tramite.confirmar(resultado.token, resultado.expiraEn);
-      void navegar(`/tramite/solicitud?licencia=${encodeURIComponent(licencia)}`);
+      void navegar(
+        paraSubsanar === null
+          ? `/tramite/solicitud?licencia=${encodeURIComponent(licencia)}`
+          : `/tramite/subsanar/${paraSubsanar}`,
+      );
     } else {
       setError(mensajeCodigo(resultado));
     }
@@ -194,7 +201,9 @@ export function Identidad() {
     <>
       <header className="cabecera">
         <p className="cabecera__entidad">Municipalidad Provincial de Huanta</p>
-        <h1 className="cabecera__titulo">Presentar solicitud de licencia</h1>
+        <h1 className="cabecera__titulo">
+          {paraSubsanar === null ? 'Presentar solicitud de licencia' : 'Subsanar la observación'}
+        </h1>
         <p className="cabecera__descripcion">
           Primero confirmamos tu identidad con un código que enviamos a tu celular.
         </p>
@@ -219,17 +228,23 @@ export function Identidad() {
 
           {desafio === null ? (
             <form onSubmit={alEnviarDatos} noValidate>
-              {licencias.tipo === 'cargando' && (
+              {paraSubsanar !== null && (
+                <p className="tramite__licencia">
+                  Expediente: <strong>{paraSubsanar}</strong>
+                </p>
+              )}
+              {paraSubsanar === null && licencias.tipo === 'cargando' && (
                 <p className="aviso" role="status">
                   Cargando las licencias…
                 </p>
               )}
-              {licencias.tipo === 'error' && (
+              {paraSubsanar === null && licencias.tipo === 'error' && (
                 <p className="aviso aviso--error" role="alert">
                   {MENSAJE_NO_DISPONIBLE}
                 </p>
               )}
-              {licencias.tipo === 'lista' &&
+              {paraSubsanar === null &&
+                licencias.tipo === 'lista' &&
                 (inicialValida && elegida ? (
                   <p className="tramite__licencia">
                     Licencia: <strong>{elegida.nombre}</strong>

@@ -47,3 +47,19 @@ export class ErrorExpedienteNoEncontrado extends Error {
     this.name = 'ErrorExpedienteNoEncontrado';
   }
 }
+
+/** Otro usuario cambió el expediente desde que se leyó (`If-Match`, 412). */
+export class ErrorVersionCambiada extends Error {
+  constructor() {
+    super('El expediente cambió');
+    this.name = 'ErrorVersionCambiada';
+  }
+}
+
+/** El expediente ya tiene una observación; el TUPA permite una sola (409). */
+export class ErrorYaObservado extends Error {
+  constructor() {
+    super('El expediente ya fue observado');
+    this.name = 'ErrorYaObservado';
+  }
+}

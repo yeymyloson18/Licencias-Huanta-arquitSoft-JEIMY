@@ -425,7 +425,11 @@ paths:
         '200':
           description: Recetas.
           headers:
-            Cache-Control: { schema: { type: string }, description: 'public, max-age=60 (Redis guarda 240 s; en total, 5 minutos como máximo; FR-024 de la 003)' }
+            Cache-Control:
+              {
+                schema: { type: string },
+                description: 'public, max-age=60 (Redis guarda 240 s; en total, 5 minutos como máximo; FR-024 de la 003)',
+              }
           content:
             application/json:
               schema:
@@ -794,25 +798,54 @@ paths:
         '403': { $ref: '#/components/responses/SinPermiso' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
 
+  /expedientes/{numeroExpediente}/evaluacion:
+    parameters:
+      - $ref: '#/components/parameters/NumeroExpediente'
+    post:
+      tags: [Trámites]
+      operationId: iniciarEvaluacion
+      summary: El evaluador empieza la revisión (RF09, rol EVALUADOR). REGISTRADO → EN_EVALUACION.
+      description: >-
+        Registra quién empezó la revisión; cualquier evaluador puede decidir después (aclaración de la 005).
+        `Cache-Control: no-store`.
+      security: [{ bearerPersonal: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Expediente en evaluación.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Expediente' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+        '412': { $ref: '#/components/responses/VersionCambiada' }
+
   /expedientes/{numeroExpediente}/riesgo:
     parameters:
       - $ref: '#/components/parameters/NumeroExpediente'
     post:
       tags: [Trámites]
       operationId: confirmarNivelRiesgo
-      summary: El evaluador confirma o corrige el nivel de riesgo (RF09). Si lo corrige, el expediente toma la receta del nuevo nivel. En la ruta A genera la esquela.
+      summary: El evaluador confirma la licencia presentada o la corrige a otra del mismo grupo (RF09, rol EVALUADOR).
+      description: >-
+        Sin `codigoReceta` se confirma la licencia actual. Con `codigoReceta`, la licencia debe estar vigente y
+        ser del mismo grupo (establecimiento, cesionario; la corporativa y la de bodegas no tienen alternativas):
+        el expediente toma su ruta y su tasa. El expediente pasa a PENDIENTE_PAGO y se solicita la esquela, que
+        queda disponible en segundos; con tasa 0.00 pasa a PAGADO sin esquela. `Cache-Control: no-store`.
       security: [{ bearerPersonal: [] }]
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       requestBody:
-        required: true
         content:
           application/json:
             schema:
               type: object
-              required: [nivelRiesgo]
+              additionalProperties: false
               properties:
-                nivelRiesgo: { $ref: '#/components/schemas/NivelRiesgo' }
+                codigoReceta: { $ref: '#/components/schemas/CodigoReceta' }
                 comentario: { type: string, maxLength: 1000 }
       responses:
         '200':
@@ -825,6 +858,7 @@ paths:
         '404': { $ref: '#/components/responses/NoEncontrado' }
         '409': { $ref: '#/components/responses/Conflicto' }
         '412': { $ref: '#/components/responses/VersionCambiada' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
 
   /expedientes/{numeroExpediente}/aprobar:
     parameters:
@@ -832,7 +866,10 @@ paths:
     post:
       tags: [Trámites]
       operationId: aprobarEvaluacion
-      summary: Aprueba la evaluación previa de la ruta B y genera la esquela (RF09, RF11).
+      summary: Aprueba un expediente PAGADO de ruta A o C y lo deja APROBADO (RF09, rol EVALUADOR).
+      description: >-
+        La ruta B (inspección previa) y la emisión de la licencia son de la funcionalidad 006.
+        `Cache-Control: no-store`.
       security: [{ bearerPersonal: [] }]
       parameters:
         - $ref: '#/components/parameters/IfMatch'
@@ -845,7 +882,7 @@ paths:
                 comentario: { type: string, maxLength: 1000 }
       responses:
         '200':
-          description: Evaluación aprobada; el expediente queda en PENDIENTE_PAGO.
+          description: Expediente aprobado.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Expediente' }
@@ -861,7 +898,10 @@ paths:
     post:
       tags: [Trámites]
       operationId: observarExpediente
-      summary: Observa el expediente por requisitos faltantes (RF09).
+      summary: Observa el expediente por requisitos faltantes (RF09, rol EVALUADOR). Una sola vez por expediente.
+      description: >-
+        EN_EVALUACION → OBSERVADO. Una segunda observación responde 409 (`type` `ya-observado`). El plazo para
+        subsanar en días hábiles es de la funcionalidad 006: `plazoSubsanarEn` es opcional. `Cache-Control: no-store`.
       security: [{ bearerPersonal: [] }]
       parameters:
         - $ref: '#/components/parameters/IfMatch'
@@ -871,13 +911,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: [descripcion, plazoSubsanarEn]
+              required: [descripcion]
               properties:
-                descripcion: { type: string, minLength: 10, maxLength: 2000 }
+                descripcion: { type: string, minLength: 10, maxLength: 1000 }
                 plazoSubsanarEn: { type: string, format: date }
       responses:
         '200':
-          description: Expediente observado; se notifica al administrado.
+          description: Expediente observado.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Expediente' }
@@ -886,6 +926,7 @@ paths:
         '404': { $ref: '#/components/responses/NoEncontrado' }
         '409': { $ref: '#/components/responses/Conflicto' }
         '412': { $ref: '#/components/responses/VersionCambiada' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
 
   /expedientes/{numeroExpediente}/denegar:
     parameters:
@@ -893,7 +934,9 @@ paths:
     post:
       tags: [Trámites]
       operationId: denegarExpediente
-      summary: Deniega el expediente con motivo (RF09).
+      summary: Deniega el expediente con motivo (RF09, rol EVALUADOR). DENEGADO es un estado final.
+      description: >-
+        EN_EVALUACION → DENEGADO. `Cache-Control: no-store`.
       security: [{ bearerPersonal: [] }]
       parameters:
         - $ref: '#/components/parameters/IfMatch'
@@ -905,7 +948,7 @@ paths:
               type: object
               required: [motivo]
               properties:
-                motivo: { type: string, minLength: 10, maxLength: 2000 }
+                motivo: { type: string, minLength: 10, maxLength: 1000 }
       responses:
         '200':
           description: Expediente denegado.
@@ -917,6 +960,7 @@ paths:
         '404': { $ref: '#/components/responses/NoEncontrado' }
         '409': { $ref: '#/components/responses/Conflicto' }
         '412': { $ref: '#/components/responses/VersionCambiada' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
 
   /expedientes/{numeroExpediente}/subsanar:
     parameters:
@@ -924,7 +968,12 @@ paths:
     post:
       tags: [Trámites]
       operationId: subsanarObservacion
-      summary: El administrado adjunta los documentos que faltaban (requiere tokenIdentidad del mismo titular).
+      summary: Se adjuntan los documentos que faltaban y el expediente vuelve a EN_EVALUACION (CU05).
+      description: >-
+        En línea, con el `tokenIdentidad` de la identidad confirmada del **titular** (403 si es otra persona,
+        sin revelar de quién es el expediente) y la `identidad` en el cuerpo. En mesa de partes, con la sesión
+        del rol MESA_PARTES (sin `identidad`). Cada documento se sube antes con `POST /documentos` y se asocia a
+        un requisito de la receta guardada al presentar. `Cache-Control: no-store`.
       security: [{ tokenIdentidad: [] }, { bearerPersonal: [] }]
       requestBody:
         required: true
@@ -933,20 +982,25 @@ paths:
             schema:
               type: object
               required: [documentos]
+              additionalProperties: false
               properties:
+                identidad: { $ref: '#/components/schemas/SolicitudVerificacionIdentidad' }
                 documentos:
                   type: array
                   minItems: 1
+                  maxItems: 30
                   items: { $ref: '#/components/schemas/DocumentoAdjunto' }
       responses:
         '200':
-          description: Observación subsanada; el expediente vuelve a REGISTRADO.
+          description: Observación subsanada; el expediente vuelve a EN_EVALUACION.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ExpedienteRegistrado' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
         '409': { $ref: '#/components/responses/Conflicto' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
 
   /expedientes/{numeroExpediente}/auditoria:
     parameters:
@@ -955,6 +1009,9 @@ paths:
       tags: [Trámites]
       operationId: auditoriaTramites
       summary: Decisiones registradas sobre el expediente (RF25, rol JEFATURA).
+      description: >-
+        Del más antiguo al más reciente. Cada registro trae el usuario (con su nombre), la acción, la fecha y
+        `referencia` = número de expediente; nunca datos personales del titular. `Cache-Control: no-store`.
       security: [{ bearerPersonal: [] }]
       responses:
         '200':
@@ -966,6 +1023,7 @@ paths:
                 items: { $ref: '#/components/schemas/RegistroAuditoria' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
 
   /expedientes/{numeroExpediente}/documentos/{documentoId}:
     parameters:
@@ -979,14 +1037,15 @@ paths:
       operationId: descargarDocumento
       summary: Descarga un documento adjunto del expediente.
       description: >-
-        La API entrega el archivo (el almacén es local hasta la 010). En la 004 solo bearerPersonal con los
-        roles de la bandeja; `tokenConsulta` se habilita en la 005 y la 009.
+        La API entrega el archivo (el almacén es local hasta la 010). Solo bearerPersonal con los roles de la
+        bandeja; `tokenConsulta` se habilita en la 009 (la 005 lo usa solo para la esquela).
       security: [{ bearerPersonal: [] }, { tokenConsulta: [] }]
       responses:
         '200':
           description: El archivo.
           headers:
-            Content-Disposition: { schema: { type: string }, description: 'attachment; filename="<nombre>"' }
+            Content-Disposition:
+              { schema: { type: string }, description: 'attachment; filename="<nombre>"' }
             X-Content-Type-Options: { schema: { type: string }, description: nosniff }
             Cache-Control: { schema: { type: string }, description: 'no-store' }
           content:
@@ -1008,6 +1067,9 @@ paths:
       tags: [Pagos]
       operationId: consultarEsquela
       summary: El cajero consulta la esquela antes de registrar el pago (RF12, rol CAJA).
+      description: >-
+        El código se acepta en minúsculas y con espacios alrededor. Trae el estado del expediente y la licencia;
+        el nombre del titular se pide aparte (`obtenerTitularParaCaja`). `Cache-Control: no-store`.
       security: [{ bearerPersonal: [] }]
       responses:
         '200':
@@ -1026,16 +1088,26 @@ paths:
       tags: [Pagos]
       operationId: descargarEsquela
       summary: PDF de la esquela para pagar en caja (HU04).
+      description: >-
+        Con el `tokenConsulta` del mismo expediente (de la consulta pública) o una sesión EVALUADOR, CAJA o
+        JEFATURA. Responde 202 mientras la esquela todavía no existe (se genera en segundos tras confirmar el
+        riesgo). El PDF no lleva datos personales del titular.
       security: [{ tokenConsulta: [] }, { bearerPersonal: [] }]
       responses:
         '200':
           description: PDF.
+          headers:
+            Content-Disposition:
+              { schema: { type: string }, description: 'attachment; filename="<código>.pdf"' }
+            X-Content-Type-Options: { schema: { type: string }, description: nosniff }
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
           content:
             application/pdf:
               schema: { type: string, format: binary }
         '202':
-          description: El PDF todavía se está generando; reintentar en unos segundos.
+          description: La esquela todavía se está generando; reintentar en unos segundos.
         '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
 
   /esquelas/{codigoEsquela}/pago:
@@ -1045,6 +1117,11 @@ paths:
       tags: [Pagos]
       operationId: registrarPagoEnCaja
       summary: Registra el pago con el número de recibo (RF12, rol CAJA). Atómico; guarda la auditoría y el evento PagoRegistrado.
+      description: >-
+        El recibo se normaliza (mayúsculas, sin espacios) antes de validarlo. Una esquela se paga una sola vez,
+        aun con pagos simultáneos (409 `esquela-ya-pagada`); un recibo repetido responde 409 `recibo-repetido`;
+        un expediente que no está PENDIENTE_PAGO, 409 `transicion-invalida`. `Idempotency-Key` se acepta pero
+        no se guarda: un reintento recibe 409 `esquela-ya-pagada`. El expediente pasa a PAGADO en segundos.
       security: [{ bearerPersonal: [] }]
       parameters:
         - $ref: '#/components/parameters/ClaveIdempotencia'
@@ -1067,10 +1144,11 @@ paths:
         '403': { $ref: '#/components/responses/SinPermiso' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
         '409':
-          description: La esquela ya fue pagada, o el número de recibo ya existe.
+          description: La esquela ya fue pagada, el número de recibo ya existe o el expediente no está esperando el pago.
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
 
   /esquelas/{codigoEsquela}/recibo:
     parameters:
@@ -1092,7 +1170,7 @@ paths:
                 motivo: { type: string, minLength: 10, maxLength: 500 }
       responses:
         '200':
-          description: Recibo corregido.
+          description: Recibo corregido; queda en la auditoría CORREGIR_RECIBO con el anterior, el nuevo y el motivo.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Esquela' }
@@ -1100,12 +1178,17 @@ paths:
         '403': { $ref: '#/components/responses/SinPermiso' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
         '409': { $ref: '#/components/responses/Conflicto' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
 
   /pagos/auditoria:
     get:
       tags: [Pagos]
       operationId: auditoriaPagos
       summary: Pagos y correcciones registrados (RF25, rol JEFATURA).
+      description: >-
+        Del más reciente al más antiguo; `porPagina` hasta 50; `desde` y `hasta` incluyen el día completo (hora de
+        Lima). `referencia` = código de la esquela; `detalle` lleva el recibo anterior, el nuevo y el motivo. Nunca
+        datos personales del titular. `Cache-Control: no-store`.
       security: [{ bearerPersonal: [] }]
       parameters:
         - $ref: '#/components/parameters/Pagina'
@@ -1127,6 +1210,7 @@ paths:
                         items: { $ref: '#/components/schemas/RegistroAuditoria' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
 
   # ===================================================================== INSPECCIONES
   /inspecciones:
@@ -1204,7 +1288,8 @@ paths:
               properties:
                 resultado: { type: string, enum: [FAVORABLE, DESFAVORABLE] }
                 observaciones: { type: string, maxLength: 4000 }
-                numeroCertificado: { type: string, maxLength: 30, description: Obligatorio si es FAVORABLE. }
+                numeroCertificado:
+                  { type: string, maxLength: 30, description: Obligatorio si es FAVORABLE. }
                 fotos:
                   type: array
                   minItems: 1
@@ -1608,16 +1693,34 @@ components:
       example: '159.50'
     EstadoExpediente:
       type: string
-      enum: [REGISTRADO, OBSERVADO, EN_EVALUACION, PENDIENTE_PAGO, PAGADO, EN_INSPECCION, APROBADO,
-             LICENCIA_PROVISIONAL, LICENCIA_EMITIDA, ITSE_POSTERIOR_PENDIENTE, FINALIZADO, DENEGADO,
-             DERIVADO_A_FISCALIZACION]
+      enum:
+        [
+          REGISTRADO,
+          OBSERVADO,
+          EN_EVALUACION,
+          PENDIENTE_PAGO,
+          PAGADO,
+          EN_INSPECCION,
+          APROBADO,
+          LICENCIA_PROVISIONAL,
+          LICENCIA_EMITIDA,
+          ITSE_POSTERIOR_PENDIENTE,
+          FINALIZADO,
+          DENEGADO,
+          DERIVADO_A_FISCALIZACION,
+        ]
 
     Problema:
       type: object
       description: Error en formato RFC 9457. Nunca incluye datos personales.
       required: [type, title, status]
       properties:
-        type: { type: string, format: uri, example: 'https://licencias.example.pe/errores/esquela-ya-pagada' }
+        type:
+          {
+            type: string,
+            format: uri,
+            example: 'https://licencias.example.pe/errores/esquela-ya-pagada',
+          }
         title: { type: string, example: Esta esquela ya fue pagada }
         status: { type: integer, example: 409 }
         detail: { type: string }
@@ -1667,7 +1770,8 @@ components:
       properties:
         accessToken: { type: string }
         expiraEn: { type: integer, description: Segundos de vida del accessToken (900). }
-        debeCambiarClave: { type: boolean, description: 'Si es true, solo se permite cambiar la clave (FR-022).' }
+        debeCambiarClave:
+          { type: boolean, description: 'Si es true, solo se permite cambiar la clave (FR-022).' }
         usuario: { $ref: '#/components/schemas/Usuario' }
     CambioClave:
       type: object
@@ -1708,7 +1812,12 @@ components:
         id: { type: string, format: uuid }
         correo: { type: string, format: email }
         nombreCompleto: { type: string }
-        celularEnmascarado: { type: string, example: '9*****321', description: El celular nunca se devuelve completo (FR-028). }
+        celularEnmascarado:
+          {
+            type: string,
+            example: '9*****321',
+            description: El celular nunca se devuelve completo (FR-028).,
+          }
         roles:
           type: array
           items: { $ref: '#/components/schemas/Rol' }
@@ -1732,7 +1841,13 @@ components:
       type: object
       additionalProperties: false
       properties:
-        texto: { type: string, minLength: 2, maxLength: 150, description: Fragmento del nombre o correo completo. }
+        texto:
+          {
+            type: string,
+            minLength: 2,
+            maxLength: 150,
+            description: Fragmento del nombre o correo completo.,
+          }
         activo: { type: boolean }
         pagina: { type: integer, minimum: 1, default: 1 }
         porPagina: { type: integer, minimum: 1, maximum: 100, default: 20 }
@@ -1758,7 +1873,12 @@ components:
             paginaTupa: { type: integer, example: 368 }
             nivelRiesgo: { oneOf: [{ $ref: '#/components/schemas/NivelRiesgo' }, { type: 'null' }] }
             tipoPlazo: { type: string, enum: [HABILES, CALENDARIO] }
-            calificacion: { type: string, enum: [APROBACION_AUTOMATICA, EVALUACION_PREVIA_SILENCIO_POSITIVO, SERVICIO_EXCLUSIVO] }
+            calificacion:
+              {
+                type: string,
+                enum:
+                  [APROBACION_AUTOMATICA, EVALUACION_PREVIA_SILENCIO_POSITIVO, SERVICIO_EXCLUSIVO],
+              }
             ordenItse: { type: [string, 'null'], enum: [POSTERIOR, PREVIA, DENTRO_6_MESES, null] }
             plazoItseDias: { type: [integer, 'null'] }
             vigenciaMeses: { type: [integer, 'null'], description: null = indeterminada }
@@ -1816,7 +1936,11 @@ components:
       properties:
         tasa: { $ref: '#/components/schemas/Soles' }
         plazoDias: { type: integer, minimum: 1 }
-        calificacion: { type: string, enum: [APROBACION_AUTOMATICA, EVALUACION_PREVIA_SILENCIO_POSITIVO, SERVICIO_EXCLUSIVO] }
+        calificacion:
+          {
+            type: string,
+            enum: [APROBACION_AUTOMATICA, EVALUACION_PREVIA_SILENCIO_POSITIVO, SERVICIO_EXCLUSIVO],
+          }
         ordenItse: { type: [string, 'null'], enum: [POSTERIOR, PREVIA, DENTRO_6_MESES, null] }
         plazoItseDias: { type: [integer, 'null'], minimum: 1 }
         vigenciaMeses: { type: [integer, 'null'], minimum: 1, description: null = indeterminada }
@@ -1834,10 +1958,20 @@ components:
             additionalProperties: false
             properties:
               id: { type: integer }
-              orden: { type: integer, minimum: 1, deprecated: true, description: Se ignora; manda la posición en la lista. }
+              orden:
+                {
+                  type: integer,
+                  minimum: 1,
+                  deprecated: true,
+                  description: Se ignora; manda la posición en la lista.,
+                }
               descripcion: { type: string, minLength: 1, maxLength: 500 }
               obligatorio: { type: boolean, default: true }
-              condicion: { type: string, enum: [SIEMPRE, CON_REPRESENTANTE, GIRO_ESPECIAL, SIN_PLANOS_VIGENTES] }
+              condicion:
+                {
+                  type: string,
+                  enum: [SIEMPRE, CON_REPRESENTANTE, GIRO_ESPECIAL, SIN_PLANOS_VIGENTES],
+                }
     Requisito:
       type: object
       required: [id, orden, descripcion, obligatorio, condicion]
@@ -1846,7 +1980,8 @@ components:
         orden: { type: integer }
         descripcion: { type: string }
         obligatorio: { type: boolean }
-        condicion: { type: string, enum: [SIEMPRE, CON_REPRESENTANTE, GIRO_ESPECIAL, SIN_PLANOS_VIGENTES] }
+        condicion:
+          { type: string, enum: [SIEMPRE, CON_REPRESENTANTE, GIRO_ESPECIAL, SIN_PLANOS_VIGENTES] }
     PreguntaAsistente:
       type: object
       required: [codigo, orden, texto, opciones]
@@ -1898,7 +2033,18 @@ components:
           items: { $ref: '#/components/schemas/DocumentoAdjunto' }
     ExpedienteRegistrado:
       type: object
-      required: [numero, estado, ruta, codigoReceta, nombreLicencia, canal, presentadoEn, vencePlazoEn, siguientePaso]
+      required:
+        [
+          numero,
+          estado,
+          ruta,
+          codigoReceta,
+          nombreLicencia,
+          canal,
+          presentadoEn,
+          vencePlazoEn,
+          siguientePaso,
+        ]
       properties:
         numero: { $ref: '#/components/schemas/NumeroExpediente' }
         estado: { $ref: '#/components/schemas/EstadoExpediente' }
@@ -1907,7 +2053,12 @@ components:
         nombreLicencia: { type: string }
         canal: { type: string, enum: [EN_LINEA, MESA_PARTES] }
         presentadoEn: { type: string, format: date-time }
-        vencePlazoEn: { type: [string, 'null'], format: date, description: Vacío hasta la funcionalidad 008 (FR-022). }
+        vencePlazoEn:
+          {
+            type: [string, 'null'],
+            format: date,
+            description: Vacío hasta la funcionalidad 008 (FR-022).,
+          }
         siguientePaso: { type: string }
     ExpedienteResumen:
       type: object
@@ -1930,12 +2081,18 @@ components:
           properties:
             version: { type: integer, description: Se envía en If-Match al decidir. }
             canal: { type: string, enum: [EN_LINEA, MESA_PARTES] }
-            nivelRiesgoPropuesto: { oneOf: [{ $ref: '#/components/schemas/NivelRiesgo' }, { type: 'null' }] }
-            nivelRiesgoConfirmado: { oneOf: [{ $ref: '#/components/schemas/NivelRiesgo' }, { type: 'null' }] }
+            nivelRiesgoPropuesto:
+              { oneOf: [{ $ref: '#/components/schemas/NivelRiesgo' }, { type: 'null' }] }
+            nivelRiesgoConfirmado:
+              { oneOf: [{ $ref: '#/components/schemas/NivelRiesgo' }, { type: 'null' }] }
             documentoTitularEnmascarado: { type: string, example: '4*****21' }
             razonSocial: { type: [string, 'null'] }
             nombreComercial: { type: [string, 'null'] }
-            direccion: { type: string, description: 'Solo para el personal con acceso al detalle (mesa de partes, evaluador y jefatura); la consulta pública nunca la muestra.' }
+            direccion:
+              {
+                type: string,
+                description: 'Solo para el personal con acceso al detalle (mesa de partes, evaluador y jefatura); la consulta pública nunca la muestra.',
+              }
             zona: { type: string }
             areaM2: { type: [number, 'null'] }
             codigoEsquela: { type: [string, 'null'] }
@@ -1956,8 +2113,21 @@ components:
                 type: object
                 properties:
                   descripcion: { type: string }
-                  plazoSubsanarEn: { type: string, format: date }
+                  plazoSubsanarEn: { type: [string, 'null'], format: date }
                   subsanadaEn: { type: [string, 'null'], format: date-time }
+            licenciasDelGrupo:
+              description: >-
+                Licencias vigentes a las que el evaluador puede corregir el riesgo (mismo grupo, incluida la actual).
+                Solo con el expediente EN_EVALUACION; vacía en otro estado (005).
+              type: array
+              items:
+                type: object
+                required: [codigoReceta, nombre, tasa, ruta]
+                properties:
+                  codigoReceta: { $ref: '#/components/schemas/CodigoReceta' }
+                  nombre: { type: string }
+                  tasa: { $ref: '#/components/schemas/Soles' }
+                  ruta: { $ref: '#/components/schemas/Ruta' }
             historial:
               type: array
               items:
@@ -1976,7 +2146,8 @@ components:
       properties:
         numero: { $ref: '#/components/schemas/NumeroExpediente' }
         estado: { $ref: '#/components/schemas/EstadoExpediente' }
-        descripcionEstado: { type: string, example: Tu solicitud fue registrada y espera evaluación }
+        descripcionEstado:
+          { type: string, example: Tu solicitud fue registrada y espera evaluación }
         presentadoEn: { type: string, format: date-time }
         historial:
           type: array
@@ -1999,8 +2170,20 @@ components:
         observacionesPendientes:
           type: array
           items: { type: string }
+        requisitosSubsanables:
+          description: >-
+            Solo cuando el expediente está OBSERVADO: requisitos de la receta guardada al presentar a los que
+            se pueden adjuntar documentos al subsanar (005, historia 4).
+          type: array
+          items:
+            type: object
+            required: [id, descripcion]
+            additionalProperties: false
+            properties:
+              id: { type: integer }
+              descripcion: { type: string }
         tokenConsulta:
-          description: Se emite desde la 005 (descargas del administrado); en la 004 no se envía.
+          description: Solo cuando el expediente está PENDIENTE_PAGO; sirve 15 minutos para descargar la esquela de ese expediente (005).
           $ref: '#/components/schemas/TokenCorto'
     RegistroAuditoria:
       type: object
@@ -2026,6 +2209,8 @@ components:
         numeroRecibo: { type: [string, 'null'] }
         pagadaEn: { type: [string, 'null'], format: date-time }
         generadaEn: { type: string, format: date-time }
+        nombreLicencia: { type: string, description: 'Igual al concepto (005).' }
+        estadoExpediente: { $ref: '#/components/schemas/EstadoExpediente' }
 
     # ------------------------------------------------------------- inspecciones
     Inspeccion:
@@ -2112,7 +2297,8 @@ components:
               codigoReceta: { $ref: '#/components/schemas/CodigoReceta' }
               plazoTupaDias: { type: integer }
               promedioDiasHabiles: { type: number }
-              dentroDelPlazo: { type: number, description: Porcentaje de expedientes atendidos dentro del plazo. }
+              dentroDelPlazo:
+                { type: number, description: Porcentaje de expedientes atendidos dentro del plazo. }
         ingresos:
           type: object
           required: [total, porReceta]
@@ -2137,5 +2323,10 @@ components:
       properties:
         estado: { type: string, enum: [OK, DEGRADADO, CAIDO] }
         baseDeDatos: { type: string, enum: [OK, CAIDO] }
-        cache: { type: string, enum: [OK, CAIDO], description: 'Si Redis falla el servicio sigue (DEGRADADO), ADR-005.' }
+        cache:
+          {
+            type: string,
+            enum: [OK, CAIDO],
+            description: 'Si Redis falla el servicio sigue (DEGRADADO), ADR-005.',
+          }
         version: { type: string }

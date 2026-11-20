@@ -127,23 +127,23 @@ La jefatura y el administrador también entran con CU11 (vista 2), como todo el 
 | CU02 | Consultar requisitos, tasa y plazo | Administrado | HU01, HU03 | RF02, RF05 | 001 (lista) y 003 (detalle) | ✅ Hecho |
 | CU03 | Verificar identidad con OTP | Administrado | HU02 | RF06 | 004 | ✅ Hecho |
 | CU04 | Presentar solicitud en línea | Administrado | HU02 | RF04, RF06, RF07 | 004 | ✅ Hecho |
-| CU05 | Subsanar observación | Administrado | HU02, HU07 | RF04, RF09 | 004 y 006 | Pendiente |
+| CU05 | Subsanar observación | Administrado | HU02, HU07 | RF04, RF09 | 005 (el plazo en días hábiles, 008) | ✅ Hecho |
 | CU06 | Consultar estado del trámite | Administrado | HU05 | RF03 | 004 | ✅ Hecho |
-| CU07 | Descargar esquela de pago | Administrado | HU04 | RF11 | 005 | Pendiente |
+| CU07 | Descargar esquela de pago | Administrado | HU04 | RF11 | 005 | ✅ Hecho |
 | CU08 | Descargar licencia con QR | Administrado | HU06 | RF13 | 009 | Pendiente |
 | CU09 | Verificar licencia por QR | Cualquier persona | HU06 | RF13 | 009 | Pendiente |
 | CU10 | Recibir avisos del trámite | Administrado | HU05, HU11 | RF14, RF20 | 008 | Pendiente |
 | CU11 | Iniciar sesión con OTP | Todo el personal | HU15 | RF16 | 002 | ✅ Hecho |
 | CU12 | Registrar solicitud presencial | Mesa de partes | HU02 | RF04, RF07 | 004 | ✅ Hecho |
-| CU13 | Evaluar expediente | Evaluador | HU07 | RF07, RF09 | 006 | Pendiente |
-| CU14 | Generar esquela de pago | Sistema (desde CU13) | HU04 | RF05, RF11 | 005 | Pendiente |
+| CU13 | Evaluar expediente | Evaluador | HU07 | RF07, RF09 | 005 (ruta B con inspección, 007) | ✅ Hecho |
+| CU14 | Generar esquela de pago | Sistema (desde CU13) | HU04 | RF05, RF11 | 005 | ✅ Hecho |
 | CU15 | Registrar resultado ITSE con fotos | Inspector ITSE | HU08 | RF10 | 007 | Pendiente |
-| CU16 | Registrar pago en caja | Personal de caja | HU13 | RF12 | 005 | Pendiente |
+| CU16 | Registrar pago en caja | Personal de caja | HU13 | RF12 | 005 | ✅ Hecho |
 | CU17 | Emitir licencia con QR | Sistema (desde CU15 o CU16) | HU06 | RF13, RF25 | 009 | Pendiente |
 | CU18 | Asignar inspector | Jefatura | HU08 | RF10 | 007 | Pendiente |
 | CU19 | Recibir alertas de plazos | Jefatura | HU09 | RF08 | 008 | Pendiente |
 | CU20 | Ver tablero y reportes | Jefatura | HU10 | RF18, RF19 | 009 | Pendiente |
-| CU21 | Corregir número de recibo | Jefatura | HU17 | RF24 | 005 | Pendiente |
+| CU21 | Corregir número de recibo | Jefatura | HU17 | RF24 | 005 | ✅ Hecho |
 | CU22 | Consultar auditoría | Jefatura | HU17 | RF25 | 009 | Pendiente |
 | CU23 | Gestionar usuarios y roles | Administrador | HU15 | RF17, RF22 | 002 | ✅ Hecho |
 | CU24 | Actualizar recetas del catálogo | Administrador | HU14 | RF21 | 003 | ✅ Hecho |

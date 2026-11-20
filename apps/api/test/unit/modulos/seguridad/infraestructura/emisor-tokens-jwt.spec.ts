@@ -66,4 +66,39 @@ describe('EmisorTokensJwt', () => {
 
     await expect(emisor.verificarAcceso(raro)).resolves.toBeNull();
   });
+
+  describe('tokenConsulta (005)', () => {
+    it('lleva el número de expediente, audiencia propia y dura 15 minutos', async () => {
+      const token = await emisor.firmarConsulta('EXP-2026-000001');
+      const carga = cargaDe(token);
+
+      await expect(emisor.verificarConsulta(token)).resolves.toBe('EXP-2026-000001');
+      expect(carga.aud).toBe('consulta-expediente');
+      expect(Number(carga.exp) - Number(carga.iat)).toBe(900);
+      expect(emisor.segundosDeVidaConsulta).toBe(900);
+    });
+
+    it('no sirve como token del personal ni de identidad, ni al revés', async () => {
+      const consulta = await emisor.firmarConsulta('EXP-2026-000001');
+
+      await expect(emisor.verificarAcceso(consulta)).resolves.toBeNull();
+      await expect(emisor.verificarIdentidad(consulta)).resolves.toBeNull();
+      await expect(
+        emisor.verificarConsulta(await emisor.firmarAcceso(reclamos)),
+      ).resolves.toBeNull();
+      await expect(
+        emisor.verificarConsulta(await emisor.firmarIdentidad('verificacion-1')),
+      ).resolves.toBeNull();
+    });
+
+    it('rechaza un sujeto que no es un número de expediente o una firma ajena', async () => {
+      await expect(
+        emisor.verificarConsulta(await emisor.firmarConsulta('otra-cosa')),
+      ).resolves.toBeNull();
+      const ajeno = new EmisorTokensJwt('otro-secreto-de-prueba-con-mas-de-32-bytes');
+      await expect(
+        emisor.verificarConsulta(await ajeno.firmarConsulta('EXP-2026-000001')),
+      ).resolves.toBeNull();
+    });
+  });
 });

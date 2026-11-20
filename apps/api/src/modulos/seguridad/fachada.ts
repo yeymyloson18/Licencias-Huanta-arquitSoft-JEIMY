@@ -11,6 +11,8 @@ import {
   ErrorIdentificacionNoDisponible,
 } from './aplicacion/errores';
 import type { VerificarIdentidadPresencial } from './aplicacion/verificar-identidad-presencial';
+import type { EmisorTokensConsulta } from './dominio/puertos/emisor-tokens';
+import type { LectorNombresUsuarios } from './dominio/puertos/lector-nombres-usuarios';
 import type { DatosIdentidadAdministrado } from './dominio/identidad-administrado';
 
 export type { Rol } from './dominio/rol';
@@ -33,6 +35,11 @@ export {
   SolicitanteActual,
   SolicitanteGuard,
 } from './presentacion/solicitante.guard';
+export {
+  ConsultaOPersonalGuard,
+  LectorActual,
+  type LectorConsulta,
+} from './presentacion/consulta-o-personal.guard';
 
 /** Resultado de comparar la identidad de una solicitud con la confirmada (004, research §R-05). */
 export type ResultadoIdentidadEnLinea =
@@ -52,7 +59,32 @@ export class FachadaSeguridad {
   constructor(
     private readonly confirmarIdentidad: ConfirmarIdentidadEnLinea,
     private readonly identidadPresencial: VerificarIdentidadPresencial,
+    private readonly emisorConsulta?: EmisorTokensConsulta,
+    private readonly lectorNombres?: LectorNombresUsuarios,
   ) {}
+
+  /** Nombre de cada usuario del personal, por id (auditoría de la 005). Los ids desconocidos se omiten. */
+  nombresDeUsuarios(ids: readonly string[]): Promise<ReadonlyMap<string, string>> {
+    return this.lectorNombres === undefined
+      ? Promise.resolve(new Map())
+      : this.lectorNombres.nombres(ids);
+  }
+
+  /**
+   * `tokenConsulta` de 15 minutos para leer un solo expediente después de la consulta pública
+   * (research §R-08 de la 005). Lo pide Trámites cuando el expediente está PENDIENTE_PAGO.
+   */
+  async emitirTokenConsulta(
+    numeroExpediente: string,
+  ): Promise<{ readonly token: string; readonly expiraEn: number }> {
+    if (this.emisorConsulta === undefined) {
+      throw new Error('La fachada de seguridad no tiene emisor de tokens de consulta');
+    }
+    return {
+      token: await this.emisorConsulta.firmarConsulta(numeroExpediente),
+      expiraEn: this.emisorConsulta.segundosDeVidaConsulta,
+    };
+  }
 
   /** ¿La identidad que llega con la solicitud es la que se confirmó con el código? */
   async confirmarIdentidadEnLinea(

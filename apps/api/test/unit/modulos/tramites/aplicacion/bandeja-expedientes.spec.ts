@@ -46,6 +46,9 @@ const DETALLE: ExpedienteDetalle = {
   direccion: 'Jr. Ficticio 123',
   zona: 'Centro',
   areaM2: 40,
+  nivelRiesgoPropuesto: null,
+  nivelRiesgoConfirmado: null,
+  observaciones: [],
   documentos: [
     { id: 'doc-1', requisitoId: 11, nombreOriginal: 'solicitud.pdf', tipoMime: 'application/pdf' },
   ],
@@ -95,11 +98,13 @@ class ExpedientesEnMemoria implements Pick<
     });
   }
 
-  obtenerDetalle(numero: NumeroExpediente, lector: { usuarioId: string; en: Date }) {
+  obtenerDetalle(numero: NumeroExpediente, lector: { usuarioId: string; en: Date } | null) {
     if (numero.valor !== DETALLE.numero) {
       return Promise.resolve(null);
     }
-    this.vistas.push({ numero: numero.valor, ...lector });
+    if (lector !== null) {
+      this.vistas.push({ numero: numero.valor, ...lector });
+    }
     return Promise.resolve(DETALLE);
   }
 
@@ -177,6 +182,16 @@ describe('Bandeja de expedientes del personal (historia 4 de la 004)', () => {
       expect(expedientes.vistas).toEqual([
         { numero: 'EXP-2026-000001', usuarioId: 'evaluador-1', en: T0 },
       ]);
+    });
+
+    it('como respuesta de una decisión (005) no registra VER_DETALLE', async () => {
+      await new ObtenerDetalleExpediente({ expedientes, reloj: new RelojFalso() }).ejecutar({
+        numero: 'EXP-2026-000001',
+        usuarioId: 'evaluador-1',
+        registrarVista: false,
+      });
+
+      expect(expedientes.vistas).toHaveLength(0);
     });
 
     it.each(['EXP-2026-999999', 'no-es-un-numero'])('%s → no encontrado', async (numero) => {

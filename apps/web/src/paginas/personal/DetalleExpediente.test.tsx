@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   json,
@@ -113,6 +113,71 @@ describe('Página Detalle del expediente', () => {
     expect(revocar).toHaveBeenCalledWith('blob:documento');
     const descarga = llamadas.find((l) => l.clave.includes('/documentos/'));
     expect(descarga?.autorizacion).toBe('Bearer token-jefatura');
+  });
+
+  it('jefatura descarga la esquela de un expediente PAGADO con su sesión (005)', async () => {
+    Object.assign(URL, {
+      createObjectURL: jest.fn(() => 'blob:esquela'),
+      revokeObjectURL: jest.fn(),
+    });
+    const clic = jest
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    const llamadas = montar({
+      'GET /expedientes/EXP-2026-000004': () => json({ ...EXPEDIENTE, estado: 'PAGADO' }),
+      'GET /esquelas/ESQ-EXP-2026-000004/pdf': () =>
+        new Response('%PDF-1.7', { status: 200, headers: { 'Content-Type': 'application/pdf' } }),
+    });
+    const usuario = userEvent.setup();
+
+    await usuario.click(await screen.findByRole('button', { name: 'Descargar esquela' }));
+
+    await waitFor(() => {
+      expect(clic).toHaveBeenCalledTimes(1);
+    });
+    expect(llamadas.find((l) => l.clave.endsWith('/pdf'))?.autorizacion).toBe(
+      'Bearer token-jefatura',
+    );
+  });
+
+  it('jefatura ve la auditoría del expediente con el usuario de cada decisión (005)', async () => {
+    montar({
+      'GET /expedientes/EXP-2026-000004': () => json(EXPEDIENTE),
+      'GET /expedientes/EXP-2026-000004/auditoria': () =>
+        json([
+          {
+            usuarioId: null,
+            nombreUsuario: null,
+            accion: 'PRESENTAR_EN_LINEA',
+            referencia: 'EXP-2026-000004',
+            detalle: null,
+            ocurridoEn: '2026-11-19T15:00:00.000Z',
+          },
+          {
+            usuarioId: '00000000-0000-4000-8000-0000000000e1',
+            nombreUsuario: 'Evaluador de Prueba',
+            accion: 'INICIAR_EVALUACION',
+            referencia: 'EXP-2026-000004',
+            detalle: null,
+            ocurridoEn: '2026-11-20T15:00:00.000Z',
+          },
+        ]),
+    });
+
+    const seccion = await screen.findByRole('region', { name: 'Auditoría del expediente' });
+
+    expect(
+      await within(seccion).findByText(/Empezó la revisión — Evaluador de Prueba/),
+    ).toBeInTheDocument();
+    expect(within(seccion).getByText(/Presentado en línea — El titular/)).toBeInTheDocument();
+  });
+
+  it('sin esquela todavía (REGISTRADO) no ofrece descargarla (005)', async () => {
+    montar({ 'GET /expedientes/EXP-2026-000004': () => json(EXPEDIENTE) });
+
+    await screen.findByRole('article');
+
+    expect(screen.queryByRole('button', { name: 'Descargar esquela' })).not.toBeInTheDocument();
   });
 
   it('si el documento ya no existe lo avisa', async () => {

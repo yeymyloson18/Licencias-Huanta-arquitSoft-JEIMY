@@ -349,6 +349,49 @@ lectura (no reemplaza la prueba con personas que pide SC-001):
 | Desde la ficha de LIC-02 hasta el comprobante, con identidad y los documentos obligatorios (SC-001) | 81 s   | ≤ 15 min |
 | Mesa de partes: registrar una solicitud presencial con documentos ya digitalizados (SC-010)         | 47 s   | ≤ 10 min |
 
+## Evaluación, esquela y pago en caja (funcionalidad 005)
+
+- **Evaluar** (detalle del expediente, rol EVALUADOR): "Empezar revisión" pasa el expediente a
+  EN_EVALUACION; "Confirmar riesgo" confirma la licencia presentada o la corrige a otra vigente del
+  mismo grupo, y lo deja PENDIENTE_PAGO (con tasa 0.00 pasa directo a PAGADO, sin esquela). También
+  puede **observar** una sola vez (con texto de 10 a 1000 caracteres) o **denegar** con motivo. Cada
+  decisión envía la versión leída en `If-Match`: si otra persona cambió el expediente, avisa y lo
+  recarga (412) en lugar de pisar el cambio.
+- **Esquela** (`ESQ-EXP-AAAA-NNNNNN`): se genera en segundos por una cola de eventos en PostgreSQL
+  (`comun.evento_pendiente`, con reintentos sin límite y espera creciente). El administrado la
+  descarga en PDF desde la consulta pública con un permiso de 15 minutos solo para su expediente; el
+  personal (EVALUADOR, CAJA y JEFATURA), desde el detalle. El PDF no lleva datos personales.
+- **Caja** (`/personal/caja`, rol CAJA): busca la esquela por su código, muestra expediente, titular,
+  licencia y monto, y registra el número de recibo una sola vez (10 pagos simultáneos registran uno).
+  El expediente pasa a PAGADO por la misma cola de eventos.
+- **Subsanar** (enlace en la consulta cuando está OBSERVADO): el titular confirma su identidad con el
+  código y adjunta los documentos que faltaban; mesa de partes también puede hacerlo. El expediente
+  vuelve a EN_EVALUACION.
+- **Aprobar** (rol EVALUADOR): un expediente PAGADO de ruta A o C queda APROBADO. La ruta B
+  (inspección previa) y la emisión de la licencia llegan en las funcionalidades 007 y 009.
+- **Auditoría** (`/personal/auditoria`, rol JEFATURA): pagos y correcciones con filtro de fechas y
+  paginación, "Corregir recibo" con motivo, y la auditoría de cada expediente en su detalle.
+- **Migraciones 0008 y 0009**: acciones nuevas de la auditoría, plazo de subsanación opcional, espera
+  entre reintentos de la cola y usuario nulo en la auditoría cuando el titular subsana en línea.
+
+### Resultados de la funcionalidad 005
+
+Medición del 20/11/2026 en un clon con su propio nombre de proyecto de Compose y puertos, con datos y
+usuarios ficticios, en la misma computadora de la 004. Recorrido automatizado a 360 px que escribe
+tecla por tecla (120 ms por carácter) y hace pausas de lectura (no reemplaza la prueba con personas):
+
+| Tarea                                                                               | Tiempo | Objetivo |
+| ----------------------------------------------------------------------------------- | ------ | -------- |
+| Evaluador: desde la bandeja hasta confirmar el riesgo y generar la esquela (SC-001) | 28 s   | ≤ 2 min  |
+| Caja: desde escribir el código de la esquela hasta registrar el pago (SC-002)       | 13 s   | ≤ 1 min  |
+
+A 360 px ni el detalle del expediente ni la caja tienen desplazamiento horizontal. Al terminar, el
+expediente del clon quedó PAGADO por la cola de eventos y la API no registró errores. La matriz de
+permisos (SC-007) comprueba 75 casos de 401 y 403 sin cambios en los datos, y la prueba de
+privacidad (SC-006) recorre todas las operaciones nuevas sin que el documento, el RUC, el celular,
+el correo ni la dirección del titular aparezcan en registros, URL, errores, eventos, auditorías o el
+PDF. Quedan para el despliegue (007): k6, Lighthouse y ZAP.
+
 ## Verificaciones automáticas
 
 Cada pull request y cada push a `main` ejecutan en GitHub Actions (`.github/workflows/ci.yml`)

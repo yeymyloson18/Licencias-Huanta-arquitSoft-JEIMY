@@ -11,6 +11,10 @@ export interface ExpedienteConsultado {
   readonly vencePlazoEn: Date | null;
   /** En orden cronológico. */
   readonly historial: readonly { readonly estado: EstadoExpediente; readonly ocurridoEn: Date }[];
+  /** Texto de las observaciones sin subsanar (005), de la más antigua a la más nueva. */
+  readonly observacionesPendientes: readonly string[];
+  /** Requisitos de la receta guardada al presentar, en su orden (para subsanar, 005). */
+  readonly requisitos: readonly { readonly id: number; readonly descripcion: string }[];
 }
 
 type Ruta = 'A' | 'B' | 'C';
@@ -40,6 +44,8 @@ export interface PaginaExpedientes {
   readonly datos: readonly ExpedienteResumen[];
 }
 
+export type NivelRiesgo = 'BAJO' | 'MEDIO' | 'ALTO' | 'MUY_ALTO';
+
 /** Detalle para el personal: el documento del titular llega descifrado y se enmascara al mostrarlo. */
 export interface ExpedienteDetalle extends ExpedienteResumen {
   readonly version: number;
@@ -50,6 +56,14 @@ export interface ExpedienteDetalle extends ExpedienteResumen {
   readonly direccion: string;
   readonly zona: string;
   readonly areaM2: number | null;
+  readonly nivelRiesgoPropuesto: NivelRiesgo | null;
+  readonly nivelRiesgoConfirmado: NivelRiesgo | null;
+  /** La observación del evaluador (como máximo una, 005). */
+  readonly observaciones: readonly {
+    readonly descripcion: string;
+    readonly plazoSubsanarEn: Date | null;
+    readonly subsanadaEn: Date | null;
+  }[];
   /** En el orden de la receta al presentar. */
   readonly documentos: readonly {
     readonly id: string;
@@ -86,12 +100,13 @@ export interface RepositorioExpedientes {
   listar(filtro: FiltroBandeja): Promise<PaginaExpedientes>;
 
   /**
-   * Lee el detalle y, en la misma transacción, registra `VER_DETALLE` en la auditoría con el usuario
-   * (FR-036). `null` si el número no existe (y entonces no registra nada).
+   * Lee el detalle y, si hay `lector`, en la misma transacción registra `VER_DETALLE` en la auditoría
+   * con el usuario (FR-036). Sin `lector` (respuesta de una decisión de la 005) no registra nada.
+   * `null` si el número no existe (y entonces no registra nada).
    */
   obtenerDetalle(
     numero: NumeroExpediente,
-    lector: { readonly usuarioId: string; readonly en: Date },
+    lector: { readonly usuarioId: string; readonly en: Date } | null,
   ): Promise<ExpedienteDetalle | null>;
 
   /** Un documento de ESE expediente; `null` si no existe o es de otro expediente. */

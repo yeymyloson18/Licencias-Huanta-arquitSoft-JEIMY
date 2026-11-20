@@ -10,6 +10,8 @@ const PREDETERMINADOS: Readonly<Record<string, string>> = {
   CLAVE_HMAC_DATOS: 'ZGVzYXJyb2xsby1obWFjLXNvbG8tbm8tdXNhci1lbi1wcm9kdWNjaW9u',
   ENVIO_OTP: 'simulado',
   TRUST_PROXY_SALTOS: '1',
+  // Sin temporizador: las pruebas procesan la cola de eventos a mano (005).
+  DESPACHADOR_INTERVALO_MS: '0',
 };
 
 for (const [variable, valor] of Object.entries(PREDETERMINADOS)) {

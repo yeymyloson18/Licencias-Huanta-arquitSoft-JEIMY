@@ -32,3 +32,14 @@ export interface EmisorTokensIdentidad {
   /** Devuelve el id de la verificación o `null` si el token es inválido, de otra audiencia o venció. */
   verificarIdentidad(token: string): Promise<string | null>;
 }
+
+/**
+ * `tokenConsulta` (research §R-08 de la 005): 15 minutos, audiencia propia y el número de expediente
+ * como sujeto. Sirve solo para leer ese expediente (por ahora, descargar su esquela).
+ */
+export interface EmisorTokensConsulta {
+  readonly segundosDeVidaConsulta: number;
+  firmarConsulta(numeroExpediente: string): Promise<string>;
+  /** Devuelve el número de expediente o `null` si el token es inválido, de otra audiencia o venció. */
+  verificarConsulta(token: string): Promise<string | null>;
+}

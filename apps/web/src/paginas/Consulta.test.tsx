@@ -55,6 +55,84 @@ describe('Página Consulta', () => {
     reiniciarSesion();
   });
 
+  describe('esquela y observaciones (005)', () => {
+    const PENDIENTE = {
+      ...ESTADO,
+      estado: 'PENDIENTE_PAGO',
+      descripcionEstado: 'Tu solicitud espera el pago',
+      siguientePaso: 'Paga la esquela en la caja municipal',
+      codigoEsquela: 'ESQ-EXP-2026-000123',
+      montoEsquela: '177.10',
+      esquelaPagada: false,
+      tokenConsulta: { token: 'token-consulta-ficticio', expiraEn: 900 },
+    };
+    const consultarPendiente = async (pdf: Manejador) => {
+      const llamadas = simularApi({
+        ...base,
+        'POST /expedientes/consultar': () => json(PENDIENTE),
+        'GET /esquelas/ESQ-EXP-2026-000123/pdf': pdf,
+      });
+      montarEn('/consulta');
+      const usuario = userEvent.setup();
+      await usuario.type(await screen.findByLabelText('Número de expediente'), 'EXP-2026-000123');
+      await usuario.type(
+        screen.getByLabelText('DNI, carné de extranjería o RUC del titular'),
+        '40000001',
+      );
+      await usuario.click(screen.getByRole('button', { name: 'Consultar' }));
+      return { llamadas, usuario };
+    };
+
+    beforeEach(() => {
+      Object.assign(URL, {
+        createObjectURL: jest.fn(() => 'blob:ficticio'),
+        revokeObjectURL: jest.fn(),
+      });
+    });
+
+    it('muestra el código y el monto, y descarga el PDF con el token de consulta', async () => {
+      const clic = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+      const { llamadas, usuario } = await consultarPendiente(
+        () =>
+          new Response(new Blob(['%PDF-1.7']), { headers: { 'Content-Type': 'application/pdf' } }),
+      );
+
+      expect(await screen.findByText('ESQ-EXP-2026-000123')).toBeInTheDocument();
+      expect(screen.getByText('S/ 177.10')).toBeInTheDocument();
+      await usuario.click(screen.getByRole('button', { name: 'Descargar esquela' }));
+
+      await waitFor(() => {
+        expect(clic).toHaveBeenCalled();
+      });
+      expect(llamadas.find((l) => l.clave.endsWith('/pdf'))?.autorizacion).toBe(
+        'Bearer token-consulta-ficticio',
+      );
+    });
+
+    it('si la esquela aún se genera, avisa que vuelva a intentar', async () => {
+      const { usuario } = await consultarPendiente(() => new Response(null, { status: 202 }));
+
+      await usuario.click(await screen.findByRole('button', { name: 'Descargar esquela' }));
+
+      expect(await screen.findByRole('status')).toHaveTextContent(
+        'La esquela se está generando. Vuelve a intentarlo en unos segundos.',
+      );
+    });
+
+    it('un expediente observado muestra el texto de la observación y no ofrece descarga', async () => {
+      await consultar(() =>
+        json({
+          ...ESTADO,
+          estado: 'OBSERVADO',
+          observacionesPendientes: ['Falta el croquis de ubicación'],
+        }),
+      );
+
+      expect(await screen.findByText('Falta el croquis de ubicación')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Descargar esquela' })).not.toBeInTheDocument();
+    });
+  });
+
   it('envía los datos por POST, sin ponerlos en la URL, y muestra el estado con su historial', async () => {
     const { llamadas } = await consultar(() => json(ESTADO));
 

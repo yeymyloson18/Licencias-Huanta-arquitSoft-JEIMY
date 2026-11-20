@@ -5,6 +5,10 @@ import {
   type Expediente,
   obtenerExpediente,
 } from '../../servicios/clienteApi';
+import { AccionesEvaluador } from '../../componentes/AccionesEvaluador';
+import { AuditoriaExpediente } from '../../componentes/AuditoriaExpediente';
+import { DescargarEsquela } from '../../componentes/DescargarEsquela';
+import { useSesion } from '../../sesion/ProveedorSesion';
 import { ESTADOS, formatearFecha } from './Expedientes';
 
 // Detalle del expediente para el personal (historia 4 de la 004): datos, historial y documentos con
@@ -25,11 +29,28 @@ const formatearFechaHora = (iso: string) =>
 
 const CANALES: Record<string, string> = { EN_LINEA: 'En línea', MESA_PARTES: 'Mesa de partes' };
 
+/** Estados en los que el expediente ya tiene esquela (después de confirmar el riesgo). */
+const ESTADOS_CON_ESQUELA: ReadonlySet<string> = new Set([
+  'PENDIENTE_PAGO',
+  'PAGADO',
+  'EN_INSPECCION',
+  'APROBADO',
+  'LICENCIA_PROVISIONAL',
+  'LICENCIA_EMITIDA',
+]);
+
 /** Página `/personal/expedientes/:numero`. */
 export function DetalleExpediente() {
   const { numero = '' } = useParams();
   const [carga, setCarga] = useState<Carga>({ tipo: 'cargando' });
   const [avisoDescarga, setAvisoDescarga] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const { sesion } = useSesion();
+  const esEvaluador = sesion?.usuario.roles.includes('EVALUADOR') ?? false;
+  const esJefatura = sesion?.usuario.roles.includes('JEFATURA') ?? false;
+  // El PDF de la esquela lo descargan EVALUADOR, CAJA y JEFATURA (005).
+  const puedeDescargarEsquela =
+    sesion?.usuario.roles.some((rol) => ['EVALUADOR', 'CAJA', 'JEFATURA'].includes(rol)) ?? false;
 
   const cargar = useCallback(async () => {
     setCarga({ tipo: 'cargando' });
@@ -98,6 +119,29 @@ export function DetalleExpediente() {
             </button>
           </div>
         )}
+        {aviso && (
+          <p className="aviso aviso--info" role="status">
+            {aviso}
+          </p>
+        )}
+        {carga.tipo === 'lista' && esEvaluador && (
+          <AccionesEvaluador
+            expediente={carga.expediente}
+            alActualizar={(expediente) => {
+              setAviso('Decisión guardada.');
+              setCarga({ tipo: 'lista', expediente });
+            }}
+            alCambiar={(mensaje) => {
+              setAviso(mensaje);
+              void cargar();
+            }}
+          />
+        )}
+        {carga.tipo === 'lista' &&
+          puedeDescargarEsquela &&
+          ESTADOS_CON_ESQUELA.has(carga.expediente.estado) && (
+            <DescargarEsquela codigo={`ESQ-${carga.expediente.numero}`} />
+          )}
         {carga.tipo === 'lista' && (
           <article className="tarjeta" aria-label={`Expediente ${carga.expediente.numero}`}>
             <dl className="ficha__datos">
@@ -171,6 +215,9 @@ export function DetalleExpediente() {
               ))}
             </ol>
           </article>
+        )}
+        {carga.tipo === 'lista' && esJefatura && (
+          <AuditoriaExpediente numero={carga.expediente.numero} />
         )}
         <p className="licencia__volver">
           <Link to="/personal/expedientes">Volver a la bandeja</Link>
