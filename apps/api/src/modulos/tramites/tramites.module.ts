@@ -3,19 +3,25 @@ import type { ProtectorDatos } from '../../compartido/dominio/protector-datos';
 import { CONFIGURACION, type Configuracion } from '../../compartido/infraestructura/configuracion';
 import { PrismaServicio } from '../../compartido/infraestructura/prisma.servicio';
 import { PROTECTOR_DATOS } from '../../compartido/infraestructura/protector-datos-aes-gcm';
+import { REDIS_CLIENTE } from '../../compartido/infraestructura/redis.proveedor';
+import type Redis from 'ioredis';
 import { FachadaCatalogo } from '../catalogo/fachada';
 import { FachadaSeguridad } from '../seguridad/fachada';
+import { ConsultarEstado } from './aplicacion/consultar-estado';
 import { PresentarSolicitud } from './aplicacion/presentar-solicitud';
 import { SubirDocumento } from './aplicacion/subir-documento';
 import type { AlmacenArchivos } from './dominio/puertos/almacen-archivos';
 import { AlmacenArchivosDisco } from './infraestructura/almacen-archivos-disco';
 import { CatalogoRecetasFachada } from './infraestructura/catalogo-recetas-fachada';
 import { GeneradorIdsCrypto } from './infraestructura/generador-ids-crypto';
+import { LimitadorConsultasRedis } from './infraestructura/limitador-consultas-redis';
 import { HuellaSha256 } from './infraestructura/huella-sha256';
 import { RelojSistema } from './infraestructura/reloj-sistema';
+import { RepositorioExpedientesPostgres } from './infraestructura/repositorio-expedientes-postgres';
 import { RepositorioDocumentosTemporalesPostgres } from './infraestructura/repositorio-documentos-temporales-postgres';
 import { UnidadDeTrabajoTramitesPostgres } from './infraestructura/unidad-de-trabajo-tramites-postgres';
 import { VerificadorIdentidadFachada } from './infraestructura/verificador-identidad-fachada';
+import { ConsultaController } from './presentacion/consulta.controller';
 import { DocumentosController } from './presentacion/documentos.controller';
 import { ExpedientesController } from './presentacion/expedientes.controller';
 
@@ -27,8 +33,18 @@ const huella = new HuellaSha256();
 const reloj = new RelojSistema();
 
 @Module({
-  controllers: [DocumentosController, ExpedientesController],
+  // `ConsultaController` va antes: `POST expedientes/consultar` es una ruta fija.
+  controllers: [ConsultaController, DocumentosController, ExpedientesController],
   providers: [
+    {
+      provide: ConsultarEstado,
+      inject: [PrismaServicio, PROTECTOR_DATOS, REDIS_CLIENTE],
+      useFactory: (prisma: PrismaServicio, protector: ProtectorDatos, redis: Redis) =>
+        new ConsultarEstado({
+          expedientes: new RepositorioExpedientesPostgres(prisma, protector),
+          limitador: new LimitadorConsultasRedis(redis),
+        }),
+    },
     {
       provide: ALMACEN_ARCHIVOS,
       inject: [CONFIGURACION],

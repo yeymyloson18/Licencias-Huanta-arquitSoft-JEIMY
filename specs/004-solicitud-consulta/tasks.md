@@ -321,14 +321,15 @@ ajeno y un número inexistente dan el mismo 404; el 6.º fallo da 429.
 
 ### Pruebas de la historia 2 ⚠️
 
-- [ ] T040 [P] [US2] Prueba unitaria `test-tra/dominio/estado-publico.spec.ts`: todos los valores de
+- [X] T040 [P] [US2] Prueba unitaria `test-tra/dominio/estado-publico.spec.ts`: todos los valores de
   `EstadoExpediente` tienen descripción y siguiente paso en `TEXTO_ESTADO_PUBLICO`; `REGISTRADO` dice
   "Tu solicitud fue registrada y espera evaluación"
-- [ ] T041 [P] [US2] Prueba unitaria `test-tra/aplicacion/consultar-estado.spec.ts` con dobles:
+  _Nota de implementación:_ la prueba y la tabla `TEXTO_ESTADO_PUBLICO` ya se habían creado en la fase 3 (las usa el dominio del expediente); aquí solo se verificó que pasa.
+- [X] T041 [P] [US2] Prueba unitaria `test-tra/aplicacion/consultar-estado.spec.ts` con dobles:
   normaliza el número; busca por huella del documento o del RUC; no encontrado → reserva un fallo; un
   acierto no suma; limitador bloqueado → bloqueo con segundos de espera; limitador caído → falla
   cerrado; el resultado no tiene datos personales
-- [ ] T042 [P] [US2] Prueba de integración `int/consulta-estado.e2e-spec.ts`: con DNI y con RUC → 200
+- [X] T042 [P] [US2] Prueba de integración `int/consulta-estado.e2e-spec.ts`: con DNI y con RUC → 200
   `EstadoPublico` sin documento, RUC, celular, correo ni dirección y con `Cache-Control: no-store`;
   número en minúsculas con espacios → 200; DNI ajeno y número inexistente → 404 con cuerpo idéntico;
   formato inválido → 422; 5 fallos desde el mismo origen → el 6.º, aunque correcto, 429 con
@@ -337,22 +338,25 @@ ajeno y un número inexistente dan el mismo 404; el 6.º fallo da 429.
 
 ### Implementación de la historia 2
 
-- [ ] T043 [P] [US2] Crear `tra/dominio/estado-publico.ts` (`TEXTO_ESTADO_PUBLICO`). Debe pasar T040
-- [ ] T044 [US2] Crear el puerto `tra/dominio/puertos/limitador-consultas.ts`, el caso de uso
+- [X] T043 [P] [US2] Crear `tra/dominio/estado-publico.ts` (`TEXTO_ESTADO_PUBLICO`). Debe pasar T040
+- [X] T044 [US2] Crear el puerto `tra/dominio/puertos/limitador-consultas.ts`, el caso de uso
   `tra/aplicacion/consultar-estado.ts` y su lectura en `repositorio-expedientes.ts`; adaptadores
   `tra/infraestructura/limitador-consultas-redis.ts` (script Lua atómico, 5 fallos por origen en 15
   min, falla cerrado) y `tra/infraestructura/repositorio-expedientes-postgres.ts` (búsqueda por
   `numero` y `documento_hmac` o `ruc_hmac`). Deben pasar T041
-- [ ] T045 [US2] Crear `tra/presentacion/consulta.controller.ts` (`POST expedientes/consultar`, zod con
+  _Nota de implementación:_ el limitador reserva el intento antes de buscar y lo libera si la consulta acierta (mismo esquema de la 002), así dos fallos simultáneos no pasan el límite. El adaptador de PostgreSQL recibe el documento en claro y calcula su huella con el protector compartido; la base nunca ve el documento.
+- [X] T045 [US2] Crear `tra/presentacion/consulta.controller.ts` (`POST expedientes/consultar`, zod con
   los patrones del contrato, origen desde `req.ip` con el `trust proxy` de la 002, 404 único, 429 con
   `Retry-After`, `Cache-Control: no-store`) y cablearlo. Debe pasar T042
-- [ ] T046 [P] [US2] Agregar `consultarEstado(numero, documento)` a `web/servicios/clienteApi.ts`
+  _Nota de implementación:_ `ConsultaController` se declara antes que `ExpedientesController` en el módulo; el 503 usa `ErrorProblema.intentosNoDisponibles()` y el 404 el mismo `noEncontrado()` en los dos casos.
+- [X] T046 [P] [US2] Agregar `consultarEstado(numero, documento)` a `web/servicios/clienteApi.ts`
   (resultados `ok`, `no-encontrado`, `bloqueado` con la hora, `no-disponible`)
-- [ ] T047 [US2] Prueba `web/paginas/Consulta.test.tsx` y página `web/paginas/Consulta.tsx` según
+- [X] T047 [US2] Prueba `web/paginas/Consulta.test.tsx` y página `web/paginas/Consulta.tsx` según
   [contracts/portal-tramite.md](./contracts/portal-tramite.md): formulario POST (nada en la URL),
   resultado con estado, descripción, siguiente paso e historial en lista ordenada, mensaje único para
   datos que no coinciden, 429 con la hora; ruta `/consulta` en `web/Aplicacion.tsx` y enlace "Consultar
   mi trámite" en `web/paginas/Inicio.tsx` (actualizar `Inicio.test.tsx`)
+  _Nota de implementación:_ los dos botones de la cabecera del inicio quedan juntos en `.cabecera__acciones`. La prueba usa `MemoryRouter`, así que la ausencia de datos en la URL se comprueba por el cuerpo del POST.
 
 **Punto de control**: las historias 1 y 2 funcionan, cada una por su lado.
 

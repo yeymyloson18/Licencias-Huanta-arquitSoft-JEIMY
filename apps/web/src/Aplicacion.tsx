@@ -6,6 +6,7 @@ import { EditarReceta } from './paginas/admin/EditarReceta';
 import { Usuarios } from './paginas/admin/Usuarios';
 import { Asistente } from './paginas/Asistente';
 import { CambiarClave } from './paginas/CambiarClave';
+import { Consulta } from './paginas/Consulta';
 import { Ingresar } from './paginas/Ingresar';
 import { Inicio } from './paginas/Inicio';
 import { Licencia } from './paginas/Licencia';
@@ -52,6 +53,7 @@ export function RutasAplicacion() {
           <Route path="/asistente" element={<Asistente />} />
           <Route path="/licencias/:codigo" element={<Licencia />} />
           <Route path="/ingresar" element={<Ingresar />} />
+          <Route path="/consulta" element={<Consulta />} />
           <Route path="/tramite/identidad" element={<Identidad />} />
           <Route path="/tramite/solicitud" element={<Solicitud />} />
           <Route path="/tramite/comprobante/:numero" element={<Comprobante />} />

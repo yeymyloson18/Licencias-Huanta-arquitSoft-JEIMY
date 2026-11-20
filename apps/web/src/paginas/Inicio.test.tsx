@@ -69,6 +69,22 @@ describe('Página de inicio del catálogo', () => {
     );
   });
 
+  it('ofrece "Consultar mi trámite" (004)', async () => {
+    fetchSimulado.mockResolvedValue(respuestaJson(nueveLicencias));
+
+    render(
+      <MemoryRouter>
+        <Inicio />
+      </MemoryRouter>,
+    );
+
+    await screen.findAllByRole('listitem');
+    expect(screen.getByRole('link', { name: 'Consultar mi trámite' })).toHaveAttribute(
+      'href',
+      '/consulta',
+    );
+  });
+
   it('muestra "Cargando licencias…" mientras espera la respuesta', async () => {
     let responder: (respuesta: Response) => void = () => undefined;
     fetchSimulado.mockReturnValue(

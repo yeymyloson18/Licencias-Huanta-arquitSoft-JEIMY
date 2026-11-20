@@ -14,6 +14,7 @@ export type DesafioOtp = components['schemas']['DesafioOtp'];
 export type NuevaSolicitud = components['schemas']['NuevaSolicitud'];
 export type ExpedienteRegistrado = components['schemas']['ExpedienteRegistrado'];
 export type IdentidadSolicitud = components['schemas']['SolicitudVerificacionIdentidad'];
+export type EstadoPublico = components['schemas']['EstadoPublico'];
 export type { SesionPersonal };
 
 const TIEMPO_LIMITE_MS = 10_000;
@@ -506,6 +507,45 @@ export const presentarSolicitud = async (
         return { tipo: 'identidad-distinta' };
       case 409:
         return { tipo: 'permiso-usado' };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+// ----------------------------------------------------------------- consulta pública (004)
+
+export type ResultadoConsulta =
+  | { readonly tipo: 'ok'; readonly estado: EstadoPublico }
+  | { readonly tipo: 'no-encontrado' }
+  | { readonly tipo: 'invalido'; readonly errores: readonly ErrorCampo[] }
+  | { readonly tipo: 'bloqueado'; readonly reintentarEn: Date }
+  | { readonly tipo: 'no-disponible' };
+
+/**
+ * Consulta el estado con el número y el documento en el cuerpo de un POST: nada queda en la URL ni
+ * en el historial del navegador (contracts/portal-tramite.md).
+ */
+export const consultarEstado = async (
+  numeroExpediente: string,
+  documento: string,
+): Promise<ResultadoConsulta> => {
+  try {
+    const { data, error, response } = await clientePublico.POST('/expedientes/consultar', {
+      body: { numeroExpediente, documento },
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', estado: data };
+    }
+    switch (response.status) {
+      case 404:
+        return { tipo: 'no-encontrado' };
+      case 422:
+        return { tipo: 'invalido', errores: erroresDe(error) };
+      case 429:
+        return { tipo: 'bloqueado', reintentarEn: bloqueadoHasta(response) };
       default:
         return { tipo: 'no-disponible' };
     }
