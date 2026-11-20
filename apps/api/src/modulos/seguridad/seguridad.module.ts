@@ -39,6 +39,7 @@ import type { ServicioIdentificacion } from './dominio/puertos/servicio-identifi
 import { FachadaSeguridad } from './fachada';
 import { VerificarIdentidadPresencial } from './aplicacion/verificar-identidad-presencial';
 import { SolicitanteGuard } from './presentacion/solicitante.guard';
+import { ConsultaOPersonalGuard } from './presentacion/consulta-o-personal.guard';
 import { RepositorioVerificacionesPostgres } from './infraestructura/repositorio-verificaciones-postgres';
 import { ServicioIdentificacionSimulado } from './infraestructura/servicio-identificacion-simulado';
 import { IdentidadController } from './presentacion/identidad.controller';
@@ -432,12 +433,16 @@ import {
     },
     {
       provide: FachadaSeguridad,
-      inject: [ConfirmarIdentidadEnLinea, SERVICIO_IDENTIFICACION],
-      useFactory: (confirmar: ConfirmarIdentidadEnLinea, servicio: ServicioIdentificacion) =>
-        new FachadaSeguridad(confirmar, new VerificarIdentidadPresencial(servicio)),
+      inject: [ConfirmarIdentidadEnLinea, SERVICIO_IDENTIFICACION, EMISOR_TOKENS],
+      useFactory: (
+        confirmar: ConfirmarIdentidadEnLinea,
+        servicio: ServicioIdentificacion,
+        emisor: EmisorTokensJwt,
+      ) => new FachadaSeguridad(confirmar, new VerificarIdentidadPresencial(servicio), emisor),
     },
     TokenIdentidadGuard,
     SolicitanteGuard,
+    ConsultaOPersonalGuard,
   ],
   // Lo que necesitan los guards de la fachada cuando otro módulo los usa.
   exports: [
@@ -447,6 +452,7 @@ import {
     RolesGuard,
     TokenIdentidadGuard,
     SolicitanteGuard,
+    ConsultaOPersonalGuard,
     FachadaSeguridad,
   ],
 })

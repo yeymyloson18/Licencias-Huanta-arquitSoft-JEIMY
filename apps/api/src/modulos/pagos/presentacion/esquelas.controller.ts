@@ -1,8 +1,31 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Res,
+  StreamableFile,
+  UseGuards,
+} from '@nestjs/common';
 import { z } from 'zod';
 import { ErrorProblema } from '../../../compartido/presentacion/error-problema';
 import { ErrorValidacion } from '../../../compartido/presentacion/filtro-problema';
-import { RequiereRoles, UsuarioActual, type UsuarioAutenticado } from '../../seguridad/fachada';
+import {
+  ConsultaOPersonalGuard,
+  LectorActual,
+  type LectorConsulta,
+  RequiereRoles,
+  Roles,
+  UsuarioActual,
+  type UsuarioAutenticado,
+} from '../../seguridad/fachada';
+import {
+  DescargarPdfEsquela,
+  ErrorEsquelaDeOtroExpediente,
+  ErrorEsquelaEnGeneracion,
+} from '../aplicacion/descargar-pdf-esquela';
 import {
   ConsultarEsquela,
   type EsquelaParaCaja,
@@ -48,7 +71,48 @@ export class EsquelasController {
   constructor(
     private readonly consultarEsquela: ConsultarEsquela,
     private readonly registrarPago: RegistrarPagoEnCaja,
+    private readonly descargarPdf: DescargarPdfEsquela,
   ) {}
+
+  /**
+   * PDF de la esquela (FR-016 a FR-018): con el `tokenConsulta` del mismo expediente o una sesión
+   * EVALUADOR, CAJA o JEFATURA. 202 mientras la esquela se genera.
+   */
+  @Get(':codigoEsquela/pdf')
+  @UseGuards(ConsultaOPersonalGuard)
+  @Roles('EVALUADOR', 'CAJA', 'JEFATURA')
+  async pdf(
+    @Param('codigoEsquela') codigo: string,
+    @LectorActual() lector: LectorConsulta,
+    @Res({ passthrough: true }) respuesta: RespuestaHttp & { status(codigo: number): unknown },
+  ): Promise<StreamableFile | undefined> {
+    respuesta.setHeader('Cache-Control', 'no-store');
+    try {
+      const { codigo: archivo, contenido } = await this.descargarPdf.ejecutar({
+        codigo: leerCodigo(codigo),
+        lector:
+          lector.tipo === 'CONSULTA'
+            ? { tipo: 'CONSULTA', numeroExpediente: lector.numeroExpediente }
+            : { tipo: 'PERSONAL' },
+      });
+      respuesta.setHeader('X-Content-Type-Options', 'nosniff');
+      return new StreamableFile(Buffer.from(contenido), {
+        type: 'application/pdf',
+        disposition: `attachment; filename="${archivo}.pdf"`,
+        length: contenido.length,
+      });
+    } catch (error) {
+      if (error instanceof ErrorEsquelaEnGeneracion) {
+        respuesta.setHeader('Retry-After', '3');
+        respuesta.status(202);
+        return undefined;
+      }
+      if (error instanceof ErrorEsquelaDeOtroExpediente) {
+        throw ErrorProblema.sinPermiso();
+      }
+      throw traducirErrorPagos(error);
+    }
+  }
 
   @Get(':codigoEsquela')
   @RequiereRoles('CAJA')

@@ -1,6 +1,7 @@
 import { JwtService } from '@nestjs/jwt';
 import type {
   EmisorTokens,
+  EmisorTokensConsulta,
   EmisorTokensIdentidad,
   ReclamosAcceso,
 } from '../dominio/puertos/emisor-tokens';
@@ -11,6 +12,8 @@ const QUINCE_MINUTOS = 900;
 const TREINTA_MINUTOS = 1800;
 /** Audiencia del token de identidad del administrado (research §R-03 de la 004). */
 const AUDIENCIA_IDENTIDAD = 'identidad-administrado';
+/** Audiencia del token de consulta del administrado (research §R-08 de la 005). */
+const AUDIENCIA_CONSULTA = 'consulta-expediente';
 
 const sonReclamosValidos = (carga: unknown): carga is ReclamosAcceso => {
   if (typeof carga !== 'object' || carga === null) {
@@ -30,8 +33,9 @@ const sonReclamosValidos = (carga: unknown): carga is ReclamosAcceso => {
 };
 
 /** Token de acceso del personal: JWT HS256 de 15 minutos (research.md §R-05). */
-export class EmisorTokensJwt implements EmisorTokens, EmisorTokensIdentidad {
+export class EmisorTokensJwt implements EmisorTokens, EmisorTokensIdentidad, EmisorTokensConsulta {
   readonly segundosDeVidaIdentidad = TREINTA_MINUTOS;
+  readonly segundosDeVidaConsulta = QUINCE_MINUTOS;
   private readonly jwt: JwtService;
 
   constructor(
@@ -83,6 +87,31 @@ export class EmisorTokensJwt implements EmisorTokens, EmisorTokensIdentidad {
       });
       const jti = (carga as { jti?: unknown } | null)?.jti;
       return typeof jti === 'string' && jti.length > 0 ? jti : null;
+    } catch {
+      return null;
+    }
+  }
+
+  firmarConsulta(numeroExpediente: string): Promise<string> {
+    return this.jwt.signAsync(
+      {},
+      {
+        algorithm: 'HS256',
+        audience: AUDIENCIA_CONSULTA,
+        subject: numeroExpediente,
+        expiresIn: this.segundosDeVidaConsulta,
+      },
+    );
+  }
+
+  async verificarConsulta(token: string): Promise<string | null> {
+    try {
+      const carga: unknown = await this.jwt.verifyAsync(token, {
+        algorithms: ['HS256'],
+        audience: AUDIENCIA_CONSULTA,
+      });
+      const sub = (carga as { sub?: unknown } | null)?.sub;
+      return typeof sub === 'string' && /^EXP-[0-9]{4}-[0-9]{6}$/.test(sub) ? sub : null;
     } catch {
       return null;
     }

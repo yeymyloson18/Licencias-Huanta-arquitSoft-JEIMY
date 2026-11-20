@@ -105,7 +105,7 @@ apps/api/
 └── src/modulos/pagos/
     ├── dominio/esquela.ts, numero-recibo.ts, puertos/*
     ├── aplicacion/generar-esquela.ts, consultar-esquela.ts, registrar-pago-en-caja.ts,
-    │              corregir-numero-recibo.ts, consultar-auditoria-pagos.ts, generar-pdf-esquela.ts
+    │              corregir-numero-recibo.ts, consultar-auditoria-pagos.ts, descargar-pdf-esquela.ts
     ├── infraestructura/repositorio-esquelas-postgres.ts, pdf-esquela-pdflib.ts, tramites-fachada.ts
     ├── presentacion/esquelas.controller.ts, auditoria-pagos.controller.ts
     ├── fachada.ts                                                  # esquelaDelExpediente

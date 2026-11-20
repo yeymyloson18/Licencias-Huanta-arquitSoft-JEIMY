@@ -110,6 +110,11 @@ export class RepositorioExpedientesPostgres implements RepositorioExpedientes {
           select: { estado_nuevo: true, ocurrido_en: true },
           orderBy: { ocurrido_en: 'asc' },
         },
+        observacion: {
+          where: { subsanada_en: null },
+          select: { descripcion: true },
+          orderBy: { creada_en: 'asc' },
+        },
       },
     });
     if (fila === null) {
@@ -117,6 +122,7 @@ export class RepositorioExpedientesPostgres implements RepositorioExpedientes {
     }
     const receta = fila.receta_al_presentar as { nombre?: unknown } | null;
     return {
+      observacionesPendientes: fila.observacion.map((observacion) => observacion.descripcion),
       numero: fila.numero,
       estado: comoEstado(fila.estado),
       ruta: comoRuta(fila.ruta),

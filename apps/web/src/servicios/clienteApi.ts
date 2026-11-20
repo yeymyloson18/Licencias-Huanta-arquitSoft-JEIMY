@@ -894,3 +894,60 @@ export const registrarPago = async (
     return { tipo: 'no-disponible' };
   }
 };
+
+// ----------------------------------------------------------------- PDF de la esquela (005)
+
+export type ResultadoPdfEsquela =
+  | { readonly tipo: 'ok'; readonly pdf: Blob; readonly nombre: string }
+  | { readonly tipo: 'en-generacion' }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' };
+
+/**
+ * Descarga el PDF de la esquela. Con `tokenConsulta` (administrado, de la consulta pública) o, si no se
+ * pasa, con la sesión del personal (renueva una vez ante un 401). 202 → todavía se está generando.
+ */
+export const descargarPdfEsquela = async (
+  codigo: string,
+  tokenConsulta?: string,
+): Promise<ResultadoPdfEsquela> => {
+  try {
+    const sesion = tokenConsulta === undefined ? obtenerToken() : null;
+    const pedir = () => {
+      const token = tokenConsulta ?? obtenerToken();
+      return globalThis.fetch(
+        new Request(
+          new URL(`/api/v1/esquelas/${encodeURIComponent(codigo)}/pdf`, window.location.origin),
+          { headers: token === null ? {} : { Authorization: `Bearer ${token}` } },
+        ),
+      );
+    };
+    let respuesta = await pedir();
+    if (respuesta.status === 401 && sesion !== null && (await renovarSesion())) {
+      respuesta = await pedir();
+    }
+    if (respuesta.status === 202) {
+      return { tipo: 'en-generacion' };
+    }
+    if (respuesta.ok) {
+      return { tipo: 'ok', pdf: await respuesta.blob(), nombre: `${codigo}.pdf` };
+    }
+    return respuesta.status === 401 || respuesta.status === 403
+      ? { tipo: 'sin-permiso' }
+      : { tipo: 'no-disponible' };
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** Entrega el archivo al navegador como descarga. */
+export const guardarArchivo = (contenido: Blob, nombre: string): void => {
+  const url = URL.createObjectURL(contenido);
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = nombre;
+  document.body.append(enlace);
+  enlace.click();
+  enlace.remove();
+  URL.revokeObjectURL(url);
+};

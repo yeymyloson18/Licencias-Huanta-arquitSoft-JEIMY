@@ -6,6 +6,7 @@ import {
   obtenerExpediente,
 } from '../../servicios/clienteApi';
 import { AccionesEvaluador } from '../../componentes/AccionesEvaluador';
+import { DescargarEsquela } from '../../componentes/DescargarEsquela';
 import { useSesion } from '../../sesion/ProveedorSesion';
 import { ESTADOS, formatearFecha } from './Expedientes';
 
@@ -27,6 +28,16 @@ const formatearFechaHora = (iso: string) =>
 
 const CANALES: Record<string, string> = { EN_LINEA: 'En línea', MESA_PARTES: 'Mesa de partes' };
 
+/** Estados en los que el expediente ya tiene esquela (después de confirmar el riesgo). */
+const ESTADOS_CON_ESQUELA: ReadonlySet<string> = new Set([
+  'PENDIENTE_PAGO',
+  'PAGADO',
+  'EN_INSPECCION',
+  'APROBADO',
+  'LICENCIA_PROVISIONAL',
+  'LICENCIA_EMITIDA',
+]);
+
 /** Página `/personal/expedientes/:numero`. */
 export function DetalleExpediente() {
   const { numero = '' } = useParams();
@@ -35,6 +46,9 @@ export function DetalleExpediente() {
   const [aviso, setAviso] = useState<string | null>(null);
   const { sesion } = useSesion();
   const esEvaluador = sesion?.usuario.roles.includes('EVALUADOR') ?? false;
+  // El PDF de la esquela lo descargan EVALUADOR, CAJA y JEFATURA (005).
+  const puedeDescargarEsquela =
+    sesion?.usuario.roles.some((rol) => ['EVALUADOR', 'CAJA', 'JEFATURA'].includes(rol)) ?? false;
 
   const cargar = useCallback(async () => {
     setCarga({ tipo: 'cargando' });
@@ -121,6 +135,11 @@ export function DetalleExpediente() {
             }}
           />
         )}
+        {carga.tipo === 'lista' &&
+          puedeDescargarEsquela &&
+          ESTADOS_CON_ESQUELA.has(carga.expediente.estado) && (
+            <DescargarEsquela codigo={`ESQ-${carga.expediente.numero}`} />
+          )}
         {carga.tipo === 'lista' && (
           <article className="tarjeta" aria-label={`Expediente ${carga.expediente.numero}`}>
             <dl className="ficha__datos">

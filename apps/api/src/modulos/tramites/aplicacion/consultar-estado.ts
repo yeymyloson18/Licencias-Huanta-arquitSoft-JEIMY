@@ -1,4 +1,5 @@
 import { type EstadoExpediente, TEXTO_ESTADO_PUBLICO } from '../dominio/estado-publico';
+import type { DatosPagoConsulta } from '../dominio/puertos/datos-pago-consulta';
 import type { LimitadorConsultas } from '../dominio/puertos/limitador-consultas';
 import type {
   ExpedienteConsultado,
@@ -21,6 +22,14 @@ export interface EstadoPublico {
     readonly descripcion: string;
     readonly ocurridoEn: Date;
   }[];
+  readonly observacionesPendientes: readonly string[];
+  readonly esquela: {
+    readonly codigo: string;
+    readonly monto: string;
+    readonly pagada: boolean;
+  } | null;
+  /** Solo cuando el expediente está PENDIENTE_PAGO (research §R-08 de la 005). */
+  readonly tokenConsulta: { readonly token: string; readonly expiraEn: number } | null;
 }
 
 export type ResultadoConsulta =
@@ -28,7 +37,10 @@ export type ResultadoConsulta =
   | { readonly tipo: 'NO_ENCONTRADO' }
   | { readonly tipo: 'BLOQUEADO'; readonly segundosRestantes: number };
 
-const aEstadoPublico = (expediente: ExpedienteConsultado): EstadoPublico => {
+const aEstadoPublico = (
+  expediente: ExpedienteConsultado,
+  pago: Pick<EstadoPublico, 'esquela' | 'tokenConsulta'>,
+): EstadoPublico => {
   const texto = TEXTO_ESTADO_PUBLICO[expediente.estado];
   return {
     numero: expediente.numero,
@@ -44,8 +56,21 @@ const aEstadoPublico = (expediente: ExpedienteConsultado): EstadoPublico => {
       descripcion: TEXTO_ESTADO_PUBLICO[registro.estado].descripcion,
       ocurridoEn: registro.ocurridoEn,
     })),
+    observacionesPendientes:
+      expediente.estado === 'OBSERVADO' ? expediente.observacionesPendientes : [],
+    ...pago,
   };
 };
+
+/** Estados en los que ya puede existir una esquela (después de confirmar el riesgo). */
+const CON_ESQUELA: ReadonlySet<string> = new Set([
+  'PENDIENTE_PAGO',
+  'PAGADO',
+  'EN_INSPECCION',
+  'APROBADO',
+  'LICENCIA_PROVISIONAL',
+  'LICENCIA_EMITIDA',
+]);
 
 /**
  * Consulta pública del estado (CU05 de la 004, research §R-12). El formato ya llega revisado por la
@@ -56,6 +81,8 @@ export class ConsultarEstado {
     private readonly dependencias: {
       readonly expedientes: Pick<RepositorioExpedientes, 'buscarParaConsulta'>;
       readonly limitador: LimitadorConsultas;
+      /** Opcional: sin él la consulta no trae datos de pago (004). */
+      readonly pago?: DatosPagoConsulta;
     },
   ) {}
 
@@ -78,6 +105,24 @@ export class ConsultarEstado {
       return { tipo: 'NO_ENCONTRADO' };
     }
     await limitador.liberar(entrada.origen);
-    return { tipo: 'ENCONTRADO', estado: aEstadoPublico(expediente) };
+    return {
+      tipo: 'ENCONTRADO',
+      estado: aEstadoPublico(expediente, await this.datosPago(expediente)),
+    };
+  }
+
+  private async datosPago(
+    expediente: ExpedienteConsultado,
+  ): Promise<Pick<EstadoPublico, 'esquela' | 'tokenConsulta'>> {
+    const { pago } = this.dependencias;
+    if (pago === undefined || !CON_ESQUELA.has(expediente.estado)) {
+      return { esquela: null, tokenConsulta: null };
+    }
+    const esperaPago = expediente.estado === 'PENDIENTE_PAGO';
+    const [esquela, tokenConsulta] = await Promise.all([
+      pago.esquelaDe(expediente.numero),
+      esperaPago ? pago.tokenConsulta(expediente.numero) : Promise.resolve(null),
+    ]);
+    return { esquela, tokenConsulta };
   }
 }

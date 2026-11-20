@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   json,
@@ -113,6 +113,39 @@ describe('Página Detalle del expediente', () => {
     expect(revocar).toHaveBeenCalledWith('blob:documento');
     const descarga = llamadas.find((l) => l.clave.includes('/documentos/'));
     expect(descarga?.autorizacion).toBe('Bearer token-jefatura');
+  });
+
+  it('jefatura descarga la esquela de un expediente PAGADO con su sesión (005)', async () => {
+    Object.assign(URL, {
+      createObjectURL: jest.fn(() => 'blob:esquela'),
+      revokeObjectURL: jest.fn(),
+    });
+    const clic = jest
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    const llamadas = montar({
+      'GET /expedientes/EXP-2026-000004': () => json({ ...EXPEDIENTE, estado: 'PAGADO' }),
+      'GET /esquelas/ESQ-EXP-2026-000004/pdf': () =>
+        new Response('%PDF-1.7', { status: 200, headers: { 'Content-Type': 'application/pdf' } }),
+    });
+    const usuario = userEvent.setup();
+
+    await usuario.click(await screen.findByRole('button', { name: 'Descargar esquela' }));
+
+    await waitFor(() => {
+      expect(clic).toHaveBeenCalledTimes(1);
+    });
+    expect(llamadas.find((l) => l.clave.endsWith('/pdf'))?.autorizacion).toBe(
+      'Bearer token-jefatura',
+    );
+  });
+
+  it('sin esquela todavía (REGISTRADO) no ofrece descargarla (005)', async () => {
+    montar({ 'GET /expedientes/EXP-2026-000004': () => json(EXPEDIENTE) });
+
+    await screen.findByRole('article');
+
+    expect(screen.queryByRole('button', { name: 'Descargar esquela' })).not.toBeInTheDocument();
   });
 
   it('si el documento ya no existe lo avisa', async () => {

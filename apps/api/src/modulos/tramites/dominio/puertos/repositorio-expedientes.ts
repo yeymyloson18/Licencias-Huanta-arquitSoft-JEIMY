@@ -11,6 +11,8 @@ export interface ExpedienteConsultado {
   readonly vencePlazoEn: Date | null;
   /** En orden cronológico. */
   readonly historial: readonly { readonly estado: EstadoExpediente; readonly ocurridoEn: Date }[];
+  /** Texto de las observaciones sin subsanar (005), de la más antigua a la más nueva. */
+  readonly observacionesPendientes: readonly string[];
 }
 
 type Ruta = 'A' | 'B' | 'C';

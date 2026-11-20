@@ -43,6 +43,18 @@ const aRespuesta = (estado: EstadoPublico) => ({
     descripcion: registro.descripcion,
     ocurridoEn: registro.ocurridoEn.toISOString(),
   })),
+  // 005: esquela (si ya existe), token para descargarla y observaciones por subsanar.
+  ...(estado.esquela === null
+    ? {}
+    : {
+        codigoEsquela: estado.esquela.codigo,
+        montoEsquela: estado.esquela.monto,
+        esquelaPagada: estado.esquela.pagada,
+      }),
+  ...(estado.tokenConsulta === null ? {} : { tokenConsulta: estado.tokenConsulta }),
+  ...(estado.observacionesPendientes.length === 0
+    ? {}
+    : { observacionesPendientes: [...estado.observacionesPendientes] }),
 });
 
 /** Consulta pública del estado del trámite (CU05 de la 004, contracts/consulta-y-bandeja.md). */

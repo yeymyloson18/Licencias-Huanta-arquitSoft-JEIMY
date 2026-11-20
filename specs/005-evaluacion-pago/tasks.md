@@ -174,11 +174,11 @@ descargar el PDF sin datos personales.
 
 ### Pruebas de la historia 3 ⚠️
 
-- [ ] T026 [P] [US3] Pruebas unitarias `test-pag/aplicacion/generar-pdf-esquela.spec.ts` (contenido:
+- [X] T026 [P] [US3] Pruebas unitarias `test-pag/aplicacion/descargar-pdf-esquela.spec.ts` (contenido:
   número, concepto, monto, código, fecha e instrucciones; esquela inexistente → aún no generada) y de
   `seg` para el `tokenConsulta` (audiencia propia, 15 minutos, no sirve como token del personal ni de
   identidad)
-- [ ] T027 [P] [US3] Prueba de integración `int/esquela-pdf.e2e-spec.ts`: la consulta de un expediente
+- [X] T027 [P] [US3] Prueba de integración `int/esquela-pdf.e2e-spec.ts`: la consulta de un expediente
   PENDIENTE_PAGO trae `codigoEsquela`, `montoEsquela`, `esquelaPagada` y `tokenConsulta`; con el token,
   el PDF → 200 `application/pdf` con `%PDF`, `attachment` y `no-store`, y el texto del PDF sin documento
   ni dirección del titular; token de otro expediente → 403; sin token → 401; antes de procesar el evento
@@ -186,16 +186,16 @@ descargar el PDF sin datos personales.
 
 ### Implementación de la historia 3
 
-- [ ] T028 [US3] `seg`: `firmarConsulta`/`verificarConsulta` en el emisor de tokens,
+- [X] T028 [US3] `seg`: `firmarConsulta`/`verificarConsulta` en el emisor de tokens,
   `ConsultaOPersonalGuard` y `emitirTokenConsulta(numero)` en `seg/fachada.ts`. Deben pasar su parte de
   T026
-- [ ] T029 [US3] `pag/aplicacion/generar-pdf-esquela.ts` con el puerto `pag/dominio/puertos/pdf-esquela.ts`
+- [X] T029 [US3] `pag/aplicacion/descargar-pdf-esquela.ts` con el puerto `pag/dominio/puertos/pdf-esquela.ts`
   y el adaptador `pag/infraestructura/pdf-esquela-pdflib.ts`; `GET /esquelas/{codigo}/pdf` en
   `esquelas.controller.ts`; `pag/fachada.ts` `esquelaDelExpediente(numero)`
-- [ ] T030 [US3] Consulta pública de `tramites`: cuando el expediente está PENDIENTE_PAGO, agrega los
+- [X] T030 [US3] Consulta pública de `tramites`: cuando el expediente está PENDIENTE_PAGO, agrega los
   datos de la esquela (por la fachada de pagos) y el `tokenConsulta` (por la fachada de seguridad);
   cuando está OBSERVADO, `observacionesPendientes`. Deben pasar T027
-- [ ] T031 [US3] `web/paginas/Consulta.tsx` (+ prueba): monto, código y "Descargar esquela" con el token
+- [X] T031 [US3] `web/paginas/Consulta.tsx` (+ prueba): monto, código y "Descargar esquela" con el token
   (202 → aviso de reintento); texto de la observación; botón "Descargar esquela" en el detalle del
   personal
 

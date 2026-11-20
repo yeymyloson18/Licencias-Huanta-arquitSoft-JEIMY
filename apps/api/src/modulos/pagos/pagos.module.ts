@@ -1,9 +1,12 @@
-import { Module, type OnModuleInit } from '@nestjs/common';
+import { Global, Module, type OnModuleInit } from '@nestjs/common';
 import { DespachadorEventos } from '../../compartido/infraestructura/despachador-eventos';
 import { PrismaServicio } from '../../compartido/infraestructura/prisma.servicio';
 import { FachadaTramites } from '../tramites/fachada';
 import { ConsultarEsquela, RegistrarPagoEnCaja } from './aplicacion/caja';
+import { DescargarPdfEsquela } from './aplicacion/descargar-pdf-esquela';
 import { GenerarEsquela } from './aplicacion/generar-esquela';
+import { FachadaPagos } from './fachada';
+import { PdfEsquelaPdfLib } from './infraestructura/pdf-esquela-pdflib';
 import type { EstadoExpediente } from './dominio/puertos/estado-expediente';
 import type { RepositorioEsquelas } from './dominio/puertos/repositorio-esquelas';
 import { EstadoExpedienteFachada } from './infraestructura/estado-expediente-fachada';
@@ -20,9 +23,22 @@ const reloj = new RelojSistema();
 const REPOSITORIO_ESQUELAS = Symbol('REPOSITORIO_ESQUELAS');
 const ESTADO_EXPEDIENTE = Symbol('ESTADO_EXPEDIENTE');
 
+@Global()
 @Module({
   controllers: [EsquelasController],
+  exports: [FachadaPagos],
   providers: [
+    {
+      provide: FachadaPagos,
+      inject: [REPOSITORIO_ESQUELAS],
+      useFactory: (esquelas: RepositorioEsquelas) => new FachadaPagos(esquelas),
+    },
+    {
+      provide: DescargarPdfEsquela,
+      inject: [REPOSITORIO_ESQUELAS, ESTADO_EXPEDIENTE],
+      useFactory: (esquelas: RepositorioEsquelas, expedientes: EstadoExpediente) =>
+        new DescargarPdfEsquela({ esquelas, expedientes, pdf: new PdfEsquelaPdfLib() }),
+    },
     {
       provide: REPOSITORIO_ESQUELAS,
       inject: [PrismaServicio],

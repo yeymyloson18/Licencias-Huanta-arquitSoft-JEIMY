@@ -13,7 +13,9 @@ import { PROTECTOR_DATOS } from '../../compartido/infraestructura/protector-dato
 import { REDIS_CLIENTE } from '../../compartido/infraestructura/redis.proveedor';
 import type Redis from 'ioredis';
 import { FachadaCatalogo } from '../catalogo/fachada';
+import { FachadaPagos } from '../pagos/fachada';
 import { FachadaSeguridad } from '../seguridad/fachada';
+import { DatosPagoConsultaFachadas } from './infraestructura/datos-pago-consulta-fachadas';
 import {
   DescargarDocumento,
   ListarExpedientes,
@@ -155,11 +157,18 @@ const reloj = new RelojSistema();
     },
     {
       provide: ConsultarEstado,
-      inject: [PrismaServicio, PROTECTOR_DATOS, REDIS_CLIENTE],
-      useFactory: (prisma: PrismaServicio, protector: ProtectorDatos, redis: Redis) =>
+      inject: [PrismaServicio, PROTECTOR_DATOS, REDIS_CLIENTE, FachadaPagos, FachadaSeguridad],
+      useFactory: (
+        prisma: PrismaServicio,
+        protector: ProtectorDatos,
+        redis: Redis,
+        pagos: FachadaPagos,
+        seguridad: FachadaSeguridad,
+      ) =>
         new ConsultarEstado({
           expedientes: new RepositorioExpedientesPostgres(prisma, protector),
           limitador: new LimitadorConsultasRedis(redis),
+          pago: new DatosPagoConsultaFachadas(pagos, seguridad),
         }),
     },
     {
