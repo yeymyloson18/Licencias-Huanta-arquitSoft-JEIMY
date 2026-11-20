@@ -350,8 +350,8 @@ motivo y ver en la auditoría el recibo anterior, el nuevo, quién y cuándo.
 - **Esquela**: código `ESQ-<número>`, expediente, concepto, monto, fecha de emisión, estado (pendiente
   o pagada), número de recibo, fecha y hora del pago y cajero. Una por expediente.
 - **Expediente** (de la 004): agrega el riesgo propuesto y el confirmado, la observación (texto,
-  fecha, evaluador) y el motivo de denegación; sus estados avanzan según las reglas de esta
-  funcionalidad.
+  fecha, evaluador) y quién empezó la revisión; el motivo de denegación queda en su historial y en la
+  auditoría. Sus estados avanzan según las reglas de esta funcionalidad.
 - **Registro de auditoría de pagos**: usuario, acción (`REGISTRAR_PAGO`, `CORREGIR_RECIBO`), esquela,
   recibo anterior y nuevo, motivo, fecha y hora.
 - **Registro de auditoría de trámites** (de la 004): agrega las acciones del evaluador y la

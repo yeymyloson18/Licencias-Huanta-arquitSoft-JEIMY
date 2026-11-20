@@ -29,10 +29,14 @@ Entrada: [spec.md](./spec.md) (con las aclaraciones del 2026-11-20) y la secció
   `PagoRegistrado`). Los tipos sin manejador (`SolicitudPresentada`, `EstadoExpedienteCambiado`) se
   quedan pendientes para la 006.
   - Una pasada: transacción con `pg_try_advisory_xact_lock` (una réplica a la vez, como el descarte de
-    la 004); `SELECT … WHERE procesado_en IS NULL AND tipo = ANY($tipos) AND intentos < 10 ORDER BY id
-    LIMIT 50 FOR UPDATE SKIP LOCKED`.
+    la 004); `SELECT … WHERE procesado_en IS NULL AND tipo = ANY($tipos) ORDER BY id LIMIT 50 FOR
+    UPDATE SKIP LOCKED`, solo los que ya pueden reintentarse (`reintentar_en IS NULL OR reintentar_en <=
+    now()`). Tras un error, `reintentar_en = now() + 2 s × 2^intentos`, con un máximo de 5 minutos
+    (columna nueva de la migración 0008).
   - Éxito → `procesado_en = now()`. Error → `intentos + 1` y `ultimo_error` con el **nombre** del error
-    (nunca el mensaje, que podría traer datos), y el evento se reintenta en la pasada siguiente.
+    (nunca el mensaje, que podría traer datos). **No hay límite de intentos** (FR-025: "se reintenta
+    hasta lograrlo"); cada 10 fallos del mismo evento queda un aviso en el registro con su id y su tipo,
+    para que alguien lo revise.
   - Entrega **al menos una vez**: cada manejador es idempotente (R-01 y R-06), así que procesar dos
     veces el mismo evento no cambia nada.
 - **Por qué**: lo pide la entrada (advisory lock, `SKIP LOCKED`, reintentos) y sirve a los dos

@@ -36,9 +36,11 @@ que la implementación y deben fallar primero.
   /expedientes/{numeroExpediente}/evaluacion`, `codigoReceta` en riesgo, aprobar para PAGADO de ruta A
   o C, `plazoSubsanarEn` opcional, `identidad` en subsanar y respuesta EN_EVALUACION, `estadoExpediente`
   y `nombreLicencia` en `Esquela`, 202/403 en el PDF, 422/409 con `type` en pago y recibo, y los
-  permisos. Regenerar `packages/contracts` y pasar `npm run contrato`
+  permisos. En `descargarDocumento`, la descripción pasa a decir que `tokenConsulta` se habilita en la
+  009 (la 005 no lo pide). Regenerar `packages/contracts` y pasar `npm run contrato`
 - [ ] T004 Migración `apps/api/prisma/migrations/0008_evaluacion_pago/migration.sql` (acciones
-  `INICIAR_EVALUACION` y `SUBSANAR` en `tramites.auditoria`; `plazo_subsanar_en` opcional) con el nombre
+  `INICIAR_EVALUACION` y `SUBSANAR` en `tramites.auditoria`; `plazo_subsanar_en` opcional;
+  `reintentar_en` e índice en `comun.evento_pendiente`) con el nombre
   real de la restricción; actualizar `docs/05-modelo-de-datos/esquema.sql`,
   `modelo-entidad-relacion.md` y `schema.prisma`; la prueba `int/esquema-equivalente` debe seguir en
   verde
@@ -51,9 +53,11 @@ que la implementación y deben fallar primero.
   en `apps/api/test/unit/modulos/catalogo/`
 - [ ] T007 Despachador de eventos `com/infraestructura/despachador-eventos.ts` (research §R-02:
   registro de manejadores por tipo, cada 2 s con `unref()`, `pg_try_advisory_xact_lock`,
-  `FOR UPDATE SKIP LOCKED`, hasta 10 intentos, `ultimo_error` solo con el nombre del error, tipos sin
+  `FOR UPDATE SKIP LOCKED`, reintentos sin límite con espera creciente en `reintentar_en` (máximo 5
+  min) y un aviso en el registro cada 10 fallos, `ultimo_error` solo con el nombre del error, tipos sin
   manejador intactos) con prueba de integración `int/despachador-eventos.e2e-spec.ts`: procesa,
-  reintenta tras un error, no toca tipos sin manejador, una sola réplica con el candado
+  reintenta tras un error respetando la espera, no toca tipos sin manejador, una sola réplica con el
+  candado
 - [ ] T008 [P] Errores comunes en `com/presentacion/error-problema.ts`: `transicionInvalida(estado)`,
   `yaObservado`, `esquelaYaPagada`, `reciboRepetido`, `versionCambiada` (412) y sus títulos en
   `filtro-problema.ts`
@@ -132,7 +136,8 @@ PAGADO solo.
   expediente que no está PENDIENTE_PAGO → error; ya pagada → error; recibo repetido → error; éxito con
   auditoría y `PagoRegistrado`
 - [ ] T020 [P] [US2] Prueba unitaria `test-tra/aplicacion/aplicar-pago-registrado.spec.ts`:
-  PENDIENTE_PAGO → PAGADO con historial del sistema; ya PAGADO → no cambia nada
+  PENDIENTE_PAGO → PAGADO con historial del sistema y el evento `EstadoExpedienteCambiado`; ya PAGADO →
+  no cambia nada (ni repite el evento)
 - [ ] T021 [P] [US2] Prueba de integración `int/pago-en-caja.e2e-spec.ts`: CAJA consulta la esquela y
   el titular; registra → 201 con auditoría y evento; tras procesar eventos, PAGADO; segundo pago → 409
   `esquela-ya-pagada`; 10 pagos en paralelo → un 201; recibo repetido → 409 `recibo-repetido`; recibo
@@ -268,7 +273,11 @@ descargar el PDF sin datos personales.
 - [ ] T046 [P] Prueba de integración `int/privacidad-evaluacion-pago.e2e-spec.ts` con el logger
   capturador: registros, URL, errores, eventos, auditorías y el texto del PDF sin documento, RUC,
   celular, correo ni dirección del titular (SC-006)
-- [ ] T047 Actualizar `README.md` (sección de la funcionalidad 005) y
+- [ ] T049 Medir SC-001 (evaluador: desde la bandeja hasta confirmar el riesgo, ≤ 2 min) y SC-002
+  (caja: desde el código de la esquela hasta registrar el pago, ≤ 1 min) con un recorrido automatizado
+  en el navegador a 360 px, en un clon aislado con usuarios y datos ficticios (como en la 004); bajar el
+  clon con `-v` al terminar. No incluye k6, Lighthouse ni ZAP (quedan para el despliegue, 007)
+- [ ] T047 Actualizar `README.md` (sección de la funcionalidad 005, con los tiempos de T049) y
   `docs/03-diseno-de-software/diagrama-casos-de-uso.md` (CU13, CU14, CU16 y CU21 a "✅ Hecho")
 - [ ] T048 Cadena completa de CI en local (`build`, `lint`, `formato`, `test:unit`,
   `test:integracion` con PostgreSQL temporal en 5433 y Redis en 16379, `cobertura` ≥ 80 % por archivo en

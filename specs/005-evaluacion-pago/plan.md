@@ -67,7 +67,7 @@ URL, auditoría ni PDF; cobertura ≥ 80 % por archivo en `dominio` y `aplicacio
 | III. Modelo por módulo | Migración 0008 solo en `tramites`; `pagos` escribe solo `pagos.*`; el estado del expediente lo cambia solo `tramites` (al consumir `PagoRegistrado`) |
 | IV. TypeScript estricto y español | Nombres del dominio en español: `Esquela`, `RegistrarPagoEnCaja`, `PagoRegistrado`, `MaquinaEstados` |
 | V. Pruebas | Unitarias por cada regla y caso de uso; integración por cada endpoint y por el flujo completo |
-| VI. Escenarios de calidad | EQ-04 (matriz 401/403, auditoría, privacidad), EQ-02/EQ-03 (pago único y reintentos), EQ-06 (aislamiento). k6, Lighthouse y ZAP se miden en el despliegue (007), como decidió la usuaria |
+| VI. Escenarios de calidad | EQ-04 (matriz 401/403, auditoría, privacidad), EQ-02/EQ-03 (pago único y reintentos sin límite), EQ-06 (aislamiento). SC-001 y SC-002 se miden con un recorrido automatizado en el navegador en un clon aislado (T049). k6, Lighthouse y ZAP se miden en el despliegue (007), como decidió la usuaria |
 | VII. Datos personales | Eventos, auditoría, errores y PDF sin datos del titular; el nombre del titular solo en la pantalla de caja; prueba de privacidad |
 | VIII. Git | Rama `005-esquela-pago`, commit por fase, sin push (lo hace la usuaria) |
 

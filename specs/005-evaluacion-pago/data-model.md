@@ -1,7 +1,7 @@
 # Modelo de datos: Evaluación del expediente, esquela de pago y pago en caja
 
 La mayoría de las tablas ya existen en `docs/05-modelo-de-datos/esquema.sql`. La migración
-`0008_evaluacion_pago` hace solo dos cambios; las migraciones 0001 a 0007 no se editan.
+`0008_evaluacion_pago` hace solo tres cambios; las migraciones 0001 a 0007 no se editan.
 
 ## Migración 0008
 
@@ -14,6 +14,11 @@ ALTER TABLE tramites.auditoria ADD CONSTRAINT auditoria_accion_check CHECK (acci
 
 -- 2. El plazo para subsanar se calcula en la 006 (días hábiles).
 ALTER TABLE tramites.observacion ALTER COLUMN plazo_subsanar_en DROP NOT NULL;
+
+-- 3. Espera entre reintentos del despachador de eventos (research §R-02).
+ALTER TABLE comun.evento_pendiente ADD COLUMN reintentar_en timestamptz;
+CREATE INDEX ix_evento_pendiente_por_procesar ON comun.evento_pendiente (id)
+    WHERE procesado_en IS NULL;
 ```
 
 El nombre real de la restricción del CHECK se comprueba contra la base migrada antes de escribir la
@@ -84,4 +89,5 @@ motivo). Sin datos del titular.
 | `EstadoExpedienteCambiado` | tramites   | (006)             | `numeroExpediente`, `estadoAnterior`, `estadoNuevo`              |
 | `SolicitudPresentada`      | tramites   | (006)             | (de la 004)                                                      |
 
-`intentos` y `ultimo_error` (solo el nombre del error) los usa el despachador (research §R-02).
+`intentos`, `ultimo_error` (solo el nombre del error) y `reintentar_en` (nueva en 0008) los usa el
+despachador, que reintenta sin límite con espera creciente de hasta 5 minutos (research §R-02).
