@@ -1,5 +1,7 @@
+import type { INestApplication } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
+import { DespachadorEventos } from '../../src/compartido/infraestructura/despachador-eventos';
 
 // Apoyo de las pruebas de la 006: limpieza de inspecciones, licencias, alertas, avisos y feriados de
 // prueba, y siembra directa de licencias e inspecciones. Datos FICTICIOS.
@@ -76,4 +78,18 @@ export const sembrarInspeccion = async (
     },
   });
   return fila.id;
+};
+
+/**
+ * Procesa la cola de eventos hasta que no quede nada por procesar (cada evento puede publicar el
+ * siguiente: `LicenciaSolicitada` → `LicenciaEmitida` → `InspeccionRequerida`…).
+ */
+export const procesarTodo = async (app: INestApplication, pasadas = 6): Promise<void> => {
+  const despachador = app.get(DespachadorEventos);
+  for (let i = 0; i < pasadas; i += 1) {
+    const resultado = await despachador.procesarPendientes();
+    if (resultado === null || resultado.procesados + resultado.fallidos === 0) {
+      return;
+    }
+  }
 };

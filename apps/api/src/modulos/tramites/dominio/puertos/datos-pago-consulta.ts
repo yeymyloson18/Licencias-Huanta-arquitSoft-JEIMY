@@ -11,6 +11,8 @@ export interface EsquelaParaConsulta {
  */
 export interface DatosPagoConsulta {
   esquelaDe(numeroExpediente: string): Promise<EsquelaParaConsulta | null>;
+  /** Número de la licencia vigente del expediente, por la fachada de Licencias (006). */
+  numeroLicenciaDe(numeroExpediente: string): Promise<string | null>;
   tokenConsulta(
     numeroExpediente: string,
   ): Promise<{ readonly token: string; readonly expiraEn: number }>;

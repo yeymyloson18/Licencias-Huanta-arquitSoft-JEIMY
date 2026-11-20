@@ -19,6 +19,7 @@ import { Comprobante } from './paginas/tramite/Comprobante';
 import { Identidad } from './paginas/tramite/Identidad';
 import { Solicitud } from './paginas/tramite/Solicitud';
 import { Subsanar } from './paginas/tramite/Subsanar';
+import { Verificar } from './paginas/Verificar';
 import { useSesion } from './sesion/ProveedorSesion';
 import { ProveedorMesaPartes } from './tramite/ContextoMesaPartes';
 import { ProveedorTramite } from './tramite/ContextoTramite';
@@ -62,6 +63,7 @@ export function RutasAplicacion() {
             <Route path="/licencias/:codigo" element={<Licencia />} />
             <Route path="/ingresar" element={<Ingresar />} />
             <Route path="/consulta" element={<Consulta />} />
+            <Route path="/verificar/:codigo" element={<Verificar />} />
             <Route path="/tramite/identidad" element={<Identidad />} />
             <Route path="/tramite/solicitud" element={<Solicitud />} />
             <Route path="/tramite/comprobante/:numero" element={<Comprobante />} />

@@ -13,12 +13,19 @@ import { PROTECTOR_DATOS } from '../../compartido/infraestructura/protector-dato
 import { REDIS_CLIENTE } from '../../compartido/infraestructura/redis.proveedor';
 import type Redis from 'ioredis';
 import { FachadaCatalogo } from '../catalogo/fachada';
+import { FachadaLicencias } from '../licencias/fachada';
 import { FachadaPagos } from '../pagos/fachada';
+import type { DatosPagoConsulta } from './dominio/puertos/datos-pago-consulta';
+import { DATOS_PAGO_CONSULTA } from './presentacion/bandeja.controller';
 import { FachadaSeguridad } from '../seguridad/fachada';
 import { DatosPagoConsultaFachadas } from './infraestructura/datos-pago-consulta-fachadas';
 import { SubsanarObservacion } from './aplicacion/subsanar-observacion';
 import { RepositorioSubsanacionPostgres } from './infraestructura/repositorio-subsanacion-postgres';
 import { SubsanacionController } from './presentacion/subsanacion.controller';
+import { AplicarLicenciaEmitida } from './aplicacion/aplicar-licencia-emitida';
+import { TransicionesSistema } from './aplicacion/transiciones-sistema';
+import { LectorParaModulosPostgres } from './infraestructura/lector-para-modulos-postgres';
+import { manejadorLicenciaEmitida } from './infraestructura/manejadores-006';
 import { ConsultarAuditoriaExpediente } from './aplicacion/consultar-auditoria-expediente';
 import {
   LectorAuditoriaPostgres,
@@ -174,19 +181,24 @@ const reloj = new RelojSistema();
         }),
     },
     {
+      provide: DATOS_PAGO_CONSULTA,
+      inject: [FachadaPagos, FachadaSeguridad, FachadaLicencias],
+      useFactory: (pagos: FachadaPagos, seguridad: FachadaSeguridad, licencias: FachadaLicencias) =>
+        new DatosPagoConsultaFachadas(pagos, seguridad, licencias),
+    },
+    {
       provide: ConsultarEstado,
-      inject: [PrismaServicio, PROTECTOR_DATOS, REDIS_CLIENTE, FachadaPagos, FachadaSeguridad],
+      inject: [PrismaServicio, PROTECTOR_DATOS, REDIS_CLIENTE, DATOS_PAGO_CONSULTA],
       useFactory: (
         prisma: PrismaServicio,
         protector: ProtectorDatos,
         redis: Redis,
-        pagos: FachadaPagos,
-        seguridad: FachadaSeguridad,
+        pago: DatosPagoConsulta,
       ) =>
         new ConsultarEstado({
           expedientes: new RepositorioExpedientesPostgres(prisma, protector),
           limitador: new LimitadorConsultasRedis(redis),
-          pago: new DatosPagoConsultaFachadas(pagos, seguridad),
+          pago,
         }),
     },
     {
@@ -259,8 +271,21 @@ const reloj = new RelojSistema();
     },
     {
       provide: FachadaTramites,
-      inject: [LECTOR_PARA_CAJA],
-      useFactory: (lector: LectorParaCaja) => new FachadaTramites(lector),
+      inject: [LECTOR_PARA_CAJA, PrismaServicio],
+      useFactory: (lector: LectorParaCaja, prisma: PrismaServicio) =>
+        new FachadaTramites(lector, new LectorParaModulosPostgres(prisma)),
+    },
+    // Transiciones del sistema por ruta (006): licencia emitida, resultado ITSE y pago de ruta B.
+    {
+      provide: TransicionesSistema,
+      inject: [REPOSITORIO_DECISIONES],
+      useFactory: (decisiones: RepositorioDecisiones) =>
+        new TransicionesSistema({ decisiones, reloj }),
+    },
+    {
+      provide: AplicarLicenciaEmitida,
+      inject: [TransicionesSistema],
+      useFactory: (transiciones: TransicionesSistema) => new AplicarLicenciaEmitida(transiciones),
     },
     {
       provide: AplicarPagoRegistrado,
@@ -275,9 +300,11 @@ export class TramitesModule implements OnModuleInit {
   constructor(
     private readonly despachador: DespachadorEventos,
     private readonly aplicarPago: AplicarPagoRegistrado,
+    private readonly aplicarLicencia: AplicarLicenciaEmitida,
   ) {}
 
   onModuleInit(): void {
     this.despachador.registrar('PagoRegistrado', manejadorPagoRegistrado(this.aplicarPago));
+    this.despachador.registrar('LicenciaEmitida', manejadorLicenciaEmitida(this.aplicarLicencia));
   }
 }

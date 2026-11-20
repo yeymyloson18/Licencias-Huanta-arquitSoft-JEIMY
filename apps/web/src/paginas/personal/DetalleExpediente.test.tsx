@@ -172,6 +172,34 @@ describe('Página Detalle del expediente', () => {
     expect(within(seccion).getByText(/Presentado en línea — El titular/)).toBeInTheDocument();
   });
 
+  it('con licencia muestra su número y la descarga con la sesión (006)', async () => {
+    Object.assign(URL, {
+      createObjectURL: jest.fn(() => 'blob:licencia'),
+      revokeObjectURL: jest.fn(),
+    });
+    const clic = jest
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    const llamadas = montar({
+      'GET /expedientes/EXP-2026-000004': () =>
+        json({ ...EXPEDIENTE, estado: 'FINALIZADO', numeroLicencia: 'LF-2026-000004' }),
+      'GET /licencias/LF-2026-000004/pdf': () =>
+        new Response('%PDF-1.7', { status: 200, headers: { 'Content-Type': 'application/pdf' } }),
+    });
+    const usuario = userEvent.setup();
+
+    const seccion = await screen.findByRole('region', { name: 'Licencia' });
+    expect(within(seccion).getByText('LF-2026-000004')).toBeInTheDocument();
+    await usuario.click(within(seccion).getByRole('button', { name: 'Descargar licencia' }));
+
+    await waitFor(() => {
+      expect(clic).toHaveBeenCalledTimes(1);
+    });
+    expect(llamadas.find((l) => l.clave.endsWith('LF-2026-000004/pdf'))?.autorizacion).toBe(
+      'Bearer token-jefatura',
+    );
+  });
+
   it('sin esquela todavía (REGISTRADO) no ofrece descargarla (005)', async () => {
     montar({ 'GET /expedientes/EXP-2026-000004': () => json(EXPEDIENTE) });
 

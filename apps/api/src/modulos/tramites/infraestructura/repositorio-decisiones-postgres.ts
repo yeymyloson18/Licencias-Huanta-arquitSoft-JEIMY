@@ -80,16 +80,26 @@ export class RepositorioDecisionesPostgres implements RepositorioDecisiones {
       if (count === 0) {
         return false;
       }
-      await tx.historial_estado.create({
-        data: {
-          expediente_id: decision.expedienteId,
-          estado_anterior: decision.estadoEsperado,
-          estado_nuevo: decision.estadoNuevo,
-          usuario_id: decision.usuarioId,
+      const pasos = decision.historial ?? [
+        {
+          estadoAnterior: decision.estadoEsperado,
+          estadoNuevo: decision.estadoNuevo,
           comentario: decision.comentario,
-          ocurrido_en: decision.en,
         },
-      });
+      ];
+      // Un milisegundo entre pasos: el historial se ordena por `ocurrido_en`.
+      for (const [indice, paso] of pasos.entries()) {
+        await tx.historial_estado.create({
+          data: {
+            expediente_id: decision.expedienteId,
+            estado_anterior: paso.estadoAnterior,
+            estado_nuevo: paso.estadoNuevo,
+            usuario_id: decision.usuarioId,
+            comentario: paso.comentario,
+            ocurrido_en: new Date(decision.en.getTime() + indice),
+          },
+        });
+      }
       if (decision.auditoria !== null) {
         await tx.auditoriaTramites.create({
           data: {

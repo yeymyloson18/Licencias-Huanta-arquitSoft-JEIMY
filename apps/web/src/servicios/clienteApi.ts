@@ -907,8 +907,23 @@ export type ResultadoPdfEsquela =
  * Descarga el PDF de la esquela. Con `tokenConsulta` (administrado, de la consulta pública) o, si no se
  * pasa, con la sesión del personal (renueva una vez ante un 401). 202 → todavía se está generando.
  */
-export const descargarPdfEsquela = async (
+export const descargarPdfEsquela = (
   codigo: string,
+  tokenConsulta?: string,
+): Promise<ResultadoPdfEsquela> =>
+  descargarPdf(
+    `/api/v1/esquelas/${encodeURIComponent(codigo)}/pdf`,
+    `${codigo}.pdf`,
+    tokenConsulta,
+  );
+
+/**
+ * Descarga un PDF con `tokenConsulta` (administrado) o, si no se pasa, con la sesión del personal
+ * (renueva una vez ante un 401). 202 → todavía se está generando (esquela, 005).
+ */
+const descargarPdf = async (
+  ruta: string,
+  nombre: string,
   tokenConsulta?: string,
 ): Promise<ResultadoPdfEsquela> => {
   try {
@@ -916,10 +931,9 @@ export const descargarPdfEsquela = async (
     const pedir = () => {
       const token = tokenConsulta ?? obtenerToken();
       return globalThis.fetch(
-        new Request(
-          new URL(`/api/v1/esquelas/${encodeURIComponent(codigo)}/pdf`, window.location.origin),
-          { headers: token === null ? {} : { Authorization: `Bearer ${token}` } },
-        ),
+        new Request(new URL(ruta, window.location.origin), {
+          headers: token === null ? {} : { Authorization: `Bearer ${token}` },
+        }),
       );
     };
     let respuesta = await pedir();
@@ -930,7 +944,7 @@ export const descargarPdfEsquela = async (
       return { tipo: 'en-generacion' };
     }
     if (respuesta.ok) {
-      return { tipo: 'ok', pdf: await respuesta.blob(), nombre: `${codigo}.pdf` };
+      return { tipo: 'ok', pdf: await respuesta.blob(), nombre };
     }
     return respuesta.status === 401 || respuesta.status === 403
       ? { tipo: 'sin-permiso' }
@@ -1109,5 +1123,51 @@ export const auditoriaDelExpediente = async (
     return data ?? null;
   } catch {
     return null;
+  }
+};
+
+// ----------------------------------------------------------------- licencias (006)
+
+export type LicenciaPublica = components['schemas']['LicenciaPublica'];
+
+/** PDF de la licencia: con el `tokenConsulta` del administrado o con la sesión del personal. */
+export const descargarPdfLicencia = (
+  numero: string,
+  tokenConsulta?: string,
+): Promise<ResultadoPdfEsquela> =>
+  descargarPdf(
+    `/api/v1/licencias/${encodeURIComponent(numero)}/pdf`,
+    `${numero}.pdf`,
+    tokenConsulta,
+  );
+
+export type ResultadoVerificacion =
+  | { readonly tipo: 'ok'; readonly licencia: LicenciaPublica }
+  | { readonly tipo: 'no-encontrada' }
+  | { readonly tipo: 'bloqueado'; readonly reintentarEn: Date }
+  | { readonly tipo: 'no-disponible' };
+
+/** Verificación pública del QR (sin cuenta). El código no es dato personal. */
+export const verificarLicencia = async (codigo: string): Promise<ResultadoVerificacion> => {
+  try {
+    const { data, response } = await clientePublico.GET(
+      '/licencias/verificar/{codigoVerificacion}',
+      {
+        params: { path: { codigoVerificacion: codigo } },
+      },
+    );
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', licencia: data };
+    }
+    switch (response.status) {
+      case 404:
+        return { tipo: 'no-encontrada' };
+      case 429:
+        return { tipo: 'bloqueado', reintentarEn: bloqueadoHasta(response) };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
   }
 };

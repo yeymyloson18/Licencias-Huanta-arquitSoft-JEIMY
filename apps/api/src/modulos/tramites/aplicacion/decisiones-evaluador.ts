@@ -256,7 +256,17 @@ export class AprobarExpediente extends DecisionEvaluador {
         ...this.base(expediente, decisor, nuevo),
         comentario: comentario === '' ? 'Expediente aprobado' : comentario,
         auditoria: { accion: 'APROBAR', detalle: null },
-        eventos: [eventoCambioEstado(expediente.numero, expediente.estado, nuevo)],
+        eventos: [
+          eventoCambioEstado(expediente.numero, expediente.estado, nuevo),
+          // Licencias emite la licencia: definitiva en la ruta A, provisional en la C (006).
+          {
+            tipo: 'LicenciaSolicitada',
+            datos: {
+              numeroExpediente: expediente.numero,
+              tipo: expediente.ruta === 'C' ? 'PROVISIONAL' : 'DEFINITIVA',
+            },
+          },
+        ],
       },
       'APROBAR',
     );

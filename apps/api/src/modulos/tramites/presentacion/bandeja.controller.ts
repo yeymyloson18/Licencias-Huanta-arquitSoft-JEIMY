@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Res, StreamableFile } from '@nestjs/common';
+import { Controller, Get, Inject, Param, Query, Res, StreamableFile } from '@nestjs/common';
 import { z } from 'zod';
 import { ErrorValidacion } from '../../../compartido/presentacion/filtro-problema';
 import { RequiereRoles, UsuarioActual, type UsuarioAutenticado } from '../../seguridad/fachada';
@@ -13,9 +13,13 @@ import { LicenciasDelGrupo } from '../aplicacion/licencias-del-grupo';
 import { limpiarNombreArchivo } from '../aplicacion/subir-documento';
 import { ESTADOS_EXPEDIENTE } from '../dominio/estado-publico';
 import type { LicenciaParaEvaluacion } from '../dominio/puertos/catalogo-evaluacion';
+import type { DatosPagoConsulta } from '../dominio/puertos/datos-pago-consulta';
 import type { ExpedienteResumen } from '../dominio/puertos/repositorio-expedientes';
 import { validarConEsquema } from './esquemas-tramites';
 import { traducirErrorTramites } from './traducir-errores';
+
+/** Datos de otros módulos para el detalle y la consulta (número de licencia, 006). */
+export const DATOS_PAGO_CONSULTA = Symbol('DATOS_PAGO_CONSULTA');
 
 interface RespuestaHttp {
   setHeader(nombre: string, valor: string): unknown;
@@ -67,6 +71,7 @@ const aResumen = (fila: ExpedienteResumen) => ({
 export const aDetalle = (
   detalle: DetalleParaPersonal,
   licenciasDelGrupo: readonly LicenciaParaEvaluacion[] = [],
+  numeroLicencia: string | null = null,
 ) => ({
   ...aResumen(detalle),
   version: detalle.version,
@@ -80,7 +85,7 @@ export const aDetalle = (
   zona: detalle.zona,
   areaM2: detalle.areaM2,
   codigoEsquela: null,
-  numeroLicencia: null,
+  numeroLicencia,
   documentos: detalle.documentos,
   observaciones: detalle.observaciones.map((observacion) => ({
     descripcion: observacion.descripcion,
@@ -119,6 +124,7 @@ export class BandejaController {
     private readonly obtenerDetalle: ObtenerDetalleExpediente,
     private readonly licenciasDelGrupo: LicenciasDelGrupo,
     private readonly descargarDocumento: DescargarDocumento,
+    @Inject(DATOS_PAGO_CONSULTA) private readonly datosPago: DatosPagoConsulta,
   ) {}
 
   @Get()
@@ -164,7 +170,11 @@ export class BandejaController {
     respuesta.setHeader('Cache-Control', 'no-store');
     try {
       const detalle = await this.obtenerDetalle.ejecutar({ numero, usuarioId: usuario.usuarioId });
-      return aDetalle(detalle, await this.licenciasDelGrupo.ejecutar(detalle));
+      return aDetalle(
+        detalle,
+        await this.licenciasDelGrupo.ejecutar(detalle),
+        await this.datosPago.numeroLicenciaDe(detalle.numero),
+      );
     } catch (error) {
       throw traducirErrorTramites(error);
     }

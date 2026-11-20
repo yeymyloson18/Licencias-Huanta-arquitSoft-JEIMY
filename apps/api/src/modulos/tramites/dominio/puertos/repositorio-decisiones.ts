@@ -52,6 +52,15 @@ export interface Decision {
     readonly evaluadorId?: string;
   };
   readonly observacion?: { readonly descripcion: string; readonly plazoSubsanarEn: Date | null };
+  /**
+   * Pasos del historial cuando la decisión encadena varios estados (por ejemplo, APROBADO →
+   * LICENCIA_EMITIDA → ITSE_POSTERIOR_PENDIENTE, 006). Sin él, un solo paso con `comentario`.
+   */
+  readonly historial?: readonly {
+    readonly estadoAnterior: EstadoExpediente;
+    readonly estadoNuevo: EstadoExpediente;
+    readonly comentario: string;
+  }[];
   readonly eventos: readonly EventoParaPublicar[];
   readonly en: Date;
 }

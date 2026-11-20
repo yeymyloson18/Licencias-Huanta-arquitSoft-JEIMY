@@ -12,6 +12,8 @@ const PREDETERMINADOS: Readonly<Record<string, string>> = {
   TRUST_PROXY_SALTOS: '1',
   // Sin temporizador: las pruebas procesan la cola de eventos a mano (005).
   DESPACHADOR_INTERVALO_MS: '0',
+  RELOJ_PLAZOS_INTERVALO_MS: '0',
+  AVISOS_INTERVALO_MS: '0',
 };
 
 for (const [variable, valor] of Object.entries(PREDETERMINADOS)) {

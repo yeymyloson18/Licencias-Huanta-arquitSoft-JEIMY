@@ -341,6 +341,14 @@ describe('Decisiones del evaluador (CU13 de la 005)', () => {
               tipo: 'EstadoExpedienteCambiado',
               datos: { estadoAnterior: 'PAGADO', estadoNuevo: 'APROBADO' },
             },
+            // 006: definitiva en la ruta A, provisional en la C.
+            {
+              tipo: 'LicenciaSolicitada',
+              datos: {
+                numeroExpediente: 'EXP-2026-000001',
+                tipo: ruta === 'C' ? 'PROVISIONAL' : 'DEFINITIVA',
+              },
+            },
           ],
         });
       },

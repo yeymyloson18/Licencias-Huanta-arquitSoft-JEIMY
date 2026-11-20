@@ -1,4 +1,4 @@
-import { Body, Controller, Headers, HttpCode, Param, Post, Res } from '@nestjs/common';
+import { Body, Controller, Headers, HttpCode, Inject, Param, Post, Res } from '@nestjs/common';
 import { z } from 'zod';
 import { ErrorValidacion } from '../../../compartido/presentacion/filtro-problema';
 import { RequiereRoles, UsuarioActual, type UsuarioAutenticado } from '../../seguridad/fachada';
@@ -12,7 +12,8 @@ import {
 } from '../aplicacion/decisiones-evaluador';
 import { LicenciasDelGrupo } from '../aplicacion/licencias-del-grupo';
 import { NumeroExpediente } from '../dominio/numero-expediente';
-import { aDetalle } from './bandeja.controller';
+import { aDetalle, DATOS_PAGO_CONSULTA } from './bandeja.controller';
+import type { DatosPagoConsulta } from '../dominio/puertos/datos-pago-consulta';
 import { validarConEsquema } from './esquemas-tramites';
 import { traducirErrorTramites } from './traducir-errores';
 
@@ -79,6 +80,7 @@ export class EvaluacionController {
     private readonly aprobarExpediente: AprobarExpediente,
     private readonly obtenerDetalle: ObtenerDetalleExpediente,
     private readonly licenciasDelGrupo: LicenciasDelGrupo,
+    @Inject(DATOS_PAGO_CONSULTA) private readonly datosPago: DatosPagoConsulta,
   ) {}
 
   @Post(':numeroExpediente/evaluacion')
@@ -188,7 +190,11 @@ export class EvaluacionController {
         usuarioId: usuario.usuarioId,
         registrarVista: false,
       });
-      return aDetalle(detalle, await this.licenciasDelGrupo.ejecutar(detalle));
+      return aDetalle(
+        detalle,
+        await this.licenciasDelGrupo.ejecutar(detalle),
+        await this.datosPago.numeroLicenciaDe(detalle.numero),
+      );
     } catch (error) {
       throw traducirErrorTramites(error);
     }

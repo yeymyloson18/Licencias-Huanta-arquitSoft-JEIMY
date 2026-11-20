@@ -8,6 +8,7 @@ import {
 import { AccionesEvaluador } from '../../componentes/AccionesEvaluador';
 import { AuditoriaExpediente } from '../../componentes/AuditoriaExpediente';
 import { DescargarEsquela } from '../../componentes/DescargarEsquela';
+import { DescargarLicencia } from '../../componentes/DescargarLicencia';
 import { useSesion } from '../../sesion/ProveedorSesion';
 import { ESTADOS, formatearFecha } from './Expedientes';
 
@@ -48,6 +49,10 @@ export function DetalleExpediente() {
   const { sesion } = useSesion();
   const esEvaluador = sesion?.usuario.roles.includes('EVALUADOR') ?? false;
   const esJefatura = sesion?.usuario.roles.includes('JEFATURA') ?? false;
+  // La licencia la ven y descargan MESA_PARTES, EVALUADOR y JEFATURA (006).
+  const puedeVerLicencia =
+    sesion?.usuario.roles.some((rol) => ['MESA_PARTES', 'EVALUADOR', 'JEFATURA'].includes(rol)) ??
+    false;
   // El PDF de la esquela lo descargan EVALUADOR, CAJA y JEFATURA (005).
   const puedeDescargarEsquela =
     sesion?.usuario.roles.some((rol) => ['EVALUADOR', 'CAJA', 'JEFATURA'].includes(rol)) ?? false;
@@ -142,6 +147,14 @@ export function DetalleExpediente() {
           ESTADOS_CON_ESQUELA.has(carga.expediente.estado) && (
             <DescargarEsquela codigo={`ESQ-${carga.expediente.numero}`} />
           )}
+        {carga.tipo === 'lista' && carga.expediente.numeroLicencia && puedeVerLicencia && (
+          <section className="tarjeta" aria-label="Licencia">
+            <p>
+              Licencia: <strong>{carga.expediente.numeroLicencia}</strong>
+            </p>
+            <DescargarLicencia numero={carga.expediente.numeroLicencia} />
+          </section>
+        )}
         {carga.tipo === 'lista' && (
           <article className="tarjeta" aria-label={`Expediente ${carga.expediente.numero}`}>
             <dl className="ficha__datos">

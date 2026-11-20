@@ -64,6 +64,10 @@ const esquemaConfiguracion = z.object({
     .default(ALMACEN_ARCHIVOS_POR_DEFECTO),
   // Cada cuánto el despachador revisa la cola de eventos (005); 0 lo apaga (pruebas de integración).
   DESPACHADOR_INTERVALO_MS: z.coerce.number().int().min(0).default(2000),
+  // 006: dirección pública del portal (para el QR de la licencia), reloj de plazos y envío de avisos.
+  URL_PUBLICA_PORTAL: z.url().default('http://localhost:8080'),
+  RELOJ_PLAZOS_INTERVALO_MS: z.coerce.number().int().min(0).default(3_600_000),
+  AVISOS_INTERVALO_MS: z.coerce.number().int().min(0).default(5000),
 });
 
 // Valores ficticios de .env.example: prohibidos en producción (research.md §R-16 de la 002).
@@ -92,6 +96,12 @@ export interface Configuracion {
   readonly almacenArchivosRuta: string;
   /** 0 = sin temporizador (los eventos se procesan a mano, en las pruebas). */
   readonly despachadorIntervaloMs: number;
+  /** Base de la URL del QR de las licencias: `<url>/verificar/<código>` (006). */
+  readonly urlPublicaPortal: string;
+  /** Cada cuánto corre el reloj de plazos; 0 = solo a mano (pruebas). */
+  readonly relojPlazosIntervaloMs: number;
+  /** Cada cuánto se envían los avisos pendientes; 0 = solo a mano (pruebas). */
+  readonly avisosIntervaloMs: number;
 }
 
 export class ErrorConfiguracion extends Error {
@@ -171,5 +181,8 @@ export const cargarConfiguracion = (
     trustProxySaltos: datos.TRUST_PROXY_SALTOS,
     almacenArchivosRuta: datos.ALMACEN_ARCHIVOS_RUTA,
     despachadorIntervaloMs: datos.DESPACHADOR_INTERVALO_MS,
+    urlPublicaPortal: datos.URL_PUBLICA_PORTAL,
+    relojPlazosIntervaloMs: datos.RELOJ_PLAZOS_INTERVALO_MS,
+    avisosIntervaloMs: datos.AVISOS_INTERVALO_MS,
   };
 };

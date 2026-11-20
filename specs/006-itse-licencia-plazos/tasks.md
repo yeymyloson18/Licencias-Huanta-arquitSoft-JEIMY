@@ -70,18 +70,18 @@ verificarla sin sesión.
 
 ### Pruebas de la historia 1 ⚠️
 
-- [ ] T009 [P] [US1] Pruebas unitarias en `test-lic/dominio/` (número `LF-AAAA-NNNNNN`, código de 22
+- [X] T009 [P] [US1] Pruebas unitarias en `test-lic/dominio/` (número `LF-AAAA-NNNNNN`, código de 22
   caracteres base64url, titular público "Juana P. Q." y razón social, vigencia provisional de 12 meses,
   estado VENCIDA al leer) y `test-lic/aplicacion/emitir-licencia.spec.ts` (una vigente por expediente,
   reenvía `LicenciaEmitida` si ya existe, certificado con vencimiento a 2 años)
-- [ ] T010 [P] [US1] Pruebas unitarias `test-tra/aplicacion/aplicar-licencia-emitida.spec.ts` (A →
+- [X] T010 [P] [US1] Pruebas unitarias `test-tra/aplicacion/aplicar-licencia-emitida.spec.ts` (A →
   LICENCIA_EMITIDA → ITSE_POSTERIOR_PENDIENTE + `InspeccionRequerida POSTERIOR`; B → LICENCIA_EMITIDA →
   FINALIZADO; C → LICENCIA_PROVISIONAL + `InspeccionRequerida BODEGA`; repetido no hace nada) y de
   aprobar publicando `LicenciaSolicitada`
-- [ ] T011 [P] [US1] Prueba de integración `int/licencia-emision.e2e-spec.ts`: aprobar A y C → tras
+- [X] T011 [P] [US1] Prueba de integración `int/licencia-emision.e2e-spec.ts`: aprobar A y C → tras
   procesar la cola, licencia, estados, historial y eventos; evento repetido no duplica; auditoría
   `EMITIR`/`EMITIR_PROVISIONAL` con usuario NULL
-- [ ] T012 [P] [US1] Prueba de integración `int/licencia-verificacion.e2e-spec.ts`: verificación
+- [X] T012 [P] [US1] Prueba de integración `int/licencia-verificacion.e2e-spec.ts`: verificación
   pública con datos mínimos y sin datos personales; 404 igual para inexistente y mal formado; 10 fallos
   → 429 con `Retry-After`; consulta pública con `numeroLicencia` y `tokenConsulta`; PDF con `%PDF`, el
   código en el texto, sin documento ni dirección; token de otro expediente → 403; MESA_PARTES, EVALUADOR y JEFATURA
@@ -89,21 +89,21 @@ verificarla sin sesión.
 
 ### Implementación de la historia 1
 
-- [ ] T013 [US1] `lic/dominio/` (`licencia.ts`, `titular-publico.ts`, `codigo-verificacion.ts`,
+- [X] T013 [US1] `lic/dominio/` (`licencia.ts`, `titular-publico.ts`, `codigo-verificacion.ts`,
   puertos) y `lic/aplicacion/emitir-licencia.ts`, `obtener-licencia.ts`, `verificar-licencia.ts`.
   Deben pasar T009
-- [ ] T014 [US1] `tra/fachada.ts` `datosParaLicencia(numero)` (giro, zona, nombre comercial, razón
+- [X] T014 [US1] `tra/fachada.ts` `datosParaLicencia(numero)` (giro, zona, nombre comercial, razón
   social, nombre del titular, ruta, vigencia en meses; sin documento); `AprobarExpediente` publica
   `LicenciaSolicitada`; `tra/aplicacion/aplicar-licencia-emitida.ts` y su manejador. Deben pasar T010
-- [ ] T015 [US1] `lic/infraestructura/` (repositorio Postgres con la transacción de emisión y el
+- [X] T015 [US1] `lic/infraestructura/` (repositorio Postgres con la transacción de emisión y el
   evento, `qr.ts` con `qrcode-generator`, `pdf-licencia-pdflib.ts`, limitador Redis
   `lim:verificacion:*`, manejador de `LicenciaSolicitada`), `lic/presentacion/licencias.controller.ts`
   (`GET /licencias/verificar/{codigo}`, `GET /licencias/{numero}`, `GET /licencias/{numero}/pdf` con
   `ConsultaOPersonalGuard`), `lic/fachada.ts` `licenciaDelExpediente(numero)`, variable
   `URL_PUBLICA_PORTAL`. Deben pasar T011 y T012
-- [ ] T016 [US1] Consulta pública y detalle: `tokenConsulta` también en los estados con licencia
+- [X] T016 [US1] Consulta pública y detalle: `tokenConsulta` también en los estados con licencia
   (research §R-18), `numeroLicencia` en `EstadoPublico` y en `Expediente`
-- [ ] T017 [US1] Portal: `web/paginas/Verificar.tsx` (ruta pública `/verificar/:codigo`, 404 y 429),
+- [X] T017 [US1] Portal: `web/paginas/Verificar.tsx` (ruta pública `/verificar/:codigo`, 404 y 429),
   `web/componentes/DescargarLicencia.tsx` en `Consulta.tsx` y `DetalleExpediente.tsx`, funciones del
   cliente y pruebas
 
