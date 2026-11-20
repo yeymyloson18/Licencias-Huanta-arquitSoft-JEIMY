@@ -2,6 +2,7 @@ import { type SyntheticEvent, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { CampoFormulario } from '../componentes/CampoFormulario';
 import { DescargarEsquela } from '../componentes/DescargarEsquela';
+import { DescargarLicencia } from '../componentes/DescargarLicencia';
 import { conPuntoFinal, formatearTasaFicha } from '../componentes/formato';
 import { consultarEstado, type EstadoPublico } from '../servicios/clienteApi';
 
@@ -196,11 +197,25 @@ export function Consulta() {
                 </dl>
               </>
             )}
-            {estado.tokenConsulta && (
+            {estado.tokenConsulta && estado.estado === 'PENDIENTE_PAGO' && (
               <DescargarEsquela
                 codigo={estado.codigoEsquela ?? `ESQ-${estado.numero}`}
                 tokenConsulta={estado.tokenConsulta.token}
               />
+            )}
+            {estado.numeroLicencia && (
+              <>
+                <h3 className="ficha__subtitulo">Licencia de funcionamiento</h3>
+                <p>
+                  Número de licencia: <strong>{estado.numeroLicencia}</strong>
+                </p>
+                {estado.tokenConsulta && (
+                  <DescargarLicencia
+                    numero={estado.numeroLicencia}
+                    tokenConsulta={estado.tokenConsulta.token}
+                  />
+                )}
+              </>
             )}
             <h3 className="ficha__subtitulo">Historial</h3>
             <ol className="consulta__historial">

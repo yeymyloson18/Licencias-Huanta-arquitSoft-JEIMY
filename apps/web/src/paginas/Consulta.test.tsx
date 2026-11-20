@@ -55,6 +55,45 @@ describe('Página Consulta', () => {
     reiniciarSesion();
   });
 
+  it('con licencia muestra el número y descarga el PDF con el token de consulta (006)', async () => {
+    Object.assign(URL, {
+      createObjectURL: jest.fn(() => 'blob:licencia'),
+      revokeObjectURL: jest.fn(),
+    });
+    const clic = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const llamadas = simularApi({
+      ...base,
+      'POST /expedientes/consultar': () =>
+        json({
+          ...ESTADO,
+          estado: 'ITSE_POSTERIOR_PENDIENTE',
+          numeroLicencia: 'LF-2026-000001',
+          tokenConsulta: { token: 'token-consulta-ficticio', expiraEn: 900 },
+        }),
+      'GET /licencias/LF-2026-000001/pdf': () =>
+        new Response(new Blob(['%PDF-1.7']), { headers: { 'Content-Type': 'application/pdf' } }),
+    });
+    montarEn('/consulta');
+    const usuario = userEvent.setup();
+    await usuario.type(await screen.findByLabelText('Número de expediente'), 'EXP-2026-000123');
+    await usuario.type(
+      screen.getByLabelText('DNI, carné de extranjería o RUC del titular'),
+      '40000001',
+    );
+    await usuario.click(screen.getByRole('button', { name: 'Consultar' }));
+
+    expect(await screen.findByText('LF-2026-000001')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Descargar esquela' })).not.toBeInTheDocument();
+    await usuario.click(screen.getByRole('button', { name: 'Descargar licencia' }));
+
+    await waitFor(() => {
+      expect(clic).toHaveBeenCalled();
+    });
+    expect(llamadas.find((l) => l.clave.endsWith('/pdf'))?.autorizacion).toBe(
+      'Bearer token-consulta-ficticio',
+    );
+  });
+
   describe('esquela y observaciones (005)', () => {
     const PENDIENTE = {
       ...ESTADO,

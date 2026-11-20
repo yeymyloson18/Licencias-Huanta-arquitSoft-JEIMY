@@ -3,7 +3,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ErrorValidacion } from '../../../compartido/presentacion/filtro-problema';
 import { type Solicitante, SolicitanteActual, SolicitanteGuard } from '../../seguridad/fachada';
 import { SubirDocumento } from '../aplicacion/subir-documento';
-import { TAMANO_MAXIMO_BYTES } from '../dominio/tipo-archivo';
+import { TAMANO_MAXIMO_BYTES } from '../../../compartido/dominio/tipo-archivo';
 import { traducirErrorTramites } from './traducir-errores';
 
 interface RespuestaHttp {

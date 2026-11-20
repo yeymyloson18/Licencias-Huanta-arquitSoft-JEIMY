@@ -22,6 +22,7 @@ describe('Despachador de eventos (research §R-02 de la 005)', () => {
   let prisma: PrismaServicio;
   let despachador: DespachadorEventos;
   const recibidos: unknown[] = [];
+  const ids: bigint[] = [];
   let fallosPendientes = 0;
 
   const crearEvento = (tipo: string, datos: object) =>
@@ -31,18 +32,20 @@ describe('Despachador de eventos (research §R-02 de la 005)', () => {
     ({ app } = (await crearAplicacionDePrueba()) as { app: INestApplication<App> });
     prisma = app.get(PrismaServicio);
     despachador = app.get(DespachadorEventos);
-    despachador.registrar('PruebaDespacho', (datos) => {
+    despachador.registrar('PruebaDespacho', (datos, meta) => {
       if (fallosPendientes > 0) {
         fallosPendientes -= 1;
         return Promise.reject(new ErrorDePrueba());
       }
       recibidos.push(datos);
+      ids.push(meta.id);
       return Promise.resolve();
     });
   });
 
   beforeEach(async () => {
     recibidos.length = 0;
+    ids.length = 0;
     fallosPendientes = 0;
     await prisma.evento_pendiente.deleteMany({
       where: { tipo: { in: ['PruebaDespacho', 'PruebaSinManejador'] } },
@@ -64,6 +67,8 @@ describe('Despachador de eventos (research §R-02 de la 005)', () => {
 
     expect(resultado).toMatchObject({ fallidos: 0 });
     expect(recibidos).toEqual([{ orden: 1 }, { orden: 2 }]);
+    // El manejador recibe el id del evento (clave de idempotencia de los avisos, 006).
+    expect(ids).toEqual([primero.id, segundo.id]);
     for (const evento of [primero, segundo]) {
       const fila = await prisma.evento_pendiente.findUniqueOrThrow({ where: { id: evento.id } });
       expect(fila.procesado_en).not.toBeNull();

@@ -901,7 +901,8 @@ paths:
       summary: Observa el expediente por requisitos faltantes (RF09, rol EVALUADOR). Una sola vez por expediente.
       description: >-
         EN_EVALUACION → OBSERVADO. Una segunda observación responde 409 (`type` `ya-observado`). El plazo para
-        subsanar en días hábiles es de la funcionalidad 006: `plazoSubsanarEn` es opcional. `Cache-Control: no-store`.
+        subsanar es de 2 días hábiles y lo calcula el sistema (006): `plazoSubsanarEn` se acepta pero se ignora. El
+        plazo del expediente queda suspendido hasta la subsanación. `Cache-Control: no-store`.
       security: [{ bearerPersonal: [] }]
       parameters:
         - $ref: '#/components/parameters/IfMatch'
@@ -914,7 +915,8 @@ paths:
               required: [descripcion]
               properties:
                 descripcion: { type: string, minLength: 10, maxLength: 1000 }
-                plazoSubsanarEn: { type: string, format: date }
+                plazoSubsanarEn:
+                  { type: string, format: date, deprecated: true, description: Se ignora desde la 006. }
       responses:
         '200':
           description: Expediente observado.
@@ -1218,6 +1220,9 @@ paths:
       tags: [Inspecciones]
       operationId: listarInspecciones
       summary: Bandeja de inspecciones. El inspector ve solo las suyas; la jefatura ve todas.
+      description: >-
+        Roles JEFATURA (todas) e INSPECTOR (solo las asignadas a él, con la dirección del local). La jefatura
+        no recibe la dirección. `Cache-Control: no-store`.
       security: [{ bearerPersonal: [] }]
       parameters:
         - $ref: '#/components/parameters/Pagina'
@@ -1240,6 +1245,30 @@ paths:
                         items: { $ref: '#/components/schemas/Inspeccion' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
+
+  /inspecciones/inspectores:
+    get:
+      tags: [Inspecciones]
+      operationId: listarInspectores
+      summary: Usuarios activos con rol INSPECTOR, para asignar (rol JEFATURA).
+      security: [{ bearerPersonal: [] }]
+      responses:
+        '200':
+          description: Inspectores.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, nombre]
+                  additionalProperties: false
+                  properties:
+                    id: { type: string, format: uuid }
+                    nombre: { type: string }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
 
   /inspecciones/{inspeccionId}/asignar:
     parameters:
@@ -1248,6 +1277,9 @@ paths:
       tags: [Inspecciones]
       operationId: asignarInspector
       summary: Asigna el inspector y la fecha (RF10, rol JEFATURA).
+      description: >-
+        Se puede cambiar la asignación mientras la inspección no tenga resultado (409 si ya lo tiene). 422 si el
+        usuario no es un inspector activo o la fecha es anterior a hoy (hora de Lima).
       security: [{ bearerPersonal: [] }]
       requestBody:
         required: true
@@ -1269,6 +1301,7 @@ paths:
         '403': { $ref: '#/components/responses/SinPermiso' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
         '409': { $ref: '#/components/responses/Conflicto' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
 
   /inspecciones/{inspeccionId}/resultado:
     parameters:
@@ -1277,6 +1310,11 @@ paths:
       tags: [Inspecciones]
       operationId: registrarResultadoItse
       summary: El inspector asignado registra el resultado con fotos desde su celular (RF10, HU08). Publica ResultadoITSERegistrado.
+      description: >-
+        Solo el inspector asignado (403 para cualquier otro). Una sola vez (409 si ya tiene resultado). Fotos JPG o
+        PNG reales (se comprueba el contenido) de hasta 10 MB. Con FAVORABLE, el número del certificado y su
+        fecha de emisión (no futura) son obligatorios; el certificado vence 2 años después. Con DESFAVORABLE, las
+        observaciones son obligatorias. `Cache-Control: no-store`.
       security: [{ bearerPersonal: [] }]
       requestBody:
         required: true
@@ -1289,11 +1327,15 @@ paths:
                 resultado: { type: string, enum: [FAVORABLE, DESFAVORABLE] }
                 observaciones: { type: string, maxLength: 4000 }
                 numeroCertificado:
-                  { type: string, maxLength: 30, description: Obligatorio si es FAVORABLE. }
+                  type: string
+                  pattern: '^[A-Za-z0-9/ -]{4,30}$'
+                  description: Obligatorio si es FAVORABLE; se guarda en mayúsculas y sin espacios.
+                certificadoEmitidoEn:
+                  { type: string, format: date, description: Obligatorio si es FAVORABLE. }
                 fotos:
                   type: array
                   minItems: 1
-                  maxItems: 10
+                  maxItems: 5
                   items: { type: string, format: binary }
             encoding:
               fotos:
@@ -1306,7 +1348,13 @@ paths:
               schema: { $ref: '#/components/schemas/Inspeccion' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
         '409': { $ref: '#/components/responses/Conflicto' }
+        '413':
+          description: Una foto supera los 10 MB.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
         '422': { $ref: '#/components/responses/NoProcesable' }
 
   # ===================================================================== LICENCIAS
@@ -1321,15 +1369,26 @@ paths:
       tags: [Licencias]
       operationId: verificarLicenciaPublica
       summary: Verificación pública del QR con datos mínimos (RF13, ADR-007). Sin DNI, celular ni dirección.
+      description: >-
+        Un código inexistente o mal formado responde el mismo 404. Tras 10 respuestas 404 desde el mismo origen en
+        15 minutos responde 429 (también con un código válido) hasta que pase la ventana; las verificaciones
+        exitosas no cuentan. `Cache-Control: no-store`.
       security: []
       responses:
         '200':
           description: Licencia encontrada.
+          headers:
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/LicenciaPublica' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
         '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+        '503':
+          description: No se pueden contar los intentos en este momento (falla cerrado).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
 
   /licencias/{numeroLicencia}:
     parameters:
@@ -1338,6 +1397,9 @@ paths:
       tags: [Licencias]
       operationId: obtenerLicencia
       summary: Detalle de la licencia y su certificado ITSE.
+      description: >-
+        Con una sesión MESA_PARTES, EVALUADOR o JEFATURA, o con el `tokenConsulta` del mismo expediente (403 si es de otro).
+        `Cache-Control: no-store`.
       security: [{ bearerPersonal: [] }, { tokenConsulta: [] }]
       responses:
         '200':
@@ -1346,6 +1408,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Licencia' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
 
   /licencias/{numeroLicencia}/pdf:
@@ -1355,16 +1418,23 @@ paths:
       tags: [Licencias]
       operationId: descargarLicencia
       summary: PDF de la licencia con el código QR (HU06).
+      description: >-
+        Con el `tokenConsulta` del mismo expediente o una sesión MESA_PARTES, EVALUADOR o JEFATURA. El PDF se genera al pedirlo
+        y no lleva documento, RUC, celular, correo ni dirección del titular.
       security: [{ tokenConsulta: [] }, { bearerPersonal: [] }]
       responses:
         '200':
           description: PDF.
+          headers:
+            Content-Disposition:
+              { schema: { type: string }, description: 'attachment; filename="<número>.pdf"' }
+            X-Content-Type-Options: { schema: { type: string }, description: nosniff }
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
           content:
             application/pdf:
               schema: { type: string, format: binary }
-        '202':
-          description: El PDF todavía se está generando.
         '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
 
   # ===================================================================== PLAZOS
@@ -1372,7 +1442,7 @@ paths:
     get:
       tags: [Plazos]
       operationId: listarFeriados
-      summary: Feriados de un año.
+      summary: Feriados de un año, por fecha (cualquier sesión del personal).
       security: [{ bearerPersonal: [] }]
       parameters:
         - name: anio
@@ -1388,6 +1458,7 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/Feriado' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
     post:
       tags: [Plazos]
       operationId: registrarFeriado
@@ -1407,6 +1478,7 @@ paths:
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
         '409': { $ref: '#/components/responses/Conflicto' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
 
   /feriados/{fecha}:
     parameters:
@@ -1430,6 +1502,9 @@ paths:
       tags: [Plazos]
       operationId: listarAlertas
       summary: Expedientes próximos a vencer (RF08, HU09, rol JEFATURA).
+      description: >-
+        De la más urgente a la menos urgente (las vencidas primero). `diasHabilesRestantes` se recalcula al leer.
+        `Cache-Control: no-store`.
       security: [{ bearerPersonal: [] }]
       parameters:
         - name: pendientes
@@ -1445,6 +1520,28 @@ paths:
                 items: { $ref: '#/components/schemas/AlertaPlazo' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /plazos/alertas/{alertaId}/atender:
+    parameters:
+      - name: alertaId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      tags: [Plazos]
+      operationId: atenderAlerta
+      summary: Marca una alerta como atendida (rol JEFATURA); queda quién y cuándo.
+      security: [{ bearerPersonal: [] }]
+      responses:
+        '200':
+          description: Alerta atendida.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AlertaPlazo' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
 
   # ===================================================================== REPORTES
   /reportes/tablero:
@@ -2183,7 +2280,9 @@ components:
               id: { type: integer }
               descripcion: { type: string }
         tokenConsulta:
-          description: Solo cuando el expediente está PENDIENTE_PAGO; sirve 15 minutos para descargar la esquela de ese expediente (005).
+          description: >-
+            Cuando el expediente está PENDIENTE_PAGO (esquela, 005) o tiene licencia (LICENCIA_EMITIDA, LICENCIA_PROVISIONAL,
+            ITSE_POSTERIOR_PENDIENTE, FINALIZADO o DERIVADO_A_FISCALIZACION, 006); sirve 15 minutos y solo para ese expediente.
           $ref: '#/components/schemas/TokenCorto'
     RegistroAuditoria:
       type: object
@@ -2223,10 +2322,14 @@ components:
         estado: { type: string, enum: [PENDIENTE, ASIGNADA, REALIZADA] }
         inspectorId: { type: [string, 'null'], format: uuid }
         programadaPara: { type: [string, 'null'], format: date }
-        direccion: { type: string, description: Visible para el inspector asignado. }
+        nombreInspector: { type: [string, 'null'] }
+        direccion: { type: string, description: Solo para el inspector asignado (la necesita para ir). }
         giro: { type: string }
+        nombreLicencia: { type: string }
         resultado: { type: [string, 'null'], enum: [FAVORABLE, DESFAVORABLE, null] }
         observaciones: { type: [string, 'null'] }
+        numeroCertificado: { type: [string, 'null'] }
+        certificadoEmitidoEn: { type: [string, 'null'], format: date }
         registradaEn: { type: [string, 'null'], format: date-time }
 
     # ------------------------------------------------------------- licencias
@@ -2245,6 +2348,7 @@ components:
         emitidaEn: { type: string, format: date }
         vigenteHasta: { type: [string, 'null'], format: date }
         itseVenceEn: { type: [string, 'null'], format: date }
+        itseEstado: { type: string, enum: [SIN_CERTIFICADO, VIGENTE, VENCIDO] }
     Licencia:
       allOf:
         - $ref: '#/components/schemas/LicenciaPublica'
@@ -2271,14 +2375,16 @@ components:
         alcance: { type: string, enum: [NACIONAL, REGIONAL, LOCAL] }
     AlertaPlazo:
       type: object
-      required: [numeroExpediente, venceEn, diasHabilesRestantes, generadaEn]
+      required: [id, numeroExpediente, venceEn, diasHabilesRestantes, generadaEn]
       properties:
+        id: { type: integer }
         numeroExpediente: { $ref: '#/components/schemas/NumeroExpediente' }
         venceEn: { type: string, format: date }
         diasHabilesRestantes: { type: integer }
         estadoExpediente: { $ref: '#/components/schemas/EstadoExpediente' }
         generadaEn: { type: string, format: date-time }
         atendidaEn: { type: [string, 'null'], format: date-time }
+        atendidaPor: { type: [string, 'null'], format: uuid }
 
     # ------------------------------------------------------------- reportes y operación
     Tablero:

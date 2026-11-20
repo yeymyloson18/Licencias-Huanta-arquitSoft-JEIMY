@@ -101,7 +101,8 @@ describe('Presentar la solicitud en línea (CU04 de la 004)', () => {
       ruta: 'A',
       codigoReceta: 'LIC-02',
       canal: 'EN_LINEA',
-      vencePlazoEn: null,
+      // 006: 2 días hábiles del plazo de LIC-02.
+      vencePlazoEn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) as unknown,
     });
     expect(registrado.numero).toMatch(/^EXP-[0-9]{4}-[0-9]{6}$/);
     expect(respuesta.headers.location).toBe(`/api/v1/expedientes/${registrado.numero}`);
@@ -112,7 +113,9 @@ describe('Presentar la solicitud en línea (CU04 de la 004)', () => {
       include: { historial_estado: true, documento: true },
     });
     expect(expediente.receta_al_presentar).toMatchObject({ codigo: 'LIC-02', tasa: '177.10' });
-    expect(expediente.vence_plazo_en).toBeNull();
+    expect(expediente.vence_plazo_en?.toISOString().slice(0, 10)).toBe(
+      (respuesta.body as { vencePlazoEn: string }).vencePlazoEn,
+    );
     expect(protector.descifrar(expediente.documento_cifrado)).toBe('40000001');
     expect(Buffer.from(expediente.direccion_cifrada).toString('utf8')).not.toContain('Ficticio');
     expect(expediente.historial_estado.map((r) => r.estado_nuevo)).toEqual(['REGISTRADO']);

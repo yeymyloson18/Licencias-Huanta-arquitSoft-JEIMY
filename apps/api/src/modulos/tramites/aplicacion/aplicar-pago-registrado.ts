@@ -1,4 +1,7 @@
+import { fechaLima } from '../../../compartido/dominio/fecha-lima';
 import { siguienteEstado } from '../dominio/maquina-estados';
+import type { PlazosHabiles } from '../dominio/puertos/plazos-habiles';
+import { reanudarPlazo } from './plazo-expediente';
 import type { Reloj } from '../dominio/puertos/reloj';
 import type { RepositorioDecisiones } from '../dominio/puertos/repositorio-decisiones';
 
@@ -19,7 +22,12 @@ export type ResultadoPagoAplicado = 'APLICADO' | 'YA_APLICADO';
  */
 export class AplicarPagoRegistrado {
   constructor(
-    private readonly d: { readonly decisiones: RepositorioDecisiones; readonly reloj: Reloj },
+    private readonly d: {
+      readonly decisiones: RepositorioDecisiones;
+      readonly reloj: Reloj;
+      /** Días hábiles (006): al pagar se reanuda el plazo suspendido. */
+      readonly plazos?: PlazosHabiles;
+    },
   ) {}
 
   async ejecutar(evento: { readonly numeroExpediente: string }): Promise<ResultadoPagoAplicado> {
@@ -28,27 +36,55 @@ export class AplicarPagoRegistrado {
       if (expediente === null || expediente.estado !== 'PENDIENTE_PAGO') {
         return 'YA_APLICADO';
       }
-      const nuevo = siguienteEstado(expediente.estado, expediente.ruta, 'REGISTRAR_PAGO');
+      const pagado = siguienteEstado(expediente.estado, expediente.ruta, 'REGISTRAR_PAGO');
+      // Ruta B (006): en la misma transacción pasa a EN_INSPECCION y pide la inspección PREVIA.
+      const conInspeccion = expediente.ruta === 'B';
+      const primero = {
+        estadoAnterior: expediente.estado,
+        estadoNuevo: pagado,
+        comentario: 'Pago registrado en caja',
+      };
+      const segundo = conInspeccion
+        ? {
+            estadoAnterior: pagado,
+            estadoNuevo: siguienteEstado(pagado, 'B', 'INICIAR_INSPECCION_PREVIA'),
+            comentario: 'Espera la inspección ITSE previa',
+          }
+        : null;
+      const pasos = segundo === null ? [primero] : [primero, segundo];
+      const final = segundo ?? primero;
+      const en = this.d.reloj.ahora();
+      const plazo = await reanudarPlazo(this.d.plazos, expediente.plazoRestanteDias, fechaLima(en));
       const aplicado = await this.d.decisiones.aplicar({
         expedienteId: expediente.id,
         numero: expediente.numero,
         estadoEsperado: expediente.estado,
         versionEsperada: expediente.version,
-        estadoNuevo: nuevo,
+        estadoNuevo: final.estadoNuevo,
         usuarioId: null,
-        comentario: 'Pago registrado en caja',
+        comentario: final.comentario,
         auditoria: null,
+        historial: pasos,
+        cambios: plazo,
         eventos: [
-          {
+          ...pasos.map((paso) => ({
             tipo: 'EstadoExpedienteCambiado',
             datos: {
               numeroExpediente: expediente.numero,
-              estadoAnterior: expediente.estado,
-              estadoNuevo: nuevo,
+              estadoAnterior: paso.estadoAnterior,
+              estadoNuevo: paso.estadoNuevo,
             },
-          },
+          })),
+          ...(conInspeccion
+            ? [
+                {
+                  tipo: 'InspeccionRequerida',
+                  datos: { numeroExpediente: expediente.numero, tipo: 'PREVIA' },
+                },
+              ]
+            : []),
         ],
-        en: this.d.reloj.ahora(),
+        en,
       });
       if (aplicado) {
         return 'APLICADO';

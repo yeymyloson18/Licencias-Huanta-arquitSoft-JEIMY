@@ -32,6 +32,8 @@ export interface EstadoPublico {
   } | null;
   /** Solo cuando el expediente está PENDIENTE_PAGO (research §R-08 de la 005). */
   readonly tokenConsulta: { readonly token: string; readonly expiraEn: number } | null;
+  /** Número de la licencia vigente, si ya se emitió (006). */
+  readonly numeroLicencia: string | null;
 }
 
 export type ResultadoConsulta =
@@ -41,7 +43,7 @@ export type ResultadoConsulta =
 
 const aEstadoPublico = (
   expediente: ExpedienteConsultado,
-  pago: Pick<EstadoPublico, 'esquela' | 'tokenConsulta'>,
+  pago: Pick<EstadoPublico, 'esquela' | 'tokenConsulta' | 'numeroLicencia'>,
 ): EstadoPublico => {
   const texto = TEXTO_ESTADO_PUBLICO[expediente.estado];
   return {
@@ -73,6 +75,18 @@ const CON_ESQUELA: ReadonlySet<string> = new Set([
   'APROBADO',
   'LICENCIA_PROVISIONAL',
   'LICENCIA_EMITIDA',
+  'ITSE_POSTERIOR_PENDIENTE',
+  'FINALIZADO',
+  'DERIVADO_A_FISCALIZACION',
+]);
+
+/** Estados con licencia: el `tokenConsulta` sirve para descargarla (research §R-18 de la 006). */
+const CON_LICENCIA: ReadonlySet<string> = new Set([
+  'LICENCIA_PROVISIONAL',
+  'LICENCIA_EMITIDA',
+  'ITSE_POSTERIOR_PENDIENTE',
+  'FINALIZADO',
+  'DERIVADO_A_FISCALIZACION',
 ]);
 
 /**
@@ -116,16 +130,18 @@ export class ConsultarEstado {
 
   private async datosPago(
     expediente: ExpedienteConsultado,
-  ): Promise<Pick<EstadoPublico, 'esquela' | 'tokenConsulta'>> {
+  ): Promise<Pick<EstadoPublico, 'esquela' | 'tokenConsulta' | 'numeroLicencia'>> {
     const { pago } = this.dependencias;
     if (pago === undefined || !CON_ESQUELA.has(expediente.estado)) {
-      return { esquela: null, tokenConsulta: null };
+      return { esquela: null, tokenConsulta: null, numeroLicencia: null };
     }
-    const esperaPago = expediente.estado === 'PENDIENTE_PAGO';
-    const [esquela, tokenConsulta] = await Promise.all([
+    const conLicencia = CON_LICENCIA.has(expediente.estado);
+    const conToken = conLicencia || expediente.estado === 'PENDIENTE_PAGO';
+    const [esquela, tokenConsulta, numeroLicencia] = await Promise.all([
       pago.esquelaDe(expediente.numero),
-      esperaPago ? pago.tokenConsulta(expediente.numero) : Promise.resolve(null),
+      conToken ? pago.tokenConsulta(expediente.numero) : Promise.resolve(null),
+      conLicencia ? pago.numeroLicenciaDe(expediente.numero) : Promise.resolve(null),
     ]);
-    return { esquela, tokenConsulta };
+    return { esquela, tokenConsulta, numeroLicencia };
   }
 }

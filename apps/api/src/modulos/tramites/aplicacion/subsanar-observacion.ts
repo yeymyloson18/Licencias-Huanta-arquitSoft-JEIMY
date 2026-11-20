@@ -7,7 +7,10 @@ import type {
   ExpedienteParaSubsanar,
   RepositorioSubsanacion,
 } from '../dominio/puertos/repositorio-subsanacion';
+import type { PlazosHabiles } from '../dominio/puertos/plazos-habiles';
 import type { Reloj } from '../dominio/puertos/reloj';
+import { fechaLima } from '../../../compartido/dominio/fecha-lima';
+import { reanudarPlazo } from './plazo-expediente';
 import type {
   IdentidadSolicitud,
   VerificadorIdentidad,
@@ -48,6 +51,8 @@ export class SubsanarObservacion {
       readonly verificador: VerificadorIdentidad;
       readonly documentos: RepositorioDocumentosTemporales;
       readonly reloj: Reloj;
+      /** Días hábiles (006): al subsanar se reanuda el plazo suspendido. */
+      readonly plazos?: PlazosHabiles;
     },
   ) {}
 
@@ -85,6 +90,8 @@ export class SubsanarObservacion {
       throw new ErrorValidacionSolicitud(errores);
     }
 
+    const en = this.d.reloj.ahora();
+    const plazo = await reanudarPlazo(this.d.plazos, expediente.plazoRestanteDias, fechaLima(en));
     const resultado = await this.d.repositorio.subsanar({
       expedienteId: expediente.id,
       numero,
@@ -95,7 +102,8 @@ export class SubsanarObservacion {
         requisitoOrden: ordenPorRequisito.get(adjunto.requisitoId) ?? 0,
       })),
       usuarioId: canal.tipo === 'MESA_PARTES' ? canal.usuarioId : null,
-      en: this.d.reloj.ahora(),
+      ...(plazo.vencePlazoEn === undefined ? {} : { vencePlazoEn: plazo.vencePlazoEn }),
+      en,
     });
     switch (resultado) {
       case 'CAMBIO':

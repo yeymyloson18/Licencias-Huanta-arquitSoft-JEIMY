@@ -18,4 +18,15 @@ export class LectorNombresUsuariosPostgres implements LectorNombresUsuarios {
     });
     return new Map(filas.map((fila) => [fila.id, fila.nombre_completo]));
   }
+
+  async activosConRol(
+    rol: string,
+  ): Promise<readonly { readonly id: string; readonly nombre: string }[]> {
+    const filas = await this.prisma.usuario.findMany({
+      where: { activo: true, usuario_rol: { some: { rol_codigo: rol, retirado_en: null } } },
+      select: { id: true, nombre_completo: true },
+      orderBy: { nombre_completo: 'asc' },
+    });
+    return filas.map((fila) => ({ id: fila.id, nombre: fila.nombre_completo }));
+  }
 }

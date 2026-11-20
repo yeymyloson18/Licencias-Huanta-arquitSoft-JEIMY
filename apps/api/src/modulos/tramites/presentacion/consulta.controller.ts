@@ -52,6 +52,7 @@ const aRespuesta = (estado: EstadoPublico) => ({
         esquelaPagada: estado.esquela.pagada,
       }),
   ...(estado.tokenConsulta === null ? {} : { tokenConsulta: estado.tokenConsulta }),
+  numeroLicencia: estado.numeroLicencia,
   ...(estado.observacionesPendientes.length === 0
     ? {}
     : { observacionesPendientes: [...estado.observacionesPendientes] }),

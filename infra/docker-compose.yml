@@ -50,6 +50,9 @@ services:
       CLAVE_CIFRADO_DATOS: ${CLAVE_CIFRADO_DATOS:-ZGVzYXJyb2xsby1jaWZyYWRvLW5vLXVzYXItcHJvZCE=}
       CLAVE_HMAC_DATOS: ${CLAVE_HMAC_DATOS:-ZGVzYXJyb2xsby1obWFjLXNvbG8tbm8tdXNhci1lbi1wcm9kdWNjaW9u}
       ENVIO_OTP: ${ENVIO_OTP:-simulado}
+      URL_PUBLICA_PORTAL: ${URL_PUBLICA_PORTAL:-http://localhost:8080}
+      RELOJ_PLAZOS_INTERVALO_MS: ${RELOJ_PLAZOS_INTERVALO_MS:-3600000}
+      AVISOS_INTERVALO_MS: ${AVISOS_INTERVALO_MS:-5000}
       TRUST_PROXY_SALTOS: ${TRUST_PROXY_SALTOS:-1}
       # Almacén de documentos (004): fuera de la carpeta pública del portal y compartido por todas las
       # instancias de la API (research §R-08). Cada réplica monta el mismo volumen.

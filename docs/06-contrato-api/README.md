@@ -32,7 +32,7 @@ Para verlo ahora mismo: abre [editor.swagger.io](https://editor.swagger.io) y pe
 | ---------------- | ---------------------------------- | --------------------------------------------------------------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `bearerPersonal` | Personal municipal                 | Correo + clave + OTP por SMS (RF16)                                               | 15 min, renovable | Lo que permiten sus roles (RF17)                                                                                                                |
 | `tokenIdentidad` | Administrado que presenta en línea | RUC + DNI (o CE) y, si actúa, el representante, validados + OTP al celular (RF06) | 30 min            | Subir documentos y presentar **una sola** solicitud a su nombre (aclaración 2 de la 004); subsanar la observación de su propio expediente (005) |
-| `tokenConsulta`  | Administrado que consulta          | Número de expediente + DNI/RUC (RF03)                                             | 15 min            | Descargar la esquela de **ese** expediente (005; la consulta lo envía solo si está PENDIENTE_PAGO); la licencia, desde la 009                   |
+| `tokenConsulta`  | Administrado que consulta          | Número de expediente + DNI/RUC (RF03)                                             | 15 min            | Descargar la esquela (PENDIENTE_PAGO, 005) o la licencia (estados con licencia, 006) de **ese** expediente |
 
 **Renovación del personal (cookie `refresh_personal`).** El token de acceso del personal se renueva con
 un refresh token opaco que **no viaja en el cuerpo**: va en la cookie `refresh_personal`
@@ -60,6 +60,9 @@ Los errores usan `application/problem+json`; el campo `type` es `https://licenci
 | `esquela-ya-pagada`      | 409    | La esquela ya tiene un pago registrado (005)                                                 |
 | `recibo-repetido`        | 409    | El número de recibo ya está en otra esquela (005)                                            |
 | `version-cambiada`       | 412    | Otro usuario cambió el expediente; volver a leerlo (`If-Match`, 005)                         |
+| `ya-registrada`          | 409    | La inspección ya tiene resultado (006)                                                       |
+| `alerta-atendida`        | 409    | La alerta ya se marcó como atendida (006)                                                    |
+| `feriado-repetido`       | 409    | Ya hay un feriado en esa fecha (006)                                                         |
 
 ## Matriz de permisos por rol (propuesta para EQ-04)
 
@@ -70,6 +73,7 @@ Cada celda marcada es una prueba automática que debe responder 2xx; cada celda 
 | Ver catálogo, usar asistente, verificar QR                                |       ✓        |     ✓     |        ✓         |  ✓   |    ✓     |   ✓    |                ✓                 |
 | Editar recetas del catálogo (RF21)                                        |                |           |                  |      |          |   ✓    |                                  |
 | Gestionar usuarios y roles (RF22)                                         |                |           |                  |      |          |   ✓    |                                  |
+| Ver feriados del año                                                      |       ✓        |     ✓     |        ✓         |  ✓   |    ✓     |   ✓    |                                  |
 | Registrar y eliminar feriados (RF23)                                      |                |           |                  |      |          |   ✓    |                                  |
 | Presentar solicitud y subir documentos                                    |       ✓        |           |                  |      |          |        |          tokenIdentidad          |
 | Subsanar observación                                                      |       ✓        |           |                  |      |          |        |          tokenIdentidad          |
@@ -98,13 +102,14 @@ Pendiente: aprobar esta matriz con la Municipalidad (estado del escenario EQ-04)
 | Catálogo y Asistente | `listarRecetas`, `obtenerReceta`, `actualizarReceta`, `listarRecetasAdmin`, `obtenerRecetaAdmin`, `obtenerPreguntasAsistente`, `proponerLicencia`                                                                                                                                                            |
 | Trámites             | `subirDocumento`, `presentarSolicitud`, `listarExpedientes`, `consultarEstado`, `obtenerExpediente`, `obtenerTitularParaCaja`, `iniciarEvaluacion`, `confirmarNivelRiesgo`, `aprobarEvaluacion`, `observarExpediente`, `denegarExpediente`, `subsanarObservacion`, `auditoriaTramites`, `descargarDocumento` |
 | Pagos en caja        | `consultarEsquela`, `descargarEsquela`, `registrarPagoEnCaja`, `corregirNumeroRecibo`, `auditoriaPagos`                                                                                                                                                                                                      |
-| Inspecciones         | `listarInspecciones`, `asignarInspector`, `registrarResultadoItse`                                                                                                                                                                                                                                           |
+| Inspecciones         | `listarInspecciones`, `listarInspectores`, `asignarInspector`, `registrarResultadoItse`                                                                                                                                                                                                                      |
 | Licencias            | `verificarLicenciaPublica`, `obtenerLicencia`, `descargarLicencia`                                                                                                                                                                                                                                           |
-| Reloj de plazos      | `listarFeriados`, `registrarFeriado`, `eliminarFeriado`, `listarAlertas`                                                                                                                                                                                                                                     |
+| Reloj de plazos      | `listarFeriados`, `registrarFeriado`, `eliminarFeriado`, `listarAlertas`, `atenderAlerta`                                                                                                                                                                                                                    |
 | Reportes             | `obtenerTablero`, `reporteLicencias`                                                                                                                                                                                                                                                                         |
 | Operación            | `salud` (chequeo para Nginx y Uptime Kuma)                                                                                                                                                                                                                                                                   |
 
-Notificaciones no expone endpoints: reacciona a eventos y los workers envían los mensajes.
+Notificaciones no expone endpoints: reacciona a los eventos `EstadoExpedienteCambiado` e `ItsePorVencer` y una tarea
+periódica envía los avisos (simulados mientras no haya servicio de correo o SMS, 006).
 
 ## APIs externas que consume el backend
 

@@ -12,6 +12,9 @@ export interface ExpedienteParaDecidir {
   readonly version: number;
   /** Ya tiene una observación (el TUPA permite una sola). */
   readonly yaObservado: boolean;
+  /** Vencimiento del plazo (`AAAA-MM-DD`) y días que quedaban si está suspendido (006). */
+  readonly vencePlazoEn?: string | null;
+  readonly plazoRestanteDias?: number | null;
 }
 
 export type AccionAuditoriaTramites =
@@ -50,8 +53,20 @@ export interface Decision {
     readonly nivelRiesgoPropuesto?: NivelRiesgo | null;
     readonly nivelRiesgoConfirmado?: NivelRiesgo | null;
     readonly evaluadorId?: string;
+    /** Plazo en días hábiles (006): `null` borra; sin el campo, no cambia. */
+    readonly vencePlazoEn?: string | null;
+    readonly plazoRestanteDias?: number | null;
   };
   readonly observacion?: { readonly descripcion: string; readonly plazoSubsanarEn: Date | null };
+  /**
+   * Pasos del historial cuando la decisión encadena varios estados (por ejemplo, APROBADO →
+   * LICENCIA_EMITIDA → ITSE_POSTERIOR_PENDIENTE, 006). Sin él, un solo paso con `comentario`.
+   */
+  readonly historial?: readonly {
+    readonly estadoAnterior: EstadoExpediente;
+    readonly estadoNuevo: EstadoExpediente;
+    readonly comentario: string;
+  }[];
   readonly eventos: readonly EventoParaPublicar[];
   readonly en: Date;
 }
@@ -65,4 +80,6 @@ export interface Decision {
 export interface RepositorioDecisiones {
   obtenerParaDecidir(numero: string): Promise<ExpedienteParaDecidir | null>;
   aplicar(decision: Decision): Promise<boolean>;
+  /** Publica eventos sin cambiar el expediente (por ejemplo, `LicenciaSolicitada` tras la ITSE previa). */
+  publicar(eventos: readonly EventoParaPublicar[]): Promise<void>;
 }

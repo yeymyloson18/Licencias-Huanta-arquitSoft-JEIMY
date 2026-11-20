@@ -7,7 +7,7 @@ import type { Rol } from '../../src/modulos/seguridad/dominio/rol';
 import { iniciarSesionDePrueba } from './sesion-prueba';
 import { crearUsuarioDePrueba, type UsuarioDePrueba } from './usuarios-prueba';
 
-type Metodo = 'get' | 'post' | 'patch' | 'put';
+type Metodo = 'get' | 'post' | 'patch' | 'put' | 'delete';
 
 /** Cliente HTTP con el token de un usuario; registra cada URL usada (no deben llevar datos personales). */
 export interface ClienteConSesion {

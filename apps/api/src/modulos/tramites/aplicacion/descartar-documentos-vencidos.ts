@@ -1,4 +1,4 @@
-import type { AlmacenArchivos } from '../dominio/puertos/almacen-archivos';
+import type { AlmacenArchivos } from '../../../compartido/dominio/almacen-archivos';
 import type { Reloj } from '../dominio/puertos/reloj';
 import type { RepositorioDocumentosTemporales } from '../dominio/puertos/repositorio-documentos-temporales';
 

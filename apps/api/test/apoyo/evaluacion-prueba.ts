@@ -7,7 +7,20 @@ import { DespachadorEventos } from '../../src/compartido/infraestructura/despach
 // historia se prueba sin depender del flujo completo. Datos FICTICIOS.
 
 export type EstadoDePrueba =
-  'REGISTRADO' | 'EN_EVALUACION' | 'OBSERVADO' | 'PENDIENTE_PAGO' | 'PAGADO' | 'DENEGADO';
+  | 'REGISTRADO'
+  | 'EN_EVALUACION'
+  | 'OBSERVADO'
+  | 'PENDIENTE_PAGO'
+  | 'PAGADO'
+  | 'DENEGADO'
+  // 006
+  | 'EN_INSPECCION'
+  | 'APROBADO'
+  | 'LICENCIA_EMITIDA'
+  | 'LICENCIA_PROVISIONAL'
+  | 'ITSE_POSTERIOR_PENDIENTE'
+  | 'FINALIZADO'
+  | 'DERIVADO_A_FISCALIZACION';
 
 /** Cambia el estado (y opcionalmente la ruta) y devuelve la versión nueva para `If-Match`. */
 export const llevarAEstado = async (

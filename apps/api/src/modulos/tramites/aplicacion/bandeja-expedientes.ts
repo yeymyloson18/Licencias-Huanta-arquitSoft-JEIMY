@@ -2,7 +2,7 @@ import { enmascararDocumento } from '../dominio/enmascarar-documento';
 import { ErrorValidacionSolicitud } from '../dominio/errores';
 import type { EstadoExpediente } from '../dominio/estado-publico';
 import { NumeroExpediente } from '../dominio/numero-expediente';
-import type { AlmacenArchivos } from '../dominio/puertos/almacen-archivos';
+import type { AlmacenArchivos } from '../../../compartido/dominio/almacen-archivos';
 import type { Reloj } from '../dominio/puertos/reloj';
 import type {
   ExpedienteDetalle,

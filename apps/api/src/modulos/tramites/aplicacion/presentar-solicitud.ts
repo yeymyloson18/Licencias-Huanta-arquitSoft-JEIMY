@@ -9,7 +9,9 @@ import {
 import type { CalculadorHuella } from '../dominio/puertos/calculador-huella';
 import type { CatalogoRecetas } from '../dominio/puertos/catalogo-recetas';
 import type { RepositorioDocumentosTemporales } from '../dominio/puertos/repositorio-documentos-temporales';
+import type { PlazosHabiles } from '../dominio/puertos/plazos-habiles';
 import type { Reloj } from '../dominio/puertos/reloj';
+import { fechaLima } from '../../../compartido/dominio/fecha-lima';
 import type {
   ExpedienteRegistrado,
   UnidadDeTrabajoTramites,
@@ -33,6 +35,8 @@ export interface DependenciasPresentarSolicitud {
   readonly documentos: RepositorioDocumentosTemporales;
   readonly huella: CalculadorHuella;
   readonly reloj: Reloj;
+  /** Días hábiles (006): con él, el vencimiento se calcula al presentar. */
+  readonly plazos?: PlazosHabiles;
 }
 
 /** Cuerpo `NuevaSolicitud` del contrato. */
@@ -59,7 +63,6 @@ export type { CanalEntrante } from './revisar-documentos';
 
 export interface PresentacionRegistrada extends ExpedienteRegistrado {
   readonly siguientePaso: string;
-  readonly vencePlazoEn: null;
 }
 
 export type ResultadoPresentacion =
@@ -84,7 +87,6 @@ const jsonCanonico = (valor: unknown): string => {
 const conSiguientePaso = (registrado: ExpedienteRegistrado): PresentacionRegistrada => ({
   ...registrado,
   siguientePaso: TEXTO_ESTADO_PUBLICO.REGISTRADO.siguientePaso,
-  vencePlazoEn: null,
 });
 
 /**
@@ -136,6 +138,11 @@ export class PresentarSolicitud {
 
     const ordenPorRequisito = new Map(receta.requisitos.map((r) => [r.id, r.orden]));
     const presentadoEn = this.d.reloj.ahora();
+    // FR-026 de la 006: vencimiento con los días hábiles del plazo de la receta guardada.
+    const vencePlazoEn =
+      this.d.plazos !== undefined && receta.plazoDias !== null && receta.plazoDias > 0
+        ? await this.d.plazos.sumarDiasHabiles(fechaLima(presentadoEn), receta.plazoDias)
+        : null;
     const identidad = solicitud.identidad;
     const resultado = await this.d.unidad.registrar({
       anio: presentadoEn.getFullYear(),
@@ -169,6 +176,7 @@ export class PresentarSolicitud {
             requisitoOrden: ordenPorRequisito.get(adjunto.requisitoId) ?? 0,
           })),
           presentadoEn,
+          vencePlazoEn,
           registradoPor: canal.tipo === 'MESA_PARTES' ? canal.usuarioId : null,
           verificacionId: canal.tipo === 'EN_LINEA' ? canal.verificacionId : null,
         }),

@@ -13,6 +13,8 @@ export interface ExpedienteParaSubsanar {
   readonly canal: 'EN_LINEA' | 'MESA_PARTES';
   readonly presentadoEn: Date;
   readonly vencePlazoEn: Date | null;
+  /** Días hábiles que quedaban al observarlo (006). */
+  readonly plazoRestanteDias?: number | null;
   /** Requisitos de la receta guardada al presentar: solo a ellos se puede adjuntar. */
   readonly requisitos: readonly { readonly id: number; readonly orden: number }[];
 }
@@ -28,6 +30,8 @@ export interface Subsanacion {
   }[];
   /** `null` = el titular en línea; si no, el usuario de mesa de partes. */
   readonly usuarioId: string | null;
+  /** Nuevo vencimiento al reanudar el plazo (006); sin él, el plazo no cambia. */
+  readonly vencePlazoEn?: string | null;
   readonly en: Date;
 }
 

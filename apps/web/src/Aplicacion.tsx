@@ -11,7 +11,11 @@ import { Ingresar } from './paginas/Ingresar';
 import { Inicio } from './paginas/Inicio';
 import { Licencia } from './paginas/Licencia';
 import { Auditoria } from './paginas/personal/Auditoria';
+import { Feriados } from './paginas/admin/Feriados';
+import { Alertas } from './paginas/personal/Alertas';
 import { Caja } from './paginas/personal/Caja';
+import { Inspecciones } from './paginas/personal/Inspecciones';
+import { ResultadoInspeccion } from './paginas/personal/ResultadoInspeccion';
 import { DetalleExpediente } from './paginas/personal/DetalleExpediente';
 import { Expedientes } from './paginas/personal/Expedientes';
 import { MesaPartes } from './paginas/personal/MesaPartes';
@@ -19,6 +23,7 @@ import { Comprobante } from './paginas/tramite/Comprobante';
 import { Identidad } from './paginas/tramite/Identidad';
 import { Solicitud } from './paginas/tramite/Solicitud';
 import { Subsanar } from './paginas/tramite/Subsanar';
+import { Verificar } from './paginas/Verificar';
 import { useSesion } from './sesion/ProveedorSesion';
 import { ProveedorMesaPartes } from './tramite/ContextoMesaPartes';
 import { ProveedorTramite } from './tramite/ContextoTramite';
@@ -62,6 +67,7 @@ export function RutasAplicacion() {
             <Route path="/licencias/:codigo" element={<Licencia />} />
             <Route path="/ingresar" element={<Ingresar />} />
             <Route path="/consulta" element={<Consulta />} />
+            <Route path="/verificar/:codigo" element={<Verificar />} />
             <Route path="/tramite/identidad" element={<Identidad />} />
             <Route path="/tramite/solicitud" element={<Solicitud />} />
             <Route path="/tramite/comprobante/:numero" element={<Comprobante />} />
@@ -87,6 +93,38 @@ export function RutasAplicacion() {
               element={
                 <RutaProtegida roles={['ADMINISTRADOR']}>
                   <EditarReceta />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/admin/feriados"
+              element={
+                <RutaProtegida roles={['ADMINISTRADOR']}>
+                  <Feriados />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/personal/alertas"
+              element={
+                <RutaProtegida roles={['JEFATURA']}>
+                  <Alertas />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/personal/inspecciones"
+              element={
+                <RutaProtegida roles={['JEFATURA', 'INSPECTOR']}>
+                  <Inspecciones />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/personal/inspecciones/:id/resultado"
+              element={
+                <RutaProtegida roles={['INSPECTOR']}>
+                  <ResultadoInspeccion />
                 </RutaProtegida>
               }
             />

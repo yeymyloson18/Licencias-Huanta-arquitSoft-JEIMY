@@ -1,4 +1,4 @@
-import type { TipoArchivo } from '../tipo-archivo';
+import type { TipoArchivo } from '../../../../compartido/dominio/tipo-archivo';
 
 /** Archivo subido antes de presentar (FR-013); solo lo usa quien lo subió y vence a las 24 h. */
 export interface DocumentoTemporal {

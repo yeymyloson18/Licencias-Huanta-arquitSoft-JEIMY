@@ -112,6 +112,7 @@ describe('ConsultarEstado (CU05 de la 004)', () => {
         requisitosSubsanables: [],
         esquela: null,
         tokenConsulta: null,
+        numeroLicencia: null,
       },
     });
     expect(JSON.stringify(resultado)).not.toMatch(/40000001|10400000011/);
@@ -127,6 +128,10 @@ describe('ConsultarEstado (CU05 de la 004)', () => {
       tokenConsulta: (numero: string) => {
         pedidos.push(`token:${numero}`);
         return Promise.resolve({ token: 'token-ficticio', expiraEn: 900 });
+      },
+      numeroLicenciaDe: (numero: string) => {
+        pedidos.push(`licencia:${numero}`);
+        return Promise.resolve('LF-2026-000001');
       },
     };
     const conEstado = async (estado: ExpedienteConsultado['estado']) => {
@@ -162,6 +167,28 @@ describe('ConsultarEstado (CU05 de la 004)', () => {
       expect(estado.esquela).not.toBeNull();
       expect(estado.tokenConsulta).toBeNull();
       expect(pedidos).toEqual(['esquela:EXP-2026-000001']);
+    });
+
+    it.each([
+      'LICENCIA_EMITIDA',
+      'ITSE_POSTERIOR_PENDIENTE',
+      'FINALIZADO',
+      'LICENCIA_PROVISIONAL',
+    ] as const)(
+      '%s trae el número de licencia y el tokenConsulta (006)',
+      async (estadoConLicencia) => {
+        const estado = await conEstado(estadoConLicencia);
+
+        expect(estado.numeroLicencia).toBe('LF-2026-000001');
+        expect(estado.tokenConsulta).toEqual({ token: 'token-ficticio', expiraEn: 900 });
+      },
+    );
+
+    it('PENDIENTE_PAGO no pide la licencia', async () => {
+      const estado = await conEstado('PENDIENTE_PAGO');
+
+      expect(estado.numeroLicencia).toBeNull();
+      expect(pedidos).not.toContain('licencia:EXP-2026-000001');
     });
 
     it('OBSERVADO trae las observaciones y no pide datos de pago', async () => {

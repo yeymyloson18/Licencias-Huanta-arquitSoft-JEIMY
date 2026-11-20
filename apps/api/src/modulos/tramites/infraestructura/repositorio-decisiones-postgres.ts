@@ -1,8 +1,10 @@
+import { comoFechaBase, deFechaBase } from '../../../compartido/dominio/fecha-lima';
 import type { PrismaServicio } from '../../../compartido/infraestructura/prisma.servicio';
 import { esEstadoExpediente } from '../dominio/estado-publico';
 import type { Ruta } from '../dominio/maquina-estados';
 import type {
   Decision,
+  EventoParaPublicar,
   ExpedienteParaDecidir,
   RepositorioDecisiones,
 } from '../dominio/puertos/repositorio-decisiones';
@@ -33,6 +35,8 @@ export class RepositorioDecisionesPostgres implements RepositorioDecisiones {
         ruta: true,
         codigo_receta: true,
         version: true,
+        vence_plazo_en: true,
+        plazo_restante_dias: true,
         _count: { select: { observacion: true } },
       },
     });
@@ -50,6 +54,8 @@ export class RepositorioDecisionesPostgres implements RepositorioDecisiones {
       codigoReceta: fila.codigo_receta,
       version: fila.version,
       yaObservado: fila._count.observacion > 0,
+      vencePlazoEn: fila.vence_plazo_en === null ? null : deFechaBase(fila.vence_plazo_en),
+      plazoRestanteDias: fila.plazo_restante_dias,
     };
   }
 
@@ -75,21 +81,40 @@ export class RepositorioDecisionesPostgres implements RepositorioDecisiones {
             ? {}
             : { nivel_riesgo_confirmado: cambios.nivelRiesgoConfirmado }),
           ...(cambios.evaluadorId === undefined ? {} : { evaluador_id: cambios.evaluadorId }),
+          ...(cambios.vencePlazoEn === undefined
+            ? {}
+            : {
+                vence_plazo_en:
+                  cambios.vencePlazoEn === null ? null : comoFechaBase(cambios.vencePlazoEn),
+              }),
+          ...(cambios.plazoRestanteDias === undefined
+            ? {}
+            : { plazo_restante_dias: cambios.plazoRestanteDias }),
         },
       });
       if (count === 0) {
         return false;
       }
-      await tx.historial_estado.create({
-        data: {
-          expediente_id: decision.expedienteId,
-          estado_anterior: decision.estadoEsperado,
-          estado_nuevo: decision.estadoNuevo,
-          usuario_id: decision.usuarioId,
+      const pasos = decision.historial ?? [
+        {
+          estadoAnterior: decision.estadoEsperado,
+          estadoNuevo: decision.estadoNuevo,
           comentario: decision.comentario,
-          ocurrido_en: decision.en,
         },
-      });
+      ];
+      // Un milisegundo entre pasos: el historial se ordena por `ocurrido_en`.
+      for (const [indice, paso] of pasos.entries()) {
+        await tx.historial_estado.create({
+          data: {
+            expediente_id: decision.expedienteId,
+            estado_anterior: paso.estadoAnterior,
+            estado_nuevo: paso.estadoNuevo,
+            usuario_id: decision.usuarioId,
+            comentario: paso.comentario,
+            ocurrido_en: new Date(decision.en.getTime() + indice),
+          },
+        });
+      }
       if (decision.auditoria !== null) {
         await tx.auditoriaTramites.create({
           data: {
@@ -122,5 +147,13 @@ export class RepositorioDecisionesPostgres implements RepositorioDecisiones {
       }
       return true;
     });
+  }
+
+  async publicar(eventos: readonly EventoParaPublicar[]): Promise<void> {
+    if (eventos.length > 0) {
+      await this.prisma.evento_pendiente.createMany({
+        data: eventos.map((evento) => ({ tipo: evento.tipo, datos: { ...evento.datos } })),
+      });
+    }
   }
 }

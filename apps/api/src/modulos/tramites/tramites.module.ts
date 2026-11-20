@@ -7,18 +7,39 @@ import { LectorParaCajaPostgres } from './infraestructura/lector-para-caja-postg
 import { manejadorPagoRegistrado } from './infraestructura/manejador-pago-registrado';
 import { CajaController, LECTOR_PARA_CAJA } from './presentacion/caja.controller';
 import type { ProtectorDatos } from '../../compartido/dominio/protector-datos';
-import { CONFIGURACION, type Configuracion } from '../../compartido/infraestructura/configuracion';
 import { PrismaServicio } from '../../compartido/infraestructura/prisma.servicio';
 import { PROTECTOR_DATOS } from '../../compartido/infraestructura/protector-datos-aes-gcm';
 import { REDIS_CLIENTE } from '../../compartido/infraestructura/redis.proveedor';
 import type Redis from 'ioredis';
 import { FachadaCatalogo } from '../catalogo/fachada';
+import { FachadaLicencias } from '../licencias/fachada';
 import { FachadaPagos } from '../pagos/fachada';
+import type { DatosPagoConsulta } from './dominio/puertos/datos-pago-consulta';
+import { DATOS_PAGO_CONSULTA } from './presentacion/bandeja.controller';
 import { FachadaSeguridad } from '../seguridad/fachada';
 import { DatosPagoConsultaFachadas } from './infraestructura/datos-pago-consulta-fachadas';
 import { SubsanarObservacion } from './aplicacion/subsanar-observacion';
 import { RepositorioSubsanacionPostgres } from './infraestructura/repositorio-subsanacion-postgres';
 import { SubsanacionController } from './presentacion/subsanacion.controller';
+import { AplicarLicenciaEmitida } from './aplicacion/aplicar-licencia-emitida';
+import { CompletarVencimientos } from './aplicacion/completar-vencimientos';
+import type { PlazosHabiles } from './dominio/puertos/plazos-habiles';
+import {
+  PlazosFachada,
+  RepositorioVencimientosPostgres,
+} from './infraestructura/repositorio-vencimientos-postgres';
+import { FachadaPlazos } from '../plazos/fachada';
+
+const PLAZOS_HABILES = Symbol('PLAZOS_HABILES');
+import { TransicionesSistema } from './aplicacion/transiciones-sistema';
+import { LectorParaModulosPostgres } from './infraestructura/lector-para-modulos-postgres';
+import {
+  manejadorLicenciaEmitida,
+  manejadorResultadoItse,
+} from './infraestructura/manejadores-006';
+import { AplicarResultadoItse } from './aplicacion/aplicar-resultado-itse';
+import { ResultadosInspeccionFachada } from './infraestructura/resultados-inspeccion-fachada';
+import { FachadaInspecciones } from '../inspecciones/fachada';
 import { ConsultarAuditoriaExpediente } from './aplicacion/consultar-auditoria-expediente';
 import {
   LectorAuditoriaPostgres,
@@ -47,8 +68,7 @@ import { EvaluacionController } from './presentacion/evaluacion.controller';
 import { DescartarDocumentosVencidos } from './aplicacion/descartar-documentos-vencidos';
 import { PresentarSolicitud } from './aplicacion/presentar-solicitud';
 import { SubirDocumento } from './aplicacion/subir-documento';
-import type { AlmacenArchivos } from './dominio/puertos/almacen-archivos';
-import { AlmacenArchivosDisco } from './infraestructura/almacen-archivos-disco';
+import type { AlmacenArchivos } from '../../compartido/dominio/almacen-archivos';
 import { CatalogoRecetasFachada } from './infraestructura/catalogo-recetas-fachada';
 import { GeneradorIdsCrypto } from './infraestructura/generador-ids-crypto';
 import { LimitadorConsultasRedis } from './infraestructura/limitador-consultas-redis';
@@ -66,7 +86,9 @@ import { ExpedientesController } from './presentacion/expedientes.controller';
 
 // Raíz de composición del módulo Trámites (funcionalidad 004). Usa Catálogo y Seguridad solo por sus
 // fachadas (principio I): Catálogo y Seguridad son globales y exportan sus fachadas.
-export const ALMACEN_ARCHIVOS = Symbol('ALMACEN_ARCHIVOS');
+import { ALMACEN_ARCHIVOS } from '../../compartido/infraestructura/almacen-archivos-disco';
+
+export { ALMACEN_ARCHIVOS };
 const CATALOGO_EVALUACION = Symbol('CATALOGO_EVALUACION');
 const REPOSITORIO_DECISIONES = Symbol('REPOSITORIO_DECISIONES');
 
@@ -88,6 +110,12 @@ const reloj = new RelojSistema();
     AuditoriaController,
   ],
   providers: [
+    // Días hábiles por la fachada de Plazos (006).
+    {
+      provide: PLAZOS_HABILES,
+      inject: [FachadaPlazos],
+      useFactory: (plazos: FachadaPlazos): PlazosHabiles => new PlazosFachada(plazos),
+    },
     // Decisiones del evaluador (005).
     {
       provide: CATALOGO_EVALUACION,
@@ -103,33 +131,36 @@ const reloj = new RelojSistema();
     },
     {
       provide: IniciarEvaluacion,
-      inject: [REPOSITORIO_DECISIONES],
-      useFactory: (decisiones: RepositorioDecisiones) =>
-        new IniciarEvaluacion({ decisiones, reloj }),
+      inject: [REPOSITORIO_DECISIONES, PLAZOS_HABILES],
+      useFactory: (decisiones: RepositorioDecisiones, plazos: PlazosHabiles) =>
+        new IniciarEvaluacion({ decisiones, reloj, plazos }),
     },
     {
       provide: ConfirmarRiesgo,
-      inject: [REPOSITORIO_DECISIONES, CATALOGO_EVALUACION],
-      useFactory: (decisiones: RepositorioDecisiones, catalogo: CatalogoEvaluacion) =>
-        new ConfirmarRiesgo({ decisiones, reloj }, catalogo),
+      inject: [REPOSITORIO_DECISIONES, CATALOGO_EVALUACION, PLAZOS_HABILES],
+      useFactory: (
+        decisiones: RepositorioDecisiones,
+        catalogo: CatalogoEvaluacion,
+        plazos: PlazosHabiles,
+      ) => new ConfirmarRiesgo({ decisiones, reloj, plazos }, catalogo),
     },
     {
       provide: ObservarExpediente,
-      inject: [REPOSITORIO_DECISIONES],
-      useFactory: (decisiones: RepositorioDecisiones) =>
-        new ObservarExpediente({ decisiones, reloj }),
+      inject: [REPOSITORIO_DECISIONES, PLAZOS_HABILES],
+      useFactory: (decisiones: RepositorioDecisiones, plazos: PlazosHabiles) =>
+        new ObservarExpediente({ decisiones, reloj, plazos }),
     },
     {
       provide: DenegarExpediente,
-      inject: [REPOSITORIO_DECISIONES],
-      useFactory: (decisiones: RepositorioDecisiones) =>
-        new DenegarExpediente({ decisiones, reloj }),
+      inject: [REPOSITORIO_DECISIONES, PLAZOS_HABILES],
+      useFactory: (decisiones: RepositorioDecisiones, plazos: PlazosHabiles) =>
+        new DenegarExpediente({ decisiones, reloj, plazos }),
     },
     {
       provide: AprobarExpediente,
-      inject: [REPOSITORIO_DECISIONES],
-      useFactory: (decisiones: RepositorioDecisiones) =>
-        new AprobarExpediente({ decisiones, reloj }),
+      inject: [REPOSITORIO_DECISIONES, PLAZOS_HABILES],
+      useFactory: (decisiones: RepositorioDecisiones, plazos: PlazosHabiles) =>
+        new AprobarExpediente({ decisiones, reloj, plazos }),
     },
     {
       provide: LicenciasDelGrupo,
@@ -174,26 +205,25 @@ const reloj = new RelojSistema();
         }),
     },
     {
+      provide: DATOS_PAGO_CONSULTA,
+      inject: [FachadaPagos, FachadaSeguridad, FachadaLicencias],
+      useFactory: (pagos: FachadaPagos, seguridad: FachadaSeguridad, licencias: FachadaLicencias) =>
+        new DatosPagoConsultaFachadas(pagos, seguridad, licencias),
+    },
+    {
       provide: ConsultarEstado,
-      inject: [PrismaServicio, PROTECTOR_DATOS, REDIS_CLIENTE, FachadaPagos, FachadaSeguridad],
+      inject: [PrismaServicio, PROTECTOR_DATOS, REDIS_CLIENTE, DATOS_PAGO_CONSULTA],
       useFactory: (
         prisma: PrismaServicio,
         protector: ProtectorDatos,
         redis: Redis,
-        pagos: FachadaPagos,
-        seguridad: FachadaSeguridad,
+        pago: DatosPagoConsulta,
       ) =>
         new ConsultarEstado({
           expedientes: new RepositorioExpedientesPostgres(prisma, protector),
           limitador: new LimitadorConsultasRedis(redis),
-          pago: new DatosPagoConsultaFachadas(pagos, seguridad),
+          pago,
         }),
-    },
-    {
-      provide: ALMACEN_ARCHIVOS,
-      inject: [CONFIGURACION],
-      useFactory: (configuracion: Configuracion): Promise<AlmacenArchivos> =>
-        AlmacenArchivosDisco.crear(configuracion.almacenArchivosRuta),
     },
     {
       provide: SubirDocumento,
@@ -209,12 +239,13 @@ const reloj = new RelojSistema();
     },
     {
       provide: PresentarSolicitud,
-      inject: [PrismaServicio, PROTECTOR_DATOS, FachadaCatalogo, FachadaSeguridad],
+      inject: [PrismaServicio, PROTECTOR_DATOS, FachadaCatalogo, FachadaSeguridad, PLAZOS_HABILES],
       useFactory: (
         prisma: PrismaServicio,
         protector: ProtectorDatos,
         catalogo: FachadaCatalogo,
         seguridad: FachadaSeguridad,
+        plazos: PlazosHabiles,
       ) =>
         new PresentarSolicitud({
           unidad: new UnidadDeTrabajoTramitesPostgres(prisma, protector),
@@ -223,6 +254,7 @@ const reloj = new RelojSistema();
           documentos: new RepositorioDocumentosTemporalesPostgres(prisma),
           huella,
           reloj,
+          plazos,
         }),
     },
     // Auditoría del expediente para la jefatura (005, historia 6).
@@ -238,17 +270,19 @@ const reloj = new RelojSistema();
     // Subsanación de la observación (005, historia 4).
     {
       provide: SubsanarObservacion,
-      inject: [PrismaServicio, PROTECTOR_DATOS, FachadaSeguridad],
+      inject: [PrismaServicio, PROTECTOR_DATOS, FachadaSeguridad, PLAZOS_HABILES],
       useFactory: (
         prisma: PrismaServicio,
         protector: ProtectorDatos,
         seguridad: FachadaSeguridad,
+        plazos: PlazosHabiles,
       ) =>
         new SubsanarObservacion({
           repositorio: new RepositorioSubsanacionPostgres(prisma, protector),
           verificador: new VerificadorIdentidadFachada(seguridad),
           documentos: new RepositorioDocumentosTemporalesPostgres(prisma),
           reloj,
+          plazos,
         }),
     },
     // Pago en caja (005): lectura para Pagos y paso a PAGADO al consumir `PagoRegistrado`.
@@ -259,14 +293,46 @@ const reloj = new RelojSistema();
     },
     {
       provide: FachadaTramites,
-      inject: [LECTOR_PARA_CAJA],
-      useFactory: (lector: LectorParaCaja) => new FachadaTramites(lector),
+      inject: [LECTOR_PARA_CAJA, PrismaServicio, PROTECTOR_DATOS, PLAZOS_HABILES],
+      useFactory: (
+        lector: LectorParaCaja,
+        prisma: PrismaServicio,
+        protector: ProtectorDatos,
+        plazos: PlazosHabiles,
+      ) => {
+        const vencimientos = new RepositorioVencimientosPostgres(prisma);
+        return new FachadaTramites(lector, new LectorParaModulosPostgres(prisma, protector), {
+          completar: new CompletarVencimientos({ vencimientos, plazos, reloj }),
+          vencimientos,
+        });
+      },
+    },
+    // Transiciones del sistema por ruta (006): licencia emitida, resultado ITSE y pago de ruta B.
+    {
+      provide: TransicionesSistema,
+      inject: [REPOSITORIO_DECISIONES],
+      useFactory: (decisiones: RepositorioDecisiones) =>
+        new TransicionesSistema({ decisiones, reloj }),
+    },
+    {
+      provide: AplicarResultadoItse,
+      inject: [TransicionesSistema, FachadaInspecciones],
+      useFactory: (transiciones: TransicionesSistema, inspecciones: FachadaInspecciones) =>
+        new AplicarResultadoItse({
+          transiciones,
+          resultados: new ResultadosInspeccionFachada(inspecciones),
+        }),
+    },
+    {
+      provide: AplicarLicenciaEmitida,
+      inject: [TransicionesSistema],
+      useFactory: (transiciones: TransicionesSistema) => new AplicarLicenciaEmitida(transiciones),
     },
     {
       provide: AplicarPagoRegistrado,
-      inject: [REPOSITORIO_DECISIONES],
-      useFactory: (decisiones: RepositorioDecisiones) =>
-        new AplicarPagoRegistrado({ decisiones, reloj }),
+      inject: [REPOSITORIO_DECISIONES, PLAZOS_HABILES],
+      useFactory: (decisiones: RepositorioDecisiones, plazos: PlazosHabiles) =>
+        new AplicarPagoRegistrado({ decisiones, reloj, plazos }),
     },
   ],
   exports: [FachadaTramites],
@@ -275,9 +341,16 @@ export class TramitesModule implements OnModuleInit {
   constructor(
     private readonly despachador: DespachadorEventos,
     private readonly aplicarPago: AplicarPagoRegistrado,
+    private readonly aplicarLicencia: AplicarLicenciaEmitida,
+    private readonly aplicarResultado: AplicarResultadoItse,
   ) {}
 
   onModuleInit(): void {
     this.despachador.registrar('PagoRegistrado', manejadorPagoRegistrado(this.aplicarPago));
+    this.despachador.registrar('LicenciaEmitida', manejadorLicenciaEmitida(this.aplicarLicencia));
+    this.despachador.registrar(
+      'ResultadoITSERegistrado',
+      manejadorResultadoItse(this.aplicarResultado),
+    );
   }
 }

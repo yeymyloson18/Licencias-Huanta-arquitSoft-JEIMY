@@ -907,8 +907,23 @@ export type ResultadoPdfEsquela =
  * Descarga el PDF de la esquela. Con `tokenConsulta` (administrado, de la consulta pública) o, si no se
  * pasa, con la sesión del personal (renueva una vez ante un 401). 202 → todavía se está generando.
  */
-export const descargarPdfEsquela = async (
+export const descargarPdfEsquela = (
   codigo: string,
+  tokenConsulta?: string,
+): Promise<ResultadoPdfEsquela> =>
+  descargarPdf(
+    `/api/v1/esquelas/${encodeURIComponent(codigo)}/pdf`,
+    `${codigo}.pdf`,
+    tokenConsulta,
+  );
+
+/**
+ * Descarga un PDF con `tokenConsulta` (administrado) o, si no se pasa, con la sesión del personal
+ * (renueva una vez ante un 401). 202 → todavía se está generando (esquela, 005).
+ */
+const descargarPdf = async (
+  ruta: string,
+  nombre: string,
   tokenConsulta?: string,
 ): Promise<ResultadoPdfEsquela> => {
   try {
@@ -916,10 +931,9 @@ export const descargarPdfEsquela = async (
     const pedir = () => {
       const token = tokenConsulta ?? obtenerToken();
       return globalThis.fetch(
-        new Request(
-          new URL(`/api/v1/esquelas/${encodeURIComponent(codigo)}/pdf`, window.location.origin),
-          { headers: token === null ? {} : { Authorization: `Bearer ${token}` } },
-        ),
+        new Request(new URL(ruta, window.location.origin), {
+          headers: token === null ? {} : { Authorization: `Bearer ${token}` },
+        }),
       );
     };
     let respuesta = await pedir();
@@ -930,7 +944,7 @@ export const descargarPdfEsquela = async (
       return { tipo: 'en-generacion' };
     }
     if (respuesta.ok) {
-      return { tipo: 'ok', pdf: await respuesta.blob(), nombre: `${codigo}.pdf` };
+      return { tipo: 'ok', pdf: await respuesta.blob(), nombre };
     }
     return respuesta.status === 401 || respuesta.status === 403
       ? { tipo: 'sin-permiso' }
@@ -1109,5 +1123,301 @@ export const auditoriaDelExpediente = async (
     return data ?? null;
   } catch {
     return null;
+  }
+};
+
+// ----------------------------------------------------------------- licencias (006)
+
+export type LicenciaPublica = components['schemas']['LicenciaPublica'];
+
+/** PDF de la licencia: con el `tokenConsulta` del administrado o con la sesión del personal. */
+export const descargarPdfLicencia = (
+  numero: string,
+  tokenConsulta?: string,
+): Promise<ResultadoPdfEsquela> =>
+  descargarPdf(
+    `/api/v1/licencias/${encodeURIComponent(numero)}/pdf`,
+    `${numero}.pdf`,
+    tokenConsulta,
+  );
+
+export type ResultadoVerificacion =
+  | { readonly tipo: 'ok'; readonly licencia: LicenciaPublica }
+  | { readonly tipo: 'no-encontrada' }
+  | { readonly tipo: 'bloqueado'; readonly reintentarEn: Date }
+  | { readonly tipo: 'no-disponible' };
+
+/** Verificación pública del QR (sin cuenta). El código no es dato personal. */
+export const verificarLicencia = async (codigo: string): Promise<ResultadoVerificacion> => {
+  try {
+    const { data, response } = await clientePublico.GET(
+      '/licencias/verificar/{codigoVerificacion}',
+      {
+        params: { path: { codigoVerificacion: codigo } },
+      },
+    );
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', licencia: data };
+    }
+    switch (response.status) {
+      case 404:
+        return { tipo: 'no-encontrada' };
+      case 429:
+        return { tipo: 'bloqueado', reintentarEn: bloqueadoHasta(response) };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+// ----------------------------------------------------------------- inspecciones (006)
+
+export type Inspeccion = components['schemas']['Inspeccion'];
+
+export type ResultadoInspecciones =
+  | { readonly tipo: 'ok'; readonly total: number; readonly datos: readonly Inspeccion[] }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' };
+
+/** Bandeja: la jefatura ve todas; el inspector, solo las suyas (con la dirección). */
+export const listarInspecciones = async (
+  estado: 'PENDIENTE' | 'ASIGNADA' | 'REALIZADA' | null,
+): Promise<ResultadoInspecciones> => {
+  try {
+    const { data, response } = await cliente.GET('/inspecciones', {
+      params: { query: { porPagina: 100, ...(estado === null ? {} : { estado }) } },
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', total: data.total, datos: data.datos ?? [] };
+    }
+    return response.status === 401 || response.status === 403
+      ? { tipo: 'sin-permiso' }
+      : { tipo: 'no-disponible' };
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** Inspectores activos para asignar (rol JEFATURA). */
+export const listarInspectores = async (): Promise<
+  readonly { readonly id: string; readonly nombre: string }[] | null
+> => {
+  try {
+    const { data } = await cliente.GET('/inspecciones/inspectores');
+    return data ?? null;
+  } catch {
+    return null;
+  }
+};
+
+export type ResultadoAccionInspeccion =
+  | { readonly tipo: 'ok'; readonly inspeccion: Inspeccion }
+  | { readonly tipo: 'invalido'; readonly errores: readonly ErrorCampo[] }
+  | { readonly tipo: 'conflicto'; readonly mensaje: string }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-encontrada' }
+  | { readonly tipo: 'demasiado-grande' }
+  | { readonly tipo: 'no-disponible' };
+
+const resultadoAccion = (
+  status: number,
+  datos: unknown,
+): Exclude<ResultadoAccionInspeccion, { tipo: 'ok' }> => {
+  switch (status) {
+    case 422:
+      return { tipo: 'invalido', errores: erroresDe(datos) };
+    case 409:
+      return { tipo: 'conflicto', mensaje: 'Esta inspección ya tiene resultado.' };
+    case 404:
+      return { tipo: 'no-encontrada' };
+    case 413:
+      return { tipo: 'demasiado-grande' };
+    case 401:
+    case 403:
+      return { tipo: 'sin-permiso' };
+    default:
+      return { tipo: 'no-disponible' };
+  }
+};
+
+/** Asigna (o reasigna) el inspector y la fecha (rol JEFATURA). */
+export const asignarInspeccion = async (
+  id: string,
+  inspectorId: string,
+  programadaPara: string,
+): Promise<ResultadoAccionInspeccion> => {
+  try {
+    const { data, error, response } = await cliente.POST('/inspecciones/{inspeccionId}/asignar', {
+      params: { path: { inspeccionId: id } },
+      body: { inspectorId, programadaPara },
+    });
+    return response.ok && data !== undefined
+      ? { tipo: 'ok', inspeccion: data }
+      : resultadoAccion(response.status, error);
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** El inspector asignado registra el resultado con fotos (multipart, renueva la sesión una vez). */
+export const registrarResultadoInspeccion = async (
+  id: string,
+  datos: {
+    readonly resultado: 'FAVORABLE' | 'DESFAVORABLE';
+    readonly observaciones: string;
+    readonly numeroCertificado: string;
+    readonly certificadoEmitidoEn: string;
+    readonly fotos: readonly File[];
+  },
+): Promise<ResultadoAccionInspeccion> => {
+  const formulario = () => {
+    const cuerpo = new FormData();
+    cuerpo.append('resultado', datos.resultado);
+    if (datos.observaciones.trim() !== '') {
+      cuerpo.append('observaciones', datos.observaciones);
+    }
+    if (datos.resultado === 'FAVORABLE') {
+      cuerpo.append('numeroCertificado', datos.numeroCertificado);
+      cuerpo.append('certificadoEmitidoEn', datos.certificadoEmitidoEn);
+    }
+    for (const foto of datos.fotos) {
+      cuerpo.append('fotos', foto);
+    }
+    return cuerpo;
+  };
+  try {
+    const sesion = obtenerToken();
+    const pedir = () => {
+      const token = obtenerToken();
+      return globalThis.fetch(
+        new Request(
+          new URL(
+            `/api/v1/inspecciones/${encodeURIComponent(id)}/resultado`,
+            window.location.origin,
+          ),
+          {
+            method: 'POST',
+            headers: token === null ? {} : { Authorization: `Bearer ${token}` },
+            body: formulario(),
+          },
+        ),
+      );
+    };
+    let respuesta = await pedir();
+    if (respuesta.status === 401 && sesion !== null && (await renovarSesion())) {
+      respuesta = await pedir();
+    }
+    const cuerpo: unknown = respuesta.headers.get('Content-Type')?.includes('json')
+      ? await respuesta.json()
+      : undefined;
+    return respuesta.ok
+      ? { tipo: 'ok', inspeccion: cuerpo as Inspeccion }
+      : resultadoAccion(respuesta.status, cuerpo);
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+// ----------------------------------------------------------------- feriados (006)
+
+export type Feriado = components['schemas']['Feriado'];
+
+/** Feriados de un año (cualquier sesión del personal). `null` si no se pudieron leer. */
+export const listarFeriados = async (anio: number): Promise<readonly Feriado[] | null> => {
+  try {
+    const { data } = await cliente.GET('/feriados', { params: { query: { anio } } });
+    return data ?? null;
+  } catch {
+    return null;
+  }
+};
+
+export type ResultadoFeriado =
+  | { readonly tipo: 'ok' }
+  | { readonly tipo: 'invalido'; readonly mensaje: string }
+  | { readonly tipo: 'repetido' }
+  | { readonly tipo: 'no-encontrado' }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' };
+
+const resultadoFeriado = (status: number, error: unknown): ResultadoFeriado => {
+  switch (status) {
+    case 422:
+      return { tipo: 'invalido', mensaje: erroresDe(error)[0]?.mensaje ?? 'Revisa los datos.' };
+    case 409:
+      return { tipo: 'repetido' };
+    case 404:
+      return { tipo: 'no-encontrado' };
+    case 401:
+    case 403:
+      return { tipo: 'sin-permiso' };
+    default:
+      return { tipo: 'no-disponible' };
+  }
+};
+
+/** Registra un feriado (rol ADMINISTRADOR). */
+export const registrarFeriado = async (feriado: Feriado): Promise<ResultadoFeriado> => {
+  try {
+    const { error, response } = await cliente.POST('/feriados', { body: feriado });
+    return response.ok ? { tipo: 'ok' } : resultadoFeriado(response.status, error);
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** Elimina un feriado registrado por error (rol ADMINISTRADOR). */
+export const eliminarFeriado = async (fecha: string): Promise<ResultadoFeriado> => {
+  try {
+    const { error, response } = await cliente.DELETE('/feriados/{fecha}', {
+      params: { path: { fecha } },
+    });
+    return response.ok ? { tipo: 'ok' } : resultadoFeriado(response.status, error);
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+// ----------------------------------------------------------------- alertas de plazos (006)
+
+export type AlertaPlazo = components['schemas']['AlertaPlazo'];
+
+/** Alertas sin atender, de la más urgente a la menos urgente (rol JEFATURA). */
+export const listarAlertas = async (): Promise<
+  | { readonly tipo: 'ok'; readonly alertas: readonly AlertaPlazo[] }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' }
+> => {
+  try {
+    const { data, response } = await cliente.GET('/plazos/alertas', {
+      params: { query: { pendientes: true } },
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', alertas: data };
+    }
+    return response.status === 401 || response.status === 403
+      ? { tipo: 'sin-permiso' }
+      : { tipo: 'no-disponible' };
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** Marca una alerta como atendida (rol JEFATURA). */
+export const atenderAlerta = async (
+  id: number,
+): Promise<'ok' | 'ya-atendida' | 'no-disponible'> => {
+  try {
+    const { response } = await cliente.POST('/plazos/alertas/{alertaId}/atender', {
+      params: { path: { alertaId: id } },
+    });
+    if (response.ok) {
+      return 'ok';
+    }
+    return response.status === 409 || response.status === 404 ? 'ya-atendida' : 'no-disponible';
+  } catch {
+    return 'no-disponible';
   }
 };

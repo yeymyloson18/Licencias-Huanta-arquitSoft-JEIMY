@@ -9,7 +9,7 @@ import {
 } from '../../src/compartido/infraestructura/configuracion';
 import { PrismaServicio } from '../../src/compartido/infraestructura/prisma.servicio';
 import { ALMACEN_ARCHIVOS } from '../../src/modulos/tramites/tramites.module';
-import type { AlmacenArchivos } from '../../src/modulos/tramites/dominio/puertos/almacen-archivos';
+import type { AlmacenArchivos } from '../../src/compartido/dominio/almacen-archivos';
 import { TareaDescarteDocumentos } from '../../src/modulos/tramites/infraestructura/tarea-descarte-documentos';
 import { crearAplicacionDePrueba, type LoggerCapturador } from '../apoyo/aplicacion-prueba';
 import { limpiarTramites } from '../apoyo/expedientes-prueba';
