@@ -703,3 +703,99 @@ export const descargarDocumentoExpediente = async (
     return { tipo: 'no-disponible' };
   }
 };
+
+// ----------------------------------------------------------------- evaluación del expediente (005)
+
+export type ResultadoDecision =
+  | { readonly tipo: 'ok'; readonly expediente: Expediente }
+  | { readonly tipo: 'invalido'; readonly errores: readonly ErrorCampo[] }
+  /** La acción no corresponde al estado (409) o el expediente cambió (412): hay que recargarlo. */
+  | { readonly tipo: 'cambio'; readonly mensaje: string }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-encontrado' }
+  | { readonly tipo: 'no-disponible' };
+
+type AccionEvaluador = 'evaluacion' | 'riesgo' | 'observar' | 'denegar' | 'aprobar';
+
+/** Envía una decisión del evaluador con la versión leída en `If-Match` (research §R-05 de la 005). */
+const decidir = async (
+  numero: string,
+  accion: AccionEvaluador,
+  version: number,
+  cuerpo: Record<string, unknown> = {},
+): Promise<ResultadoDecision> => {
+  try {
+    const token = obtenerToken();
+    const pedir = () =>
+      globalThis.fetch(
+        new Request(
+          new URL(
+            `/api/v1/expedientes/${encodeURIComponent(numero)}/${accion}`,
+            window.location.origin,
+          ),
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'If-Match': String(version),
+              ...(obtenerToken() === null
+                ? {}
+                : { Authorization: `Bearer ${obtenerToken() ?? ''}` }),
+            },
+            body: JSON.stringify(cuerpo),
+          },
+        ),
+      );
+    let respuesta = await pedir();
+    if (respuesta.status === 401 && token !== null && (await renovarSesion())) {
+      respuesta = await pedir();
+    }
+    const datos: unknown = respuesta.headers.get('Content-Type')?.includes('json')
+      ? await respuesta.json()
+      : undefined;
+    if (respuesta.ok) {
+      return { tipo: 'ok', expediente: datos as Expediente };
+    }
+    switch (respuesta.status) {
+      case 422:
+        return { tipo: 'invalido', errores: erroresDe(datos) };
+      case 409:
+        return {
+          tipo: 'cambio',
+          mensaje:
+            tipoDeProblema(datos) === 'ya-observado'
+              ? 'Este expediente ya fue observado una vez.'
+              : 'Esta acción ya no corresponde al estado del expediente.',
+        };
+      case 412:
+        return { tipo: 'cambio', mensaje: 'El expediente cambió mientras lo revisabas.' };
+      case 401:
+      case 403:
+        return { tipo: 'sin-permiso' };
+      case 404:
+        return { tipo: 'no-encontrado' };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+export const iniciarEvaluacion = (numero: string, version: number) =>
+  decidir(numero, 'evaluacion', version);
+
+export const confirmarRiesgo = (
+  numero: string,
+  version: number,
+  datos: { readonly codigoReceta?: string; readonly comentario?: string },
+) => decidir(numero, 'riesgo', version, { ...datos });
+
+export const observarExpediente = (numero: string, version: number, descripcion: string) =>
+  decidir(numero, 'observar', version, { descripcion });
+
+export const denegarExpediente = (numero: string, version: number, motivo: string) =>
+  decidir(numero, 'denegar', version, { motivo });
+
+export const aprobarExpediente = (numero: string, version: number) =>
+  decidir(numero, 'aprobar', version);

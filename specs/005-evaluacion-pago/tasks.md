@@ -79,15 +79,15 @@ segundos tiene una sola esquela con el monto de la licencia.
 
 ### Pruebas de la historia 1 ⚠️
 
-- [ ] T010 [P] [US1] Pruebas unitarias en `test-tra/aplicacion/decisiones-evaluador.spec.ts` (con
+- [X] T010 [P] [US1] Pruebas unitarias en `test-tra/aplicacion/decisiones-evaluador.spec.ts` (con
   dobles): iniciar, confirmar (misma licencia, corregida del grupo, otro grupo → error, licencia no
   vigente → error, tasa 0 → PAGADO sin evento de esquela), observar (texto corto → error, segunda vez →
   error), denegar; cada una con historial, auditoría y `EstadoExpedienteCambiado`; versión distinta →
   `ErrorVersionCambiada`
-- [ ] T011 [P] [US1] Pruebas unitarias en `test-pag/aplicacion/generar-esquela.spec.ts` y
+- [X] T011 [P] [US1] Pruebas unitarias en `test-pag/aplicacion/generar-esquela.spec.ts` y
   `test-pag/dominio/esquela.spec.ts`: código `ESQ-<número>`, monto > 0, generar dos veces no duplica,
   `registrarPago` una sola vez, `corregirRecibo` solo si está pagada y con motivo
-- [ ] T012 [P] [US1] Prueba de integración `int/evaluacion-expediente.e2e-spec.ts`: iniciar → 200
+- [X] T012 [P] [US1] Prueba de integración `int/evaluacion-expediente.e2e-spec.ts`: iniciar → 200
   EN_EVALUACION con `If-Match`; confirmar → 200 PENDIENTE_PAGO y, tras procesar eventos, una esquela con
   la tasa; confirmar de nuevo → 409 y una sola esquela; 10 confirmaciones en paralelo → una esquela;
   corregir a LIC-03 → ruta B y tasa 305.90; a otro grupo → 422; LIC-09 → PAGADO sin esquela; observar →
@@ -96,24 +96,24 @@ segundos tiene una sola esquela con el monto de la licencia.
 
 ### Implementación de la historia 1
 
-- [ ] T013 [US1] Puertos y casos de uso `tra/aplicacion/iniciar-evaluacion.ts`, `confirmar-riesgo.ts`,
+- [X] T013 [US1] Puertos y casos de uso `tra/aplicacion/iniciar-evaluacion.ts`, `confirmar-riesgo.ts`,
   `observar-expediente.ts` y `denegar-expediente.ts` con el puerto
   `tra/dominio/puertos/repositorio-decisiones.ts` (aplicar una decisión con `UPDATE` condicional por
   estado y versión, historial, auditoría y eventos en una transacción). Deben pasar T010
-- [ ] T014 [US1] Adaptadores `tra/infraestructura/repositorio-decisiones-postgres.ts` y
+- [X] T014 [US1] Adaptadores `tra/infraestructura/repositorio-decisiones-postgres.ts` y
   `catalogo-evaluacion-fachada.ts`
-- [ ] T015 [US1] Dominio y caso de uso `pag/dominio/esquela.ts`, `pag/aplicacion/generar-esquela.ts`,
+- [X] T015 [US1] Dominio y caso de uso `pag/dominio/esquela.ts`, `pag/aplicacion/generar-esquela.ts`,
   repositorio `pag/infraestructura/repositorio-esquelas-postgres.ts` (`INSERT … ON CONFLICT DO
   NOTHING`) y manejador de `EsquelaSolicitada` registrado en el despachador desde `pagos.module.ts`.
   Deben pasar T011
-- [ ] T016 [US1] Controlador `tra/presentacion/evaluacion.controller.ts` (`POST evaluacion`, `riesgo`,
+- [X] T016 [US1] Controlador `tra/presentacion/evaluacion.controller.ts` (`POST evaluacion`, `riesgo`,
   `observar`, `denegar` con `@RequiereRoles('EVALUADOR')`, `If-Match` obligatorio, zod, 409/412/422) y
   el detalle del expediente con `nivelRiesgoPropuesto`, `nivelRiesgoConfirmado` y `observaciones`.
   Deben pasar T012
-- [ ] T017 [P] [US1] `web/servicios/clienteApi.ts`: `iniciarEvaluacion`, `confirmarRiesgo`,
+- [X] T017 [P] [US1] `web/servicios/clienteApi.ts`: `iniciarEvaluacion`, `confirmarRiesgo`,
   `observarExpediente`, `denegarExpediente` (con `If-Match`) y `listarLicenciasDelGrupo` (desde el
   catálogo público)
-- [ ] T018 [US1] Prueba `web/componentes/AccionesEvaluador.test.tsx` y componente
+- [X] T018 [US1] Prueba `web/componentes/AccionesEvaluador.test.tsx` y componente
   `web/componentes/AccionesEvaluador.tsx` en `web/paginas/personal/DetalleExpediente.tsx`: botones según
   rol y estado ([contracts/portal-evaluacion-pago.md](./contracts/portal-evaluacion-pago.md)), diálogo
   de riesgo con las licencias del grupo, textos con contador, 409/412 recargan el detalle con aviso

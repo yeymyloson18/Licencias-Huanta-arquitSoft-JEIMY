@@ -139,6 +139,17 @@ export const limpiarTramites = async (prisma: PrismaClient): Promise<void> => {
     prisma.observacion.deleteMany(),
     prisma.auditoriaTramites.deleteMany(),
     prisma.expediente.deleteMany(),
-    prisma.evento_pendiente.deleteMany({ where: { tipo: 'SolicitudPresentada' } }),
+    prisma.evento_pendiente.deleteMany({
+      where: {
+        tipo: {
+          in: [
+            'SolicitudPresentada',
+            'EsquelaSolicitada',
+            'EstadoExpedienteCambiado',
+            'PagoRegistrado',
+          ],
+        },
+      },
+    }),
   ]);
 };

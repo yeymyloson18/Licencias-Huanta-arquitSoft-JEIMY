@@ -62,15 +62,21 @@ export class ObtenerDetalleExpediente {
     },
   ) {}
 
+  /**
+   * Con `registrarVista: false` (la respuesta de una decisión del evaluador, 005) no se registra
+   * `VER_DETALLE`: la decisión ya deja su propia auditoría.
+   */
   async ejecutar(entrada: {
     readonly numero: string;
     readonly usuarioId: string;
+    readonly registrarVista?: boolean;
   }): Promise<DetalleParaPersonal> {
     const numero = leerNumero(entrada.numero);
-    const detalle = await this.dependencias.expedientes.obtenerDetalle(numero, {
-      usuarioId: entrada.usuarioId,
-      en: this.dependencias.reloj.ahora(),
-    });
+    const lector =
+      entrada.registrarVista === false
+        ? null
+        : { usuarioId: entrada.usuarioId, en: this.dependencias.reloj.ahora() };
+    const detalle = await this.dependencias.expedientes.obtenerDetalle(numero, lector);
     if (detalle === null) {
       throw new ErrorExpedienteNoEncontrado();
     }

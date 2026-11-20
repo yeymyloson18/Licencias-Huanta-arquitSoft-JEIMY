@@ -5,6 +5,8 @@ import {
   type Expediente,
   obtenerExpediente,
 } from '../../servicios/clienteApi';
+import { AccionesEvaluador } from '../../componentes/AccionesEvaluador';
+import { useSesion } from '../../sesion/ProveedorSesion';
 import { ESTADOS, formatearFecha } from './Expedientes';
 
 // Detalle del expediente para el personal (historia 4 de la 004): datos, historial y documentos con
@@ -30,6 +32,9 @@ export function DetalleExpediente() {
   const { numero = '' } = useParams();
   const [carga, setCarga] = useState<Carga>({ tipo: 'cargando' });
   const [avisoDescarga, setAvisoDescarga] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const { sesion } = useSesion();
+  const esEvaluador = sesion?.usuario.roles.includes('EVALUADOR') ?? false;
 
   const cargar = useCallback(async () => {
     setCarga({ tipo: 'cargando' });
@@ -97,6 +102,24 @@ export function DetalleExpediente() {
               Reintentar
             </button>
           </div>
+        )}
+        {aviso && (
+          <p className="aviso aviso--info" role="status">
+            {aviso}
+          </p>
+        )}
+        {carga.tipo === 'lista' && esEvaluador && (
+          <AccionesEvaluador
+            expediente={carga.expediente}
+            alActualizar={(expediente) => {
+              setAviso('Decisión guardada.');
+              setCarga({ tipo: 'lista', expediente });
+            }}
+            alCambiar={(mensaje) => {
+              setAviso(mensaje);
+              void cargar();
+            }}
+          />
         )}
         {carga.tipo === 'lista' && (
           <article className="tarjeta" aria-label={`Expediente ${carga.expediente.numero}`}>

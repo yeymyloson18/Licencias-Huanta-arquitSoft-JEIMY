@@ -13,6 +13,18 @@ import {
   ObtenerDetalleExpediente,
 } from './aplicacion/bandeja-expedientes';
 import { ConsultarEstado } from './aplicacion/consultar-estado';
+import {
+  ConfirmarRiesgo,
+  DenegarExpediente,
+  IniciarEvaluacion,
+  ObservarExpediente,
+} from './aplicacion/decisiones-evaluador';
+import { LicenciasDelGrupo } from './aplicacion/licencias-del-grupo';
+import type { CatalogoEvaluacion } from './dominio/puertos/catalogo-evaluacion';
+import type { RepositorioDecisiones } from './dominio/puertos/repositorio-decisiones';
+import { CatalogoEvaluacionFachada } from './infraestructura/catalogo-evaluacion-fachada';
+import { RepositorioDecisionesPostgres } from './infraestructura/repositorio-decisiones-postgres';
+import { EvaluacionController } from './presentacion/evaluacion.controller';
 import { DescartarDocumentosVencidos } from './aplicacion/descartar-documentos-vencidos';
 import { PresentarSolicitud } from './aplicacion/presentar-solicitud';
 import { SubirDocumento } from './aplicacion/subir-documento';
@@ -36,14 +48,64 @@ import { ExpedientesController } from './presentacion/expedientes.controller';
 // Raíz de composición del módulo Trámites (funcionalidad 004). Usa Catálogo y Seguridad solo por sus
 // fachadas (principio I): Catálogo y Seguridad son globales y exportan sus fachadas.
 export const ALMACEN_ARCHIVOS = Symbol('ALMACEN_ARCHIVOS');
+const CATALOGO_EVALUACION = Symbol('CATALOGO_EVALUACION');
+const REPOSITORIO_DECISIONES = Symbol('REPOSITORIO_DECISIONES');
 
 const huella = new HuellaSha256();
 const reloj = new RelojSistema();
 
 @Module({
   // `ConsultaController` va antes: `POST expedientes/consultar` es una ruta fija.
-  controllers: [ConsultaController, DocumentosController, ExpedientesController, BandejaController],
+  controllers: [
+    ConsultaController,
+    DocumentosController,
+    ExpedientesController,
+    BandejaController,
+    EvaluacionController,
+  ],
   providers: [
+    // Decisiones del evaluador (005).
+    {
+      provide: CATALOGO_EVALUACION,
+      inject: [FachadaCatalogo],
+      useFactory: (catalogo: FachadaCatalogo): CatalogoEvaluacion =>
+        new CatalogoEvaluacionFachada(catalogo),
+    },
+    {
+      provide: REPOSITORIO_DECISIONES,
+      inject: [PrismaServicio],
+      useFactory: (prisma: PrismaServicio): RepositorioDecisiones =>
+        new RepositorioDecisionesPostgres(prisma),
+    },
+    {
+      provide: IniciarEvaluacion,
+      inject: [REPOSITORIO_DECISIONES],
+      useFactory: (decisiones: RepositorioDecisiones) =>
+        new IniciarEvaluacion({ decisiones, reloj }),
+    },
+    {
+      provide: ConfirmarRiesgo,
+      inject: [REPOSITORIO_DECISIONES, CATALOGO_EVALUACION],
+      useFactory: (decisiones: RepositorioDecisiones, catalogo: CatalogoEvaluacion) =>
+        new ConfirmarRiesgo({ decisiones, reloj }, catalogo),
+    },
+    {
+      provide: ObservarExpediente,
+      inject: [REPOSITORIO_DECISIONES],
+      useFactory: (decisiones: RepositorioDecisiones) =>
+        new ObservarExpediente({ decisiones, reloj }),
+    },
+    {
+      provide: DenegarExpediente,
+      inject: [REPOSITORIO_DECISIONES],
+      useFactory: (decisiones: RepositorioDecisiones) =>
+        new DenegarExpediente({ decisiones, reloj }),
+    },
+    {
+      provide: LicenciasDelGrupo,
+      inject: [CATALOGO_EVALUACION],
+      useFactory: (catalogo: CatalogoEvaluacion) => new LicenciasDelGrupo(catalogo),
+    },
     {
       provide: TareaDescarteDocumentos,
       inject: [PrismaServicio, ALMACEN_ARCHIVOS],

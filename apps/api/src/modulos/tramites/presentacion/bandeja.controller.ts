@@ -9,8 +9,10 @@ import {
   ObtenerDetalleExpediente,
   POR_PAGINA_MAXIMO,
 } from '../aplicacion/bandeja-expedientes';
+import { LicenciasDelGrupo } from '../aplicacion/licencias-del-grupo';
 import { limpiarNombreArchivo } from '../aplicacion/subir-documento';
 import { ESTADOS_EXPEDIENTE } from '../dominio/estado-publico';
+import type { LicenciaParaEvaluacion } from '../dominio/puertos/catalogo-evaluacion';
 import type { ExpedienteResumen } from '../dominio/puertos/repositorio-expedientes';
 import { validarConEsquema } from './esquemas-tramites';
 import { traducirErrorTramites } from './traducir-errores';
@@ -58,13 +60,19 @@ const aResumen = (fila: ExpedienteResumen) => ({
   diasHabilesRestantes: null,
 });
 
-/** Esquema `Expediente`. Lo que llega en funcionalidades posteriores va en `null` o vacío. */
-const aDetalle = (detalle: DetalleParaPersonal) => ({
+/**
+ * Esquema `Expediente`. Lo que llega en funcionalidades posteriores va en `null` o vacío.
+ * `licenciasDelGrupo` (005): las licencias vigentes a las que el evaluador puede corregir el riesgo.
+ */
+export const aDetalle = (
+  detalle: DetalleParaPersonal,
+  licenciasDelGrupo: readonly LicenciaParaEvaluacion[] = [],
+) => ({
   ...aResumen(detalle),
   version: detalle.version,
   canal: detalle.canal,
-  nivelRiesgoPropuesto: null,
-  nivelRiesgoConfirmado: null,
+  nivelRiesgoPropuesto: detalle.nivelRiesgoPropuesto,
+  nivelRiesgoConfirmado: detalle.nivelRiesgoConfirmado,
   documentoTitularEnmascarado: detalle.documentoTitularEnmascarado,
   razonSocial: detalle.razonSocial,
   nombreComercial: detalle.nombreComercial,
@@ -74,7 +82,17 @@ const aDetalle = (detalle: DetalleParaPersonal) => ({
   codigoEsquela: null,
   numeroLicencia: null,
   documentos: detalle.documentos,
-  observaciones: [],
+  observaciones: detalle.observaciones.map((observacion) => ({
+    descripcion: observacion.descripcion,
+    plazoSubsanarEn: aFecha(observacion.plazoSubsanarEn),
+    subsanadaEn: observacion.subsanadaEn?.toISOString() ?? null,
+  })),
+  licenciasDelGrupo: licenciasDelGrupo.map((licencia) => ({
+    codigoReceta: licencia.codigo,
+    nombre: licencia.nombre,
+    tasa: licencia.tasa,
+    ruta: licencia.ruta,
+  })),
   historial: detalle.historial.map((registro) => ({
     ...registro,
     ocurridoEn: registro.ocurridoEn.toISOString(),
@@ -99,6 +117,7 @@ export class BandejaController {
   constructor(
     private readonly listarExpedientes: ListarExpedientes,
     private readonly obtenerDetalle: ObtenerDetalleExpediente,
+    private readonly licenciasDelGrupo: LicenciasDelGrupo,
     private readonly descargarDocumento: DescargarDocumento,
   ) {}
 
@@ -144,7 +163,8 @@ export class BandejaController {
   ) {
     respuesta.setHeader('Cache-Control', 'no-store');
     try {
-      return aDetalle(await this.obtenerDetalle.ejecutar({ numero, usuarioId: usuario.usuarioId }));
+      const detalle = await this.obtenerDetalle.ejecutar({ numero, usuarioId: usuario.usuarioId });
+      return aDetalle(detalle, await this.licenciasDelGrupo.ejecutar(detalle));
     } catch (error) {
       throw traducirErrorTramites(error);
     }

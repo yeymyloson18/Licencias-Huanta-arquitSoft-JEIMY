@@ -2115,6 +2115,19 @@ components:
                   descripcion: { type: string }
                   plazoSubsanarEn: { type: [string, 'null'], format: date }
                   subsanadaEn: { type: [string, 'null'], format: date-time }
+            licenciasDelGrupo:
+              description: >-
+                Licencias vigentes a las que el evaluador puede corregir el riesgo (mismo grupo, incluida la actual).
+                Solo con el expediente EN_EVALUACION; vacía en otro estado (005).
+              type: array
+              items:
+                type: object
+                required: [codigoReceta, nombre, tasa, ruta]
+                properties:
+                  codigoReceta: { $ref: '#/components/schemas/CodigoReceta' }
+                  nombre: { type: string }
+                  tasa: { $ref: '#/components/schemas/Soles' }
+                  ruta: { $ref: '#/components/schemas/Ruta' }
             historial:
               type: array
               items:

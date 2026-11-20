@@ -7,11 +7,23 @@ import {
   ErrorIdentificacionNoDisponible,
   ErrorPermisoUsado,
   ErrorTipoArchivoNoPermitido,
+  ErrorVersionCambiada,
+  ErrorYaObservado,
 } from '../aplicacion/errores';
 import { ErrorValidacionSolicitud } from '../dominio/errores';
+import { ErrorTransicionInvalida } from '../dominio/maquina-estados';
 
 /** Convierte los errores de Trámites en problemas del contrato (sin datos personales). */
 export const traducirErrorTramites = (error: unknown): unknown => {
+  if (error instanceof ErrorTransicionInvalida) {
+    return ErrorProblema.transicionInvalida(error.estadoActual);
+  }
+  if (error instanceof ErrorVersionCambiada) {
+    return ErrorProblema.versionCambiada();
+  }
+  if (error instanceof ErrorYaObservado) {
+    return ErrorProblema.yaObservado();
+  }
   if (error instanceof ErrorValidacionSolicitud) {
     return new ErrorValidacion(error.errores);
   }
