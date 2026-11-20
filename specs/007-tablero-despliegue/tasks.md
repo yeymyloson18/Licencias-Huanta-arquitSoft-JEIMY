@@ -37,15 +37,15 @@ y se ejecuta cuando la usuaria cree el servidor. No se marca como hecha hasta en
 
 ## Fase 1: Preparación
 
-- [ ] T001 Mover `pla/dominio/calendario-habil.ts` a `com/dominio/calendario-habil.ts` y
+- [X] T001 Mover `pla/dominio/calendario-habil.ts` a `com/dominio/calendario-habil.ts` y
   `lic/dominio/titular-publico.ts` a `com/dominio/titular-publico.ts` (research §R-03). Además:
   - actualizar los imports en `plazos` y `licencias`;
   - mover sus pruebas a `apps/api/test/unit/compartido/`.
 
   Unidad, cobertura y regla de dependencia deben seguir en verde.
-- [ ] T002 [P] Crear `rep/reportes.module.ts` (vacío), registrarlo en `apps/api/src/app.module.ts` y
+- [X] T002 [P] Crear `rep/reportes.module.ts` (vacío), registrarlo en `apps/api/src/app.module.ts` y
   quitar los `.gitkeep` de `rep/`.
-- [ ] T003 [P] Agregar `@playwright/test` (1.49.x) como dependencia de desarrollo de la raíz y crear:
+- [X] T003 [P] Agregar `@playwright/test` (1.49.x) como dependencia de desarrollo de la raíz y crear:
   - `tests/e2e/playwright.config.ts`, con los proyectos `celular` (360×740, `isMobile`) y
     `escritorio` (1280×800), `channel: 'chrome'` fuera de CI y `trace`, `video` y `screenshot` solo
     si falla;

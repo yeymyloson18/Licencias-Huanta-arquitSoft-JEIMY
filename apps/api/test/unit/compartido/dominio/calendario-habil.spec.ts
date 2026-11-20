@@ -1,5 +1,5 @@
-import { CalendarioHabil } from '../../../../../src/modulos/plazos/dominio/calendario-habil';
-import { crearFeriado, ErrorDatoFeriado } from '../../../../../src/modulos/plazos/dominio/feriado';
+import { CalendarioHabil } from '../../../../src/compartido/dominio/calendario-habil';
+import { crearFeriado, ErrorDatoFeriado } from '../../../../src/modulos/plazos/dominio/feriado';
 
 // Calendario de noviembre de 2026: el 20 es viernes. Feriados de 2026 (research §R-17 de la 006).
 const FERIADOS_2026 = new Set([

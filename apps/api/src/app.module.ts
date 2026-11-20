@@ -7,6 +7,7 @@ import { LicenciasModule } from './modulos/licencias/licencias.module';
 import { NotificacionesModule } from './modulos/notificaciones/notificaciones.module';
 import { PagosModule } from './modulos/pagos/pagos.module';
 import { PlazosModule } from './modulos/plazos/plazos.module';
+import { ReportesModule } from './modulos/reportes/reportes.module';
 import { TramitesModule } from './modulos/tramites/tramites.module';
 import { SaludModule } from './operacion/salud/salud.module';
 
@@ -19,6 +20,7 @@ import { SaludModule } from './operacion/salud/salud.module';
     TramitesModule,
     PagosModule,
     PlazosModule,
+    ReportesModule,
     InspeccionesModule,
     LicenciasModule,
     NotificacionesModule,

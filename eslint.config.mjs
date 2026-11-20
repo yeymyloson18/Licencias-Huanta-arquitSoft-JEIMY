@@ -14,6 +14,8 @@ export default tseslint.config(
       'tecnologia/**',
       '.specify/**',
       '.claude/**',
+      'tests/e2e/informe/**',
+      'tests/e2e/resultados/**',
     ],
   },
   {
@@ -29,6 +31,17 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
       // Los módulos de NestJS son clases vacías con decorador (@Module).
       '@typescript-eslint/no-extraneous-class': ['error', { allowWithDecorator: true }],
+    },
+  },
+  {
+    // Pruebas de extremo a extremo (007): fuera del typecheck de apps/*, con su propio tsconfig.
+    files: ['tests/e2e/**/*.ts'],
+    extends: [...tseslint.configs.strictTypeChecked],
+    languageOptions: {
+      parserOptions: {
+        project: './tests/e2e/tsconfig.json',
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
   },
 );

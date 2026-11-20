@@ -1,4 +1,4 @@
-import { diaDeLaSemana, type Fecha, sumarDias } from '../../../compartido/dominio/fecha-lima';
+import { diaDeLaSemana, type Fecha, sumarDias } from './fecha-lima';
 
 /**
  * Calendario de días hábiles (FR-025 de la 006, research §R-03): sin sábados, domingos ni feriados

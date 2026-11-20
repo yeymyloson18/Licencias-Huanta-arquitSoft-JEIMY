@@ -1,5 +1,5 @@
 import { esFechaValida, type Fecha, sumarDias } from '../../../compartido/dominio/fecha-lima';
-import { CalendarioHabil } from '../dominio/calendario-habil';
+import { CalendarioHabil } from '../../../compartido/dominio/calendario-habil';
 import { crearFeriado, ErrorDatoFeriado, type Feriado } from '../dominio/feriado';
 import type { RepositorioFeriados } from '../dominio/puertos';
 
