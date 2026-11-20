@@ -39,7 +39,7 @@ Datos ficticios. Las pruebas automáticas usan los contenedores temporales `pg-p
 
 1. Seguir `docs/07-despliegue/guia-vps.md`: droplet, llave, ufw, Docker, usuario `despliegue`,
    `.env`, secretos en GitHub y primer despliegue.
-2. Abrir `https://<ip-con-guiones>.sslip.io`: certificado válido y TLS 1.2 o 1.3.
+2. Abrir `https://<ip-con-guiones>.sslip.io`: certificado válido y solo TLS 1.3.
 3. Ejecutar `verificar-puertos.sh <ip>` desde la PC. Solo responden 22, 80 y 443.
 4. Hacer un cambio pequeño en `main`: el flujo `CD` lo despliega en 15 minutos o menos, sin cortes.
 5. Ejecutar a mano `k6.yml` (`eq01-100`, `eq01-1000` y `eq02-picos` con 1 y 2 réplicas) y

@@ -84,7 +84,9 @@ Cada decisión indica qué se eligió, por qué y qué alternativas se descartar
   - La etapa final por defecto sigue siendo nginx, para desarrollo y CI.
   - El Caddyfile:
     - `{$DOMINIO}` con certificado automático (Let's Encrypt, con ZeroSSL de respaldo, como hace
-      Caddy por omisión);
+      Caddy por omisión) y `tls { protocols tls1.3 }`: la constitución (principio VII) exige TLS 1.3.
+      Los celulares con Android 10 o posterior y los navegadores actuales lo soportan; con Cloudflare,
+      el TLS mínimo del borde también se fija en 1.3;
     - `encode zstd gzip`;
     - `/assets/*` con `Cache-Control: public, max-age=31536000, immutable`;
     - `index.html` y rutas del SPA con `no-cache`;

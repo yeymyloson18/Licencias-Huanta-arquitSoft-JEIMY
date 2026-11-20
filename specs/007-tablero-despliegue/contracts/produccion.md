@@ -30,6 +30,7 @@ Volúmenes: `datos-postgres`, `archivos-tramites` (compartido por `api-a` y `api
 | `/api/v1/catalogo/...` | `Cache-Control: public, max-age=60` (lo define la API) |
 | `/api/v1/expedientes/consultar` | `Cache-Control: no-store` (lo define la API) |
 | Todas | `Strict-Transport-Security: max-age=31536000`, la misma `Content-Security-Policy` del portal de desarrollo, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, `Cross-Origin-*`; sin `Server` ni `X-Powered-By` |
+| TLS | Solo 1.3: una conexión forzada a TLS 1.2 (`curl --tls-max 1.2`) falla |
 | `http://…` | `308` a `https://…` (salvo con `DOMINIO=localhost`, donde Caddy también redirige) |
 
 ## Variables

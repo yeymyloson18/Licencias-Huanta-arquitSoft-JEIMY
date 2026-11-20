@@ -23,7 +23,7 @@ guarda datos: calcula sobre lo que le entregan las fachadas y deja el resultado 
 | --- | --- | --- |
 | `FachadaTramites` | `conteoPorEstado(desde, hasta)` | `Record<estado, número>` de los presentados en `[desde, hasta]` (Lima) |
 | `FachadaTramites` | `atencionesTerminadas(desde, hasta)` | `{ numero, codigoReceta, presentadoEn: Fecha, terminadoEn: Fecha, suspensiones: {desde: Fecha, hasta: Fecha}[] }[]`, donde `terminadoEn` es la primera decisión final y cae en el rango |
-| `FachadaTramites` | `expedientesEnTramite(filtro)` | `{ numero, codigoReceta, titularPublico, giro, zona, estado, presentadoEn }[]` (estados que no son finales ni con licencia), con `limite + 1` filas |
+| `FachadaTramites` | `expedientesEnTramite(filtro)` | `{ numero, codigoReceta, titularPublico, giro, zona, estado, presentadoEn }[]` (REGISTRADO, EN_EVALUACION, OBSERVADO, PENDIENTE_PAGO, PAGADO, EN_INSPECCION y APROBADO), con `limite + 1` filas |
 | `FachadaPagos` | `pagosRegistrados(desde, hasta)` | `{ codigoReceta, monto: "0.00", pagadoEn: Fecha }[]` |
 | `FachadaLicencias` | `licenciasVigentes(filtro)` | `{ numero, codigoReceta, titularPublico, giro, zona, estado, emitidaEn }[]` |
 | `FachadaLicencias` | `itsePorVencer(filtro, hasta)` | Igual que las vigentes, con `fecha = vence_en`, ordenadas por vencimiento ascendente |

@@ -105,7 +105,8 @@ filtros, comparar las filas con lo sembrado y abrir el CSV descargado en una hoj
    un giro, **entonces** solo ve las de ese giro, con número, tipo de licencia, titular público, giro,
    zona, estado y fecha.
 2. **Dado** expedientes en distintos estados, **cuando** pide los "en trámite", **entonces** ve los que
-   aún no terminaron (ni finalizados, ni denegados, ni con licencia emitida).
+   aún no tienen decisión final: REGISTRADO, EN_EVALUACION, OBSERVADO, PENDIENTE_PAGO, PAGADO,
+   EN_INSPECCION y APROBADO (este último solo mientras se emite la licencia).
 3. **Dado** certificados ITSE que vencen en 30 días o menos, **cuando** pide "ITSE por vencer",
    **entonces** ve esas licencias ordenadas por la fecha de vencimiento más cercana.
 4. **Dado** un resultado, **cuando** la jefatura elige descargar, **entonces** recibe un archivo CSV que
@@ -169,7 +170,7 @@ respondiendo.
 **Escenarios de aceptación**:
 
 1. **Dado** el sistema en el servidor, **cuando** alguien abre la dirección pública, **entonces** ve el
-   portal con un certificado válido y conexión TLS 1.2 o 1.3; por HTTP se le redirige a HTTPS.
+   portal con un certificado válido y conexión TLS 1.3; por HTTP se le redirige a HTTPS.
 2. **Dado** el servidor publicado, **cuando** se prueban desde fuera los puertos de la base de datos,
    de la caché y del servicio, **entonces** ninguno responde; solo responden 80 y 443 (y el de
    administración remota, restringido a la llave del despliegue).
@@ -381,7 +382,7 @@ ejecutar el comando de datos de demostración y entrar con cada rol.
   servicio NO DEBEN publicarse fuera del servidor.
 - **FR-021**: La dirección pública DEBE salir de un único valor de configuración (el dominio); sin
   dominio propio, ese valor es la IP del servidor con un servicio de nombres gratuito que permite un
-  certificado válido. HTTP DEBE redirigir a HTTPS y el TLS DEBE ser 1.2 o 1.3.
+  certificado válido. HTTP DEBE redirigir a HTTPS y el TLS DEBE ser 1.3 (constitución, principio VII).
 - **FR-022**: El punto de entrada DEBE servir los archivos del portal con huella en el nombre con caché
   inmutable de 1 año, la página principal sin caché, respetar las cabeceras de caché que ya define
   cada respuesta del servicio y comprimir las respuestas de texto.
@@ -427,6 +428,8 @@ ejecutar el comando de datos de demostración y entrar con cada rol.
   en la configuración del servidor; NO DEBEN aparecer en el repositorio ni en los registros del flujo.
 - **FR-035**: Las migraciones de la base de datos DEBEN ser compatibles con la versión anterior del
   servicio durante el despliegue (agregar antes de quitar), para que la vuelta atrás no rompa nada.
+  La regla queda escrita en la guía de despliegue y en la plantilla de PR, y una revisión automática
+  avisa si una migración nueva borra o renombra columnas o tablas.
 
 **Medición y demostración (historia 7)**
 
@@ -482,14 +485,16 @@ ejecutar el comando de datos de demostración y entrar con cada rol.
   la comprobación queda documentada con el comando y su salida.
 - **SC-007** (EQ-01): Con 1,000 usuarios simultáneos consultando el catálogo y el estado del trámite,
   el 95 % de las respuestas llega en 2 segundos o menos con menos del 1 % de errores.
-- **SC-008** (EQ-02): En la prueba de picos, 2 copias del servicio atienden más peticiones por segundo
-  que 1, con menos del 1 % de errores; el resultado y sus límites (servidor de 2 GB) quedan
-  documentados.
+- **SC-008** (EQ-02): La prueba de picos se ejecuta con 1 y con 2 copias del servicio y queda
+  documentada la comparación (peticiones por segundo, percentil 95 y errores). Con 2 copias los
+  errores son menos del 1 % hasta 1,000 usuarios. Si el servidor de 2 GB tiene un solo procesador y
+  las 2 copias no mejoran el rendimiento, se documenta ese límite y el beneficio que sí dan: seguir
+  atendiendo cuando una cae y actualizar sin cortes.
 - **SC-009** (EQ-03): Al detener una copia del servicio, las consultas siguen respondiendo y el sistema
   se recupera solo en 5 minutos o menos; una copia de seguridad restaurada conserva el 100 % de los
   pagos registrados hasta el momento de la copia.
 - **SC-010** (EQ-04): El escaneo de seguridad contra la dirección pública no tiene alertas altas ni
-  medias, el TLS es 1.2 o 1.3 y están todas las cabeceras de seguridad.
+  medias, solo se acepta TLS 1.3 y están todas las cabeceras de seguridad.
 - **SC-011** (EQ-05): Las pantallas principales en modo celular tienen un puntaje de accesibilidad de
   90 o más, y el cuestionario SUS queda listo para aplicarse a 5 personas.
 - **SC-012**: Un cambio fusionado en la rama principal llega al servidor en 15 minutos o menos sin que

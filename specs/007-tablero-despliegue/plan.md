@@ -111,6 +111,7 @@ plantillas de resultados.
 - EQ-01: p95 ≤ 2 s con 1,000 usuarios y menos del 1 % de errores (SC-007).
 - EQ-02: comparación de 1 y 2 réplicas (SC-008).
 - Despliegue ≤ 15 min (SC-012).
+- TLS solo 1.3 (principio VII), con `protocols tls1.3` en Caddy (research §R-05).
 
 **Restricciones**:
 

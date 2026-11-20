@@ -249,7 +249,8 @@ proyectos).
 - [ ] T024 [US4] `prod/verificar-local.sh` (prueba de la configuración):
   - levanta el proyecto aislado `prod007` en puertos libres;
   - comprueba que solo Caddy publica puertos;
-  - comprueba cabeceras, compresión y redirección;
+  - comprueba cabeceras, compresión, redirección y que TLS 1.2 se rechaza (solo 1.3);
+  - comprueba que la suma de los límites de memoria de los contenedores es ≤ 1.6 GB (FR-027);
   - detiene `api-a` y verifica que 20 de 20 peticiones responden 200;
   - baja el proyecto con `-v`.
 
@@ -338,6 +339,10 @@ sale con 0 y con una que no arranca sale con 1 y queda en la anterior.
 
   Validar la sintaxis con `actionlint` (contenedor `rhysd/actionlint:1.7.4`) y gitleaks sin
   hallazgos.
+- [ ] T033b [US6] `prod/revisar-migraciones.sh`: avisa con código 1 si una migración nueva respecto de
+  `main` contiene `DROP TABLE`, `DROP COLUMN`, `RENAME` o `ALTER COLUMN … TYPE` sin el comentario
+  `-- compatible: <motivo>`. Además, la regla "agregar antes de quitar" se escribe en `dep/guia-vps.md`
+  y en `.github/pull_request_template.md`. Probarlo con una migración de ejemplo temporal (FR-035).
 - [ ] T034 [US6] **[servidor]** Primer despliegue automático después de una fusión en `main` (SC-012)
   y prueba de vuelta atrás.
 
@@ -391,6 +396,7 @@ sale con 0 y con una que no arranca sale con 1 y queda en la anterior.
   - `cobertura` ≥ 80 %;
   - `regla-dependencia`, `contrato`;
   - `actionlint` de todos los flujos;
+  - `infra/produccion/revisar-migraciones.sh` (FR-035);
   - gitleaks sin hallazgos (historial y árbol).
 
   Sin push ni PR (los hace la usuaria).
