@@ -266,20 +266,20 @@ descargar el PDF sin datos personales.
 
 ## Fase 9: Acabado y temas transversales
 
-- [ ] T044 [P] Prueba de integración `int/flujo-evaluacion-pago.e2e-spec.ts`: REGISTRADO → EN_EVALUACION
+- [X] T044 [P] Prueba de integración `int/flujo-evaluacion-pago.e2e-spec.ts`: REGISTRADO → EN_EVALUACION
   → riesgo → esquela → pago → PAGADO → APROBADO, con un historial de 5 cambios y sus eventos
-- [ ] T045 [P] Prueba de integración `int/matriz-permisos-evaluacion-pago.e2e-spec.ts`: cada endpoint
+- [X] T045 [P] Prueba de integración `int/matriz-permisos-evaluacion-pago.e2e-spec.ts`: cada endpoint
   nuevo con sin sesión 401 y cada rol que no corresponde 403, sin cambiar datos (SC-007)
-- [ ] T046 [P] Prueba de integración `int/privacidad-evaluacion-pago.e2e-spec.ts` con el logger
+- [X] T046 [P] Prueba de integración `int/privacidad-evaluacion-pago.e2e-spec.ts` con el logger
   capturador: registros, URL, errores, eventos, auditorías y el texto del PDF sin documento, RUC,
   celular, correo ni dirección del titular (SC-006)
-- [ ] T049 Medir SC-001 (evaluador: desde la bandeja hasta confirmar el riesgo, ≤ 2 min) y SC-002
+- [X] T049 Medir SC-001 (evaluador: desde la bandeja hasta confirmar el riesgo, ≤ 2 min) y SC-002
   (caja: desde el código de la esquela hasta registrar el pago, ≤ 1 min) con un recorrido automatizado
   en el navegador a 360 px, en un clon aislado con usuarios y datos ficticios (como en la 004); bajar el
   clon con `-v` al terminar. No incluye k6, Lighthouse ni ZAP (quedan para el despliegue, 007)
-- [ ] T047 Actualizar `README.md` (sección de la funcionalidad 005, con los tiempos de T049) y
+- [X] T047 Actualizar `README.md` (sección de la funcionalidad 005, con los tiempos de T049) y
   `docs/03-diseno-de-software/diagrama-casos-de-uso.md` (CU13, CU14, CU16 y CU21 a "✅ Hecho")
-- [ ] T048 Cadena completa de CI en local (`build`, `lint`, `formato`, `test:unit`,
+- [X] T048 Cadena completa de CI en local (`build`, `lint`, `formato`, `test:unit`,
   `test:integracion` con PostgreSQL temporal en 5433 y Redis en 16379, `cobertura` ≥ 80 % por archivo en
   `dominio` y `aplicacion` de `tramites` y `pagos`, `regla-dependencia`, `contrato`) y gitleaks sin
   hallazgos. Sin push ni PR (los hace la usuaria)
