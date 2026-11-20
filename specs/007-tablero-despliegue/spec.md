@@ -27,6 +27,29 @@ funcionalidades 001 a 006.
 Ubuntu 24.04 LTS) con contenedores; por ahora **sin dominio propio**. El dominio debe poder agregarse
 después cambiando un solo valor de configuración.
 
+## Aclaraciones
+
+### Sesión 2026-11-20
+
+Por indicación de la usuaria, cada pregunta se respondió con la opción recomendada.
+
+- P: ¿Con qué formato se descarga el CSV para que abra bien en Excel en español? → R: Separado por
+  punto y coma, en UTF-8 con marca de orden de bytes (BOM), fin de línea CRLF, montos con punto
+  decimal y fechas AAAA-MM-DD.
+- P: ¿Las pruebas de extremo a extremo pasan a ser un control obligatorio para fusionar? → R: No por
+  ahora. Corren en un flujo propio en cada pull request y en cada push a `main`, y su resultado se ve
+  en el PR; los 5 controles obligatorios no cambian. La usuaria puede volverlas obligatorias después.
+- P: Si la versión nueva no pasa la comprobación de salud, ¿qué se revierte? → R: Solo las imágenes
+  (vuelven las anteriores). Las migraciones ya aplicadas se quedan, por eso deben ser compatibles con
+  la versión anterior (agregar antes de quitar).
+- P: ¿Dónde se guardan las copias de seguridad diarias? → R: En el mismo servidor, en una carpeta
+  fuera de los contenedores con permisos solo del usuario del despliegue, y la guía explica cómo
+  bajar una copia a la computadora de la usuaria al menos una vez por semana. Un almacenamiento
+  externo de pago queda como siguiente paso.
+- P: ¿Cómo leen las pruebas de extremo a extremo el código de identidad simulado? → R: Directamente de
+  la caché del entorno de pruebas desde el ejecutor de las pruebas. El servicio no tiene ningún
+  endpoint para leer códigos, ni en pruebas ni en producción.
+
 ## Escenarios de usuario y pruebas *(obligatorio)*
 
 ### Historia de usuario 1 - Tablero de la jefatura (Prioridad: P1)
@@ -117,8 +140,8 @@ pruebas y ver que terminan con la licencia verificada; romper a propósito un pa
 3. **Dado** que corre en tamaño celular (360 px) y de escritorio, **cuando** termina, **entonces** ambos
    pasan.
 4. **Dado** que el código de verificación de identidad se envía por un canal simulado, **cuando** el
-   recorrido lo necesita, **entonces** lo lee del simulado solo en el entorno de pruebas; en
-   producción ese acceso no existe.
+   recorrido lo necesita, **entonces** lo lee directamente de la caché del entorno de pruebas; el
+   servicio no ofrece ninguna forma de leerlo.
 5. **Dado** un recorrido que falla, **cuando** se revisa el resultado en la integración continua,
    **entonces** hay capturas y registro del paso que falló, y los 5 controles obligatorios no cambian
    de nombre.
@@ -315,9 +338,10 @@ ejecutar el comando de datos de demostración y entrar con cada rol.
 - **FR-009**: Cada fila DEBE tener número (de licencia o de expediente), tipo de licencia, titular
   público abreviado, giro, zona, estado y fecha (emisión, presentación o vencimiento del ITSE, según
   la situación).
-- **FR-010**: El reporte DEBE poder descargarse en CSV con codificación que las hojas de cálculo en
-  español abren con tildes y eñes correctas, con las mismas filas que en pantalla y con los valores
-  escapados para que ninguno se interprete como fórmula.
+- **FR-010**: El reporte DEBE poder descargarse en CSV separado por punto y coma, en UTF-8 con BOM y
+  fin de línea CRLF (para que las hojas de cálculo en español lo abran con tildes y eñes correctas),
+  con fechas AAAA-MM-DD, las mismas filas que en pantalla y los valores escapados para que ninguno se
+  interprete como fórmula.
 - **FR-011**: El reporte DEBE limitarse a 5,000 filas e indicar cuando hay más.
 - **FR-012**: El tablero, el reporte y el CSV NO DEBEN incluir documento, RUC, celular, correo ni
   dirección del titular; el titular se muestra solo con su nombre público abreviado.
@@ -339,10 +363,12 @@ ejecutar el comando de datos de demostración y entrar con cada rol.
   pago en caja, aprobación, licencia emitida y verificación pública por QR) y de la ruta B hasta la
   inspección favorable y la licencia emitida.
 - **FR-017**: Esas pruebas DEBEN correr en tamaño celular y de escritorio, en la integración continua,
-  contra el sistema levantado en el entorno de pruebas, sin cambiar los nombres de los 5 controles
-  obligatorios de la rama principal.
-- **FR-018**: El código de identidad DEBE leerse del canal simulado solo en el entorno de pruebas; el
-  sistema de producción NO DEBE exponer ninguna forma de leerlo.
+  contra el sistema levantado en el entorno de pruebas, en un flujo propio que se ejecuta en cada pull
+  request y en cada push a la rama principal, sin agregarse ni cambiar los nombres de los 5 controles
+  obligatorios.
+- **FR-018**: Las pruebas DEBEN leer el código de identidad directamente de la caché del entorno de
+  pruebas; el servicio NO DEBE tener ningún endpoint para leer códigos, ni en pruebas ni en
+  producción.
 
 **Producción (historias 4 y 5)**
 
@@ -365,7 +391,9 @@ ejecutar el comando de datos de demostración y entrar con cada rol.
 - **FR-024**: Las copias del servicio DEBEN conectarse a la base de datos a través de un concentrador de
   conexiones en modo por transacción, con un tope fijo de conexiones hacia la base.
 - **FR-025**: DEBE hacerse una copia de seguridad comprimida de la base de datos cada día, conservando
-  las de los últimos 7 días, fuera de los contenedores; una copia fallida no borra las anteriores.
+  las de los últimos 7 días en el servidor, fuera de los contenedores y con permisos solo del usuario
+  del despliegue; una copia fallida no borra las anteriores. La guía DEBE explicar cómo bajar una
+  copia a la computadora de la usuaria al menos una vez por semana.
 - **FR-026**: DEBE existir un procedimiento de restauración documentado y probado al menos una vez, con
   el comando y el resultado comparado (cantidad de expedientes, pagos, licencias y auditorías).
 - **FR-027**: Cada contenedor de producción DEBE tener un límite de memoria que en conjunto quepa en un
@@ -394,7 +422,7 @@ ejecutar el comando de datos de demostración y entrar con cada rol.
   entrar al servidor, aplicar las migraciones, actualizar las copias del servicio una a la vez y
   comprobar la salud.
 - **FR-033**: Si la comprobación de salud después del despliegue falla, el flujo DEBE volver a las
-  imágenes anteriores y terminar en rojo.
+  imágenes anteriores y terminar en rojo; las migraciones ya aplicadas se mantienen (por eso FR-035).
 - **FR-034**: Los secretos del despliegue DEBEN guardarse solo en los secretos del repositorio remoto y
   en la configuración del servidor; NO DEBEN aparecer en el repositorio ni en los registros del flujo.
 - **FR-035**: Las migraciones de la base de datos DEBEN ser compatibles con la versión anterior del
