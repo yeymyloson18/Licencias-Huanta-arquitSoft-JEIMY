@@ -2,6 +2,7 @@ import { type SyntheticEvent, useCallback, useEffect, useState } from 'react';
 import { CampoFormulario } from '../../componentes/CampoFormulario';
 import { formatearTasa } from '../../componentes/formato';
 import { GraficoBarras } from '../../componentes/GraficoBarras';
+import { ReporteLicencias } from '../../componentes/ReporteLicencias';
 import { obtenerTablero, type Tablero as DatosTablero } from '../../servicios/clienteApi';
 import { ESTADOS } from './Expedientes';
 
@@ -220,6 +221,8 @@ export function Tablero() {
             </section>
           </>
         )}
+
+        <ReporteLicencias />
       </main>
     </>
   );

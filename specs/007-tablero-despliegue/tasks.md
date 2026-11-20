@@ -143,11 +143,11 @@ una hoja de cálculo.
 
 ### Pruebas de la historia 2
 
-- [ ] T013 [P] [US2] Pruebas unitarias:
+- [X] T013 [P] [US2] Pruebas unitarias:
   - `test-rep/dominio/csv.spec.ts`: BOM, `;`, CRLF, comillas, saltos de línea, `=cmd` → `'=cmd`, tildes;
   - `test-rep/aplicacion/reporte-licencias.spec.ts`: 3 situaciones, límite de 5,000 + truncado,
     caché.
-- [ ] T014 [P] [US2] Prueba de integración `int/reportes-licencias.e2e-spec.ts`:
+- [X] T014 [P] [US2] Prueba de integración `int/reportes-licencias.e2e-spec.ts`:
   - vigentes por giro;
   - en trámite;
   - ITSE por vencer ordenado;
@@ -160,10 +160,10 @@ una hoja de cálculo.
 
 ### Implementación de la historia 2
 
-- [ ] T015 [US2] `rep/dominio/csv.ts`, `rep/aplicacion/reporte-licencias.ts` y
+- [X] T015 [US2] `rep/dominio/csv.ts`, `rep/aplicacion/reporte-licencias.ts` y
   `GET /reportes/licencias` en el controlador (JSON o `text/csv` según `formato`, con la cabecera de
   truncado). Deben pasar T013 y T014.
-- [ ] T016 [P] [US2] Portal:
+- [X] T016 [P] [US2] Portal:
   - sección "Reporte de licencias" en `web/paginas/personal/Tablero.tsx`, con filtros, tabla, aviso de
     truncado y "Descargar CSV";
   - `clienteApi.ts` (`reporteLicencias` y `descargarCsv`);
