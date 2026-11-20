@@ -74,6 +74,27 @@ describe('Menú del personal', () => {
     },
   );
 
+  it.each(['MESA_PARTES', 'EVALUADOR', 'JEFATURA'])('%s ve "Expedientes" (004)', async (rol) => {
+    simularApi(conSesion([rol]));
+    montarEn('/');
+
+    const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+
+    expect(within(menu).getByRole('link', { name: 'Expedientes' })).toHaveAttribute(
+      'href',
+      '/personal/expedientes',
+    );
+  });
+
+  it.each(['CAJA', 'INSPECTOR', 'ADMINISTRADOR'])('%s no ve "Expedientes" (004)', async (rol) => {
+    simularApi(conSesion([rol]));
+    montarEn('/');
+
+    const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+
+    expect(within(menu).queryByRole('link', { name: 'Expedientes' })).not.toBeInTheDocument();
+  });
+
   it('mesa de partes ve "Registrar solicitud" (004)', async () => {
     simularApi(conSesion(['MESA_PARTES']));
     montarEn('/');

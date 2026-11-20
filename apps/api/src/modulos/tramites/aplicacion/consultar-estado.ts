@@ -54,7 +54,7 @@ const aEstadoPublico = (expediente: ExpedienteConsultado): EstadoPublico => {
 export class ConsultarEstado {
   constructor(
     private readonly dependencias: {
-      readonly expedientes: RepositorioExpedientes;
+      readonly expedientes: Pick<RepositorioExpedientes, 'buscarParaConsulta'>;
       readonly limitador: LimitadorConsultas;
     },
   ) {}

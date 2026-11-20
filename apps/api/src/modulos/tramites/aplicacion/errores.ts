@@ -39,3 +39,11 @@ export class ErrorIdentificacionNoDisponible extends Error {
     this.name = 'ErrorIdentificacionNoDisponible';
   }
 }
+
+/** El expediente o el documento no existe, o el documento es de otro expediente (404). */
+export class ErrorExpedienteNoEncontrado extends Error {
+  constructor() {
+    super('Expediente o documento no encontrado');
+    this.name = 'ErrorExpedienteNoEncontrado';
+  }
+}

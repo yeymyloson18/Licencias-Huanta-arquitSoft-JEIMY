@@ -7,6 +7,11 @@ import { REDIS_CLIENTE } from '../../compartido/infraestructura/redis.proveedor'
 import type Redis from 'ioredis';
 import { FachadaCatalogo } from '../catalogo/fachada';
 import { FachadaSeguridad } from '../seguridad/fachada';
+import {
+  DescargarDocumento,
+  ListarExpedientes,
+  ObtenerDetalleExpediente,
+} from './aplicacion/bandeja-expedientes';
 import { ConsultarEstado } from './aplicacion/consultar-estado';
 import { PresentarSolicitud } from './aplicacion/presentar-solicitud';
 import { SubirDocumento } from './aplicacion/subir-documento';
@@ -21,6 +26,7 @@ import { RepositorioExpedientesPostgres } from './infraestructura/repositorio-ex
 import { RepositorioDocumentosTemporalesPostgres } from './infraestructura/repositorio-documentos-temporales-postgres';
 import { UnidadDeTrabajoTramitesPostgres } from './infraestructura/unidad-de-trabajo-tramites-postgres';
 import { VerificadorIdentidadFachada } from './infraestructura/verificador-identidad-fachada';
+import { BandejaController } from './presentacion/bandeja.controller';
 import { ConsultaController } from './presentacion/consulta.controller';
 import { DocumentosController } from './presentacion/documentos.controller';
 import { ExpedientesController } from './presentacion/expedientes.controller';
@@ -34,8 +40,32 @@ const reloj = new RelojSistema();
 
 @Module({
   // `ConsultaController` va antes: `POST expedientes/consultar` es una ruta fija.
-  controllers: [ConsultaController, DocumentosController, ExpedientesController],
+  controllers: [ConsultaController, DocumentosController, ExpedientesController, BandejaController],
   providers: [
+    {
+      provide: ListarExpedientes,
+      inject: [PrismaServicio, PROTECTOR_DATOS],
+      useFactory: (prisma: PrismaServicio, protector: ProtectorDatos) =>
+        new ListarExpedientes(new RepositorioExpedientesPostgres(prisma, protector)),
+    },
+    {
+      provide: ObtenerDetalleExpediente,
+      inject: [PrismaServicio, PROTECTOR_DATOS],
+      useFactory: (prisma: PrismaServicio, protector: ProtectorDatos) =>
+        new ObtenerDetalleExpediente({
+          expedientes: new RepositorioExpedientesPostgres(prisma, protector),
+          reloj,
+        }),
+    },
+    {
+      provide: DescargarDocumento,
+      inject: [PrismaServicio, PROTECTOR_DATOS, ALMACEN_ARCHIVOS],
+      useFactory: (prisma: PrismaServicio, protector: ProtectorDatos, almacen: AlmacenArchivos) =>
+        new DescargarDocumento({
+          expedientes: new RepositorioExpedientesPostgres(prisma, protector),
+          almacen,
+        }),
+    },
     {
       provide: ConsultarEstado,
       inject: [PrismaServicio, PROTECTOR_DATOS, REDIS_CLIENTE],

@@ -3,10 +3,15 @@ import type { PrismaServicio } from '../../../compartido/infraestructura/prisma.
 import { esEstadoExpediente, type EstadoExpediente } from '../dominio/estado-publico';
 import type { NumeroExpediente } from '../dominio/numero-expediente';
 import type {
+  DocumentoGuardado,
   ExpedienteConsultado,
+  ExpedienteDetalle,
+  ExpedienteResumen,
+  FiltroBandeja,
+  PaginaExpedientes,
   RepositorioExpedientes,
 } from '../dominio/puertos/repositorio-expedientes';
-import { aBytes } from './comun-postgres';
+import { aBytes, esUuid } from './comun-postgres';
 
 const comoEstado = (valor: string): EstadoExpediente => {
   if (!esEstadoExpediente(valor)) {
@@ -22,6 +27,55 @@ const comoRuta = (valor: string): 'A' | 'B' | 'C' => {
   }
   return ruta;
 };
+
+const nombreDeReceta = (receta: unknown, codigo: string): string => {
+  const nombre = (receta as { nombre?: unknown } | null)?.nombre;
+  return typeof nombre === 'string' ? nombre : codigo;
+};
+
+const comoCanal = (valor: string): 'EN_LINEA' | 'MESA_PARTES' => {
+  if (valor !== 'EN_LINEA' && valor !== 'MESA_PARTES') {
+    throw new Error('Canal de expediente desconocido en la base');
+  }
+  return valor;
+};
+
+/** Columnas de la fila de la bandeja (sin datos cifrados). */
+const COLUMNAS_RESUMEN = {
+  numero: true,
+  estado: true,
+  ruta: true,
+  codigo_receta: true,
+  receta_al_presentar: true,
+  nombre_titular: true,
+  giro: true,
+  presentado_en: true,
+  vence_plazo_en: true,
+} as const;
+
+interface FilaResumen {
+  readonly numero: string;
+  readonly estado: string;
+  readonly ruta: string;
+  readonly codigo_receta: string;
+  readonly receta_al_presentar: unknown;
+  readonly nombre_titular: string;
+  readonly giro: string;
+  readonly presentado_en: Date;
+  readonly vence_plazo_en: Date | null;
+}
+
+const aResumen = (fila: FilaResumen): ExpedienteResumen => ({
+  numero: fila.numero,
+  estado: comoEstado(fila.estado),
+  ruta: comoRuta(fila.ruta),
+  codigoReceta: fila.codigo_receta,
+  nombreLicencia: nombreDeReceta(fila.receta_al_presentar, fila.codigo_receta),
+  nombreTitular: fila.nombre_titular,
+  giro: fila.giro,
+  presentadoEn: fila.presentado_en,
+  vencePlazoEn: fila.vence_plazo_en,
+});
 
 /**
  * Lecturas de expedientes en PostgreSQL. La consulta pública busca por número y por la huella del
@@ -70,5 +124,114 @@ export class RepositorioExpedientesPostgres implements RepositorioExpedientes {
         ocurridoEn: registro.ocurrido_en,
       })),
     };
+  }
+
+  async listar(filtro: FiltroBandeja): Promise<PaginaExpedientes> {
+    // Índice ix_expediente_estado (estado, vence_plazo_en); orden por fecha de presentación.
+    const donde = {
+      ...(filtro.estado === null ? {} : { estado: filtro.estado }),
+      ...(filtro.ruta === null ? {} : { ruta: filtro.ruta }),
+    };
+    const [total, filas] = await this.prisma.$transaction([
+      this.prisma.expediente.count({ where: donde }),
+      this.prisma.expediente.findMany({
+        where: donde,
+        select: COLUMNAS_RESUMEN,
+        orderBy: [{ presentado_en: 'desc' }, { numero: 'desc' }],
+        skip: (filtro.pagina - 1) * filtro.porPagina,
+        take: filtro.porPagina,
+      }),
+    ]);
+    return { total, datos: filas.map(aResumen) };
+  }
+
+  async obtenerDetalle(
+    numero: NumeroExpediente,
+    lector: { readonly usuarioId: string; readonly en: Date },
+  ): Promise<ExpedienteDetalle | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const fila = await tx.expediente.findUnique({
+        where: { numero: numero.valor },
+        select: {
+          ...COLUMNAS_RESUMEN,
+          version: true,
+          canal: true,
+          documento_cifrado: true,
+          razon_social: true,
+          nombre_comercial: true,
+          direccion_cifrada: true,
+          zona: true,
+          area_m2: true,
+          documento: {
+            select: { id: true, requisito_id: true, nombre_original: true, tipo_mime: true },
+            orderBy: [{ requisito_orden: 'asc' }, { subido_en: 'asc' }],
+          },
+          historial_estado: {
+            select: {
+              estado_anterior: true,
+              estado_nuevo: true,
+              comentario: true,
+              ocurrido_en: true,
+            },
+            orderBy: { ocurrido_en: 'asc' },
+          },
+        },
+      });
+      if (fila === null) {
+        return null;
+      }
+      // Quién vio el detalle y cuándo (FR-036), en la misma transacción que la lectura.
+      await tx.auditoriaTramites.create({
+        data: {
+          usuario_id: lector.usuarioId,
+          accion: 'VER_DETALLE',
+          numero_expediente: fila.numero,
+          ocurrido_en: lector.en,
+        },
+      });
+      return {
+        ...aResumen(fila),
+        version: fila.version,
+        canal: comoCanal(fila.canal),
+        documentoTitular: this.protector.descifrar(fila.documento_cifrado),
+        razonSocial: fila.razon_social,
+        nombreComercial: fila.nombre_comercial,
+        direccion: this.protector.descifrar(fila.direccion_cifrada),
+        zona: fila.zona,
+        areaM2: fila.area_m2 === null ? null : Number(fila.area_m2),
+        documentos: fila.documento.map((documento) => ({
+          id: documento.id,
+          requisitoId: Number(documento.requisito_id),
+          nombreOriginal: documento.nombre_original,
+          tipoMime: documento.tipo_mime,
+        })),
+        historial: fila.historial_estado.map((registro) => ({
+          estadoAnterior: registro.estado_anterior,
+          estadoNuevo: registro.estado_nuevo,
+          comentario: registro.comentario,
+          ocurridoEn: registro.ocurrido_en,
+        })),
+      };
+    });
+  }
+
+  async buscarDocumento(
+    numero: NumeroExpediente,
+    documentoId: string,
+  ): Promise<DocumentoGuardado | null> {
+    if (!esUuid(documentoId)) {
+      return null;
+    }
+    const fila = await this.prisma.documento.findFirst({
+      where: { id: documentoId, expediente: { numero: numero.valor } },
+      select: { clave_almacen: true, nombre_original: true, tipo_mime: true },
+    });
+    return fila === null
+      ? null
+      : {
+          claveAlmacen: fila.clave_almacen,
+          nombreOriginal: fila.nombre_original,
+          tipoMime: fila.tipo_mime,
+        };
   }
 }

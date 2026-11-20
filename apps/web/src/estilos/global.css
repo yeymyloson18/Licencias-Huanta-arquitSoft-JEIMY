@@ -839,3 +839,56 @@ video {
   margin: 0;
   padding-left: 1.25rem;
 }
+
+/* ------------------------------------------------------------ bandeja del personal (004) */
+
+.bandeja__filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--espacio);
+  margin-bottom: var(--espacio);
+}
+
+.bandeja__tarjetas {
+  display: grid;
+  gap: var(--espacio);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bandeja__tarjetas p {
+  margin: 0.25rem 0 0;
+}
+
+.bandeja__numero {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem; /* área táctil cómoda */
+  font-weight: 700;
+}
+
+.bandeja__tabla {
+  display: none;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.bandeja__tabla th,
+.bandeja__tabla td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--color-borde);
+  text-align: left;
+}
+
+/* En pantallas anchas, tabla en lugar de tarjetas. */
+@media (min-width: 48rem) {
+  .bandeja__tarjetas {
+    display: none;
+  }
+
+  .bandeja__tabla {
+    display: table;
+  }
+}

@@ -10,6 +10,8 @@ import { Consulta } from './paginas/Consulta';
 import { Ingresar } from './paginas/Ingresar';
 import { Inicio } from './paginas/Inicio';
 import { Licencia } from './paginas/Licencia';
+import { DetalleExpediente } from './paginas/personal/DetalleExpediente';
+import { Expedientes } from './paginas/personal/Expedientes';
 import { MesaPartes } from './paginas/personal/MesaPartes';
 import { Comprobante } from './paginas/tramite/Comprobante';
 import { Identidad } from './paginas/tramite/Identidad';
@@ -81,6 +83,22 @@ export function RutasAplicacion() {
               element={
                 <RutaProtegida roles={['ADMINISTRADOR']}>
                   <EditarReceta />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/personal/expedientes"
+              element={
+                <RutaProtegida roles={['MESA_PARTES', 'EVALUADOR', 'JEFATURA']}>
+                  <Expedientes />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/personal/expedientes/:numero"
+              element={
+                <RutaProtegida roles={['MESA_PARTES', 'EVALUADOR', 'JEFATURA']}>
+                  <DetalleExpediente />
                 </RutaProtegida>
               }
             />

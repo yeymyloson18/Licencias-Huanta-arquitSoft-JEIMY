@@ -418,18 +418,19 @@ REGISTRADO + ruta B, abrir uno y descargar un documento; CAJA recibe 403.
 
 ### Pruebas de la historia 4 ⚠️
 
-- [ ] T054 [P] [US4] Pruebas unitarias en `test-tra/aplicacion/listar-expedientes.spec.ts`,
+- [X] T054 [P] [US4] Pruebas unitarias en `test-tra/aplicacion/listar-expedientes.spec.ts`,
   `obtener-detalle-expediente.spec.ts` y `descargar-documento.spec.ts`: filtros combinados, orden y
   paginación (`porPagina` 1 a 50); el detalle enmascara el documento (`4*****21`) y registra
   `VER_DETALLE`; documento de otro expediente → no encontrado
-- [ ] T055 [P] [US4] Prueba de integración `int/bandeja-expedientes.e2e-spec.ts`: con 5 expedientes
+  _Nota de implementación:_ las pruebas de los tres casos de uso quedaron en un solo archivo, `test-tra/aplicacion/bandeja-expedientes.spec.ts` (comparten el repositorio en memoria), e incluyen `enmascararDocumento`.
+- [X] T055 [P] [US4] Prueba de integración `int/bandeja-expedientes.e2e-spec.ts`: con 5 expedientes
   sembrados, EVALUADOR filtra `estado=REGISTRADO&ruta=B` → solo los que cumplen, del más reciente al
   más antiguo, con `Cache-Control: no-store`; `asignadosAMi=true` o `vencenAntesDe` → 422; detalle →
   200 `Expediente` con la dirección para los tres roles (la consulta pública no la muestra) y una fila
   `VER_DETALLE`; descarga → 200 con `Content-Disposition: attachment`,
   `X-Content-Type-Options: nosniff` y el mismo SHA-256 del archivo subido; documento de otro
   expediente → 404
-- [ ] T056 [P] [US4] Prueba de integración `int/matriz-permisos-tramites.e2e-spec.ts`: para
+- [X] T056 [P] [US4] Prueba de integración `int/matriz-permisos-tramites.e2e-spec.ts`: para
   `listarExpedientes`, `obtenerExpediente` y `descargarDocumento` → sin sesión 401; INSPECTOR, CAJA y
   ADMINISTRADOR 403; MESA_PARTES, EVALUADOR y JEFATURA 200. Para `subirDocumento` y
   `presentarSolicitud` → sin token 401; roles distintos de MESA_PARTES 403. Ningún 401/403 cambia
@@ -437,21 +438,25 @@ REGISTRADO + ruta B, abrir uno y descargar un documento; CAJA recibe 403.
 
 ### Implementación de la historia 4
 
-- [ ] T057 [US4] Crear `tra/aplicacion/listar-expedientes.ts`, `obtener-detalle-expediente.ts` y
+- [X] T057 [US4] Crear `tra/aplicacion/listar-expedientes.ts`, `obtener-detalle-expediente.ts` y
   `descargar-documento.ts` con sus lecturas en `repositorio-expedientes-postgres.ts` (índice
   `ix_expediente_estado`; descifra la dirección y enmascara el documento) y la auditoría
   `VER_DETALLE` en la misma operación. Deben pasar T054
-- [ ] T058 [US4] Agregar a `tra/presentacion/expedientes.controller.ts` `GET expedientes`, `GET
+  _Nota de implementación:_ los tres casos de uso viven en `tra/aplicacion/bandeja-expedientes.ts`; el enmascarado es una función del dominio (`dominio/enmascarar-documento.ts`). Cada caso de uso depende solo del método del repositorio que usa (`Pick<RepositorioExpedientes, …>`), también `ConsultarEstado`. `obtenerDetalle` lee y registra `VER_DETALLE` en una sola transacción; un número inexistente no registra nada.
+- [X] T058 [US4] Agregar a `tra/presentacion/expedientes.controller.ts` `GET expedientes`, `GET
   expedientes/:numeroExpediente` y `GET expedientes/:numeroExpediente/documentos/:documentoId` con
   `@RequiereRoles('MESA_PARTES', 'EVALUADOR', 'JEFATURA')`, zod para los filtros, `Cache-Control:
   no-store` y la descarga con `StreamableFile`. Deben pasar T055 y T056
-- [ ] T059 [P] [US4] Agregar `listarExpedientes`, `obtenerExpediente` y la URL de descarga a
+  _Nota de implementación:_ los tres GET están en un controlador propio, `tra/presentacion/bandeja.controller.ts` (misma ruta `expedientes`), para no mezclar la presentación de solicitudes con la lectura del personal. Un número con formato inválido o un id de documento que no es UUID responden 404. El `Content-Disposition` lleva un nombre ASCII de respaldo y el nombre real en `filename*` (RFC 6266). Las filas incluyen `nombreLicencia` (el esquema `ExpedienteResumen` lo admite).
+- [X] T059 [P] [US4] Agregar `listarExpedientes`, `obtenerExpediente` y la URL de descarga a
   `web/servicios/clienteApi.ts`
-- [ ] T060 [US4] Pruebas y páginas `web/paginas/personal/Expedientes.tsx` (tarjetas en el celular,
+  _Nota de implementación:_ además de `urlDocumento`, se agregó `descargarDocumentoExpediente`: el token del personal vive en memoria, así que un enlace directo no lleva la sesión; la página descarga el archivo con `fetch` y lo guarda con su nombre.
+- [X] T060 [US4] Pruebas y páginas `web/paginas/personal/Expedientes.tsx` (tarjetas en el celular,
   tabla en pantallas anchas, filtros en la URL, paginación) y `web/paginas/personal/DetalleExpediente.tsx`
   (datos, historial y documentos con descarga), con sus `.test.tsx`; rutas con `<RutaProtegida
   roles={['MESA_PARTES', 'EVALUADOR', 'JEFATURA']}>` en `web/Aplicacion.tsx` y opción "Expedientes"
   en `web/componentes/Menu.tsx` para esos roles (actualizar `Menu.test.tsx`)
+  _Nota de implementación:_ los filtros usan un grupo `role="search"` con un botón, no un `<form>`: react-router navega dentro de una transición y React 19 intenta armar un `FormData` del envío, lo que falla en jsdom. Las tarjetas y la tabla se muestran según el ancho con CSS (`@media (min-width: 48rem)`).
 
 **Punto de control**: las cuatro historias funcionan de forma independiente.
 

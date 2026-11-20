@@ -24,7 +24,7 @@ const EXPEDIENTE: ExpedienteConsultado = {
 };
 
 /** Coincide si el documento es el DNI o el RUC del titular ficticio. */
-class ExpedientesEnMemoria implements RepositorioExpedientes {
+class ExpedientesEnMemoria implements Pick<RepositorioExpedientes, 'buscarParaConsulta'> {
   readonly busquedas: { numero: string; documento: string }[] = [];
 
   buscarParaConsulta(numero: NumeroExpediente, documento: string) {

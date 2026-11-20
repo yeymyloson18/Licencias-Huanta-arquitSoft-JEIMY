@@ -15,6 +15,11 @@ export type NuevaSolicitud = components['schemas']['NuevaSolicitud'];
 export type ExpedienteRegistrado = components['schemas']['ExpedienteRegistrado'];
 export type IdentidadSolicitud = components['schemas']['SolicitudVerificacionIdentidad'];
 export type EstadoPublico = components['schemas']['EstadoPublico'];
+export type ExpedienteResumen = components['schemas']['ExpedienteResumen'] & {
+  readonly nombreLicencia?: string;
+};
+export type Expediente = components['schemas']['Expediente'] & { readonly nombreLicencia?: string };
+export type EstadoExpediente = components['schemas']['EstadoExpediente'];
 export type { SesionPersonal };
 
 const TIEMPO_LIMITE_MS = 10_000;
@@ -609,6 +614,88 @@ export const registrarSolicitudPresencial = async (
         return tipoDeProblema(error) === 'identificacion-no-disponible'
           ? { tipo: 'servicio-caido' }
           : { tipo: 'no-disponible' };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+// ----------------------------------------------------------------- bandeja del personal (004)
+
+export interface FiltroBandeja {
+  readonly estado?: EstadoExpediente;
+  readonly ruta?: 'A' | 'B' | 'C';
+  readonly pagina?: number;
+  readonly porPagina?: number;
+}
+
+export interface PaginaExpedientes {
+  readonly pagina: number;
+  readonly porPagina: number;
+  readonly total: number;
+  readonly datos: readonly ExpedienteResumen[];
+}
+
+/** Bandeja de MESA_PARTES, EVALUADOR y JEFATURA (los filtros no son datos personales). */
+export const listarExpedientes = (filtro: FiltroBandeja) =>
+  ejecutarOperacion<PaginaExpedientes>(async () => {
+    const respuesta = await cliente.GET('/expedientes', { params: { query: filtro } });
+    return { ...respuesta, data: respuesta.data as PaginaExpedientes | undefined };
+  });
+
+/** Detalle del expediente (la API registra quién lo vio). */
+export const obtenerExpediente = (numero: string) =>
+  ejecutarOperacion<Expediente>(() =>
+    cliente.GET('/expedientes/{numeroExpediente}', {
+      params: { path: { numeroExpediente: numero } },
+    }),
+  );
+
+/** Ruta de la API de un documento del expediente (la descarga necesita la sesión). */
+export const urlDocumento = (numero: string, documentoId: string): string =>
+  new URL(
+    `/api/v1/expedientes/${encodeURIComponent(numero)}/documentos/${encodeURIComponent(documentoId)}`,
+    window.location.origin,
+  ).href;
+
+export type ResultadoDescarga =
+  | { readonly tipo: 'ok'; readonly archivo: Blob }
+  | { readonly tipo: 'no-encontrado' }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' };
+
+/**
+ * Descarga un documento con el token de la sesión (que vive en memoria, por eso no sirve un enlace
+ * directo). Ante un 401 renueva la sesión una vez.
+ */
+export const descargarDocumentoExpediente = async (
+  numero: string,
+  documentoId: string,
+): Promise<ResultadoDescarga> => {
+  const pedir = () => {
+    const token = obtenerToken();
+    return globalThis.fetch(
+      new Request(urlDocumento(numero, documentoId), {
+        headers: token === null ? {} : { Authorization: `Bearer ${token}` },
+      }),
+    );
+  };
+  try {
+    let respuesta = await pedir();
+    if (respuesta.status === 401 && (await renovarSesion())) {
+      respuesta = await pedir();
+    }
+    if (respuesta.ok) {
+      return { tipo: 'ok', archivo: await respuesta.blob() };
+    }
+    switch (respuesta.status) {
+      case 404:
+        return { tipo: 'no-encontrado' };
+      case 401:
+      case 403:
+        return { tipo: 'sin-permiso' };
       default:
         return { tipo: 'no-disponible' };
     }
