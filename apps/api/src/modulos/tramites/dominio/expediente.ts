@@ -63,8 +63,8 @@ export interface Expediente {
   /** En línea, la verificación de identidad usada (una sola vez); en mesa de partes, `null`. */
   readonly verificacionId: string | null;
   readonly historial: readonly RegistroHistorial[];
-  /** Vacío hasta la funcionalidad 008 (FR-022). */
-  readonly vencePlazoEn: null;
+  /** Vencimiento en días hábiles del plazo de la receta (006); `null` si la receta no tiene plazo. */
+  readonly vencePlazoEn: string | null;
 }
 
 /** Área máxima de la licencia provisional para bodegas (FR-015). */
@@ -154,6 +154,8 @@ export interface DatosNuevoExpediente {
   readonly presentadoEn: Date;
   readonly registradoPor: string | null;
   readonly verificacionId: string | null;
+  /** Calculado con los días hábiles del plazo de la receta (006). */
+  readonly vencePlazoEn?: string | null;
 }
 
 const limpiar = (texto: string | null): string | null => {
@@ -214,7 +216,7 @@ export const crearExpediente = (datos: DatosNuevoExpediente): Expediente => {
         ocurridoEn: datos.presentadoEn,
       },
     ],
-    vencePlazoEn: null,
+    vencePlazoEn: datos.vencePlazoEn ?? null,
   };
   return Object.freeze(expediente);
 };

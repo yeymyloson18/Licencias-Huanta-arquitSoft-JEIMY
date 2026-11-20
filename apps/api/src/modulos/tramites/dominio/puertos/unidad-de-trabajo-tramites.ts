@@ -10,6 +10,8 @@ export interface ExpedienteRegistrado {
   readonly nombreLicencia: string;
   readonly canal: Canal;
   readonly presentadoEn: Date;
+  /** `AAAA-MM-DD` o `null` (006). */
+  readonly vencePlazoEn: string | null;
 }
 
 export interface PresentacionExistente {

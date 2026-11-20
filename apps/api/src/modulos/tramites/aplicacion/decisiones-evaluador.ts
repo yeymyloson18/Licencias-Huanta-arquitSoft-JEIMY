@@ -1,4 +1,7 @@
+import { comoFechaBase, fechaLima } from '../../../compartido/dominio/fecha-lima';
 import { ErrorValidacionSolicitud } from '../dominio/errores';
+import type { PlazosHabiles } from '../dominio/puertos/plazos-habiles';
+import { DIAS_PARA_SUBSANAR, suspenderPlazo } from './plazo-expediente';
 import type { EstadoExpediente } from '../dominio/estado-publico';
 import { mismoGrupo } from '../dominio/grupo-licencia';
 import {
@@ -25,6 +28,8 @@ import { ErrorExpedienteNoEncontrado, ErrorVersionCambiada, ErrorYaObservado } f
 export interface DependenciasDecisiones {
   readonly decisiones: RepositorioDecisiones;
   readonly reloj: Reloj;
+  /** Días hábiles (006); sin él, las decisiones no tocan el plazo. */
+  readonly plazos?: PlazosHabiles;
 }
 
 /** Quién decide y sobre qué versión del expediente (cabecera `If-Match`). */
@@ -57,6 +62,11 @@ abstract class DecisionEvaluador {
       throw new ErrorVersionCambiada();
     }
     return expediente;
+  }
+
+  /** Hoy en Lima (`AAAA-MM-DD`). */
+  protected hoy(): string {
+    return fechaLima(this.d.reloj.ahora());
   }
 
   /** Guarda la decisión; si otro cambio ganó, explica si cambió el estado (409) o la versión (412). */
@@ -172,6 +182,11 @@ export class ConfirmarRiesgo extends DecisionEvaluador {
       });
     }
     const comentario = tasa > 0 ? decisor.comentario : 'Sin pago: tasa 0.00';
+    // Mientras espera el pago, el plazo se suspende (aclaración de la 006).
+    const plazo =
+      nuevo === 'PENDIENTE_PAGO'
+        ? await suspenderPlazo(this.d.plazos, expediente.vencePlazoEn, this.hoy())
+        : {};
     await this.guardar(
       {
         ...this.base(expediente, decisor, nuevo),
@@ -187,6 +202,7 @@ export class ConfirmarRiesgo extends DecisionEvaluador {
           ruta: destino.ruta,
           nivelRiesgoPropuesto: actual?.nivelRiesgo ?? null,
           nivelRiesgoConfirmado: destino.nivelRiesgo,
+          ...plazo,
         },
         eventos,
       },
@@ -206,12 +222,20 @@ export class ObservarExpediente extends DecisionEvaluador {
       throw new ErrorYaObservado();
     }
     const nuevo = siguienteEstado(expediente.estado, expediente.ruta, 'OBSERVAR');
+    // 006: el plazo para subsanar son 2 días hábiles y el plazo del expediente se suspende.
+    const hoy = this.hoy();
+    const plazoSubsanarEn =
+      this.d.plazos === undefined
+        ? decisor.plazoSubsanarEn
+        : comoFechaBase(await this.d.plazos.sumarDiasHabiles(hoy, DIAS_PARA_SUBSANAR));
+    const plazo = await suspenderPlazo(this.d.plazos, expediente.vencePlazoEn, hoy);
     await this.guardar(
       {
         ...this.base(expediente, decisor, nuevo),
         comentario: 'Observado por el evaluador',
         auditoria: { accion: 'OBSERVAR', detalle: null },
-        observacion: { descripcion, plazoSubsanarEn: decisor.plazoSubsanarEn },
+        observacion: { descripcion, plazoSubsanarEn },
+        cambios: plazo,
         eventos: [eventoCambioEstado(expediente.numero, expediente.estado, nuevo)],
       },
       'OBSERVAR',

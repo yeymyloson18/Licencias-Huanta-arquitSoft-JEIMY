@@ -1,3 +1,4 @@
+import { comoFechaBase } from '../../../compartido/dominio/fecha-lima';
 import type { ProtectorDatos } from '../../../compartido/dominio/protector-datos';
 import type { PrismaServicio } from '../../../compartido/infraestructura/prisma.servicio';
 import { esEstadoExpediente } from '../dominio/estado-publico';
@@ -45,6 +46,7 @@ export class RepositorioSubsanacionPostgres implements RepositorioSubsanacion {
         canal: true,
         presentado_en: true,
         vence_plazo_en: true,
+        plazo_restante_dias: true,
         receta_al_presentar: true,
       },
     });
@@ -66,6 +68,7 @@ export class RepositorioSubsanacionPostgres implements RepositorioSubsanacion {
       canal: fila.canal === 'MESA_PARTES' ? 'MESA_PARTES' : 'EN_LINEA',
       presentadoEn: fila.presentado_en,
       vencePlazoEn: fila.vence_plazo_en,
+      plazoRestanteDias: fila.plazo_restante_dias,
       requisitos: (receta.requisitos ?? []).flatMap((requisito) =>
         typeof requisito.id === 'number' && typeof requisito.orden === 'number'
           ? [{ id: requisito.id, orden: requisito.orden }]
@@ -89,7 +92,18 @@ export class RepositorioSubsanacionPostgres implements RepositorioSubsanacion {
       return await this.prisma.$transaction(async (tx) => {
         const { count } = await tx.expediente.updateMany({
           where: { id: datos.expedienteId, estado: 'OBSERVADO', version: datos.versionEsperada },
-          data: { estado: 'EN_EVALUACION', version: { increment: 1 }, actualizado_en: datos.en },
+          data: {
+            estado: 'EN_EVALUACION',
+            version: { increment: 1 },
+            actualizado_en: datos.en,
+            ...(datos.vencePlazoEn === undefined
+              ? {}
+              : {
+                  vence_plazo_en:
+                    datos.vencePlazoEn === null ? null : comoFechaBase(datos.vencePlazoEn),
+                  plazo_restante_dias: null,
+                }),
+          },
         });
         if (count === 0) {
           return 'CAMBIO' as const;

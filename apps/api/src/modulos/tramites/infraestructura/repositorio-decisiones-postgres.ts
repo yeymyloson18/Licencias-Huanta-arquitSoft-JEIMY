@@ -1,3 +1,4 @@
+import { comoFechaBase, deFechaBase } from '../../../compartido/dominio/fecha-lima';
 import type { PrismaServicio } from '../../../compartido/infraestructura/prisma.servicio';
 import { esEstadoExpediente } from '../dominio/estado-publico';
 import type { Ruta } from '../dominio/maquina-estados';
@@ -34,6 +35,8 @@ export class RepositorioDecisionesPostgres implements RepositorioDecisiones {
         ruta: true,
         codigo_receta: true,
         version: true,
+        vence_plazo_en: true,
+        plazo_restante_dias: true,
         _count: { select: { observacion: true } },
       },
     });
@@ -51,6 +54,8 @@ export class RepositorioDecisionesPostgres implements RepositorioDecisiones {
       codigoReceta: fila.codigo_receta,
       version: fila.version,
       yaObservado: fila._count.observacion > 0,
+      vencePlazoEn: fila.vence_plazo_en === null ? null : deFechaBase(fila.vence_plazo_en),
+      plazoRestanteDias: fila.plazo_restante_dias,
     };
   }
 
@@ -76,6 +81,15 @@ export class RepositorioDecisionesPostgres implements RepositorioDecisiones {
             ? {}
             : { nivel_riesgo_confirmado: cambios.nivelRiesgoConfirmado }),
           ...(cambios.evaluadorId === undefined ? {} : { evaluador_id: cambios.evaluadorId }),
+          ...(cambios.vencePlazoEn === undefined
+            ? {}
+            : {
+                vence_plazo_en:
+                  cambios.vencePlazoEn === null ? null : comoFechaBase(cambios.vencePlazoEn),
+              }),
+          ...(cambios.plazoRestanteDias === undefined
+            ? {}
+            : { plazo_restante_dias: cambios.plazoRestanteDias }),
         },
       });
       if (count === 0) {

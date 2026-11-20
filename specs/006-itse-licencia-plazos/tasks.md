@@ -169,26 +169,26 @@ viernes; observar y subsanar corre el vencimiento.
 
 ### Pruebas de la historia 3 ⚠️
 
-- [ ] T027 [P] [US3] Pruebas unitarias `test-pla/dominio/calendario-habil.spec.ts` (fines de semana,
+- [X] T027 [P] [US3] Pruebas unitarias `test-pla/dominio/calendario-habil.spec.ts` (fines de semana,
   feriados, cruce de año, fines de semana largos, restantes negativos y cero) y
   `test-pla/aplicacion/feriados.spec.ts` (fecha repetida, descripción de 1 a 150, alcance válido)
-- [ ] T028 [P] [US3] Pruebas unitarias en `test-tra/aplicacion/` del vencimiento al presentar (plazo
+- [X] T028 [P] [US3] Pruebas unitarias en `test-tra/aplicacion/` del vencimiento al presentar (plazo
   NULL o 0 sin vencimiento), la suspensión al observar y al pasar a PENDIENTE_PAGO, la reanudación al
   subsanar y al pagar, el plazo para subsanar de 2 días hábiles y `completar-vencimientos` idempotente
-- [ ] T029 [P] [US3] Prueba de integración `int/feriados-plazos.e2e-spec.ts`: CRUD de feriados (ADMIN
+- [X] T029 [P] [US3] Prueba de integración `int/feriados-plazos.e2e-spec.ts`: CRUD de feriados (ADMIN
   201/204, repetido 409, otro rol 403, listar con cualquier sesión), los 16 de 2026 sembrados, y el
   vencimiento real de un expediente presentado y observado
 
 ### Implementación de la historia 3
 
-- [ ] T030 [US3] `pla/dominio/calendario-habil.ts`, `feriado.ts` y puertos; `pla/aplicacion/feriados.ts`;
+- [X] T030 [US3] `pla/dominio/calendario-habil.ts`, `feriado.ts` y puertos; `pla/aplicacion/feriados.ts`;
   `pla/fachada.ts` `sumarDiasHabiles` y `diasHabilesRestantes`. Deben pasar T027
-- [ ] T031 [US3] `pla/infraestructura/repositorio-feriados-postgres.ts` y
+- [X] T031 [US3] `pla/infraestructura/repositorio-feriados-postgres.ts` y
   `pla/presentacion/feriados.controller.ts` (`GET/POST /feriados`, `DELETE /feriados/{fecha}`)
-- [ ] T032 [US3] `tra/`: puerto `PlazosHabiles` con adaptador sobre `FachadaPlazos`; vencimiento en
+- [X] T032 [US3] `tra/`: puerto `PlazosHabiles` con adaptador sobre `FachadaPlazos`; vencimiento en
   `PresentarSolicitud`; suspensión y reanudación en observar, subsanar, confirmar riesgo y aplicar pago;
   `plazo_subsanar_en` calculado; `completar-vencimientos.ts` al arrancar. Deben pasar T028 y T029
-- [ ] T033 [US3] Portal: `web/paginas/admin/Feriados.tsx` (año, lista, registrar y eliminar con
+- [X] T033 [US3] Portal: `web/paginas/admin/Feriados.tsx` (año, lista, registrar y eliminar con
   confirmación en la página), ruta, menú "Feriados" y pruebas
 
 **Punto de control**: los plazos se cuentan en días hábiles.

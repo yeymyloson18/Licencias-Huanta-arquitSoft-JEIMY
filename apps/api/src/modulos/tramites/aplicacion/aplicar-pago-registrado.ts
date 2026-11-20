@@ -1,4 +1,7 @@
+import { fechaLima } from '../../../compartido/dominio/fecha-lima';
 import { siguienteEstado } from '../dominio/maquina-estados';
+import type { PlazosHabiles } from '../dominio/puertos/plazos-habiles';
+import { reanudarPlazo } from './plazo-expediente';
 import type { Reloj } from '../dominio/puertos/reloj';
 import type { RepositorioDecisiones } from '../dominio/puertos/repositorio-decisiones';
 
@@ -19,7 +22,12 @@ export type ResultadoPagoAplicado = 'APLICADO' | 'YA_APLICADO';
  */
 export class AplicarPagoRegistrado {
   constructor(
-    private readonly d: { readonly decisiones: RepositorioDecisiones; readonly reloj: Reloj },
+    private readonly d: {
+      readonly decisiones: RepositorioDecisiones;
+      readonly reloj: Reloj;
+      /** Días hábiles (006): al pagar se reanuda el plazo suspendido. */
+      readonly plazos?: PlazosHabiles;
+    },
   ) {}
 
   async ejecutar(evento: { readonly numeroExpediente: string }): Promise<ResultadoPagoAplicado> {
@@ -45,6 +53,8 @@ export class AplicarPagoRegistrado {
         : null;
       const pasos = segundo === null ? [primero] : [primero, segundo];
       const final = segundo ?? primero;
+      const en = this.d.reloj.ahora();
+      const plazo = await reanudarPlazo(this.d.plazos, expediente.plazoRestanteDias, fechaLima(en));
       const aplicado = await this.d.decisiones.aplicar({
         expedienteId: expediente.id,
         numero: expediente.numero,
@@ -55,6 +65,7 @@ export class AplicarPagoRegistrado {
         comentario: final.comentario,
         auditoria: null,
         historial: pasos,
+        cambios: plazo,
         eventos: [
           ...pasos.map((paso) => ({
             tipo: 'EstadoExpedienteCambiado',
@@ -73,7 +84,7 @@ export class AplicarPagoRegistrado {
               ]
             : []),
         ],
-        en: this.d.reloj.ahora(),
+        en,
       });
       if (aplicado) {
         return 'APLICADO';

@@ -211,7 +211,12 @@ describe('Evaluación del expediente (historia 1 de la 005)', () => {
     expect(observado.body).toMatchObject({
       estado: 'OBSERVADO',
       observaciones: [
-        { descripcion: 'Falta el croquis de ubicación', plazoSubsanarEn: null, subsanadaEn: null },
+        {
+          descripcion: 'Falta el croquis de ubicación',
+          // 006: 2 días hábiles para subsanar.
+          plazoSubsanarEn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) as unknown,
+          subsanadaEn: null,
+        },
       ],
     });
 

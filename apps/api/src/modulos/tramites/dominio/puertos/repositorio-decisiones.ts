@@ -12,6 +12,9 @@ export interface ExpedienteParaDecidir {
   readonly version: number;
   /** Ya tiene una observación (el TUPA permite una sola). */
   readonly yaObservado: boolean;
+  /** Vencimiento del plazo (`AAAA-MM-DD`) y días que quedaban si está suspendido (006). */
+  readonly vencePlazoEn?: string | null;
+  readonly plazoRestanteDias?: number | null;
 }
 
 export type AccionAuditoriaTramites =
@@ -50,6 +53,9 @@ export interface Decision {
     readonly nivelRiesgoPropuesto?: NivelRiesgo | null;
     readonly nivelRiesgoConfirmado?: NivelRiesgo | null;
     readonly evaluadorId?: string;
+    /** Plazo en días hábiles (006): `null` borra; sin el campo, no cambia. */
+    readonly vencePlazoEn?: string | null;
+    readonly plazoRestanteDias?: number | null;
   };
   readonly observacion?: { readonly descripcion: string; readonly plazoSubsanarEn: Date | null };
   /**

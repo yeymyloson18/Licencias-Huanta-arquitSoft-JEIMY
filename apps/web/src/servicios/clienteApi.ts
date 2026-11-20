@@ -1319,3 +1319,63 @@ export const registrarResultadoInspeccion = async (
     return { tipo: 'no-disponible' };
   }
 };
+
+// ----------------------------------------------------------------- feriados (006)
+
+export type Feriado = components['schemas']['Feriado'];
+
+/** Feriados de un año (cualquier sesión del personal). `null` si no se pudieron leer. */
+export const listarFeriados = async (anio: number): Promise<readonly Feriado[] | null> => {
+  try {
+    const { data } = await cliente.GET('/feriados', { params: { query: { anio } } });
+    return data ?? null;
+  } catch {
+    return null;
+  }
+};
+
+export type ResultadoFeriado =
+  | { readonly tipo: 'ok' }
+  | { readonly tipo: 'invalido'; readonly mensaje: string }
+  | { readonly tipo: 'repetido' }
+  | { readonly tipo: 'no-encontrado' }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' };
+
+const resultadoFeriado = (status: number, error: unknown): ResultadoFeriado => {
+  switch (status) {
+    case 422:
+      return { tipo: 'invalido', mensaje: erroresDe(error)[0]?.mensaje ?? 'Revisa los datos.' };
+    case 409:
+      return { tipo: 'repetido' };
+    case 404:
+      return { tipo: 'no-encontrado' };
+    case 401:
+    case 403:
+      return { tipo: 'sin-permiso' };
+    default:
+      return { tipo: 'no-disponible' };
+  }
+};
+
+/** Registra un feriado (rol ADMINISTRADOR). */
+export const registrarFeriado = async (feriado: Feriado): Promise<ResultadoFeriado> => {
+  try {
+    const { error, response } = await cliente.POST('/feriados', { body: feriado });
+    return response.ok ? { tipo: 'ok' } : resultadoFeriado(response.status, error);
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** Elimina un feriado registrado por error (rol ADMINISTRADOR). */
+export const eliminarFeriado = async (fecha: string): Promise<ResultadoFeriado> => {
+  try {
+    const { error, response } = await cliente.DELETE('/feriados/{fecha}', {
+      params: { path: { fecha } },
+    });
+    return response.ok ? { tipo: 'ok' } : resultadoFeriado(response.status, error);
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};

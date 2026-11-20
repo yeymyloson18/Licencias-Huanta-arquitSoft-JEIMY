@@ -1,3 +1,4 @@
+import { comoFechaBase, deFechaBase } from '../../../compartido/dominio/fecha-lima';
 import { Prisma } from '@prisma/client';
 import type { ProtectorDatos } from '../../../compartido/dominio/protector-datos';
 import type { PrismaServicio } from '../../../compartido/infraestructura/prisma.servicio';
@@ -29,6 +30,7 @@ interface FilaExpedienteRegistrado {
   readonly codigo_receta: string;
   readonly canal: string;
   readonly presentado_en: Date;
+  readonly vence_plazo_en: Date | null;
   readonly receta_al_presentar: Prisma.JsonValue;
 }
 
@@ -46,6 +48,7 @@ const aRegistrado = (fila: FilaExpedienteRegistrado): ExpedienteRegistrado => {
     nombreLicencia: typeof receta?.nombre === 'string' ? receta.nombre : fila.codigo_receta,
     canal: fila.canal,
     presentadoEn: fila.presentado_en,
+    vencePlazoEn: fila.vence_plazo_en === null ? null : deFechaBase(fila.vence_plazo_en),
   };
 };
 
@@ -174,7 +177,8 @@ export class UnidadDeTrabajoTramitesPostgres implements UnidadDeTrabajoTramites 
             ? null
             : new Prisma.Decimal(establecimiento.areaM2.toFixed(2)),
         presentado_en: expediente.presentadoEn,
-        vence_plazo_en: null,
+        vence_plazo_en:
+          expediente.vencePlazoEn === null ? null : comoFechaBase(expediente.vencePlazoEn),
         registrado_por: expediente.registradoPor,
         verificacion_id: expediente.verificacionId,
         receta_al_presentar: expediente.receta as unknown as Prisma.InputJsonObject,

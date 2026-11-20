@@ -1,7 +1,12 @@
 // Fachada pública del módulo Trámites: la ÚNICA entrada que otros módulos pueden importar
 // (constitución, principio I; regla de dependencia "aislamiento-entre-modulos").
 
+import {
+  type CompletarVencimientos,
+  ESTADOS_PLAZO_CORRIENDO,
+} from './aplicacion/completar-vencimientos';
 import type { EstadoExpediente } from './dominio/estado-publico';
+import type { RepositorioVencimientos } from './dominio/puertos/repositorio-vencimientos';
 import type { LectorParaCaja } from './dominio/puertos/lector-para-caja';
 import type { DatosParaLicencia, LectorParaModulos } from './dominio/puertos/lector-para-modulos';
 
@@ -13,7 +18,30 @@ export class FachadaTramites {
   constructor(
     private readonly lector: LectorParaCaja,
     private readonly lectorModulos?: LectorParaModulos,
+    private readonly plazos?: {
+      readonly completar: CompletarVencimientos;
+      readonly vencimientos: Pick<RepositorioVencimientos, 'conPlazo'>;
+    },
   ) {}
+
+  /**
+   * Completa el vencimiento de los expedientes presentados antes de la 006 (FR-026). Idempotente; lo
+   * llama el reloj de plazos. Devuelve cuántos completó.
+   */
+  completarVencimientos(): Promise<number> {
+    return this.plazosDeTramites().completar.ejecutar();
+  }
+
+  /** Expedientes cuyo plazo corre (la Municipalidad debe actuar), para el reloj de plazos (FR-028). */
+  expedientesConPlazo(): Promise<
+    readonly {
+      readonly numero: string;
+      readonly estado: EstadoExpediente;
+      readonly vencePlazoEn: string;
+    }[]
+  > {
+    return this.plazosDeTramites().vencimientos.conPlazo(ESTADOS_PLAZO_CORRIENDO);
+  }
 
   /** Estado del expediente para decidir si se puede pagar su esquela (FR-024 de la 005). */
   async estadoParaPago(numeroExpediente: string): Promise<EstadoExpediente | null> {
@@ -38,6 +66,13 @@ export class FachadaTramites {
    */
   direccionDelLocal(numeroExpediente: string): Promise<string | null> {
     return this.modulos().direccionDelLocal(numeroExpediente);
+  }
+
+  private plazosDeTramites() {
+    if (this.plazos === undefined) {
+      throw new Error('La fachada de Trámites no tiene los plazos');
+    }
+    return this.plazos;
   }
 
   private modulos(): LectorParaModulos {

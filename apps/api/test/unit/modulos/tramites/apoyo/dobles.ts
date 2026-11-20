@@ -185,6 +185,7 @@ export class UnidadDeTrabajoFalsa implements UnidadDeTrabajoTramites {
       nombreLicencia: expediente.receta.nombre,
       canal: expediente.canal,
       presentadoEn: expediente.presentadoEn,
+      vencePlazoEn: expediente.vencePlazoEn,
     };
     this.claves.set(solicitud.claveIdempotencia, {
       huellaCuerpo: solicitud.huellaCuerpo,
