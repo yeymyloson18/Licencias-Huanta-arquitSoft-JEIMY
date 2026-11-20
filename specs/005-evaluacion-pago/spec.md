@@ -35,8 +35,14 @@ Por indicación de la usuaria, cada pregunta se respondió con la opción recome
   un requisito de la receta que el expediente guardó al presentar, igual que en la 004.
 - P: ¿Qué evaluador puede decidir sobre un expediente? → R: Cualquier usuario con rol EVALUADOR;
   queda registrado quién empezó la revisión. La asignación a una persona es de la funcionalidad 006.
-- P: ¿Qué formato tiene el número de recibo? → R: De 1 a 30 caracteres (letras, números y guiones);
-  se guarda en mayúsculas y sin espacios.
+- P: ¿Qué formato tiene el número de recibo? → R: De 4 a 30 caracteres (letras mayúsculas, números y
+  guiones), como ya declara el contrato del proyecto; se normaliza a mayúsculas y sin espacios antes
+  de validarlo. (La respuesta recomendada decía "de 1 a 30"; se ajustó al contrato durante el plan.)
+- P (plan): ¿La esquela se genera en la misma operación que confirma el riesgo? → R: No en la misma
+  transacción: el módulo de trámites cambia el estado y deja la solicitud de esquela en la cola de
+  eventos en una sola operación, y el módulo de pagos genera la esquela en pocos segundos. Así cada
+  módulo escribe solo sus propios datos (constitución, principios I y III). Mientras tanto, la
+  descarga del PDF responde que todavía se está generando.
 
 ## Escenarios de usuario y pruebas *(obligatorio)*
 
@@ -60,7 +66,7 @@ licencia y que el expediente está esperando el pago.
 1. **Dado** un expediente REGISTRADO, **Cuando** el evaluador empieza la revisión, **Entonces** el
    expediente pasa a EN_EVALUACION y queda en el historial con el evaluador.
 2. **Dado** un expediente EN_EVALUACION de riesgo medio, **Cuando** el evaluador confirma el riesgo,
-   **Entonces** se genera una esquela con el código `ESQ-<número de expediente>`, el concepto, el monto
+   **Entonces** en pocos segundos queda generada una esquela con el código `ESQ-<número de expediente>`, el concepto, el monto
    de la licencia y la fecha, y el expediente pasa a PENDIENTE_PAGO.
 3. **Dado** el mismo expediente, **Cuando** el evaluador corrige el riesgo a "riesgo alto",
    **Entonces** el expediente toma la licencia, la ruta y la tasa vigentes de riesgo alto, y la esquela
@@ -249,8 +255,9 @@ motivo y ver en la auditoría el recibo anterior, el nuevo, quién y cuándo.
   corporativa y la de bodegas no tienen alternativas.
 - **FR-004**: Si el riesgo se corrige, el expediente toma la licencia, la ruta y la tasa vigentes de la
   nueva licencia, y queda registrado el riesgo propuesto (el presentado) y el confirmado.
-- **FR-005**: Confirmar el riesgo genera, en la misma operación, la esquela del expediente y pasa el
-  expediente a PENDIENTE_PAGO; o todo ocurre, o nada. Si la tasa de la licencia confirmada es 0.00,
+- **FR-005**: Confirmar el riesgo pasa el expediente a PENDIENTE_PAGO y solicita su esquela en una
+  sola operación (o ambas cosas ocurren, o ninguna); la esquela queda disponible en 30 segundos o
+  menos y, si su generación falla, se reintenta sin crear otra. Si la tasa de la licencia confirmada es 0.00,
   no se genera esquela y el expediente pasa directamente a PAGADO con el comentario "Sin pago: tasa
   0.00".
 - **FR-006**: Un expediente tiene como máximo una esquela; una segunda confirmación no crea otra y
@@ -294,7 +301,7 @@ motivo y ver en la auditoría el recibo anterior, el nuevo, quién y cuándo.
   auditoría `REGISTRAR_PAGO`, todo en una sola operación.
 - **FR-022**: Una esquela se paga una sola vez, aun con pagos simultáneos; los intentos siguientes
   responden "esta esquela ya fue pagada".
-- **FR-023**: El número de recibo tiene de 1 a 30 caracteres (letras, números y guiones), se guarda en
+- **FR-023**: El número de recibo tiene de 4 a 30 caracteres (letras, números y guiones), se guarda en
   mayúsculas y sin espacios, y no se puede repetir entre esquelas.
 - **FR-024**: No se registra el pago de una esquela cuyo expediente no está PENDIENTE_PAGO (por
   ejemplo, DENEGADO).
