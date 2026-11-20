@@ -233,9 +233,9 @@ descargar el PDF sin datos personales.
 
 ## Fase 7: Historia de usuario 5 - Aprobar el expediente pagado (P3)
 
-- [ ] T037 [P] [US5] Pruebas: unitaria en `test-tra/aplicacion/decisiones-evaluador.spec.ts` (aprobar
+- [X] T037 [P] [US5] Pruebas: unitaria en `test-tra/aplicacion/decisiones-evaluador.spec.ts` (aprobar
   PAGADO de ruta A o C; ruta B o no PAGADO → error) e integración `int/aprobacion.e2e-spec.ts`
-- [ ] T038 [US5] `tra/aplicacion/aprobar-expediente.ts` y `POST …/aprobar` en `evaluacion.controller.ts`;
+- [X] T038 [US5] `AprobarExpediente` en `tra/aplicacion/decisiones-evaluador.ts` (comparte la base de las decisiones) y `POST …/aprobar` en `evaluacion.controller.ts`;
   botón "Aprobar" en `AccionesEvaluador.tsx` (+ prueba)
 
 ---

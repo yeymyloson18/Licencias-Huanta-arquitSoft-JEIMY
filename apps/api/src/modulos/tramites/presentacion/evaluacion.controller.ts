@@ -5,6 +5,7 @@ import { RequiereRoles, UsuarioActual, type UsuarioAutenticado } from '../../seg
 import { ObtenerDetalleExpediente } from '../aplicacion/bandeja-expedientes';
 import {
   ConfirmarRiesgo,
+  AprobarExpediente,
   DenegarExpediente,
   IniciarEvaluacion,
   ObservarExpediente,
@@ -57,6 +58,13 @@ const esquemaObservar = z.strictObject({
 
 const esquemaDenegar = z.strictObject({ motivo: z.string('Debe ser un texto') });
 
+const esquemaAprobar = z.strictObject({
+  comentario: z
+    .string('Debe ser un texto')
+    .max(1000, 'Debe tener como máximo 1000 caracteres')
+    .optional(),
+});
+
 /**
  * Decisiones del evaluador (CU13 de la 005, contracts/openapi-cambios.md): empezar la revisión,
  * confirmar o corregir el riesgo, observar y denegar. Responden el detalle actualizado, sin caché.
@@ -68,6 +76,7 @@ export class EvaluacionController {
     private readonly confirmarRiesgo: ConfirmarRiesgo,
     private readonly observarExpediente: ObservarExpediente,
     private readonly denegarExpediente: DenegarExpediente,
+    private readonly aprobarExpediente: AprobarExpediente,
     private readonly obtenerDetalle: ObtenerDetalleExpediente,
     private readonly licenciasDelGrupo: LicenciasDelGrupo,
   ) {}
@@ -142,6 +151,22 @@ export class EvaluacionController {
     const datos = validarConEsquema(esquemaDenegar, cuerpo);
     return this.decidir(numero, ifMatch, usuario, respuesta, (decisor) =>
       this.denegarExpediente.ejecutar({ ...decisor, motivo: datos.motivo }),
+    );
+  }
+
+  @Post(':numeroExpediente/aprobar')
+  @HttpCode(200)
+  @RequiereRoles('EVALUADOR')
+  aprobar(
+    @Param('numeroExpediente') numero: string,
+    @Headers('if-match') ifMatch: string | undefined,
+    @Body() cuerpo: unknown,
+    @UsuarioActual() usuario: UsuarioAutenticado,
+    @Res({ passthrough: true }) respuesta: RespuestaHttp,
+  ) {
+    const datos = validarConEsquema(esquemaAprobar, cuerpo ?? {});
+    return this.decidir(numero, ifMatch, usuario, respuesta, (decisor) =>
+      this.aprobarExpediente.ejecutar({ ...decisor, comentario: datos.comentario ?? null }),
     );
   }
 

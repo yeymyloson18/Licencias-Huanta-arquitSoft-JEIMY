@@ -236,3 +236,29 @@ export class DenegarExpediente extends DecisionEvaluador {
     );
   }
 }
+
+/**
+ * PAGADO → APROBADO solo en las rutas A y C (historia 5 de la 005). La ruta B (inspección previa) y la
+ * emisión de la licencia son de la 006. El comentario es opcional (hasta 1000 caracteres).
+ */
+export class AprobarExpediente extends DecisionEvaluador {
+  async ejecutar(decisor: Decisor & { readonly comentario: string | null }): Promise<void> {
+    const comentario = decisor.comentario?.trim() ?? '';
+    if (comentario.length > 1000) {
+      throw new ErrorValidacionSolicitud([
+        { campo: 'comentario', mensaje: 'Debe tener como máximo 1000 caracteres' },
+      ]);
+    }
+    const expediente = await this.leer(decisor, 'APROBAR');
+    const nuevo = siguienteEstado(expediente.estado, expediente.ruta, 'APROBAR');
+    await this.guardar(
+      {
+        ...this.base(expediente, decisor, nuevo),
+        comentario: comentario === '' ? 'Expediente aprobado' : comentario,
+        auditoria: { accion: 'APROBAR', detalle: null },
+        eventos: [eventoCambioEstado(expediente.numero, expediente.estado, nuevo)],
+      },
+      'APROBAR',
+    );
+  }
+}

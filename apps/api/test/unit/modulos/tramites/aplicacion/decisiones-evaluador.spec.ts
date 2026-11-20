@@ -1,4 +1,5 @@
 import {
+  AprobarExpediente,
   ConfirmarRiesgo,
   DenegarExpediente,
   IniciarEvaluacion,
@@ -309,6 +310,66 @@ describe('Decisiones del evaluador (CU13 de la 005)', () => {
         comentario: 'El giro no está permitido en la zona',
         auditoria: { accion: 'DENEGAR', detalle: null },
       });
+    });
+  });
+
+  describe('AprobarExpediente (historia 5)', () => {
+    const aprobar = (comentario: string | null = null) =>
+      new AprobarExpediente({ decisiones, reloj }).ejecutar({ ...decisor, comentario });
+    const conEstado = (estado: ExpedienteParaDecidir['estado'], ruta: 'A' | 'B' | 'C') => {
+      decisiones.expediente = {
+        ...(decisiones.expediente as ExpedienteParaDecidir),
+        estado,
+        ruta,
+      };
+    };
+
+    it.each(['A', 'C'] as const)(
+      'PAGADO de ruta %s → APROBADO con auditoría y evento',
+      async (ruta) => {
+        conEstado('PAGADO', ruta);
+
+        await aprobar();
+
+        expect(ultima()).toMatchObject({
+          estadoEsperado: 'PAGADO',
+          estadoNuevo: 'APROBADO',
+          comentario: 'Expediente aprobado',
+          auditoria: { accion: 'APROBAR', detalle: null },
+          eventos: [
+            {
+              tipo: 'EstadoExpedienteCambiado',
+              datos: { estadoAnterior: 'PAGADO', estadoNuevo: 'APROBADO' },
+            },
+          ],
+        });
+      },
+    );
+
+    it('guarda el comentario si lo hay', async () => {
+      conEstado('PAGADO', 'A');
+
+      await aprobar('  Todo conforme  ');
+
+      expect(ultima()?.comentario).toBe('Todo conforme');
+    });
+
+    it('la ruta B (inspección previa) no se aprueba aquí', async () => {
+      conEstado('PAGADO', 'B');
+
+      await expect(aprobar()).rejects.toBeInstanceOf(ErrorTransicionInvalida);
+    });
+
+    it('un expediente que no está PAGADO no se aprueba', async () => {
+      conEstado('PENDIENTE_PAGO', 'A');
+
+      await expect(aprobar()).rejects.toBeInstanceOf(ErrorTransicionInvalida);
+    });
+
+    it('un comentario de más de 1000 caracteres es un error de validación', async () => {
+      conEstado('PAGADO', 'A');
+
+      await expect(aprobar('x'.repeat(1001))).rejects.toBeInstanceOf(ErrorValidacionSolicitud);
     });
   });
 

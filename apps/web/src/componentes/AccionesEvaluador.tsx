@@ -1,5 +1,6 @@
 import { type SyntheticEvent, useId, useState } from 'react';
 import {
+  aprobarExpediente,
   confirmarRiesgo,
   denegarExpediente,
   type Expediente,
@@ -145,6 +146,27 @@ export function AccionesEvaluador({ expediente, alActualizar, alCambiar }: Propi
           onClick={() => void enviar(() => iniciarEvaluacion(numero, version))}
         >
           Empezar revisión
+        </button>
+        {error && (
+          <p className="aviso aviso--error" role="alert">
+            {error}
+          </p>
+        )}
+      </section>
+    );
+  }
+
+  // Historia 5: un expediente PAGADO de ruta A o C se aprueba (la ruta B va a inspección, 006).
+  if (estado === 'PAGADO' && (expediente.ruta === 'A' || expediente.ruta === 'C')) {
+    return (
+      <section className="acciones" aria-label="Acciones del evaluador">
+        <button
+          type="button"
+          className="boton"
+          disabled={enviando}
+          onClick={() => void enviar(() => aprobarExpediente(numero, version))}
+        >
+          {enviando ? 'Guardando…' : 'Aprobar'}
         </button>
         {error && (
           <p className="aviso aviso--error" role="alert">

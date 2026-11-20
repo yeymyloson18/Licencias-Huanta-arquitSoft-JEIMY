@@ -27,6 +27,7 @@ import {
 import { ConsultarEstado } from './aplicacion/consultar-estado';
 import {
   ConfirmarRiesgo,
+  AprobarExpediente,
   DenegarExpediente,
   IniciarEvaluacion,
   ObservarExpediente,
@@ -116,6 +117,12 @@ const reloj = new RelojSistema();
       inject: [REPOSITORIO_DECISIONES],
       useFactory: (decisiones: RepositorioDecisiones) =>
         new DenegarExpediente({ decisiones, reloj }),
+    },
+    {
+      provide: AprobarExpediente,
+      inject: [REPOSITORIO_DECISIONES],
+      useFactory: (decisiones: RepositorioDecisiones) =>
+        new AprobarExpediente({ decisiones, reloj }),
     },
     {
       provide: LicenciasDelGrupo,

@@ -183,4 +183,43 @@ describe('AccionesEvaluador (005)', () => {
 
     expect(container).toBeEmptyDOMElement();
   });
+
+  it('PAGADO de ruta A: "Aprobar" envía la versión en If-Match (historia 5)', async () => {
+    const cabeceras: (string | null)[] = [];
+    simularApi({
+      'POST /expedientes/EXP-2026-000010/aprobar': (peticion) => {
+        cabeceras.push(peticion.headers.get('If-Match'));
+        return json({ ...base, estado: 'APROBADO', version: 5 });
+      },
+    });
+    const { actualizar, usuario } = montar({ ...base, estado: 'PAGADO' });
+
+    await usuario.click(screen.getByRole('button', { name: 'Aprobar' }));
+
+    expect(cabeceras).toEqual(['4']);
+    expect(actualizar).toHaveBeenCalledWith(expect.objectContaining({ estado: 'APROBADO' }));
+  });
+
+  it('PAGADO de ruta B no ofrece "Aprobar" (va a inspección)', () => {
+    const { container } = render(
+      <AccionesEvaluador
+        expediente={{ ...base, estado: 'PAGADO', ruta: 'B' }}
+        alActualizar={jest.fn()}
+        alCambiar={jest.fn()}
+      />,
+    );
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('si otro cambio ganó al aprobar, avisa y recarga', async () => {
+    simularApi({
+      'POST /expedientes/EXP-2026-000010/aprobar': () => problema(412, 'version-cambiada'),
+    });
+    const { cambiar, usuario } = montar({ ...base, estado: 'PAGADO' });
+
+    await usuario.click(screen.getByRole('button', { name: 'Aprobar' }));
+
+    expect(cambiar).toHaveBeenCalledWith(expect.stringContaining('Volvimos a cargarlo.'));
+  });
 });
