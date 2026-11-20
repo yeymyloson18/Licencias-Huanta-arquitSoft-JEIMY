@@ -22,9 +22,9 @@ que la implementación y deben fallar primero.
 
 ## Fase 1: Preparación
 
-- [ ] T001 Agregar `pdf-lib` como dependencia de ejecución de `apps/api` (research §R-07) y comprobar
+- [X] T001 Agregar `pdf-lib` como dependencia de ejecución de `apps/api` (research §R-07) y comprobar
   que `npm ci` y `npm run build` siguen en verde
-- [ ] T002 [P] Crear `pag/pagos.module.ts` (vacío), `pag/fachada.ts` (`export {}`) y registrar
+- [X] T002 [P] Crear `pag/pagos.module.ts` (vacío), `pag/fachada.ts` (`export {}`) y registrar
   `PagosModule` en `apps/api/src/app.module.ts`; quitar los `.gitkeep` de `pag/`
 
 ---
