@@ -5,7 +5,7 @@
 -- Este archivo describe el ESTADO ACTUAL del esquema, después de aplicar todas las migraciones de
 -- apps/api/prisma/migrations/ (0001 = versión inicial de este archivo; 0003 = seguridad y usuarios; 0004 = catálogo y asistente;
 -- 0005 = requisitos de los trámites conectados; 0006 = solicitud y consulta del trámite;
--- 0007 = amplía el propósito del código OTP).
+-- 0007 = amplía el propósito del código OTP; 0008 = evaluación, esquela y pago).
 -- La prueba esquema-equivalente.e2e-spec.ts verifica que una base creada con este archivo y una
 -- base migrada son iguales. Para cambiar el esquema: nueva migración + actualizar este archivo.
 --
@@ -44,7 +44,8 @@ CREATE TABLE comun.evento_pendiente (
     creado_en       timestamptz  NOT NULL DEFAULT now(),
     procesado_en    timestamptz,
     intentos        smallint     NOT NULL DEFAULT 0,
-    ultimo_error    text
+    ultimo_error    text,                               -- solo el nombre del error, nunca datos personales
+    reintentar_en   timestamptz                         -- espera creciente entre reintentos (0008)
 );
 CREATE INDEX ix_evento_pendiente_sin_procesar ON comun.evento_pendiente (creado_en) WHERE procesado_en IS NULL;
 
@@ -319,7 +320,7 @@ CREATE TABLE tramites.observacion (
     id                  bigint        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     expediente_id       uuid          NOT NULL REFERENCES tramites.expediente (id) ON DELETE CASCADE,
     descripcion         text          NOT NULL,
-    plazo_subsanar_en   date          NOT NULL,
+    plazo_subsanar_en   date,                                   -- se calcula en la 006 (días hábiles)
     creada_por          uuid          NOT NULL,
     creada_en           timestamptz   NOT NULL DEFAULT now(),
     subsanada_en        timestamptz
@@ -342,7 +343,7 @@ CREATE TABLE tramites.auditoria (
     usuario_id          uuid,                                   -- NULL solo al presentar en línea (004)
     accion              varchar(30)   NOT NULL CHECK (accion IN
                         ('CONFIRMAR_RIESGO', 'CORREGIR_RIESGO', 'APROBAR', 'OBSERVAR', 'DENEGAR', 'REGISTRAR_PRESENCIAL',
-                         'PRESENTAR_EN_LINEA', 'VER_DETALLE')),
+                         'PRESENTAR_EN_LINEA', 'VER_DETALLE', 'INICIAR_EVALUACION', 'SUBSANAR')),
     numero_expediente   varchar(20)   NOT NULL,
     detalle             jsonb,
     ocurrido_en         timestamptz   NOT NULL DEFAULT now(),

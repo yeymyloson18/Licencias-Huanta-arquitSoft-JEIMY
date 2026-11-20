@@ -114,4 +114,43 @@ export class ErrorProblema extends Error {
       'Solo se aceptan archivos PDF, JPG o PNG',
     );
   }
+
+  // --- Funcionalidad 005: evaluación, esquela y pago.
+
+  /** La acción no corresponde al estado del expediente; el título nombra el estado (FR-010). */
+  static transicionInvalida(estadoActual: string): ErrorProblema {
+    return new ErrorProblema(
+      'transicion-invalida',
+      409,
+      `Esta acción no corresponde a un expediente en estado ${estadoActual}`,
+    );
+  }
+
+  static yaObservado(): ErrorProblema {
+    return new ErrorProblema(
+      'ya-observado',
+      409,
+      'Este expediente ya fue observado una vez; el TUPA permite una sola observación',
+    );
+  }
+
+  static esquelaYaPagada(): ErrorProblema {
+    return new ErrorProblema('esquela-ya-pagada', 409, 'Esta esquela ya fue pagada');
+  }
+
+  static reciboRepetido(): ErrorProblema {
+    return new ErrorProblema(
+      'recibo-repetido',
+      409,
+      'Ese número de recibo ya está registrado en otra esquela',
+    );
+  }
+
+  static versionCambiada(): ErrorProblema {
+    return new ErrorProblema(
+      'version-cambiada',
+      412,
+      'El expediente cambió mientras lo revisabas. Vuelve a cargarlo',
+    );
+  }
 }

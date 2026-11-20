@@ -1,5 +1,6 @@
 import { ListarRecetas } from '../../../../src/modulos/catalogo/aplicacion/listar-recetas';
 import { ObtenerFicha } from '../../../../src/modulos/catalogo/aplicacion/obtener-ficha';
+import type { LectorClasificacionRecetas } from '../../../../src/modulos/catalogo/dominio/lector-clasificacion-recetas';
 import { crearRecetaCompleta } from '../../../../src/modulos/catalogo/dominio/receta-completa';
 import { FachadaCatalogo } from '../../../../src/modulos/catalogo/fachada';
 import { RepositorioCatalogoFalso } from './apoyo/repositorio-catalogo-falso';
@@ -68,5 +69,57 @@ describe('FachadaCatalogo.obtenerRecetaVigente (004)', () => {
   it('listarRecetas sigue delegando en el caso de uso de la 001', async () => {
     const recetas = await fachadaCon(repositorioConIds()).listarRecetas({ tipo: 'LICENCIA' });
     expect(recetas).toHaveLength(9);
+  });
+});
+
+describe('FachadaCatalogo para la evaluación (005)', () => {
+  // Clasificación de la semilla: LIC-05 corporativa; LIC-06 a LIC-08 cesionarios.
+  const clasificacion: LectorClasificacionRecetas = {
+    obtener: (codigo) =>
+      Promise.resolve(
+        codigo === 'LIC-00'
+          ? null
+          : {
+              esCesionario: ['LIC-06', 'LIC-07', 'LIC-08'].includes(codigo),
+              esCorporativa: codigo === 'LIC-05',
+            },
+      ),
+  };
+  const fachada = (repositorio = repositorioConIds()) =>
+    new FachadaCatalogo(
+      new ListarRecetas(repositorio),
+      new ObtenerFicha(repositorio),
+      clasificacion,
+    );
+
+  it('devuelve la licencia con su nivel, tasa y clasificación', async () => {
+    expect(await fachada().obtenerRecetaParaEvaluacion('LIC-07')).toEqual({
+      codigo: 'LIC-07',
+      nombre: 'Licencia para cesionarios – riesgo alto',
+      ruta: 'B',
+      tasa: '309.20',
+      nivelRiesgo: 'ALTO',
+      esCesionario: true,
+      esCorporativa: false,
+    });
+  });
+
+  it.each(['TRF-01', 'LIC-00'])('devuelve null para %s', async (codigo) => {
+    expect(await fachada().obtenerRecetaParaEvaluacion(codigo)).toBeNull();
+  });
+
+  it('sin lector de clasificación no puede evaluar', async () => {
+    expect(await fachadaCon(repositorioConIds()).obtenerRecetaParaEvaluacion('LIC-02')).toBeNull();
+  });
+
+  it('lista las 9 licencias activas con su clasificación', async () => {
+    const licencias = await fachada().listarLicenciasParaEvaluacion();
+
+    expect(licencias).toHaveLength(9);
+    expect(licencias.filter((l) => l.esCesionario).map((l) => l.codigo)).toEqual([
+      'LIC-06',
+      'LIC-07',
+      'LIC-08',
+    ]);
   });
 });

@@ -86,13 +86,14 @@ model ejecucion_tarea {
 }
 
 model evento_pendiente {
-  id           BigInt    @id @default(autoincrement())
-  tipo         String    @db.VarChar(60)
-  datos        Json
-  creado_en    DateTime  @default(now()) @db.Timestamptz(6)
-  procesado_en DateTime? @db.Timestamptz(6)
-  intentos     Int       @default(0) @db.SmallInt
-  ultimo_error String?
+  id            BigInt    @id @default(autoincrement())
+  tipo          String    @db.VarChar(60)
+  datos         Json
+  creado_en     DateTime  @default(now()) @db.Timestamptz(6)
+  procesado_en  DateTime? @db.Timestamptz(6)
+  intentos      Int       @default(0) @db.SmallInt
+  ultimo_error  String?
+  reintentar_en DateTime? @db.Timestamptz(6)
 
   @@schema("comun")
 }
@@ -455,7 +456,7 @@ model observacion {
   id                BigInt     @id @default(autoincrement())
   expediente_id     String     @db.Uuid
   descripcion       String
-  plazo_subsanar_en DateTime   @db.Date
+  plazo_subsanar_en DateTime?  @db.Date
   creada_por        String     @db.Uuid
   creada_en         DateTime   @default(now()) @db.Timestamptz(6)
   subsanada_en      DateTime?  @db.Timestamptz(6)

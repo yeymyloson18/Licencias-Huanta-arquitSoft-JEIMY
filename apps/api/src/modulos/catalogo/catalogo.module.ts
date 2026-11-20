@@ -15,6 +15,7 @@ import { FachadaCatalogo } from './fachada';
 import { InvalidadorCacheCatalogoRedis } from './infraestructura/invalidador-cache-catalogo-redis';
 import { RelojSistema } from './infraestructura/reloj-sistema';
 import { RepositorioCatalogoConCache } from './infraestructura/repositorio-catalogo-con-cache';
+import { LectorClasificacionRecetasPostgres } from './infraestructura/lector-clasificacion-recetas-postgres';
 import { RepositorioCatalogoPostgres } from './infraestructura/repositorio-catalogo-postgres';
 import { UnidadDeTrabajoCatalogoPostgres } from './infraestructura/unidad-de-trabajo-catalogo-postgres';
 import { AsistenteController } from './presentacion/asistente.controller';
@@ -87,9 +88,17 @@ export const REPOSITORIO_CATALOGO = Symbol('REPOSITORIO_CATALOGO');
     },
     {
       provide: FachadaCatalogo,
-      inject: [ListarRecetas, ObtenerFicha],
-      useFactory: (listarRecetas: ListarRecetas, obtenerFicha: ObtenerFicha) =>
-        new FachadaCatalogo(listarRecetas, obtenerFicha),
+      inject: [ListarRecetas, ObtenerFicha, PrismaServicio],
+      useFactory: (
+        listarRecetas: ListarRecetas,
+        obtenerFicha: ObtenerFicha,
+        prisma: PrismaServicio,
+      ) =>
+        new FachadaCatalogo(
+          listarRecetas,
+          obtenerFicha,
+          new LectorClasificacionRecetasPostgres(prisma),
+        ),
     },
   ],
   exports: [FachadaCatalogo],

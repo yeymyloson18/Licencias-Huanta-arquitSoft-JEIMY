@@ -1,5 +1,6 @@
 import type { ListarRecetas, RecetaResumenDto } from './aplicacion/listar-recetas';
 import type { ObtenerFicha } from './aplicacion/obtener-ficha';
+import type { LectorClasificacionRecetas } from './dominio/lector-clasificacion-recetas';
 import type { FiltroRecetas } from './dominio/repositorio-catalogo';
 
 // Fachada pública del módulo Catálogo: la ÚNICA entrada que otros módulos pueden importar
@@ -35,11 +36,56 @@ export interface RecetaVigenteDto {
   readonly requisitos: readonly RequisitoVigenteDto[];
 }
 
+/** Licencia vista por el evaluador para confirmar o corregir el riesgo (FR-003 de la 005). */
+export interface RecetaParaEvaluacionDto {
+  readonly codigo: string;
+  readonly nombre: string;
+  readonly ruta: 'A' | 'B' | 'C';
+  /** Soles con dos decimales, por ejemplo "177.10". */
+  readonly tasa: string;
+  readonly nivelRiesgo: 'BAJO' | 'MEDIO' | 'ALTO' | 'MUY_ALTO' | null;
+  readonly esCesionario: boolean;
+  readonly esCorporativa: boolean;
+}
+
 export class FachadaCatalogo {
   constructor(
     private readonly listarRecetasCasoDeUso: ListarRecetas,
     private readonly obtenerFichaCasoDeUso: ObtenerFicha,
+    private readonly clasificacion?: LectorClasificacionRecetas,
   ) {}
+
+  /**
+   * Licencia activa con lo que necesita el evaluador para confirmar o corregir el riesgo; `null` si
+   * no existe, está desactivada o no es una licencia (005).
+   */
+  async obtenerRecetaParaEvaluacion(codigo: string): Promise<RecetaParaEvaluacionDto | null> {
+    const receta = await this.obtenerFichaCasoDeUso.ejecutar(codigo);
+    if (!receta || receta.tipo !== 'LICENCIA' || receta.ruta === null) {
+      return null;
+    }
+    const clasificacion = (await this.clasificacion?.obtener(codigo)) ?? null;
+    if (clasificacion === null) {
+      return null;
+    }
+    return {
+      codigo: receta.codigo.valor,
+      nombre: receta.nombre,
+      ruta: receta.ruta,
+      tasa: receta.tasa.aTextoSoles(),
+      nivelRiesgo: receta.nivelRiesgo,
+      ...clasificacion,
+    };
+  }
+
+  /** Todas las licencias activas, con su clasificación (005). */
+  async listarLicenciasParaEvaluacion(): Promise<RecetaParaEvaluacionDto[]> {
+    const resumen = await this.listarRecetasCasoDeUso.ejecutar({ tipo: 'LICENCIA' });
+    const recetas = await Promise.all(
+      resumen.map((receta) => this.obtenerRecetaParaEvaluacion(receta.codigo)),
+    );
+    return recetas.filter((receta): receta is RecetaParaEvaluacionDto => receta !== null);
+  }
 
   listarRecetas(filtro: FiltroRecetas): Promise<RecetaResumenDto[]> {
     return this.listarRecetasCasoDeUso.ejecutar(filtro);

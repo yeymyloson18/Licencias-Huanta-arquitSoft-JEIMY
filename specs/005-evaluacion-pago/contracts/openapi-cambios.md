@@ -28,7 +28,8 @@ Se hacen **antes** del código (principio II) y se validan con `npm run contrato
 | evaluacion, riesgo, observar, denegar, aprobar | 401 | ✅ | 403 | 403 | 403 |
 | subsanar | 401 | 403 | 403 | 403 | MESA_PARTES ✅ (o `tokenIdentidad`) |
 | auditoria del expediente, `GET /pagos/auditoria`, `PATCH …/recibo` | 401 | 403 | 403 | ✅ | 403 |
-| `GET /esquelas/{codigo}`, `POST …/pago`, `GET …/titular` | 401 | 403 | ✅ | 403 | 403 |
+| `GET /esquelas/{codigo}`, `POST …/pago` | 401 | 403 | ✅ | 403 | 403 |
+| `GET …/titular` (como ya decía la matriz del contrato) | 401 | 403 | ✅ | ✅ | 403 |
 | `GET …/pdf` | 401 (sin `tokenConsulta`) | ✅ | ✅ | ✅ | 403 |
 
 ## Errores con `type` propio

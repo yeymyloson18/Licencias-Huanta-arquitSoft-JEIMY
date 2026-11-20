@@ -31,37 +31,37 @@ que la implementación y deben fallar primero.
 
 ## Fase 2: Base (bloquea todas las historias)
 
-- [ ] T003 Actualizar `docs/06-contrato-api/openapi.yaml` y su README según
+- [X] T003 Actualizar `docs/06-contrato-api/openapi.yaml` y su README según
   [contracts/openapi-cambios.md](./contracts/openapi-cambios.md): nueva `POST
   /expedientes/{numeroExpediente}/evaluacion`, `codigoReceta` en riesgo, aprobar para PAGADO de ruta A
   o C, `plazoSubsanarEn` opcional, `identidad` en subsanar y respuesta EN_EVALUACION, `estadoExpediente`
   y `nombreLicencia` en `Esquela`, 202/403 en el PDF, 422/409 con `type` en pago y recibo, y los
   permisos. En `descargarDocumento`, la descripción pasa a decir que `tokenConsulta` se habilita en la
   009 (la 005 no lo pide). Regenerar `packages/contracts` y pasar `npm run contrato`
-- [ ] T004 Migración `apps/api/prisma/migrations/0008_evaluacion_pago/migration.sql` (acciones
+- [X] T004 Migración `apps/api/prisma/migrations/0008_evaluacion_pago/migration.sql` (acciones
   `INICIAR_EVALUACION` y `SUBSANAR` en `tramites.auditoria`; `plazo_subsanar_en` opcional;
   `reintentar_en` e índice en `comun.evento_pendiente`) con el nombre
   real de la restricción; actualizar `docs/05-modelo-de-datos/esquema.sql`,
   `modelo-entidad-relacion.md` y `schema.prisma`; la prueba `int/esquema-equivalente` debe seguir en
   verde
-- [ ] T005 [P] Prueba unitaria `test-tra/dominio/maquina-estados.spec.ts` y dominio
+- [X] T005 [P] Prueba unitaria `test-tra/dominio/maquina-estados.spec.ts` y dominio
   `tra/dominio/maquina-estados.ts` (tabla de research §R-03, `ErrorTransicionInvalida` con el estado
   actual; aprobar solo en rutas A y C; DENEGADO es final)
-- [ ] T006 [P] Prueba y dominio `tra/dominio/grupo-licencia.ts` (grupos establecimiento, cesionario,
+- [X] T006 [P] Prueba y dominio `tra/dominio/grupo-licencia.ts` (grupos establecimiento, cesionario,
   corporativa y bodega; `mismoGrupo`) y `cat/fachada.ts` `obtenerRecetaParaEvaluacion(codigo)`
   (código, nombre, ruta, tasa, nivel y grupo; `null` si no es LICENCIA o no está activa), con su prueba
   en `apps/api/test/unit/modulos/catalogo/`
-- [ ] T007 Despachador de eventos `com/infraestructura/despachador-eventos.ts` (research §R-02:
+- [X] T007 Despachador de eventos `com/infraestructura/despachador-eventos.ts` (research §R-02:
   registro de manejadores por tipo, cada 2 s con `unref()`, `pg_try_advisory_xact_lock`,
   `FOR UPDATE SKIP LOCKED`, reintentos sin límite con espera creciente en `reintentar_en` (máximo 5
   min) y un aviso en el registro cada 10 fallos, `ultimo_error` solo con el nombre del error, tipos sin
   manejador intactos) con prueba de integración `int/despachador-eventos.e2e-spec.ts`: procesa,
   reintenta tras un error respetando la espera, no toca tipos sin manejador, una sola réplica con el
   candado
-- [ ] T008 [P] Errores comunes en `com/presentacion/error-problema.ts`: `transicionInvalida(estado)`,
+- [X] T008 [P] Errores comunes en `com/presentacion/error-problema.ts`: `transicionInvalida(estado)`,
   `yaObservado`, `esquelaYaPagada`, `reciboRepetido`, `versionCambiada` (412) y sus títulos en
   `filtro-problema.ts`
-- [ ] T009 [P] Apoyo de pruebas `apps/api/test/apoyo/evaluacion-prueba.ts`: llevar un expediente
+- [X] T009 [P] Apoyo de pruebas `apps/api/test/apoyo/evaluacion-prueba.ts`: llevar un expediente
   sembrado a un estado dado (EN_EVALUACION, PENDIENTE_PAGO, PAGADO, OBSERVADO) por la base y procesar
   los eventos pendientes una vez (`procesarEventos(app)`)
 
