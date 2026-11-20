@@ -278,7 +278,7 @@ y comprobar que el reloj envía un solo aviso de vencimiento aunque corra varias
   cambiar la asignación mientras no haya resultado.
 - **FR-009**: El inspector MUST ver solo las inspecciones asignadas a él.
 - **FR-010**: Solo el inspector asignado MUST poder registrar el resultado (FAVORABLE o DESFAVORABLE),
-  con observaciones (obligatorias si es desfavorable, hasta 2000 caracteres) y de 1 a 5 fotos JPG o
+  con observaciones (obligatorias si es desfavorable, hasta 4000 caracteres, como ya declara el contrato) y de 1 a 5 fotos JPG o
   PNG de hasta 10 MB cada una, cuyo tipo se comprueba por el contenido del archivo.
 - **FR-011**: Con resultado FAVORABLE, el inspector MUST registrar el número del certificado ITSE (de
   4 a 30 caracteres: letras mayúsculas, números, guiones y barras; se normaliza a mayúsculas sin
