@@ -33,9 +33,14 @@ export function Inicio() {
         <p className="cabecera__descripcion">
           Conozca la tasa y el plazo de cada licencia según el TUPA 2024.
         </p>
-        <Link to="/asistente" className="boton boton--claro">
-          ¿Qué licencia necesito?
-        </Link>
+        <p className="cabecera__acciones">
+          <Link to="/asistente" className="boton boton--claro">
+            ¿Qué licencia necesito?
+          </Link>
+          <Link to="/consulta" className="boton boton--claro">
+            Consultar mi trámite
+          </Link>
+        </p>
       </header>
 
       <main className="contenido">

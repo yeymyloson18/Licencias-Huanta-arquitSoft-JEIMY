@@ -8,7 +8,7 @@ info:
 
     **Tres formas de acceso**
     - `bearerPersonal`: JWT del personal municipal, obtenido con usuario, clave y OTP (RF16). El rol viaja en el token (RF17).
-    - `tokenIdentidad`: JWT de 15 minutos que recibe el administrado después de validar su DNI/RUC y su celular con OTP (RF06). Solo sirve para presentar o subsanar una solicitud.
+    - `tokenIdentidad`: JWT de 30 minutos que recibe el administrado después de validar su DNI/RUC y su celular con OTP (RF06). Solo sirve para presentar o subsanar una solicitud.
     - `tokenConsulta`: JWT de 15 minutos que recibe el administrado al consultar con número de expediente + DNI/RUC (RF03). Solo sirve para leer su expediente y descargar su esquela o su licencia.
 
     **Reglas generales**
@@ -165,6 +165,11 @@ paths:
       tags: [Seguridad]
       operationId: verificarIdentidadAdministrado
       summary: Valida RUC y DNI (con fecha de emisión) o carné de extranjería con el servicio externo, y envía un OTP al celular (RF06).
+      description: >-
+        Si actúa un representante, el servicio comprueba también su documento (RF06, ADR-007). Si los datos
+        no coinciden responde 422 con el mismo mensaje para cualquier dato (FR-007). Repetir la verificación
+        con los mismos datos crea un desafío nuevo (otro código) y cuenta para el límite de 3 envíos por
+        celular en 15 minutos. Todas las respuestas llevan `Cache-Control: no-store`.
       security: []
       requestBody:
         required: true
@@ -174,6 +179,8 @@ paths:
       responses:
         '200':
           description: Identidad válida; se envió el OTP.
+          headers:
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DesafioOtp' }
@@ -189,7 +196,11 @@ paths:
     post:
       tags: [Seguridad]
       operationId: verificarOtpAdministrado
-      summary: Verifica el OTP del administrado y entrega el token de identidad (15 minutos).
+      summary: Verifica el OTP del administrado y entrega el token de identidad (30 minutos).
+      description: >-
+        El token (`expiraEn = 1800`) sirve para subir documentos y presentar **una sola** solicitud
+        (aclaración 2 de la 004); no se acepta como token del personal ni al revés. Un código incorrecto,
+        vencido o de un desafío reemplazado responde 401.
       security: []
       requestBody:
         required: true
@@ -199,6 +210,8 @@ paths:
       responses:
         '200':
           description: Identidad confirmada.
+          headers:
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/TokenCorto' }
@@ -569,7 +582,10 @@ paths:
       tags: [Trámites]
       operationId: subirDocumento
       summary: Sube un archivo antes de presentar o subsanar. Devuelve un id temporal (válido 24 horas).
-      description: Acepta tokenIdentidad (administrado en línea) o bearerPersonal (mesa de partes). Solo PDF, JPG o PNG de hasta 10 MB.
+      description: >-
+        Acepta tokenIdentidad (administrado en línea) o bearerPersonal con rol MESA_PARTES (otro rol → 403).
+        Solo PDF, JPG o PNG de hasta 10 MB; el tipo se comprueba por el contenido, no por la extensión. El
+        documento solo lo puede usar quien lo subió y vence a las 24 horas.
       security: [{ tokenIdentidad: [] }, { bearerPersonal: [] }]
       requestBody:
         required: true
@@ -595,6 +611,7 @@ paths:
                   documentoId: { type: string, format: uuid }
                   sha256: { type: string, minLength: 64, maxLength: 64 }
         '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
         '413':
           description: El archivo supera los 10 MB.
           content:
@@ -605,15 +622,22 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
 
   /expedientes:
     post:
       tags: [Trámites]
       operationId: presentarSolicitud
       summary: Presenta la solicitud (RF04, RF06, RF07). En línea exige tokenIdentidad; en mesa de partes, bearerPersonal con rol MESA_PARTES.
+      description: >-
+        En línea, `identidad` debe coincidir con la confirmada (si no, 403) y el permiso sirve para un solo
+        expediente (otra solicitud con el mismo permiso → 409). En mesa de partes la identidad se comprueba
+        con el servicio sin código (servicio caído → 503). La misma `Idempotency-Key` con el mismo cuerpo
+        devuelve 200 con el mismo expediente; con otro cuerpo, 422 en `Idempotency-Key`. Cada requisito
+        obligatorio sin documento da un error en `documentos.requisito.<id>`. `Cache-Control: no-store`.
       security: [{ tokenIdentidad: [] }, { bearerPersonal: [] }]
       parameters:
-        - $ref: '#/components/parameters/ClaveIdempotencia'
+        - $ref: '#/components/parameters/ClaveIdempotenciaObligatoria'
       requestBody:
         required: true
         content:
@@ -624,16 +648,34 @@ paths:
           description: Expediente registrado. La ruta se asigna según la receta.
           headers:
             Location: { schema: { type: string }, description: URL del expediente }
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExpedienteRegistrado' }
+        '200':
+          description: Reintento con la misma Idempotency-Key y el mismo cuerpo; devuelve el mismo expediente.
+          headers:
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ExpedienteRegistrado' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
+        '409': { $ref: '#/components/responses/Conflicto' }
         '422': { $ref: '#/components/responses/NoProcesable' }
+        '503':
+          description: El servicio de identificación no está disponible (mesa de partes).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
     get:
       tags: [Trámites]
       operationId: listarExpedientes
       summary: Bandeja del personal (mesa de partes, evaluador, jefatura).
+      description: >-
+        Todos los expedientes (aclaración 5 de la 004), del más reciente al más antiguo; `porPagina` hasta 50.
+        `asignadosAMi` (006) y `vencenAntesDe` (008) todavía no están disponibles: en la 004 responden 422.
+        `Cache-Control: no-store`.
       security: [{ bearerPersonal: [] }]
       parameters:
         - $ref: '#/components/parameters/Pagina'
@@ -665,13 +707,17 @@ paths:
                         items: { $ref: '#/components/schemas/ExpedienteResumen' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
 
   /expedientes/consultar:
     post:
       tags: [Trámites]
       operationId: consultarEstado
       summary: Consulta pública del estado con número de expediente + DNI/RUC juntos (RF03, HU05). Límite de 5 intentos fallidos en 15 minutos.
-      description: Si los datos no coinciden responde 404 sin decir cuál de los dos falló (EQ-04).
+      description: >-
+        Si los datos no coinciden (o el número no existe) responde 404 con el mismo cuerpo, sin decir cuál de
+        los dos falló (EQ-04). Tras 5 fallos desde el mismo origen en 15 minutos responde 429, también con
+        datos correctos (aclaración 1 de la 004). Sin datos personales en la respuesta. `Cache-Control: no-store`.
       security: []
       requestBody:
         required: true
@@ -688,12 +734,20 @@ paths:
                   pattern: '^[0-9A-Z]{8,12}$'
       responses:
         '200':
-          description: Estado del trámite y token para descargar sus documentos.
+          description: Estado del trámite en lenguaje sencillo.
+          headers:
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/EstadoPublico' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
         '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+        '503':
+          description: No se pueden contar los intentos en este momento (falla cerrado).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
 
   /expedientes/{numeroExpediente}:
     parameters:
@@ -702,6 +756,9 @@ paths:
       tags: [Trámites]
       operationId: obtenerExpediente
       summary: Detalle completo del expediente para el personal.
+      description: >-
+        Roles MESA_PARTES, EVALUADOR y JEFATURA. Registra VER_DETALLE en la auditoría.
+        `Cache-Control: no-store`.
       security: [{ bearerPersonal: [] }]
       responses:
         '200':
@@ -920,14 +977,27 @@ paths:
     get:
       tags: [Trámites]
       operationId: descargarDocumento
-      summary: Redirige a una URL firmada de corta duración para descargar un documento adjunto.
+      summary: Descarga un documento adjunto del expediente.
+      description: >-
+        La API entrega el archivo (el almacén es local hasta la 010). En la 004 solo bearerPersonal con los
+        roles de la bandeja; `tokenConsulta` se habilita en la 005 y la 009.
       security: [{ bearerPersonal: [] }, { tokenConsulta: [] }]
       responses:
-        '302':
-          description: Redirección a la URL firmada (válida 5 minutos).
+        '200':
+          description: El archivo.
           headers:
-            Location: { schema: { type: string, format: uri } }
+            Content-Disposition: { schema: { type: string }, description: 'attachment; filename="<nombre>"' }
+            X-Content-Type-Options: { schema: { type: string }, description: nosniff }
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/png:
+              schema: { type: string, format: binary }
         '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
 
   # ===================================================================== PAGOS
@@ -1370,7 +1440,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Token de 15 minutos del administrado con identidad confirmada (RF06).
+      description: Token de 30 minutos del administrado con identidad confirmada (RF06).
     tokenConsulta:
       type: http
       scheme: bearer
@@ -1432,6 +1502,12 @@ components:
       in: header
       required: false
       description: UUID generado por el Portal. Si la red falla y se reintenta, la operación no se repite.
+      schema: { type: string, format: uuid }
+    ClaveIdempotenciaObligatoria:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: UUID generado por el Portal por cada intento de presentación; se reutiliza en los reintentos (FR-020).
       schema: { type: string, format: uuid }
     IfMatch:
       name: If-Match
@@ -1796,7 +1872,8 @@ components:
         documentoId: { type: string, format: uuid, description: Id devuelto por POST /documentos. }
     NuevaSolicitud:
       type: object
-      required: [codigoReceta, nombreTitular, giro, direccion, zona, documentos]
+      required: [codigoReceta, identidad, nombreTitular, giro, direccion, zona, documentos]
+      additionalProperties: false
       properties:
         codigoReceta: { $ref: '#/components/schemas/CodigoReceta' }
         expedienteOrigen:
@@ -1810,21 +1887,28 @@ components:
         direccion: { type: string, maxLength: 300 }
         zona: { type: string, maxLength: 60 }
         areaM2: { type: [number, 'null'], exclusiveMinimum: 0 }
-        identidadPresencial:
-          description: Solo en mesa de partes; en línea la identidad sale del tokenIdentidad.
+        identidad:
+          description: >-
+            En línea debe coincidir con la identidad confirmada del tokenIdentidad; en mesa de partes se
+            comprueba con el servicio de identificación (research §R-05 de la 004).
           $ref: '#/components/schemas/SolicitudVerificacionIdentidad'
         documentos:
           type: array
+          maxItems: 30
           items: { $ref: '#/components/schemas/DocumentoAdjunto' }
     ExpedienteRegistrado:
       type: object
-      required: [numero, estado, ruta, codigoReceta, vencePlazoEn]
+      required: [numero, estado, ruta, codigoReceta, nombreLicencia, canal, presentadoEn, vencePlazoEn, siguientePaso]
       properties:
         numero: { $ref: '#/components/schemas/NumeroExpediente' }
         estado: { $ref: '#/components/schemas/EstadoExpediente' }
         ruta: { $ref: '#/components/schemas/Ruta' }
         codigoReceta: { $ref: '#/components/schemas/CodigoReceta' }
-        vencePlazoEn: { type: [string, 'null'], format: date }
+        nombreLicencia: { type: string }
+        canal: { type: string, enum: [EN_LINEA, MESA_PARTES] }
+        presentadoEn: { type: string, format: date-time }
+        vencePlazoEn: { type: [string, 'null'], format: date, description: Vacío hasta la funcionalidad 008 (FR-022). }
+        siguientePaso: { type: string }
     ExpedienteResumen:
       type: object
       required: [numero, estado, ruta, codigoReceta, nombreTitular, presentadoEn]
@@ -1851,7 +1935,7 @@ components:
             documentoTitularEnmascarado: { type: string, example: '4*****21' }
             razonSocial: { type: [string, 'null'] }
             nombreComercial: { type: [string, 'null'] }
-            direccion: { type: string, description: 'Solo para roles que la necesitan (evaluador, inspector, jefatura).' }
+            direccion: { type: string, description: 'Solo para el personal con acceso al detalle (mesa de partes, evaluador y jefatura); la consulta pública nunca la muestra.' }
             zona: { type: string }
             areaM2: { type: [number, 'null'] }
             codigoEsquela: { type: [string, 'null'] }
@@ -1886,11 +1970,24 @@ components:
                   ocurridoEn: { type: string, format: date-time }
     EstadoPublico:
       type: object
-      description: Lo que ve el administrado al consultar (RF03). Sin datos personales completos.
-      required: [numero, estado, ruta, nombreLicencia, tokenConsulta]
+      description: Lo que ve el administrado al consultar (RF03). Nunca documento, RUC, celular, correo ni dirección (FR-033).
+      required: [numero, estado, descripcionEstado, ruta, nombreLicencia, presentadoEn, historial]
+      additionalProperties: false
       properties:
         numero: { $ref: '#/components/schemas/NumeroExpediente' }
         estado: { $ref: '#/components/schemas/EstadoExpediente' }
+        descripcionEstado: { type: string, example: Tu solicitud fue registrada y espera evaluación }
+        presentadoEn: { type: string, format: date-time }
+        historial:
+          type: array
+          items:
+            type: object
+            required: [estado, descripcion, ocurridoEn]
+            additionalProperties: false
+            properties:
+              estado: { $ref: '#/components/schemas/EstadoExpediente' }
+              descripcion: { type: string }
+              ocurridoEn: { type: string, format: date-time }
         ruta: { $ref: '#/components/schemas/Ruta' }
         nombreLicencia: { type: string }
         vencePlazoEn: { type: [string, 'null'], format: date }
@@ -1902,7 +1999,9 @@ components:
         observacionesPendientes:
           type: array
           items: { type: string }
-        tokenConsulta: { $ref: '#/components/schemas/TokenCorto' }
+        tokenConsulta:
+          description: Se emite desde la 005 (descargas del administrado); en la 004 no se envía.
+          $ref: '#/components/schemas/TokenCorto'
     RegistroAuditoria:
       type: object
       required: [usuarioId, accion, ocurridoEn]

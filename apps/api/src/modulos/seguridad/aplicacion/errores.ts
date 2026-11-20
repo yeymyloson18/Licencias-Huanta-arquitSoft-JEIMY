@@ -50,3 +50,27 @@ export class ErrorUsuarioNoEncontrado extends Error {
     this.name = 'ErrorUsuarioNoEncontrado';
   }
 }
+
+/** Los datos de identidad no coinciden con el servicio de identificación. Nunca dice cuál (FR-007). */
+export class ErrorIdentidadNoCoincide extends Error {
+  constructor() {
+    super('La identidad no coincide');
+    this.name = 'ErrorIdentidadNoCoincide';
+  }
+}
+
+/** El servicio de identificación no respondió: no se confirma la identidad (FR-005 de la 004). */
+export class ErrorIdentificacionNoDisponible extends Error {
+  constructor() {
+    super('El servicio de identificación no está disponible');
+    this.name = 'ErrorIdentificacionNoDisponible';
+  }
+}
+
+/** La identidad enviada no es la confirmada con el código (research §R-05 de la 004). */
+export class ErrorIdentidadNoConfirmada extends Error {
+  constructor() {
+    super('La identidad no es la confirmada');
+    this.name = 'ErrorIdentidadNoConfirmada';
+  }
+}

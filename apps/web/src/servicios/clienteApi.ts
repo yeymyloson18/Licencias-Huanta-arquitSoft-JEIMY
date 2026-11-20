@@ -11,6 +11,15 @@ export type RecetaAdminResumen = components['schemas']['RecetaAdminResumen'];
 export type RecetaAdmin = components['schemas']['RecetaAdmin'];
 export type RecetaEditable = components['schemas']['RecetaEditable'];
 export type DesafioOtp = components['schemas']['DesafioOtp'];
+export type NuevaSolicitud = components['schemas']['NuevaSolicitud'];
+export type ExpedienteRegistrado = components['schemas']['ExpedienteRegistrado'];
+export type IdentidadSolicitud = components['schemas']['SolicitudVerificacionIdentidad'];
+export type EstadoPublico = components['schemas']['EstadoPublico'];
+export type ExpedienteResumen = components['schemas']['ExpedienteResumen'] & {
+  readonly nombreLicencia?: string;
+};
+export type Expediente = components['schemas']['Expediente'] & { readonly nombreLicencia?: string };
+export type EstadoExpediente = components['schemas']['EstadoExpediente'];
 export type { SesionPersonal };
 
 const TIEMPO_LIMITE_MS = 10_000;
@@ -340,4 +349,357 @@ export const actualizarReceta = async (
     return respuesta;
   });
   return estado === 401 ? { tipo: 'no-autenticado' } : resultado;
+};
+
+// ----------------------------------------------------------------- trámite en línea (004)
+
+// Cliente sin el middleware de sesión del personal: el `tokenIdentidad` del administrado se envía
+// explícitamente y nunca se mezcla con el token del personal (research §R-03 de la 004).
+const clientePublico = createClient<paths>({
+  baseUrl: new URL('/api/v1', window.location.origin).href,
+  credentials: 'same-origin',
+  fetch: (peticion) => globalThis.fetch(peticion),
+});
+
+const conIdentidad = (token: string) => ({ Authorization: `Bearer ${token}` });
+
+const bloqueadoHasta = (respuesta: Response): Date => {
+  const segundos = Number(respuesta.headers.get('Retry-After') ?? '0');
+  return new Date(Date.now() + Math.max(0, segundos) * 1000);
+};
+
+const erroresDe = (error: unknown): readonly ErrorCampo[] =>
+  (error as { errores?: ErrorCampo[] } | undefined)?.errores ?? [];
+
+/** Resultado del paso 1 de la identidad (contracts/identidad-y-solicitud.md). */
+export type ResultadoVerificacionIdentidad =
+  | { readonly tipo: 'ok'; readonly datos: DesafioOtp }
+  | { readonly tipo: 'no-coincide' }
+  | { readonly tipo: 'invalido'; readonly errores: readonly ErrorCampo[] }
+  | { readonly tipo: 'bloqueado'; readonly reintentarEn: Date }
+  | { readonly tipo: 'servicio-caido' }
+  | { readonly tipo: 'no-disponible' };
+
+export const verificarIdentidad = async (
+  identidad: IdentidadSolicitud,
+): Promise<ResultadoVerificacionIdentidad> => {
+  try {
+    const { data, error, response } = await clientePublico.POST('/identidad/verificar', {
+      body: identidad,
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', datos: data };
+    }
+    switch (response.status) {
+      case 422: {
+        const errores = erroresDe(error);
+        return errores.some((falla) => falla.campo === 'identidad')
+          ? { tipo: 'no-coincide' }
+          : { tipo: 'invalido', errores };
+      }
+      case 429:
+        return { tipo: 'bloqueado', reintentarEn: bloqueadoHasta(response) };
+      case 503:
+        return (error as { type?: string } | undefined)?.type?.endsWith(
+          'identificacion-no-disponible',
+        )
+          ? { tipo: 'servicio-caido' }
+          : { tipo: 'no-disponible' };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+export type ResultadoCodigoIdentidad =
+  | { readonly tipo: 'ok'; readonly token: string; readonly expiraEn: number }
+  | { readonly tipo: 'codigo-incorrecto' }
+  | { readonly tipo: 'bloqueado'; readonly reintentarEn: Date }
+  | { readonly tipo: 'no-disponible' };
+
+export const verificarCodigoIdentidad = async (
+  desafioId: string,
+  codigo: string,
+): Promise<ResultadoCodigoIdentidad> => {
+  try {
+    const { data, response } = await clientePublico.POST('/identidad/verificar-otp', {
+      body: { desafioId, codigo },
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', token: data.token, expiraEn: data.expiraEn };
+    }
+    if (response.status === 401) {
+      return { tipo: 'codigo-incorrecto' };
+    }
+    if (response.status === 429) {
+      return { tipo: 'bloqueado', reintentarEn: bloqueadoHasta(response) };
+    }
+    return { tipo: 'no-disponible' };
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+export type ResultadoSubida =
+  | { readonly tipo: 'ok'; readonly documentoId: string; readonly sha256: string }
+  | { readonly tipo: 'demasiado-grande' }
+  | { readonly tipo: 'tipo-no-permitido' }
+  | { readonly tipo: 'no-autenticado' }
+  | { readonly tipo: 'no-disponible' };
+
+/** Sube un documento (multipart, campo `archivo`) con el token de identidad. */
+export const subirDocumento = async (token: string, archivo: File): Promise<ResultadoSubida> => {
+  const formulario = new FormData();
+  formulario.append('archivo', archivo);
+  try {
+    const respuesta = await globalThis.fetch(
+      new Request(new URL('/api/v1/documentos', window.location.origin), {
+        method: 'POST',
+        headers: conIdentidad(token),
+        body: formulario,
+      }),
+    );
+    switch (respuesta.status) {
+      case 201: {
+        const datos = (await respuesta.json()) as { documentoId: string; sha256: string };
+        return { tipo: 'ok', documentoId: datos.documentoId, sha256: datos.sha256 };
+      }
+      case 413:
+        return { tipo: 'demasiado-grande' };
+      case 415:
+        return { tipo: 'tipo-no-permitido' };
+      case 401:
+        return { tipo: 'no-autenticado' };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+export type ResultadoPresentacion =
+  | { readonly tipo: 'ok'; readonly expediente: ExpedienteRegistrado }
+  | { readonly tipo: 'invalido'; readonly errores: readonly ErrorCampo[] }
+  | { readonly tipo: 'no-autenticado' }
+  | { readonly tipo: 'identidad-distinta' }
+  | { readonly tipo: 'permiso-usado' }
+  | { readonly tipo: 'no-disponible' };
+
+/** Presenta la solicitud en línea; la `Idempotency-Key` se reutiliza en los reintentos (FR-020). */
+export const presentarSolicitud = async (
+  token: string,
+  solicitud: NuevaSolicitud,
+  claveIdempotencia: string,
+): Promise<ResultadoPresentacion> => {
+  try {
+    const { data, error, response } = await clientePublico.POST('/expedientes', {
+      params: { header: { 'Idempotency-Key': claveIdempotencia } },
+      headers: conIdentidad(token),
+      body: solicitud,
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', expediente: data };
+    }
+    switch (response.status) {
+      case 422:
+        return { tipo: 'invalido', errores: erroresDe(error) };
+      case 401:
+        return { tipo: 'no-autenticado' };
+      case 403:
+        return { tipo: 'identidad-distinta' };
+      case 409:
+        return { tipo: 'permiso-usado' };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+// ----------------------------------------------------------------- consulta pública (004)
+
+export type ResultadoConsulta =
+  | { readonly tipo: 'ok'; readonly estado: EstadoPublico }
+  | { readonly tipo: 'no-encontrado' }
+  | { readonly tipo: 'invalido'; readonly errores: readonly ErrorCampo[] }
+  | { readonly tipo: 'bloqueado'; readonly reintentarEn: Date }
+  | { readonly tipo: 'no-disponible' };
+
+/**
+ * Consulta el estado con el número y el documento en el cuerpo de un POST: nada queda en la URL ni
+ * en el historial del navegador (contracts/portal-tramite.md).
+ */
+export const consultarEstado = async (
+  numeroExpediente: string,
+  documento: string,
+): Promise<ResultadoConsulta> => {
+  try {
+    const { data, error, response } = await clientePublico.POST('/expedientes/consultar', {
+      body: { numeroExpediente, documento },
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', estado: data };
+    }
+    switch (response.status) {
+      case 404:
+        return { tipo: 'no-encontrado' };
+      case 422:
+        return { tipo: 'invalido', errores: erroresDe(error) };
+      case 429:
+        return { tipo: 'bloqueado', reintentarEn: bloqueadoHasta(response) };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+// ----------------------------------------------------------------- mesa de partes (004)
+
+/** Sube un documento con la sesión de MESA_PARTES; ante un 401 renueva la sesión una vez. */
+export const subirDocumentoPersonal = async (
+  archivo: File,
+): Promise<ResultadoSubida | { readonly tipo: 'sin-permiso' }> => {
+  const intentar = async () => {
+    const token = obtenerToken();
+    if (token === null) {
+      return { tipo: 'no-autenticado' } as const;
+    }
+    return subirDocumento(token, archivo);
+  };
+  const primero = await intentar();
+  if (primero.tipo !== 'no-autenticado' || !(await renovarSesion())) {
+    return primero;
+  }
+  return intentar();
+};
+
+export type ResultadoRegistroPresencial =
+  | { readonly tipo: 'ok'; readonly expediente: ExpedienteRegistrado }
+  | { readonly tipo: 'invalido'; readonly errores: readonly ErrorCampo[] }
+  | { readonly tipo: 'no-autenticado' }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'servicio-caido' }
+  | { readonly tipo: 'no-disponible' };
+
+/**
+ * Registra la solicitud presencial con la sesión del personal (el middleware agrega el token y
+ * renueva la sesión una vez). La misma `Idempotency-Key` en los reintentos (FR-020).
+ */
+export const registrarSolicitudPresencial = async (
+  solicitud: NuevaSolicitud,
+  claveIdempotencia: string,
+): Promise<ResultadoRegistroPresencial> => {
+  try {
+    const { data, error, response } = await cliente.POST('/expedientes', {
+      params: { header: { 'Idempotency-Key': claveIdempotencia } },
+      body: solicitud,
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', expediente: data };
+    }
+    switch (response.status) {
+      case 422:
+        return { tipo: 'invalido', errores: erroresDe(error) };
+      case 401:
+        return { tipo: 'no-autenticado' };
+      case 403:
+        return { tipo: 'sin-permiso' };
+      case 503:
+        return tipoDeProblema(error) === 'identificacion-no-disponible'
+          ? { tipo: 'servicio-caido' }
+          : { tipo: 'no-disponible' };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+// ----------------------------------------------------------------- bandeja del personal (004)
+
+export interface FiltroBandeja {
+  readonly estado?: EstadoExpediente;
+  readonly ruta?: 'A' | 'B' | 'C';
+  readonly pagina?: number;
+  readonly porPagina?: number;
+}
+
+export interface PaginaExpedientes {
+  readonly pagina: number;
+  readonly porPagina: number;
+  readonly total: number;
+  readonly datos: readonly ExpedienteResumen[];
+}
+
+/** Bandeja de MESA_PARTES, EVALUADOR y JEFATURA (los filtros no son datos personales). */
+export const listarExpedientes = (filtro: FiltroBandeja) =>
+  ejecutarOperacion<PaginaExpedientes>(async () => {
+    const respuesta = await cliente.GET('/expedientes', { params: { query: filtro } });
+    return { ...respuesta, data: respuesta.data as PaginaExpedientes | undefined };
+  });
+
+/** Detalle del expediente (la API registra quién lo vio). */
+export const obtenerExpediente = (numero: string) =>
+  ejecutarOperacion<Expediente>(() =>
+    cliente.GET('/expedientes/{numeroExpediente}', {
+      params: { path: { numeroExpediente: numero } },
+    }),
+  );
+
+/** Ruta de la API de un documento del expediente (la descarga necesita la sesión). */
+export const urlDocumento = (numero: string, documentoId: string): string =>
+  new URL(
+    `/api/v1/expedientes/${encodeURIComponent(numero)}/documentos/${encodeURIComponent(documentoId)}`,
+    window.location.origin,
+  ).href;
+
+export type ResultadoDescarga =
+  | { readonly tipo: 'ok'; readonly archivo: Blob }
+  | { readonly tipo: 'no-encontrado' }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' };
+
+/**
+ * Descarga un documento con el token de la sesión (que vive en memoria, por eso no sirve un enlace
+ * directo). Ante un 401 renueva la sesión una vez.
+ */
+export const descargarDocumentoExpediente = async (
+  numero: string,
+  documentoId: string,
+): Promise<ResultadoDescarga> => {
+  const pedir = () => {
+    const token = obtenerToken();
+    return globalThis.fetch(
+      new Request(urlDocumento(numero, documentoId), {
+        headers: token === null ? {} : { Authorization: `Bearer ${token}` },
+      }),
+    );
+  };
+  try {
+    let respuesta = await pedir();
+    if (respuesta.status === 401 && (await renovarSesion())) {
+      respuesta = await pedir();
+    }
+    if (respuesta.ok) {
+      return { tipo: 'ok', archivo: await respuesta.blob() };
+    }
+    switch (respuesta.status) {
+      case 404:
+        return { tipo: 'no-encontrado' };
+      case 401:
+      case 403:
+        return { tipo: 'sin-permiso' };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
 };

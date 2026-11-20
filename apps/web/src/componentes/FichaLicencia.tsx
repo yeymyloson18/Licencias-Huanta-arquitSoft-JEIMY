@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { Link } from 'react-router';
 import type { Receta } from '../servicios/clienteApi';
 import {
   etiquetaCondicion,
@@ -67,6 +68,17 @@ export function FichaLicencia({ receta }: Propiedades) {
             );
           })}
         </ol>
+      )}
+
+      {receta.tipo === 'LICENCIA' && (
+        <p className="ficha__accion">
+          <Link
+            className="boton"
+            to={`/tramite/identidad?licencia=${encodeURIComponent(receta.codigo)}`}
+          >
+            Presentar solicitud
+          </Link>
+        </p>
       )}
     </article>
   );

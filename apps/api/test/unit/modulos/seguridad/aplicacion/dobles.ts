@@ -20,7 +20,7 @@ import {
   type LimitadorIntentos,
   type ResultadoReserva,
 } from '../../../../../src/modulos/seguridad/dominio/puertos/limitador-intentos';
-import type { ProtectorDatos } from '../../../../../src/modulos/seguridad/dominio/puertos/protector-datos';
+import type { ProtectorDatos } from '../../../../../src/compartido/dominio/protector-datos';
 import type {
   EventoSeguridad,
   IdsEvento,

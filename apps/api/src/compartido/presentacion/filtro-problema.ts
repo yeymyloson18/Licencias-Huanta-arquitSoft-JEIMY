@@ -39,6 +39,8 @@ const TITULOS: Readonly<Record<number, string>> = {
   404: 'Recurso no encontrado',
   405: 'Método no permitido',
   409: 'Conflicto con el estado actual',
+  413: 'El archivo supera los 10 MB',
+  415: 'Tipo de archivo no permitido',
   422: 'Los datos no cumplen las reglas de validación',
   429: 'Demasiados intentos',
   503: 'Servicio no disponible',

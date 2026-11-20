@@ -6,10 +6,19 @@ import { EditarReceta } from './paginas/admin/EditarReceta';
 import { Usuarios } from './paginas/admin/Usuarios';
 import { Asistente } from './paginas/Asistente';
 import { CambiarClave } from './paginas/CambiarClave';
+import { Consulta } from './paginas/Consulta';
 import { Ingresar } from './paginas/Ingresar';
 import { Inicio } from './paginas/Inicio';
 import { Licencia } from './paginas/Licencia';
+import { DetalleExpediente } from './paginas/personal/DetalleExpediente';
+import { Expedientes } from './paginas/personal/Expedientes';
+import { MesaPartes } from './paginas/personal/MesaPartes';
+import { Comprobante } from './paginas/tramite/Comprobante';
+import { Identidad } from './paginas/tramite/Identidad';
+import { Solicitud } from './paginas/tramite/Solicitud';
 import { useSesion } from './sesion/ProveedorSesion';
+import { ProveedorMesaPartes } from './tramite/ContextoMesaPartes';
+import { ProveedorTramite } from './tramite/ContextoTramite';
 
 interface EstadoNavegacion {
   readonly aviso?: string;
@@ -35,48 +44,83 @@ function Diseno() {
   );
 }
 
-/** Rutas del portal (contracts/portal-seguridad.md). Las usan main.tsx y las pruebas. */
+/**
+ * Rutas del portal (contracts/portal-seguridad.md; portal-tramite.md de la 004). Las usan main.tsx y
+ * las pruebas. El trámite en línea vive por encima de las rutas, solo en memoria.
+ */
 export function RutasAplicacion() {
   return (
-    <Routes>
-      <Route element={<Diseno />}>
-        <Route path="/" element={<Inicio />} />
-        <Route path="/asistente" element={<Asistente />} />
-        <Route path="/licencias/:codigo" element={<Licencia />} />
-        <Route path="/ingresar" element={<Ingresar />} />
-        <Route
-          path="/admin/usuarios"
-          element={
-            <RutaProtegida roles={['ADMINISTRADOR']}>
-              <Usuarios />
-            </RutaProtegida>
-          }
-        />
-        <Route
-          path="/admin/catalogo"
-          element={
-            <RutaProtegida roles={['ADMINISTRADOR']}>
-              <Catalogo />
-            </RutaProtegida>
-          }
-        />
-        <Route
-          path="/admin/catalogo/:codigo"
-          element={
-            <RutaProtegida roles={['ADMINISTRADOR']}>
-              <EditarReceta />
-            </RutaProtegida>
-          }
-        />
-        <Route
-          path="/cambiar-clave"
-          element={
-            <RutaProtegida permitirClaveTemporal>
-              <CambiarClave />
-            </RutaProtegida>
-          }
-        />
-      </Route>
-    </Routes>
+    <ProveedorTramite>
+      <ProveedorMesaPartes>
+        <Routes>
+          <Route element={<Diseno />}>
+            <Route path="/" element={<Inicio />} />
+            <Route path="/asistente" element={<Asistente />} />
+            <Route path="/licencias/:codigo" element={<Licencia />} />
+            <Route path="/ingresar" element={<Ingresar />} />
+            <Route path="/consulta" element={<Consulta />} />
+            <Route path="/tramite/identidad" element={<Identidad />} />
+            <Route path="/tramite/solicitud" element={<Solicitud />} />
+            <Route path="/tramite/comprobante/:numero" element={<Comprobante />} />
+            <Route
+              path="/admin/usuarios"
+              element={
+                <RutaProtegida roles={['ADMINISTRADOR']}>
+                  <Usuarios />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/admin/catalogo"
+              element={
+                <RutaProtegida roles={['ADMINISTRADOR']}>
+                  <Catalogo />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/admin/catalogo/:codigo"
+              element={
+                <RutaProtegida roles={['ADMINISTRADOR']}>
+                  <EditarReceta />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/personal/expedientes"
+              element={
+                <RutaProtegida roles={['MESA_PARTES', 'EVALUADOR', 'JEFATURA']}>
+                  <Expedientes />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/personal/expedientes/:numero"
+              element={
+                <RutaProtegida roles={['MESA_PARTES', 'EVALUADOR', 'JEFATURA']}>
+                  <DetalleExpediente />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/personal/mesa-partes/nueva"
+              element={
+                <RutaProtegida roles={['MESA_PARTES']}>
+                  <MesaPartes />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/cambiar-clave"
+              element={
+                <RutaProtegida permitirClaveTemporal>
+                  <CambiarClave />
+                </RutaProtegida>
+              }
+            />
+          </Route>
+        </Routes>
+      </ProveedorMesaPartes>
+    </ProveedorTramite>
   );
 }

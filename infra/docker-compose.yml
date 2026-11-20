@@ -51,6 +51,11 @@ services:
       CLAVE_HMAC_DATOS: ${CLAVE_HMAC_DATOS:-ZGVzYXJyb2xsby1obWFjLXNvbG8tbm8tdXNhci1lbi1wcm9kdWNjaW9u}
       ENVIO_OTP: ${ENVIO_OTP:-simulado}
       TRUST_PROXY_SALTOS: ${TRUST_PROXY_SALTOS:-1}
+      # Almacén de documentos (004): fuera de la carpeta pública del portal y compartido por todas las
+      # instancias de la API (research §R-08). Cada réplica monta el mismo volumen.
+      ALMACEN_ARCHIVOS_RUTA: /var/lib/licencias/archivos
+    volumes:
+      - archivos-tramites:/var/lib/licencias/archivos
     depends_on:
       postgres:
         condition: service_healthy
@@ -82,3 +87,4 @@ services:
 
 volumes:
   datos-postgres:
+  archivos-tramites:

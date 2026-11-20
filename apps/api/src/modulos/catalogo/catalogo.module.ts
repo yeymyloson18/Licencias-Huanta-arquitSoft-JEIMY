@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import type Redis from 'ioredis';
 import { CONFIGURACION, type Configuracion } from '../../compartido/infraestructura/configuracion';
 import { PrismaServicio } from '../../compartido/infraestructura/prisma.servicio';
@@ -25,6 +25,9 @@ import { CatalogoController } from './presentacion/catalogo.controller';
 // (historia 3 de la 003) usa la unidad de trabajo de Postgres y borra la caché después de confirmar.
 export const REPOSITORIO_CATALOGO = Symbol('REPOSITORIO_CATALOGO');
 
+// Es global para que otros módulos inyecten `FachadaCatalogo` sin importar el interior de `catalogo`
+// (regla de dependencia "aislamiento-entre-modulos"; lo usa Trámites desde la 004).
+@Global()
 @Module({
   controllers: [CatalogoController, AsistenteController, CatalogoAdminController],
   providers: [
@@ -84,8 +87,9 @@ export const REPOSITORIO_CATALOGO = Symbol('REPOSITORIO_CATALOGO');
     },
     {
       provide: FachadaCatalogo,
-      inject: [ListarRecetas],
-      useFactory: (listarRecetas: ListarRecetas) => new FachadaCatalogo(listarRecetas),
+      inject: [ListarRecetas, ObtenerFicha],
+      useFactory: (listarRecetas: ListarRecetas, obtenerFicha: ObtenerFicha) =>
+        new FachadaCatalogo(listarRecetas, obtenerFicha),
     },
   ],
   exports: [FachadaCatalogo],

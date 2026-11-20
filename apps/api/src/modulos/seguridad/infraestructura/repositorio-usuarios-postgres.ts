@@ -4,7 +4,7 @@ import { AsignacionRol } from '../dominio/asignacion-rol';
 import { Celular } from '../dominio/celular';
 import { Correo } from '../dominio/correo';
 import { NombreCompleto } from '../dominio/nombre-completo';
-import type { ProtectorDatos } from '../dominio/puertos/protector-datos';
+import type { ProtectorDatos } from '../../../compartido/dominio/protector-datos';
 import type {
   CambioUsuario,
   CriterioBusquedaUsuarios,

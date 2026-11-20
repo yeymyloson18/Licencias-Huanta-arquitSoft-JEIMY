@@ -21,20 +21,34 @@ import type { EnviadorOTP } from './dominio/puertos/enviador-otp';
 import type { GeneradorSecretos } from './dominio/puertos/generador-secretos';
 import type { HasherClaves } from './dominio/puertos/hasher-claves';
 import type { LimitadorIntentos } from './dominio/puertos/limitador-intentos';
-import type { ProtectorDatos } from './dominio/puertos/protector-datos';
 import type { RegistroEventosSeguridad } from './dominio/puertos/registro-eventos-seguridad';
 import type { Reloj } from './dominio/puertos/reloj';
 import type { RepositorioCodigosOtp } from './dominio/puertos/repositorio-codigos-otp';
 import type { RepositorioSesiones } from './dominio/puertos/repositorio-sesiones';
 import type { RepositorioUsuarios } from './dominio/puertos/repositorio-usuarios';
+import type { ProtectorDatos } from '../../compartido/dominio/protector-datos';
+import { PROTECTOR_DATOS } from '../../compartido/infraestructura/protector-datos-aes-gcm';
+import { ConfirmarIdentidadEnLinea } from './aplicacion/confirmar-identidad-en-linea';
 import { ResolverUsuarioAutenticado } from './aplicacion/resolver-usuario-autenticado';
+import { VerificarIdentidadAdministrado } from './aplicacion/verificar-identidad-administrado';
+import { VerificarOtpAdministrado } from './aplicacion/verificar-otp-administrado';
+import type { EmisorTokensIdentidad } from './dominio/puertos/emisor-tokens';
+import type { LimitadorIntentosIdentidad } from './dominio/puertos/limitador-intentos';
+import type { RepositorioVerificaciones } from './dominio/puertos/repositorio-verificaciones';
+import type { ServicioIdentificacion } from './dominio/puertos/servicio-identificacion';
+import { FachadaSeguridad } from './fachada';
+import { VerificarIdentidadPresencial } from './aplicacion/verificar-identidad-presencial';
+import { SolicitanteGuard } from './presentacion/solicitante.guard';
+import { RepositorioVerificacionesPostgres } from './infraestructura/repositorio-verificaciones-postgres';
+import { ServicioIdentificacionSimulado } from './infraestructura/servicio-identificacion-simulado';
+import { IdentidadController } from './presentacion/identidad.controller';
+import { TokenIdentidadGuard } from './presentacion/token-identidad.guard';
 import { AlmacenVersionSeguridadRedis } from './infraestructura/almacen-version-seguridad-redis';
 import { EmisorTokensJwt } from './infraestructura/emisor-tokens-jwt';
 import { EnviadorOtpSimulado } from './infraestructura/enviador-otp-simulado';
 import { GeneradorSecretosCrypto } from './infraestructura/generador-secretos-crypto';
 import { HasherClavesArgon2 } from './infraestructura/hasher-claves-argon2';
 import { LimitadorIntentosRedis } from './infraestructura/limitador-intentos-redis';
-import { ProtectorDatosAesGcm } from './infraestructura/protector-datos-aes-gcm';
 import { RegistroEventosSeguridadLogger } from './infraestructura/registro-eventos-seguridad-logger';
 import { RelojSistema } from './infraestructura/reloj-sistema';
 import { RepositorioCodigosOtpPostgres } from './infraestructura/repositorio-codigos-otp-postgres';
@@ -51,12 +65,13 @@ import {
   GENERADOR_SECRETOS,
   HASHER_CLAVES,
   LIMITADOR_INTENTOS,
-  PROTECTOR_DATOS,
   REGISTRO_EVENTOS_SEGURIDAD,
   RELOJ,
   REPOSITORIO_CODIGOS_OTP,
   REPOSITORIO_SESIONES,
   REPOSITORIO_USUARIOS,
+  REPOSITORIO_VERIFICACIONES,
+  SERVICIO_IDENTIFICACION,
 } from './tokens';
 
 // Raíz de composición del módulo Seguridad: conecta los puertos del dominio con sus adaptadores.
@@ -64,15 +79,9 @@ import {
 // módulo sin que este importe el interior de `seguridad` (contracts/control-permisos.md).
 @Global()
 @Module({
-  controllers: [AuthController, UsuariosController],
+  controllers: [AuthController, UsuariosController, IdentidadController],
   providers: [
     // ---------------------------------------------------------------- adaptadores
-    {
-      provide: PROTECTOR_DATOS,
-      inject: [CONFIGURACION],
-      useFactory: (configuracion: Configuracion): ProtectorDatos =>
-        new ProtectorDatosAesGcm(configuracion.claveCifradoDatos, configuracion.claveHmacDatos),
-    },
     { provide: HASHER_CLAVES, useFactory: (): HasherClaves => new HasherClavesArgon2() },
     {
       provide: GENERADOR_SECRETOS,
@@ -83,7 +92,8 @@ import {
     {
       provide: EMISOR_TOKENS,
       inject: [CONFIGURACION],
-      useFactory: (configuracion: Configuracion): EmisorTokens =>
+      // Implementa también `EmisorTokensIdentidad` (token del administrado, 004).
+      useFactory: (configuracion: Configuracion): EmisorTokensJwt =>
         new EmisorTokensJwt(configuracion.jwtSecreto),
     },
     { provide: RELOJ, useFactory: (): Reloj => new RelojSistema() },
@@ -126,8 +136,19 @@ import {
       // Contadores de intentos compartidos por todas las instancias (FR-006 a FR-009, §R-08).
       provide: LIMITADOR_INTENTOS,
       inject: [REDIS_CLIENTE, PROTECTOR_DATOS],
-      useFactory: (redis: Redis, protector: ProtectorDatos): LimitadorIntentos =>
+      // Implementa también `LimitadorIntentosIdentidad` (identidad del administrado, 004).
+      useFactory: (redis: Redis, protector: ProtectorDatos): LimitadorIntentosRedis =>
         new LimitadorIntentosRedis(redis, protector),
+    },
+    {
+      provide: SERVICIO_IDENTIFICACION,
+      useFactory: (): ServicioIdentificacion => new ServicioIdentificacionSimulado(),
+    },
+    {
+      provide: REPOSITORIO_VERIFICACIONES,
+      inject: [PrismaServicio],
+      useFactory: (prisma: PrismaServicio): RepositorioVerificaciones =>
+        new RepositorioVerificacionesPostgres(prisma),
     },
     {
       provide: ResolverUsuarioAutenticado,
@@ -355,8 +376,78 @@ import {
 
     JwtAuthGuard,
     RolesGuard,
+    // ------------------------------------------- identidad del administrado (004)
+    {
+      provide: VerificarIdentidadAdministrado,
+      inject: [
+        SERVICIO_IDENTIFICACION,
+        REPOSITORIO_VERIFICACIONES,
+        LIMITADOR_INTENTOS,
+        GENERADOR_SECRETOS,
+        PROTECTOR_DATOS,
+        ENVIADOR_OTP,
+        RELOJ,
+      ],
+      useFactory: (
+        servicio: ServicioIdentificacion,
+        verificaciones: RepositorioVerificaciones,
+        limitador: LimitadorIntentosIdentidad,
+        generador: GeneradorSecretos,
+        protector: ProtectorDatos,
+        enviador: EnviadorOTP,
+        reloj: Reloj,
+      ) =>
+        new VerificarIdentidadAdministrado({
+          servicio,
+          verificaciones,
+          limitador,
+          generador,
+          protector,
+          enviador,
+          reloj,
+        }),
+    },
+    {
+      provide: VerificarOtpAdministrado,
+      inject: [
+        REPOSITORIO_VERIFICACIONES,
+        LIMITADOR_INTENTOS,
+        GENERADOR_SECRETOS,
+        EMISOR_TOKENS,
+        RELOJ,
+      ],
+      useFactory: (
+        verificaciones: RepositorioVerificaciones,
+        limitador: LimitadorIntentosIdentidad,
+        generador: GeneradorSecretos,
+        emisor: EmisorTokensIdentidad,
+        reloj: Reloj,
+      ) => new VerificarOtpAdministrado({ verificaciones, limitador, generador, emisor, reloj }),
+    },
+    {
+      provide: ConfirmarIdentidadEnLinea,
+      inject: [REPOSITORIO_VERIFICACIONES, PROTECTOR_DATOS],
+      useFactory: (verificaciones: RepositorioVerificaciones, protector: ProtectorDatos) =>
+        new ConfirmarIdentidadEnLinea(verificaciones, protector),
+    },
+    {
+      provide: FachadaSeguridad,
+      inject: [ConfirmarIdentidadEnLinea, SERVICIO_IDENTIFICACION],
+      useFactory: (confirmar: ConfirmarIdentidadEnLinea, servicio: ServicioIdentificacion) =>
+        new FachadaSeguridad(confirmar, new VerificarIdentidadPresencial(servicio)),
+    },
+    TokenIdentidadGuard,
+    SolicitanteGuard,
   ],
   // Lo que necesitan los guards de la fachada cuando otro módulo los usa.
-  exports: [EMISOR_TOKENS, ResolverUsuarioAutenticado, JwtAuthGuard, RolesGuard],
+  exports: [
+    EMISOR_TOKENS,
+    ResolverUsuarioAutenticado,
+    JwtAuthGuard,
+    RolesGuard,
+    TokenIdentidadGuard,
+    SolicitanteGuard,
+    FachadaSeguridad,
+  ],
 })
 export class SeguridadModule {}

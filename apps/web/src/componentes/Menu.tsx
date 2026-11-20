@@ -15,6 +15,12 @@ interface Opcion {
 const OPCIONES: readonly Opcion[] = [
   { etiqueta: 'Usuarios', ruta: '/admin/usuarios', roles: ['ADMINISTRADOR'] },
   { etiqueta: 'Catálogo', ruta: '/admin/catalogo', roles: ['ADMINISTRADOR'] },
+  {
+    etiqueta: 'Expedientes',
+    ruta: '/personal/expedientes',
+    roles: ['MESA_PARTES', 'EVALUADOR', 'JEFATURA'],
+  },
+  { etiqueta: 'Registrar solicitud', ruta: '/personal/mesa-partes/nueva', roles: ['MESA_PARTES'] },
 ];
 
 /** Menú del personal: solo las opciones de sus roles y "Cerrar sesión" (FR-026). */
