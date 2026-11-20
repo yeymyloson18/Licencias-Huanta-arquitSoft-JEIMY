@@ -31,7 +31,7 @@ Para verlo ahora mismo: abre [editor.swagger.io](https://editor.swagger.io) y pe
 | Token | Quién lo obtiene | Cómo | Duración | Qué permite |
 |---|---|---|---|---|
 | `bearerPersonal` | Personal municipal | Correo + clave + OTP por SMS (RF16) | 15 min, renovable | Lo que permiten sus roles (RF17) |
-| `tokenIdentidad` | Administrado que presenta en línea | RUC + DNI (o CE) y, si actúa, el representante, validados + OTP al celular (RF06) | 15 min | Subir documentos y presentar **una sola** solicitud a su nombre (aclaración 2 de la 004); subsanar desde la 006 |
+| `tokenIdentidad` | Administrado que presenta en línea | RUC + DNI (o CE) y, si actúa, el representante, validados + OTP al celular (RF06) | 30 min | Subir documentos y presentar **una sola** solicitud a su nombre (aclaración 2 de la 004); subsanar desde la 006 |
 | `tokenConsulta` | Administrado que consulta | Número de expediente + DNI/RUC (RF03) | 15 min | Descargar la esquela o la licencia de **ese** expediente; se emite desde la 005 (en la 004 la consulta no lo envía) |
 
 **Renovación del personal (cookie `refresh_personal`).** El token de acceso del personal se renueva con

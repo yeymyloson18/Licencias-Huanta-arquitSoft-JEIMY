@@ -7,6 +7,8 @@ import type {
 import { esRol } from '../dominio/rol';
 
 const QUINCE_MINUTOS = 900;
+/** Vida del token de identidad del administrado: 30 minutos, para reunir y subir sus documentos. */
+const TREINTA_MINUTOS = 1800;
 /** Audiencia del token de identidad del administrado (research §R-03 de la 004). */
 const AUDIENCIA_IDENTIDAD = 'identidad-administrado';
 
@@ -29,7 +31,7 @@ const sonReclamosValidos = (carga: unknown): carga is ReclamosAcceso => {
 
 /** Token de acceso del personal: JWT HS256 de 15 minutos (research.md §R-05). */
 export class EmisorTokensJwt implements EmisorTokens, EmisorTokensIdentidad {
-  readonly segundosDeVidaIdentidad = QUINCE_MINUTOS;
+  readonly segundosDeVidaIdentidad = TREINTA_MINUTOS;
   private readonly jwt: JwtService;
 
   constructor(

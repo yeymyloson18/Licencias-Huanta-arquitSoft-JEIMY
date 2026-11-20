@@ -103,7 +103,7 @@ describe('Identidad del administrado en línea (CU03 de la 004)', () => {
     expect(JSON.stringify(respuesta.body)).not.toContain('12345');
   });
 
-  it('con el código correcto entrega el token de 15 minutos; con uno incorrecto, 401', async () => {
+  it('con el código correcto entrega el token de 30 minutos; con uno incorrecto, 401', async () => {
     const paso1 = await verificarIdentidad(app, TITULAR_PRUEBA_1).expect(200);
     const desafioId = (paso1.body as { desafioId: string }).desafioId;
 
@@ -116,7 +116,7 @@ describe('Identidad del administrado en línea (CU03 de la 004)', () => {
     expect(correcto.status).toBe(200);
     expect(correcto.headers['cache-control']).toBe('no-store');
     await esperarCumpleContrato('post', '/identidad/verificar-otp', correcto);
-    expect(correcto.body).toMatchObject({ expiraEn: 900 });
+    expect(correcto.body).toMatchObject({ expiraEn: 1800 });
   });
 
   it('otro código deja sin valor el anterior y el 4.º envío al mismo celular responde 429', async () => {

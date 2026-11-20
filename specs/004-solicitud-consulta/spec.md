@@ -29,7 +29,7 @@ y el asistente de la funcionalidad 003 y la seguridad del personal de la funcion
   misma conexión en 15 minutos bloquean esa conexión. Frena a quien prueba muchos números seguidos
   (EQ-04) sin que un tercero pueda bloquear la consulta del titular legítimo fallando a propósito
   sobre su número.
-- P: ¿El permiso de 15 minutos sirve para presentar una sola solicitud o varias? → R: Una sola: el
+- P: ¿El permiso de identidad sirve para presentar una sola solicitud o varias? → R: Una sola: el
   permiso se gasta al crear el expediente; los reintentos de esa misma solicitud devuelven el mismo
   expediente. Para otra solicitud se vuelve a confirmar la identidad.
 - P: ¿Los requisitos "solo si tu giro lo exige" y "no se pide si presentaste planos en los últimos 5
@@ -46,6 +46,12 @@ y el asistente de la funcionalidad 003 y la seguridad del personal de la funcion
   identificación? → R: Sí (RF06 y ADR-007): se comprueban el titular y el representante; el código va
   al celular de quien presenta y la carta poder la revisa el evaluador.
 
+### Sesión 2026-11-19
+
+- P: ¿15 minutos alcanzan para llenar el formulario y subir los documentos? → R: No: en la prueba
+  manual el permiso venció mientras se buscaba un archivo. La usuaria decidió 30 minutos. El riesgo
+  sigue acotado porque el permiso es de un solo uso y solo sirve para presentar una solicitud.
+
 ## Escenarios de usuario y pruebas *(obligatorio)*
 
 ### Historia de usuario 1 - Presentar la solicitud en línea con identidad confirmada (Prioridad: P1)
@@ -54,7 +60,7 @@ Una persona que ya sabe qué licencia necesita (porque la eligió en el inicio, 
 licencia o en la propuesta del asistente) quiere presentar su solicitud desde el celular, sin ir a la
 municipalidad. Primero confirma quién es: ingresa su RUC y su DNI con la fecha de emisión (o su carné
 de extranjería) y su número de celular. El sistema comprueba esos datos con el servicio de
-identificación y le envía un código de 6 dígitos al celular. Con el código correcto, tiene 15 minutos
+identificación y le envía un código de 6 dígitos al celular. Con el código correcto, tiene 30 minutos
 para presentar. Luego llena un formulario con sus datos y los de su establecimiento (nombre
 comercial, giro, dirección, zona y área) y adjunta **solo** los documentos que pide esa licencia; los
 requisitos condicionales aparecen únicamente cuando aplican (por ejemplo, la carta poder solo si
@@ -77,7 +83,7 @@ ruta A y su primer registro en el historial de estados.
    **Entonces** el sistema los comprueba con el servicio de identificación y le envía un código de 6
    dígitos al celular, mostrando el celular enmascarado (por ejemplo, 9*****321).
 3. **Dado** que recibió el código, **Cuando** lo ingresa correctamente, **Entonces** queda habilitado
-   para presentar durante 15 minutos.
+   para presentar durante 30 minutos.
 4. **Dado** que los datos de identidad no coinciden con el servicio de identificación, **Cuando** los
    envía, **Entonces** el sistema responde con un mensaje que no dice qué dato falló y no envía
    ningún código.
@@ -93,7 +99,7 @@ ruta A y su primer registro en el historial de estados.
 8. **Dado** que pulsa "Presentar" dos veces seguidas o pierde la conexión y reintenta, **Cuando** el
    sistema recibe la misma solicitud otra vez, **Entonces** existe un solo expediente y la persona ve
    el mismo número.
-9. **Dado** que pasaron más de 15 minutos desde que confirmó su identidad, **Cuando** intenta
+9. **Dado** que pasaron más de 30 minutos desde que confirmó su identidad, **Cuando** intenta
    presentar, **Entonces** el sistema le pide confirmar su identidad otra vez, sin perder lo que ya
    llenó en esa pantalla.
 10. **Dado** que llegó desde la propuesta del asistente o desde la ficha de una licencia, **Cuando**
@@ -246,7 +252,7 @@ comprobar que se rechaza.
   representante con el servicio de identificación (DNI/RUC) y, solo si coinciden, enviar un código de
   6 dígitos al celular indicado, válido por 5 minutos.
 - **FR-003**: Con el código correcto, el sistema DEBE habilitar al solicitante para presentar **una
-  sola** solicitud durante 15 minutos, a nombre de la identidad confirmada. El permiso se gasta al
+  sola** solicitud durante 30 minutos, a nombre de la identidad confirmada. El permiso se gasta al
   crear el expediente: un reintento de esa misma solicitud devuelve el mismo expediente (FR-020) y
   cualquier otra solicitud exige confirmar la identidad de nuevo.
 - **FR-004**: El servicio de identificación DEBE poder reemplazarse (hoy se usa uno simulado, porque
@@ -363,7 +369,7 @@ comprobar que se rechaza.
 
 - **Verificación de identidad**: intento de confirmar la identidad de un solicitante en línea: datos
   enviados al servicio de identificación, código enviado al celular, vencimiento e intentos. Si se
-  confirma, da un permiso de 15 minutos para presentar una sola solicitud a nombre de esa identidad.
+  confirma, da un permiso de 30 minutos para presentar una sola solicitud a nombre de esa identidad.
 - **Documento subido**: archivo adjuntado antes de presentar: tipo real, tamaño, huella, fecha de
   subida y, al presentar, el requisito y el expediente al que pertenece. Si no se usa en 24 horas, se
   descarta.

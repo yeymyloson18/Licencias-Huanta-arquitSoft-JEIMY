@@ -22,7 +22,7 @@ export interface EmisorTokens {
 }
 
 /**
- * Token de identidad del administrado (research §R-03 de la 004): JWT de 15 minutos con audiencia
+ * Token de identidad del administrado (research §R-03 de la 004): JWT de 30 minutos con audiencia
  * propia y `jti` = id de la verificación, sin datos personales. No sirve como token del personal ni
  * al revés.
  */

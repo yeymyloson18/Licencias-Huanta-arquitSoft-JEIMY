@@ -8,7 +8,7 @@ info:
 
     **Tres formas de acceso**
     - `bearerPersonal`: JWT del personal municipal, obtenido con usuario, clave y OTP (RF16). El rol viaja en el token (RF17).
-    - `tokenIdentidad`: JWT de 15 minutos que recibe el administrado después de validar su DNI/RUC y su celular con OTP (RF06). Solo sirve para presentar o subsanar una solicitud.
+    - `tokenIdentidad`: JWT de 30 minutos que recibe el administrado después de validar su DNI/RUC y su celular con OTP (RF06). Solo sirve para presentar o subsanar una solicitud.
     - `tokenConsulta`: JWT de 15 minutos que recibe el administrado al consultar con número de expediente + DNI/RUC (RF03). Solo sirve para leer su expediente y descargar su esquela o su licencia.
 
     **Reglas generales**
@@ -196,9 +196,9 @@ paths:
     post:
       tags: [Seguridad]
       operationId: verificarOtpAdministrado
-      summary: Verifica el OTP del administrado y entrega el token de identidad (15 minutos).
+      summary: Verifica el OTP del administrado y entrega el token de identidad (30 minutos).
       description: >-
-        El token (`expiraEn = 900`) sirve para subir documentos y presentar **una sola** solicitud
+        El token (`expiraEn = 1800`) sirve para subir documentos y presentar **una sola** solicitud
         (aclaración 2 de la 004); no se acepta como token del personal ni al revés. Un código incorrecto,
         vencido o de un desafío reemplazado responde 401.
       security: []
@@ -1440,7 +1440,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Token de 15 minutos del administrado con identidad confirmada (RF06).
+      description: Token de 30 minutos del administrado con identidad confirmada (RF06).
     tokenConsulta:
       type: http
       scheme: bearer

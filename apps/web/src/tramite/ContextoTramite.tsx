@@ -6,7 +6,7 @@ import type { IdentidadSolicitud } from '../servicios/clienteApi';
 // sobrevive a la navegación interna (por ejemplo, la vuelta a la identidad tras un 401 o un 409),
 // y se pierde al recargar la página.
 
-/** Permiso de identidad confirmado (token de un solo uso, 15 minutos). */
+/** Permiso de identidad confirmado (token de un solo uso, 30 minutos). */
 export interface PermisoIdentidad {
   readonly token: string;
   readonly identidad: IdentidadSolicitud;

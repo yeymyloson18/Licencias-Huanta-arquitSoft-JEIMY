@@ -20,7 +20,7 @@ export interface TokenIdentidadEmitido {
 }
 
 /**
- * Paso 2 de la identidad en línea: con el código correcto entrega el `tokenIdentidad` de 15 minutos,
+ * Paso 2 de la identidad en línea: con el código correcto entrega el `tokenIdentidad` de 30 minutos,
  * que sirve para presentar una sola solicitud (aclaración 2 de la 004). Desafío inexistente, código
  * incorrecto, vencido, agotado o reemplazado lanzan el mismo error.
  */

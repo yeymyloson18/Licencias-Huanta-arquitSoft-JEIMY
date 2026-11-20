@@ -31,6 +31,14 @@ describe('EmisorTokensJwt', () => {
     expect(Number(carga.exp) - Number(carga.iat)).toBe(900);
   });
 
+  it('el token de identidad del administrado dura 30 minutos y el del personal sigue en 15', async () => {
+    const carga = cargaDe(await emisor.firmarIdentidad('00000000-0000-4000-8000-0000000000cc'));
+
+    expect(emisor.segundosDeVidaIdentidad).toBe(1800);
+    expect(Number(carga.exp) - Number(carga.iat)).toBe(1800);
+    expect(emisor.segundosDeVida).toBe(900);
+  });
+
   it('no incluye datos personales: solo los reclamos y las fechas', async () => {
     const carga = cargaDe(await emisor.firmarAcceso(reclamos));
 
