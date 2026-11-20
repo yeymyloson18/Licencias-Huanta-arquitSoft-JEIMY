@@ -22,12 +22,12 @@ que la implementación y deben fallar primero.
 
 ## Fase 1: Preparación
 
-- [ ] T001 Agregar `qrcode-generator` como dependencia de ejecución de `apps/api` (research §R-09) y
+- [X] T001 Agregar `qrcode-generator` como dependencia de ejecución de `apps/api` (research §R-09) y
   comprobar que `npm ci` y `npm run build` siguen en verde
-- [ ] T002 [P] Crear `pla/plazos.module.ts`, `ins/inspecciones.module.ts`, `lic/licencias.module.ts` y
+- [X] T002 [P] Crear `pla/plazos.module.ts`, `ins/inspecciones.module.ts`, `lic/licencias.module.ts` y
   `not/notificaciones.module.ts` (vacíos), sus `fachada.ts` (`export {}`), registrarlos en
   `apps/api/src/app.module.ts` y quitar los `.gitkeep`
-- [ ] T003 [P] Mover `tra/dominio/tipo-archivo.ts` a `com/dominio/tipo-archivo.ts` y
+- [X] T003 [P] Mover `tra/dominio/tipo-archivo.ts` a `com/dominio/tipo-archivo.ts` y
   `tra/infraestructura/almacen-archivos-disco.ts` (con su puerto `AlmacenArchivos`) a `com/`
   (research §R-13); ajustar importaciones y pruebas de la 004 sin cambiar su comportamiento
 

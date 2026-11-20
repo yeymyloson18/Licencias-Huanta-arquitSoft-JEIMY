@@ -1,9 +1,9 @@
-import type { AlmacenArchivos } from '../dominio/puertos/almacen-archivos';
+import type { AlmacenArchivos } from '../../../compartido/dominio/almacen-archivos';
 import type { CalculadorHuella } from '../dominio/puertos/calculador-huella';
 import type { GeneradorIds } from '../dominio/puertos/generador-ids';
 import type { RepositorioDocumentosTemporales } from '../dominio/puertos/repositorio-documentos-temporales';
 import type { Reloj } from '../dominio/puertos/reloj';
-import { detectarTipoArchivo, TAMANO_MAXIMO_BYTES } from '../dominio/tipo-archivo';
+import { detectarTipoArchivo, TAMANO_MAXIMO_BYTES } from '../../../compartido/dominio/tipo-archivo';
 import { ErrorValidacionSolicitud } from '../dominio/errores';
 import { ErrorArchivoDemasiadoGrande, ErrorTipoArchivoNoPermitido } from './errores';
 

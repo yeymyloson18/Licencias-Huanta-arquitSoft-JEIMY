@@ -140,8 +140,8 @@ la consulta de la 004). El estado VENCIDA se calcula al leer (`vigente_hasta < h
 **Decisión**: `multipart/form-data` con `fotos` (1 a 5, como pide la entrada; el contrato decía 10 y se
 ajusta), cada una de hasta 10 MB y JPG o PNG comprobado por el contenido. La detección de tipo
 (`tipo-archivo.ts`) y el almacén en disco (`AlmacenArchivosDisco`) pasan de `tramites` a
-`compartido` para que `inspecciones` los use sin importar otro módulo; las claves llevan el prefijo
-`inspecciones/`. Las fotos se guardan antes de la transacción y, si la transacción falla, se borran.
+`compartido` para que `inspecciones` los use sin importar otro módulo; las claves son UUID
+aleatorios como en la 004 (el almacén solo acepta UUID: nadie puede salir de la carpeta). Las fotos se guardan antes de la transacción y, si la transacción falla, se borran.
 
 ## R-14. Dirección del local para el inspector
 

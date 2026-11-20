@@ -1,4 +1,4 @@
-import type { TipoArchivo } from '../dominio/tipo-archivo';
+import type { TipoArchivo } from '../../../compartido/dominio/tipo-archivo';
 
 const FORMATO_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

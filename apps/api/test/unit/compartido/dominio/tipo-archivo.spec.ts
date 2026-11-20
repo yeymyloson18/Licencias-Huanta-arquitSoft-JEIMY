@@ -1,4 +1,4 @@
-import { detectarTipoArchivo } from '../../../../../src/modulos/tramites/dominio/tipo-archivo';
+import { detectarTipoArchivo } from '../../../../src/compartido/dominio/tipo-archivo';
 
 const bytes = (...valores: number[]) => new Uint8Array([...valores, 0x00, 0x01, 0x02]);
 const texto = (contenido: string) => new TextEncoder().encode(contenido);

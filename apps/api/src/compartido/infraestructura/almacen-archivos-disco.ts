@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rm, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { AlmacenArchivos } from '../dominio/puertos/almacen-archivos';
+import type { AlmacenArchivos } from '../dominio/almacen-archivos';
 
 // Almacén de documentos en una carpeta (research §R-08 de la 004): un volumen de Docker fuera de la
 // carpeta pública del portal y compartido por todas las instancias de la API, que así sigue sin

@@ -1,7 +1,7 @@
 // Dobles en memoria de los puertos del módulo Trámites (004).
 import type { Expediente } from '../../../../../src/modulos/tramites/dominio/expediente';
 import { NumeroExpediente } from '../../../../../src/modulos/tramites/dominio/numero-expediente';
-import type { AlmacenArchivos } from '../../../../../src/modulos/tramites/dominio/puertos/almacen-archivos';
+import type { AlmacenArchivos } from '../../../../../src/compartido/dominio/almacen-archivos';
 import type { CalculadorHuella } from '../../../../../src/modulos/tramites/dominio/puertos/calculador-huella';
 import type { CatalogoRecetas } from '../../../../../src/modulos/tramites/dominio/puertos/catalogo-recetas';
 import type { GeneradorIds } from '../../../../../src/modulos/tramites/dominio/puertos/generador-ids';

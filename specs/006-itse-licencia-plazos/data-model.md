@@ -81,7 +81,7 @@ hace nada (idempotente); en un estado inesperado falla y se reintenta.
   (condicional: un segundo registro no cambia filas → 409); `resultado`, `observaciones` (hasta 4000,
   obligatorias si es DESFAVORABLE), `registrada_en`, estado REALIZADA; con FAVORABLE,
   `numero_certificado` (normalizado, 4 a 30 de `[A-Z0-9/-]`) y `certificado_emitido_en` (no futura).
-  Fotos (1 a 5, JPG o PNG, hasta 10 MB) en `inspecciones.foto` con claves `inspecciones/<id>/<uuid>`.
+  Fotos (1 a 5, JPG o PNG, hasta 10 MB) en `inspecciones.foto` con claves UUID aleatorias (como en la 004).
   Auditoría `REGISTRAR_RESULTADO` con `{resultado, fotos}` (sin observaciones). Publica
   `ResultadoITSERegistrado`.
 
