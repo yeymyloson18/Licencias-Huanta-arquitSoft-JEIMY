@@ -508,11 +508,11 @@ final.
   ramas por archivo en `tramites/dominio`, `tramites/aplicacion`, `seguridad/dominio` y
   `seguridad/aplicacion`), `regla-dependencia` y `contrato`; `gitleaks` con 0 hallazgos
   _Nota de implementación:_ unitarias 802, integración 322 (30 suites), portal 211; gitleaks 0 hallazgos en 168 commits y en el árbol de trabajo. La suite del portal falló 2 veces de unas 10 en `MesaPartes.test.tsx`: con todo en paralelo, alguna prueba que llena el formulario completo superaba el límite de 5 s de Jest. Se le dio un límite de 15 s a ese archivo; después, 8 de 8 corridas en verde.
-- [ ] T068 Preparar la descripción del PR de `004-solicitud-consulta` hacia `main` (resultados de k6,
+- [X] T068 Preparar la descripción del PR de `004-solicitud-consulta` hacia `main` (resultados de k6,
   Lighthouse, ZAP y tiempos; SC-002 pendiente de confirmar en el entorno desplegado si aplica) y
   confirmar los 5 checks en verde. **Hacer push y abrir o actualizar el PR solo con la autorización
   explícita de la usuaria**
-  _Nota de implementación:_ la descripción está en `specs/004-solicitud-consulta/descripcion-pr.md`. Queda sin marcar porque los 5 checks solo se pueden confirmar después del push (lo hace la usuaria) y el PR #31 lo actualiza Claude en la web.
+  _Nota de implementación:_ la descripción está en `specs/004-solicitud-consulta/descripcion-pr.md` y se copió al PR #31 (no se creó otro). Los 5 checks en verde sobre la fase 7 (`3c8cfde`).
 
 ---
 
