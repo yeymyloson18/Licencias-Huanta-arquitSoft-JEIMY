@@ -59,14 +59,14 @@ y se ejecuta cuando la usuaria cree el servidor. No se marca como hecha hasta en
 
 ## Fase 2: Fundamentos (bloquea las historias 1 y 2)
 
-- [ ] T004 Contrato primero: aplicar [contracts/openapi-cambios.md](./contracts/openapi-cambios.md) en
+- [X] T004 Contrato primero: aplicar [contracts/openapi-cambios.md](./contracts/openapi-cambios.md) en
   `docs/06-contrato-api/openapi.yaml` y en su README. Después:
   - ejecutar `npm run contrato` (sin advertencias nuevas);
   - ejecutar `npm run generar`.
-- [ ] T005 [P] Migración `apps/api/prisma/migrations/0011_indices_reportes/migration.sql` con los 4
+- [X] T005 [P] Migración `apps/api/prisma/migrations/0011_indices_reportes/migration.sql` con los 4
   índices de [data-model.md](./data-model.md) §2. Reflejarlos en `docs/05-modelo-de-datos/esquema.sql`
   y `schema.prisma` (`@@index`). La prueba de esquema equivalente debe seguir en verde.
-- [ ] T006 Métodos de lectura en las fachadas ([data-model.md](./data-model.md) §3), con sus puertos y
+- [X] T006 Métodos de lectura en las fachadas ([data-model.md](./data-model.md) §3), con sus puertos y
   repositorios:
 
   | Fachada | Métodos |
@@ -75,7 +75,7 @@ y se ejecuta cuando la usuaria cree el servidor. No se marca como hecha hasta en
   | `pag/fachada.ts` | `pagosRegistrados` |
   | `lic/fachada.ts` | `licenciasVigentes`, `itsePorVencer` |
   | `pla/fachada.ts` | `feriadosEntre` |
-  | `cat/fachada.ts` | `plazosPorReceta` |
+  | `cat/fachada.ts` | se reutiliza `listarRecetas({ tipo: 'LICENCIA' })`, que ya devuelve `plazoDias` |
 
   Incluye pruebas unitarias de los cálculos nuevos en cada módulo (suspensiones a partir del
   historial).

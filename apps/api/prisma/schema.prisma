@@ -171,6 +171,7 @@ model certificado_itse {
   aviso_enviado_en DateTime? @db.Timestamptz(6)
   licencia         licencia  @relation(fields: [licencia_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  @@index([vence_en], map: "ix_certificado_vence")
   @@schema("licencias")
 }
 
@@ -195,6 +196,7 @@ model licencia {
   licencia            licencia?          @relation("licenciaTolicencia", fields: [reemplaza_a], references: [id], onDelete: NoAction, onUpdate: NoAction)
   other_licencia      licencia[]         @relation("licenciaTolicencia")
 
+  @@index([estado, codigo_receta], map: "ix_licencia_situacion")
   @@schema("licencias")
 }
 
@@ -438,6 +440,7 @@ model expediente {
   observacion             observacion[]
 
   @@index([evaluador_id, estado], map: "ix_expediente_bandeja")
+  @@index([presentado_en], map: "ix_expediente_presentado")
   @@index([numero, documento_hmac], map: "ix_expediente_consulta")
   @@index([estado, vence_plazo_en], map: "ix_expediente_estado")
   @@index([ruc_hmac], map: "ix_expediente_ruc")

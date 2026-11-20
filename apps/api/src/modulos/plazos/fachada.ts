@@ -16,4 +16,9 @@ export class FachadaPlazos {
   diasHabilesRestantes(hoy: string, vence: string): Promise<number> {
     return this.plazos.diasHabilesRestantes(hoy, vence);
   }
+
+  /** Feriados entre dos fechas, ambas incluidas (tablero de la jefatura, 007). */
+  feriadosEntre(desde: string, hasta: string): Promise<ReadonlySet<string>> {
+    return this.plazos.feriadosEntre(desde, hasta);
+  }
 }

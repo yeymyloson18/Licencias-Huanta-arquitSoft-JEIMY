@@ -4,6 +4,7 @@ import {
   diaDeLaSemana,
   esFechaValida,
   fechaLima,
+  inicioDiaLima,
   sumarDias,
   sumarMeses,
 } from '../../../../src/compartido/dominio/fecha-lima';
@@ -38,5 +39,13 @@ describe('Fechas en hora de Lima (006)', () => {
     expect(diaDeLaSemana('2026-11-20')).toBe(5); // viernes
     expect(diaDeLaSemana('2026-11-22')).toBe(0); // domingo
     expect(deFechaBase(comoFechaBase('2026-11-20'))).toBe('2026-11-20');
+  });
+
+  it('el día de Lima empieza a las 05:00 UTC (007)', () => {
+    const inicio = inicioDiaLima('2026-11-20');
+
+    expect(inicio.toISOString()).toBe('2026-11-20T05:00:00.000Z');
+    expect(fechaLima(inicio)).toBe('2026-11-20');
+    expect(fechaLima(new Date(inicio.getTime() - 1))).toBe('2026-11-19');
   });
 });

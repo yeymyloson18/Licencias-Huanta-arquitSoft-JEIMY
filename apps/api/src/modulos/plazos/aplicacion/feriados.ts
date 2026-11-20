@@ -69,6 +69,10 @@ export class CalcularPlazos {
     return calendario.diasHabilesRestantes(hoy, vence);
   }
 
+  feriadosEntre(desde: Fecha, hasta: Fecha): Promise<ReadonlySet<Fecha>> {
+    return this.feriados.fechasEntre(desde, hasta);
+  }
+
   private async calendario(desde: Fecha, hasta: Fecha): Promise<CalendarioHabil> {
     return new CalendarioHabil(await this.feriados.fechasEntre(desde, hasta));
   }
