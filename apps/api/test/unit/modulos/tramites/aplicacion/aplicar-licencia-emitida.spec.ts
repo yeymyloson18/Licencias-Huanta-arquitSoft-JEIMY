@@ -123,12 +123,18 @@ describe('AplicarLicenciaEmitida (FR-001, FR-003 y FR-004 de la 006)', () => {
     await expect(aplicar(decisiones)).rejects.toBeInstanceOf(ErrorTransicionNoAplicada);
   });
 
-  it('un plan sin pasos es un error de programación', async () => {
+  it('un plan sin pasos solo publica sus eventos; sin pasos ni eventos es un error', async () => {
     const decisiones = con({});
     const transiciones = new TransicionesSistema({ decisiones, reloj: new RelojFalso() });
+    const evento = { tipo: 'LicenciaSolicitada', datos: { numeroExpediente: 'EXP-2026-000001' } };
 
+    expect(
+      await transiciones.aplicar('EXP-2026-000001', () => ({ pasos: [], eventos: [evento] })),
+    ).toBe('APLICADO');
+    expect(decisiones.publicados).toEqual([evento]);
+    expect(decisiones.aplicadas).toEqual([]);
     await expect(transiciones.aplicar('EXP-2026-000001', () => ({ pasos: [] }))).rejects.toThrow(
-      'al menos un paso',
+      'al menos un paso o un evento',
     );
   });
 });

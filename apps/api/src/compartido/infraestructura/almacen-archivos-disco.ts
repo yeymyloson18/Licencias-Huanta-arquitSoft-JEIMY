@@ -7,6 +7,9 @@ import type { AlmacenArchivos } from '../dominio/almacen-archivos';
 // carpeta pública del portal y compartido por todas las instancias de la API, que así sigue sin
 // estado. En la 010 se reemplaza por un almacén compatible con S3.
 
+/** Token de inyección del almacén compartido (documentos de la 004 y fotos de la 006). */
+export const ALMACEN_ARCHIVOS = Symbol('ALMACEN_ARCHIVOS');
+
 const FORMATO_CLAVE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export class AlmacenArchivosDisco implements AlmacenArchivos {

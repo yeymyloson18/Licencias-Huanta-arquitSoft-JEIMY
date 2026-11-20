@@ -1350,6 +1350,11 @@ paths:
         '403': { $ref: '#/components/responses/SinPermiso' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
         '409': { $ref: '#/components/responses/Conflicto' }
+        '413':
+          description: Una foto supera los 10 MB.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
         '422': { $ref: '#/components/responses/NoProcesable' }
 
   # ===================================================================== LICENCIAS

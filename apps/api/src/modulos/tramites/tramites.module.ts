@@ -7,7 +7,6 @@ import { LectorParaCajaPostgres } from './infraestructura/lector-para-caja-postg
 import { manejadorPagoRegistrado } from './infraestructura/manejador-pago-registrado';
 import { CajaController, LECTOR_PARA_CAJA } from './presentacion/caja.controller';
 import type { ProtectorDatos } from '../../compartido/dominio/protector-datos';
-import { CONFIGURACION, type Configuracion } from '../../compartido/infraestructura/configuracion';
 import { PrismaServicio } from '../../compartido/infraestructura/prisma.servicio';
 import { PROTECTOR_DATOS } from '../../compartido/infraestructura/protector-datos-aes-gcm';
 import { REDIS_CLIENTE } from '../../compartido/infraestructura/redis.proveedor';
@@ -25,7 +24,13 @@ import { SubsanacionController } from './presentacion/subsanacion.controller';
 import { AplicarLicenciaEmitida } from './aplicacion/aplicar-licencia-emitida';
 import { TransicionesSistema } from './aplicacion/transiciones-sistema';
 import { LectorParaModulosPostgres } from './infraestructura/lector-para-modulos-postgres';
-import { manejadorLicenciaEmitida } from './infraestructura/manejadores-006';
+import {
+  manejadorLicenciaEmitida,
+  manejadorResultadoItse,
+} from './infraestructura/manejadores-006';
+import { AplicarResultadoItse } from './aplicacion/aplicar-resultado-itse';
+import { ResultadosInspeccionFachada } from './infraestructura/resultados-inspeccion-fachada';
+import { FachadaInspecciones } from '../inspecciones/fachada';
 import { ConsultarAuditoriaExpediente } from './aplicacion/consultar-auditoria-expediente';
 import {
   LectorAuditoriaPostgres,
@@ -55,7 +60,6 @@ import { DescartarDocumentosVencidos } from './aplicacion/descartar-documentos-v
 import { PresentarSolicitud } from './aplicacion/presentar-solicitud';
 import { SubirDocumento } from './aplicacion/subir-documento';
 import type { AlmacenArchivos } from '../../compartido/dominio/almacen-archivos';
-import { AlmacenArchivosDisco } from '../../compartido/infraestructura/almacen-archivos-disco';
 import { CatalogoRecetasFachada } from './infraestructura/catalogo-recetas-fachada';
 import { GeneradorIdsCrypto } from './infraestructura/generador-ids-crypto';
 import { LimitadorConsultasRedis } from './infraestructura/limitador-consultas-redis';
@@ -73,7 +77,9 @@ import { ExpedientesController } from './presentacion/expedientes.controller';
 
 // Raíz de composición del módulo Trámites (funcionalidad 004). Usa Catálogo y Seguridad solo por sus
 // fachadas (principio I): Catálogo y Seguridad son globales y exportan sus fachadas.
-export const ALMACEN_ARCHIVOS = Symbol('ALMACEN_ARCHIVOS');
+import { ALMACEN_ARCHIVOS } from '../../compartido/infraestructura/almacen-archivos-disco';
+
+export { ALMACEN_ARCHIVOS };
 const CATALOGO_EVALUACION = Symbol('CATALOGO_EVALUACION');
 const REPOSITORIO_DECISIONES = Symbol('REPOSITORIO_DECISIONES');
 
@@ -202,12 +208,6 @@ const reloj = new RelojSistema();
         }),
     },
     {
-      provide: ALMACEN_ARCHIVOS,
-      inject: [CONFIGURACION],
-      useFactory: (configuracion: Configuracion): Promise<AlmacenArchivos> =>
-        AlmacenArchivosDisco.crear(configuracion.almacenArchivosRuta),
-    },
-    {
       provide: SubirDocumento,
       inject: [ALMACEN_ARCHIVOS, PrismaServicio],
       useFactory: (almacen: AlmacenArchivos, prisma: PrismaServicio) =>
@@ -271,9 +271,9 @@ const reloj = new RelojSistema();
     },
     {
       provide: FachadaTramites,
-      inject: [LECTOR_PARA_CAJA, PrismaServicio],
-      useFactory: (lector: LectorParaCaja, prisma: PrismaServicio) =>
-        new FachadaTramites(lector, new LectorParaModulosPostgres(prisma)),
+      inject: [LECTOR_PARA_CAJA, PrismaServicio, PROTECTOR_DATOS],
+      useFactory: (lector: LectorParaCaja, prisma: PrismaServicio, protector: ProtectorDatos) =>
+        new FachadaTramites(lector, new LectorParaModulosPostgres(prisma, protector)),
     },
     // Transiciones del sistema por ruta (006): licencia emitida, resultado ITSE y pago de ruta B.
     {
@@ -281,6 +281,15 @@ const reloj = new RelojSistema();
       inject: [REPOSITORIO_DECISIONES],
       useFactory: (decisiones: RepositorioDecisiones) =>
         new TransicionesSistema({ decisiones, reloj }),
+    },
+    {
+      provide: AplicarResultadoItse,
+      inject: [TransicionesSistema, FachadaInspecciones],
+      useFactory: (transiciones: TransicionesSistema, inspecciones: FachadaInspecciones) =>
+        new AplicarResultadoItse({
+          transiciones,
+          resultados: new ResultadosInspeccionFachada(inspecciones),
+        }),
     },
     {
       provide: AplicarLicenciaEmitida,
@@ -301,10 +310,15 @@ export class TramitesModule implements OnModuleInit {
     private readonly despachador: DespachadorEventos,
     private readonly aplicarPago: AplicarPagoRegistrado,
     private readonly aplicarLicencia: AplicarLicenciaEmitida,
+    private readonly aplicarResultado: AplicarResultadoItse,
   ) {}
 
   onModuleInit(): void {
     this.despachador.registrar('PagoRegistrado', manejadorPagoRegistrado(this.aplicarPago));
     this.despachador.registrar('LicenciaEmitida', manejadorLicenciaEmitida(this.aplicarLicencia));
+    this.despachador.registrar(
+      'ResultadoITSERegistrado',
+      manejadorResultadoItse(this.aplicarResultado),
+    );
   }
 }

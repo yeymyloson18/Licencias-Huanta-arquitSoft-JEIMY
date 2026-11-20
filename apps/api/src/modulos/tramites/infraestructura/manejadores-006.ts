@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { AplicarLicenciaEmitida } from '../aplicacion/aplicar-licencia-emitida';
+import type { AplicarResultadoItse } from '../aplicacion/aplicar-resultado-itse';
 
 /** El evento no tiene la forma esperada; el despachador lo reintenta y avisa cada 10 fallos. */
 export class ErrorEventoInvalidoTramites extends Error {
@@ -23,6 +24,22 @@ export const manejadorLicenciaEmitida =
     const evento = esquemaLicenciaEmitida.safeParse(datos);
     if (!evento.success) {
       throw new ErrorEventoInvalidoTramites('LicenciaEmitida');
+    }
+    await aplicar.ejecutar(evento.data);
+  };
+
+const esquemaResultadoItse = z.object({
+  numeroExpediente: NUMERO_EXPEDIENTE,
+  inspeccionId: z.uuid(),
+});
+
+/** `ResultadoITSERegistrado` → el expediente avanza según el tipo y el resultado (research §R-01). */
+export const manejadorResultadoItse =
+  (aplicar: AplicarResultadoItse) =>
+  async (datos: unknown): Promise<void> => {
+    const evento = esquemaResultadoItse.safeParse(datos);
+    if (!evento.success) {
+      throw new ErrorEventoInvalidoTramites('ResultadoITSERegistrado');
     }
     await aplicar.ejecutar(evento.data);
   };

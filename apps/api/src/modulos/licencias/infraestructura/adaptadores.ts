@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import type { FachadaTramites } from '../../tramites/fachada';
 import type { EmitirLicencia } from '../aplicacion/emitir-licencia';
+import type { RegistrarCertificado } from '../aplicacion/registrar-certificado';
 import type { DatosExpedienteParaLicencia } from '../dominio/licencia';
 import type { ExpedientesParaLicencia, GeneradorAleatorio, Reloj } from '../dominio/puertos';
 
@@ -47,15 +48,19 @@ export class ErrorEventoInvalidoLicencias extends Error {
 }
 
 const NUMERO_EXPEDIENTE = z.string().regex(/^EXP-[0-9]{4}-[0-9]{6}$/);
-const CERTIFICADO = z.object({
-  numero: z.string().min(4).max(30),
-  emitidoEn: z.iso.date(),
-});
 
+/** Los datos de los eventos son planos: el certificado viaja en dos campos (ruta B). */
 const esquemaLicenciaSolicitada = z.object({
   numeroExpediente: NUMERO_EXPEDIENTE,
   tipo: z.enum(['DEFINITIVA', 'PROVISIONAL']),
-  certificado: CERTIFICADO.optional(),
+  certificadoNumero: z.string().min(4).max(30).optional(),
+  certificadoEmitidoEn: z.iso.date().optional(),
+});
+
+const esquemaCertificadoRegistrado = z.object({
+  numeroExpediente: NUMERO_EXPEDIENTE,
+  numero: z.string().min(4).max(30),
+  emitidoEn: z.iso.date(),
 });
 
 /** `LicenciaSolicitada` → emite la licencia (research §R-01 de la 006). */
@@ -66,9 +71,24 @@ export const manejadorLicenciaSolicitada =
     if (!evento.success) {
       throw new ErrorEventoInvalidoLicencias('LicenciaSolicitada');
     }
+    const { certificadoNumero, certificadoEmitidoEn } = evento.data;
     await emitir.ejecutar({
       numeroExpediente: evento.data.numeroExpediente,
       tipo: evento.data.tipo,
-      certificado: evento.data.certificado ?? null,
+      certificado:
+        certificadoNumero === undefined || certificadoEmitidoEn === undefined
+          ? null
+          : { numero: certificadoNumero, emitidoEn: certificadoEmitidoEn },
     });
+  };
+
+/** `CertificadoItseRegistrado` → certificado en la licencia vigente (ITSE posterior o de bodega). */
+export const manejadorCertificadoRegistrado =
+  (registrar: RegistrarCertificado) =>
+  async (datos: unknown): Promise<void> => {
+    const evento = esquemaCertificadoRegistrado.safeParse(datos);
+    if (!evento.success) {
+      throw new ErrorEventoInvalidoLicencias('CertificadoItseRegistrado');
+    }
+    await registrar.ejecutar(evento.data);
   };

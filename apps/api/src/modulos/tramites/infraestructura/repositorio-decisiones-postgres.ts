@@ -3,6 +3,7 @@ import { esEstadoExpediente } from '../dominio/estado-publico';
 import type { Ruta } from '../dominio/maquina-estados';
 import type {
   Decision,
+  EventoParaPublicar,
   ExpedienteParaDecidir,
   RepositorioDecisiones,
 } from '../dominio/puertos/repositorio-decisiones';
@@ -132,5 +133,13 @@ export class RepositorioDecisionesPostgres implements RepositorioDecisiones {
       }
       return true;
     });
+  }
+
+  async publicar(eventos: readonly EventoParaPublicar[]): Promise<void> {
+    if (eventos.length > 0) {
+      await this.prisma.evento_pendiente.createMany({
+        data: eventos.map((evento) => ({ tipo: evento.tipo, datos: { ...evento.datos } })),
+      });
+    }
   }
 }

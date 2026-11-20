@@ -1171,3 +1171,151 @@ export const verificarLicencia = async (codigo: string): Promise<ResultadoVerifi
     return { tipo: 'no-disponible' };
   }
 };
+
+// ----------------------------------------------------------------- inspecciones (006)
+
+export type Inspeccion = components['schemas']['Inspeccion'];
+
+export type ResultadoInspecciones =
+  | { readonly tipo: 'ok'; readonly total: number; readonly datos: readonly Inspeccion[] }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' };
+
+/** Bandeja: la jefatura ve todas; el inspector, solo las suyas (con la dirección). */
+export const listarInspecciones = async (
+  estado: 'PENDIENTE' | 'ASIGNADA' | 'REALIZADA' | null,
+): Promise<ResultadoInspecciones> => {
+  try {
+    const { data, response } = await cliente.GET('/inspecciones', {
+      params: { query: { porPagina: 100, ...(estado === null ? {} : { estado }) } },
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', total: data.total, datos: data.datos ?? [] };
+    }
+    return response.status === 401 || response.status === 403
+      ? { tipo: 'sin-permiso' }
+      : { tipo: 'no-disponible' };
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** Inspectores activos para asignar (rol JEFATURA). */
+export const listarInspectores = async (): Promise<
+  readonly { readonly id: string; readonly nombre: string }[] | null
+> => {
+  try {
+    const { data } = await cliente.GET('/inspecciones/inspectores');
+    return data ?? null;
+  } catch {
+    return null;
+  }
+};
+
+export type ResultadoAccionInspeccion =
+  | { readonly tipo: 'ok'; readonly inspeccion: Inspeccion }
+  | { readonly tipo: 'invalido'; readonly errores: readonly ErrorCampo[] }
+  | { readonly tipo: 'conflicto'; readonly mensaje: string }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-encontrada' }
+  | { readonly tipo: 'demasiado-grande' }
+  | { readonly tipo: 'no-disponible' };
+
+const resultadoAccion = (
+  status: number,
+  datos: unknown,
+): Exclude<ResultadoAccionInspeccion, { tipo: 'ok' }> => {
+  switch (status) {
+    case 422:
+      return { tipo: 'invalido', errores: erroresDe(datos) };
+    case 409:
+      return { tipo: 'conflicto', mensaje: 'Esta inspección ya tiene resultado.' };
+    case 404:
+      return { tipo: 'no-encontrada' };
+    case 413:
+      return { tipo: 'demasiado-grande' };
+    case 401:
+    case 403:
+      return { tipo: 'sin-permiso' };
+    default:
+      return { tipo: 'no-disponible' };
+  }
+};
+
+/** Asigna (o reasigna) el inspector y la fecha (rol JEFATURA). */
+export const asignarInspeccion = async (
+  id: string,
+  inspectorId: string,
+  programadaPara: string,
+): Promise<ResultadoAccionInspeccion> => {
+  try {
+    const { data, error, response } = await cliente.POST('/inspecciones/{inspeccionId}/asignar', {
+      params: { path: { inspeccionId: id } },
+      body: { inspectorId, programadaPara },
+    });
+    return response.ok && data !== undefined
+      ? { tipo: 'ok', inspeccion: data }
+      : resultadoAccion(response.status, error);
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** El inspector asignado registra el resultado con fotos (multipart, renueva la sesión una vez). */
+export const registrarResultadoInspeccion = async (
+  id: string,
+  datos: {
+    readonly resultado: 'FAVORABLE' | 'DESFAVORABLE';
+    readonly observaciones: string;
+    readonly numeroCertificado: string;
+    readonly certificadoEmitidoEn: string;
+    readonly fotos: readonly File[];
+  },
+): Promise<ResultadoAccionInspeccion> => {
+  const formulario = () => {
+    const cuerpo = new FormData();
+    cuerpo.append('resultado', datos.resultado);
+    if (datos.observaciones.trim() !== '') {
+      cuerpo.append('observaciones', datos.observaciones);
+    }
+    if (datos.resultado === 'FAVORABLE') {
+      cuerpo.append('numeroCertificado', datos.numeroCertificado);
+      cuerpo.append('certificadoEmitidoEn', datos.certificadoEmitidoEn);
+    }
+    for (const foto of datos.fotos) {
+      cuerpo.append('fotos', foto);
+    }
+    return cuerpo;
+  };
+  try {
+    const sesion = obtenerToken();
+    const pedir = () => {
+      const token = obtenerToken();
+      return globalThis.fetch(
+        new Request(
+          new URL(
+            `/api/v1/inspecciones/${encodeURIComponent(id)}/resultado`,
+            window.location.origin,
+          ),
+          {
+            method: 'POST',
+            headers: token === null ? {} : { Authorization: `Bearer ${token}` },
+            body: formulario(),
+          },
+        ),
+      );
+    };
+    let respuesta = await pedir();
+    if (respuesta.status === 401 && sesion !== null && (await renovarSesion())) {
+      respuesta = await pedir();
+    }
+    const cuerpo: unknown = respuesta.headers.get('Content-Type')?.includes('json')
+      ? await respuesta.json()
+      : undefined;
+    return respuesta.ok
+      ? { tipo: 'ok', inspeccion: cuerpo as Inspeccion }
+      : resultadoAccion(respuesta.status, cuerpo);
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};

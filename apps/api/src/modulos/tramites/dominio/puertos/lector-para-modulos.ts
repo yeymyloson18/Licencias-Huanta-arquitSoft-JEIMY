@@ -19,4 +19,10 @@ export interface DatosParaLicencia {
  */
 export interface LectorParaModulos {
   datosParaLicencia(numero: string): Promise<DatosParaLicencia | null>;
+  /** Giro y licencia para la bandeja de inspecciones (sin datos personales). */
+  resumenesParaInspeccion(
+    numeros: readonly string[],
+  ): Promise<ReadonlyMap<string, { readonly giro: string; readonly nombreLicencia: string }>>;
+  /** Dirección del local descifrada: solo para el inspector asignado (research §R-14 de la 006). */
+  direccionDelLocal(numero: string): Promise<string | null>;
 }

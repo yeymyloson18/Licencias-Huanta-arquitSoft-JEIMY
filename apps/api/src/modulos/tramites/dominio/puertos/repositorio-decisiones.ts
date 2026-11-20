@@ -74,4 +74,6 @@ export interface Decision {
 export interface RepositorioDecisiones {
   obtenerParaDecidir(numero: string): Promise<ExpedienteParaDecidir | null>;
   aplicar(decision: Decision): Promise<boolean>;
+  /** Publica eventos sin cambiar el expediente (por ejemplo, `LicenciaSolicitada` tras la ITSE previa). */
+  publicar(eventos: readonly EventoParaPublicar[]): Promise<void>;
 }

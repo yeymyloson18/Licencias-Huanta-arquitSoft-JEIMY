@@ -1,5 +1,6 @@
 import type {
   Decision,
+  EventoParaPublicar,
   ExpedienteParaDecidir,
   RepositorioDecisiones,
 } from '../../../../../src/modulos/tramites/dominio/puertos/repositorio-decisiones';
@@ -8,6 +9,7 @@ import type {
 export class DecisionesEnMemoria implements RepositorioDecisiones {
   expediente: ExpedienteParaDecidir | null;
   readonly aplicadas: Decision[] = [];
+  readonly publicados: EventoParaPublicar[] = [];
   /** Cuántas veces responder "otro cambio ganó" antes de aceptar. */
   rechazar = 0;
 
@@ -42,6 +44,11 @@ export class DecisionesEnMemoria implements RepositorioDecisiones {
       };
     }
     return Promise.resolve(true);
+  }
+
+  publicar(eventos: readonly EventoParaPublicar[]) {
+    this.publicados.push(...eventos);
+    return Promise.resolve();
   }
 
   /** Tipos de los eventos de la última decisión. */

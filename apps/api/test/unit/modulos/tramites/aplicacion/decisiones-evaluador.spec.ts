@@ -88,6 +88,10 @@ class DecisionesEnMemoria implements RepositorioDecisiones {
     return Promise.resolve(this.expediente);
   }
 
+  publicar() {
+    return Promise.resolve();
+  }
+
   aplicar(decision: Decision) {
     if (this.cambioConcurrente && this.expediente) {
       this.expediente = { ...this.expediente, ...this.cambioConcurrente };

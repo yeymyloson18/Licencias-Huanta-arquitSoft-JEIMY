@@ -892,3 +892,32 @@ video {
     display: table;
   }
 }
+
+/* Inspecciones (006): opciones del resultado y vista previa de las fotos, usables a 360 px. */
+.campo__opcion {
+  display: block;
+  padding: 0.5rem 0;
+  font-size: 1rem;
+}
+
+.fotos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.fotos li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
+}
+
+.fotos img {
+  max-width: 96px;
+  height: auto;
+  border-radius: 4px;
+}

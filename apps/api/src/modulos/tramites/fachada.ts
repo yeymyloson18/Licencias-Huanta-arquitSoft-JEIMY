@@ -25,6 +25,21 @@ export class FachadaTramites {
     return this.modulos().datosParaLicencia(numeroExpediente);
   }
 
+  /** Giro y nombre de la licencia de cada expediente, para la bandeja de inspecciones (006). */
+  resumenesParaInspeccion(
+    numeros: readonly string[],
+  ): Promise<ReadonlyMap<string, { readonly giro: string; readonly nombreLicencia: string }>> {
+    return this.modulos().resumenesParaInspeccion(numeros);
+  }
+
+  /**
+   * Dirección del local, descifrada. Solo para mostrarla al inspector asignado (research §R-14 de la
+   * 006): quien la pide no la guarda ni la registra.
+   */
+  direccionDelLocal(numeroExpediente: string): Promise<string | null> {
+    return this.modulos().direccionDelLocal(numeroExpediente);
+  }
+
   private modulos(): LectorParaModulos {
     if (this.lectorModulos === undefined) {
       throw new Error('La fachada de Trámites no tiene el lector para módulos');

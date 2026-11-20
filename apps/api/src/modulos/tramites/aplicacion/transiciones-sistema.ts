@@ -54,6 +54,14 @@ export class TransicionesSistema {
       if (plan === null) {
         return 'YA_APLICADO';
       }
+      if (plan.pasos.length === 0) {
+        // Sin cambio de estado: solo se publican eventos (sus consumidores son idempotentes).
+        if (plan.eventos === undefined || plan.eventos.length === 0) {
+          throw new Error('Un plan del sistema necesita al menos un paso o un evento');
+        }
+        await this.d.decisiones.publicar(plan.eventos);
+        return 'APLICADO';
+      }
       if (await this.d.decisiones.aplicar(this.decision(expediente, plan))) {
         return 'APLICADO';
       }
@@ -74,10 +82,8 @@ export class TransicionesSistema {
       historial.push({ estadoAnterior: estado, estadoNuevo: nuevo, comentario: paso.comentario });
       estado = nuevo;
     }
-    const ultimo = historial.at(-1);
-    if (ultimo === undefined) {
-      throw new Error('Un plan del sistema necesita al menos un paso');
-    }
+    // El comentario de la decisión es el del último paso (el plan tiene al menos uno).
+    const comentario = plan.pasos.reduce((_, paso) => paso.comentario, '');
     return {
       expedienteId: expediente.id,
       numero: expediente.numero,
@@ -85,7 +91,7 @@ export class TransicionesSistema {
       versionEsperada: expediente.version,
       estadoNuevo: estado,
       usuarioId: null,
-      comentario: ultimo.comentario,
+      comentario,
       auditoria: null,
       historial,
       ...(plan.cambios === undefined ? {} : { cambios: plan.cambios }),

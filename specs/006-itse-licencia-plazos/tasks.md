@@ -121,38 +121,38 @@ licencia y FINALIZADO.
 
 ### Pruebas de la historia 2 ⚠️
 
-- [ ] T018 [P] [US2] Pruebas unitarias `test-ins/dominio/inspeccion.spec.ts` (solo el asignado, una vez,
+- [X] T018 [P] [US2] Pruebas unitarias `test-ins/dominio/inspeccion.spec.ts` (solo el asignado, una vez,
   observaciones obligatorias si es DESFAVORABLE, certificado obligatorio y normalizado si es FAVORABLE,
   fecha no futura, 1 a 5 fotos) y `test-ins/aplicacion/` (asignar con inspector activo y fecha no
   pasada, reasignar sin resultado, registrar con fotos guardadas y borradas si falla)
-- [ ] T019 [P] [US2] Pruebas unitarias `test-tra/aplicacion/aplicar-resultado-itse.spec.ts` (PREVIA
+- [X] T019 [P] [US2] Pruebas unitarias `test-tra/aplicacion/aplicar-resultado-itse.spec.ts` (PREVIA
   favorable → `LicenciaSolicitada` con certificado; desfavorable → DENEGADO con las observaciones;
   POSTERIOR → FINALIZADO + `CertificadoItseRegistrado` o DERIVADO_A_FISCALIZACION; BODEGA favorable sin
   cambio de estado y desfavorable → DERIVADO) y del pago de ruta B → EN_INSPECCION +
   `InspeccionRequerida PREVIA`
-- [ ] T020 [P] [US2] Prueba de integración `int/inspecciones.e2e-spec.ts`: `InspeccionRequerida` crea
+- [X] T020 [P] [US2] Prueba de integración `int/inspecciones.e2e-spec.ts`: `InspeccionRequerida` crea
   una sola inspección; jefatura lista y asigna (inspector no válido o fecha pasada → 422); inspector
   ve solo las suyas con la dirección; resultado con fotos → 201 y auditoría; segundo registro → 409;
   otro inspector → 403; archivo que no es imagen, 0 o 6 fotos → 422
-- [ ] T021 [P] [US2] Prueba de integración `int/recorrido-ruta-b.e2e-spec.ts`: pago → EN_INSPECCION →
+- [X] T021 [P] [US2] Prueba de integración `int/recorrido-ruta-b.e2e-spec.ts`: pago → EN_INSPECCION →
   favorable → licencia con certificado → FINALIZADO; otro expediente desfavorable → DENEGADO con motivo
 
 ### Implementación de la historia 2
 
-- [ ] T022 [US2] `ins/dominio/` (`inspeccion.ts`, `numero-certificado.ts`, puertos) y
+- [X] T022 [US2] `ins/dominio/` (`inspeccion.ts`, `numero-certificado.ts`, puertos) y
   `ins/aplicacion/` (`crear-inspeccion.ts`, `asignar-inspector.ts`, `registrar-resultado.ts`,
   `listar-inspecciones.ts`). Deben pasar T018
-- [ ] T023 [US2] `seg/fachada.ts` `usuariosConRol(rol)` y `esUsuarioActivoConRol(id, rol)`;
+- [X] T023 [US2] `seg/fachada.ts` `usuariosConRol(rol)` y `esUsuarioActivoConRol(id, rol)`;
   `tra/fachada.ts` `direccionDelLocal(numero)` y `resumenParaInspeccion(numero)` (giro, licencia)
-- [ ] T024 [US2] `ins/infraestructura/` (repositorio con `UPDATE` condicional y evento
+- [X] T024 [US2] `ins/infraestructura/` (repositorio con `UPDATE` condicional y evento
   `ResultadoITSERegistrado`, fotos con el almacén compartido, manejador de `InspeccionRequerida`,
   adaptadores de fachadas) y `ins/presentacion/inspecciones.controller.ts` (`GET /inspecciones`,
   `GET /inspecciones/inspectores`, `POST …/asignar`, `POST …/resultado` multipart); `ins/fachada.ts`
   `resultadoDe(inspeccionId)`. Deben pasar T020
-- [ ] T025 [US2] `tra/aplicacion/aplicar-resultado-itse.ts` y su manejador; `AplicarPagoRegistrado`
+- [X] T025 [US2] `tra/aplicacion/aplicar-resultado-itse.ts` y su manejador; `AplicarPagoRegistrado`
   pasa la ruta B a EN_INSPECCION; `lic/aplicacion/registrar-certificado.ts` con su manejador de
   `CertificadoItseRegistrado`. Deben pasar T019 y T021
-- [ ] T026 [US2] Portal: `web/paginas/personal/Inspecciones.tsx` (jefatura asigna; inspector ve sus
+- [X] T026 [US2] Portal: `web/paginas/personal/Inspecciones.tsx` (jefatura asigna; inspector ve sus
   tarjetas) y `ResultadoInspeccion.tsx` (fotos con `capture`, vista previa, certificado si es
   favorable), rutas, menú "Inspecciones" y pruebas
 

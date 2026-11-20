@@ -7,11 +7,13 @@ import { REDIS_CLIENTE } from '../../compartido/infraestructura/redis.proveedor'
 import { FachadaTramites } from '../tramites/fachada';
 import { ConsultarLicencia, VerificarLicencia } from './aplicacion/consultar-licencia';
 import { EmitirLicencia } from './aplicacion/emitir-licencia';
+import { RegistrarCertificado } from './aplicacion/registrar-certificado';
 import type { RepositorioLicencias } from './dominio/puertos';
 import { FachadaLicencias } from './fachada';
 import {
   ExpedientesFachadaTramites,
   GeneradorAleatorioCrypto,
+  manejadorCertificadoRegistrado,
   manejadorLicenciaSolicitada,
   RelojSistema,
 } from './infraestructura/adaptadores';
@@ -54,6 +56,11 @@ const REPOSITORIO_LICENCIAS = Symbol('REPOSITORIO_LICENCIAS');
         }),
     },
     {
+      provide: RegistrarCertificado,
+      inject: [REPOSITORIO_LICENCIAS],
+      useFactory: (licencias: RepositorioLicencias) => new RegistrarCertificado(licencias),
+    },
+    {
       provide: ConsultarLicencia,
       inject: [REPOSITORIO_LICENCIAS, CONFIGURACION],
       useFactory: (licencias: RepositorioLicencias, configuracion: Configuracion) =>
@@ -80,12 +87,17 @@ export class LicenciasModule implements OnModuleInit {
   constructor(
     private readonly despachador: DespachadorEventos,
     private readonly emitirLicencia: EmitirLicencia,
+    private readonly registrarCertificado: RegistrarCertificado,
   ) {}
 
   onModuleInit(): void {
     this.despachador.registrar(
       'LicenciaSolicitada',
       manejadorLicenciaSolicitada(this.emitirLicencia),
+    );
+    this.despachador.registrar(
+      'CertificadoItseRegistrado',
+      manejadorCertificadoRegistrado(this.registrarCertificado),
     );
   }
 }

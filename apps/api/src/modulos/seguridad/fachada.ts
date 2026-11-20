@@ -13,6 +13,7 @@ import {
 import type { VerificarIdentidadPresencial } from './aplicacion/verificar-identidad-presencial';
 import type { EmisorTokensConsulta } from './dominio/puertos/emisor-tokens';
 import type { LectorNombresUsuarios } from './dominio/puertos/lector-nombres-usuarios';
+import type { Rol } from './dominio/rol';
 import type { DatosIdentidadAdministrado } from './dominio/identidad-administrado';
 
 export type { Rol } from './dominio/rol';
@@ -64,6 +65,13 @@ export class FachadaSeguridad {
   ) {}
 
   /** Nombre de cada usuario del personal, por id (auditoría de la 005). Los ids desconocidos se omiten. */
+  /** Usuarios activos con un rol vigente: id y nombre (lista de inspectores, 006). */
+  usuariosConRol(rol: Rol): Promise<readonly { readonly id: string; readonly nombre: string }[]> {
+    return this.lectorNombres === undefined
+      ? Promise.resolve([])
+      : this.lectorNombres.activosConRol(rol);
+  }
+
   nombresDeUsuarios(ids: readonly string[]): Promise<ReadonlyMap<string, string>> {
     return this.lectorNombres === undefined
       ? Promise.resolve(new Map())

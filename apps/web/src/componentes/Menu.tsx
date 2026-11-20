@@ -23,6 +23,7 @@ const OPCIONES: readonly Opcion[] = [
   { etiqueta: 'Registrar solicitud', ruta: '/personal/mesa-partes/nueva', roles: ['MESA_PARTES'] },
   { etiqueta: 'Caja', ruta: '/personal/caja', roles: ['CAJA'] },
   { etiqueta: 'Auditoría', ruta: '/personal/auditoria', roles: ['JEFATURA'] },
+  { etiqueta: 'Inspecciones', ruta: '/personal/inspecciones', roles: ['JEFATURA', 'INSPECTOR'] },
 ];
 
 /** Menú del personal: solo las opciones de sus roles y "Cerrar sesión" (FR-026). */

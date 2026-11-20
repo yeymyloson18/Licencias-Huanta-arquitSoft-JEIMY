@@ -28,25 +28,50 @@ export class AplicarPagoRegistrado {
       if (expediente === null || expediente.estado !== 'PENDIENTE_PAGO') {
         return 'YA_APLICADO';
       }
-      const nuevo = siguienteEstado(expediente.estado, expediente.ruta, 'REGISTRAR_PAGO');
+      const pagado = siguienteEstado(expediente.estado, expediente.ruta, 'REGISTRAR_PAGO');
+      // Ruta B (006): en la misma transacción pasa a EN_INSPECCION y pide la inspección PREVIA.
+      const conInspeccion = expediente.ruta === 'B';
+      const primero = {
+        estadoAnterior: expediente.estado,
+        estadoNuevo: pagado,
+        comentario: 'Pago registrado en caja',
+      };
+      const segundo = conInspeccion
+        ? {
+            estadoAnterior: pagado,
+            estadoNuevo: siguienteEstado(pagado, 'B', 'INICIAR_INSPECCION_PREVIA'),
+            comentario: 'Espera la inspección ITSE previa',
+          }
+        : null;
+      const pasos = segundo === null ? [primero] : [primero, segundo];
+      const final = segundo ?? primero;
       const aplicado = await this.d.decisiones.aplicar({
         expedienteId: expediente.id,
         numero: expediente.numero,
         estadoEsperado: expediente.estado,
         versionEsperada: expediente.version,
-        estadoNuevo: nuevo,
+        estadoNuevo: final.estadoNuevo,
         usuarioId: null,
-        comentario: 'Pago registrado en caja',
+        comentario: final.comentario,
         auditoria: null,
+        historial: pasos,
         eventos: [
-          {
+          ...pasos.map((paso) => ({
             tipo: 'EstadoExpedienteCambiado',
             datos: {
               numeroExpediente: expediente.numero,
-              estadoAnterior: expediente.estado,
-              estadoNuevo: nuevo,
+              estadoAnterior: paso.estadoAnterior,
+              estadoNuevo: paso.estadoNuevo,
             },
-          },
+          })),
+          ...(conInspeccion
+            ? [
+                {
+                  tipo: 'InspeccionRequerida',
+                  datos: { numeroExpediente: expediente.numero, tipo: 'PREVIA' },
+                },
+              ]
+            : []),
         ],
         en: this.d.reloj.ahora(),
       });

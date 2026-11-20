@@ -1,5 +1,7 @@
 import { Global, Module } from '@nestjs/common';
+import type { AlmacenArchivos } from './dominio/almacen-archivos';
 import type { ProtectorDatos } from './dominio/protector-datos';
+import { ALMACEN_ARCHIVOS, AlmacenArchivosDisco } from './infraestructura/almacen-archivos-disco';
 import {
   CONFIGURACION,
   cargarConfiguracion,
@@ -24,6 +26,13 @@ import { CierreRedis, proveedorRedis, REDIS_CLIENTE } from './infraestructura/re
       useFactory: (configuracion: Configuracion): ProtectorDatos =>
         new ProtectorDatosAesGcm(configuracion.claveCifradoDatos, configuracion.claveHmacDatos),
     },
+    // Almacén de archivos: documentos (004) y fotos de las inspecciones (006).
+    {
+      provide: ALMACEN_ARCHIVOS,
+      inject: [CONFIGURACION],
+      useFactory: (configuracion: Configuracion): Promise<AlmacenArchivos> =>
+        AlmacenArchivosDisco.crear(configuracion.almacenArchivosRuta),
+    },
     // Cola de eventos entre módulos (research §R-02 de la 005).
     {
       provide: DespachadorEventos,
@@ -32,6 +41,13 @@ import { CierreRedis, proveedorRedis, REDIS_CLIENTE } from './infraestructura/re
         new DespachadorEventos(prisma, configuracion.despachadorIntervaloMs),
     },
   ],
-  exports: [CONFIGURACION, PrismaServicio, REDIS_CLIENTE, PROTECTOR_DATOS, DespachadorEventos],
+  exports: [
+    CONFIGURACION,
+    PrismaServicio,
+    REDIS_CLIENTE,
+    PROTECTOR_DATOS,
+    DespachadorEventos,
+    ALMACEN_ARCHIVOS,
+  ],
 })
 export class CompartidoModule {}

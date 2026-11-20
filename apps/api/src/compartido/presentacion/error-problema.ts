@@ -154,6 +154,21 @@ export class ErrorProblema extends Error {
     );
   }
 
+  /** La inspección ya tiene resultado (006, FR-012). */
+  static inspeccionYaRegistrada(): ErrorProblema {
+    return new ErrorProblema('ya-registrada', 409, 'Esta inspección ya tiene resultado');
+  }
+
+  /** La alerta ya se marcó como atendida (006). */
+  static alertaAtendida(): ErrorProblema {
+    return new ErrorProblema('alerta-atendida', 409, 'Esta alerta ya fue atendida');
+  }
+
+  /** Ya hay un feriado en esa fecha (006). */
+  static feriadoRepetido(): ErrorProblema {
+    return new ErrorProblema('feriado-repetido', 409, 'Ya hay un feriado registrado en esa fecha');
+  }
+
   /** Otra corrección del recibo ganó la carrera (005, historia 6). */
   static reciboCambiado(): ErrorProblema {
     return new ErrorProblema(
