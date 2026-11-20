@@ -367,8 +367,8 @@ lectura (no reemplaza la prueba con personas que pide SC-001):
 - **Subsanar** (enlace en la consulta cuando está OBSERVADO): el titular confirma su identidad con el
   código y adjunta los documentos que faltaban; mesa de partes también puede hacerlo. El expediente
   vuelve a EN_EVALUACION.
-- **Aprobar** (rol EVALUADOR): un expediente PAGADO de ruta A o C queda APROBADO. La ruta B
-  (inspección previa) y la emisión de la licencia llegan en las funcionalidades 007 y 009.
+- **Aprobar** (rol EVALUADOR): un expediente PAGADO de ruta A o C queda APROBADO y la licencia se
+  emite sola (funcionalidad 006). La ruta B pasa a inspección previa al pagar.
 - **Auditoría** (`/personal/auditoria`, rol JEFATURA): pagos y correcciones con filtro de fechas y
   paginación, "Corregir recibo" con motivo, y la auditoría de cada expediente en su detalle.
 - **Migraciones 0008 y 0009**: acciones nuevas de la auditoría, plazo de subsanación opcional, espera
@@ -391,6 +391,77 @@ permisos (SC-007) comprueba 75 casos de 401 y 403 sin cambios en los datos, y la
 privacidad (SC-006) recorre todas las operaciones nuevas sin que el documento, el RUC, el celular,
 el correo ni la dirección del titular aparezcan en registros, URL, errores, eventos, auditorías o el
 PDF. Quedan para el despliegue (007): k6, Lighthouse y ZAP.
+
+## ITSE, licencia con QR, plazos y avisos (funcionalidad 006)
+
+- **Rutas completas**: A (bodega o riesgo bajo/medio) emite la licencia definitiva al aprobar y pide
+  la ITSE posterior; B (riesgo alto) pasa a EN_INSPECCION al pagar y la licencia sale con la ITSE
+  previa favorable (desfavorable → DENEGADO con las observaciones como motivo); C (tasa 0.00) emite
+  una licencia **provisional** de 12 meses y pide la inspección de bodega. Cada paso automático deja
+  su fila en el historial y su evento, y no se repite si el evento llega dos veces.
+- **Inspecciones** (`/personal/inspecciones`): la jefatura asigna inspector y fecha; el inspector ve
+  solo las suyas, con la dirección del local, y registra el resultado una sola vez con 1 a 5 fotos
+  JPG o PNG de hasta 10 MB y, si es favorable, el número y la fecha del certificado ITSE.
+- **Licencia** (`LF-AAAA-NNNNNN`): PDF con QR que lleva a `/verificar/<código>`, una página pública
+  sin cuenta que muestra el número, el estado, el tipo, el giro, la vigencia, el estado del ITSE y el
+  titular **abreviado** (por ejemplo, "Juana P. Q."). La descargan el titular desde la consulta y el
+  personal (mesa de partes, evaluación y jefatura) desde el detalle. Más de 10 códigos inválidos
+  desde el mismo origen en 15 minutos bloquean la verificación (429).
+- **Plazos en días hábiles**: el plazo del TUPA se cuenta sin sábados, domingos ni feriados
+  (`/admin/feriados`, rol ADMINISTRADOR; vienen cargados los 16 feriados nacionales de 2026). Se
+  suspende en OBSERVADO y en PENDIENTE_PAGO y se reanuda al subsanar o pagar; la subsanación tiene 2
+  días hábiles.
+- **Alertas** (`/personal/alertas`, rol JEFATURA): un reloj cada hora (`RELOJ_PLAZOS_INTERVALO_MS`)
+  alerta los expedientes a los que les quedan 2 días hábiles o menos, de la más urgente a la menos
+  urgente; con 2 réplicas solo una lo ejecuta (candado de PostgreSQL) y nunca duplica una alerta.
+- **Avisos al administrado**: cada cambio de estado y el certificado ITSE que vence en 30 días crean
+  un aviso (uno por evento) por correo si el titular lo dio, o si no por SMS, con el destinatario
+  cifrado y sin datos personales en el texto. Mientras la Municipalidad no contrate el servicio, el
+  envío es **simulado**: el texto queda una hora en Redis (`dev:aviso:<id>`). Un envío que falla se
+  reintenta con espera creciente hasta 5 veces y luego queda FALLIDO.
+- **Migración 0010**: plazo restante, certificado en la inspección, quién atendió la alerta, un aviso
+  por evento y los feriados de 2026.
+
+### Recorrido para probarlo a mano
+
+Con el sistema levantado y usuarios con los roles EVALUADOR, CAJA, JEFATURA e INSPECTOR:
+
+1. Presente una solicitud de **LIC-03** (ruta B) desde el asistente y anote el número de expediente
+   y el documento.
+2. Evaluador: en el detalle, "Empezar revisión" y "Confirmar riesgo". Queda PENDIENTE_PAGO.
+3. Caja: en `/personal/caja`, busque `ESQ-<expediente>` y registre un recibo. En segundos pasa a
+   EN_INSPECCION y aparece una inspección PREVIA pendiente.
+4. Jefatura: en `/personal/inspecciones`, "Asignar" al inspector con la fecha de hoy.
+5. Inspector: en `/personal/inspecciones`, "Registrar resultado": Favorable, número de certificado,
+   fecha de emisión y dos fotos. En segundos el expediente queda FINALIZADO con su licencia.
+6. Titular: en la consulta (número de expediente y documento) aparece "Descargar licencia"; abra el
+   PDF y escanee el QR (o abra `/verificar/<código>`): muestra la licencia vigente con el titular
+   abreviado.
+7. El texto de cada aviso simulado se puede leer en Redis con
+   `docker compose -f infra/docker-compose.yml exec redis redis-cli --scan --pattern 'dev:aviso:*'` y
+   `GET` de la clave.
+
+### Resultados de la funcionalidad 006
+
+Medición del 20/11/2026 en un clon con su propio nombre de proyecto de Compose y puertos, con datos y
+usuarios ficticios, en la misma computadora de la 004 y la 005. Recorrido automatizado a 360 px que
+escribe tecla por tecla (120 ms por carácter) y hace pausas de lectura (no reemplaza la prueba con
+personas):
+
+| Tarea                                                                                 | Tiempo | Objetivo |
+| ------------------------------------------------------------------------------------- | ------ | -------- |
+| Inspector: desde su lista hasta registrar el resultado favorable con 2 fotos (SC-001) | 30 s   | ≤ 3 min  |
+| Jefatura: desde la lista de inspecciones hasta guardar la asignación (SC-002)         | 10 s   | ≤ 1 min  |
+| Verificación pública: desde abrir el enlace del QR hasta ver la licencia (SC-006)     | 0,2 s  | ≤ 2 s    |
+
+A 360 px ni las inspecciones, ni el registro del resultado, ni la verificación tienen desplazamiento
+horizontal. Al terminar, el expediente del clon quedó FINALIZADO con su licencia por la cola de
+eventos, salieron sus 2 avisos simulados y la API no registró errores. Las pruebas de integración
+recorren las tres rutas de principio a fin (SC-003), la matriz de permisos comprueba 57 casos de 401
+y 403 sin cambios en los datos (SC-007) y la prueba de privacidad (SC-008) recorre inspecciones,
+licencia, verificación, PDF, plazos, alertas y avisos sin que el documento, el RUC, el celular, el
+correo ni la dirección del titular aparezcan donde no corresponde. Quedan para el despliegue (007):
+k6, Lighthouse y ZAP.
 
 ## Verificaciones automáticas
 

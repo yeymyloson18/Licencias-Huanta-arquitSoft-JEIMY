@@ -264,22 +264,22 @@ vence en 29 días → un solo aviso aunque el reloj corra dos veces.
 
 ## Fase 8: Acabado y temas transversales
 
-- [ ] T043 [P] Prueba de integración `int/recorridos-006.e2e-spec.ts`: rutas A (hasta FINALIZADO), B
+- [X] T043 [P] Prueba de integración `int/recorridos-006.e2e-spec.ts`: rutas A (hasta FINALIZADO), B
   (hasta FINALIZADO) y C (hasta LICENCIA_PROVISIONAL) desde la presentación, con historial, eventos y
   avisos (SC-003, SC-009)
-- [ ] T044 [P] Prueba de integración `int/matriz-permisos-006.e2e-spec.ts`: cada endpoint nuevo con sin
+- [X] T044 [P] Prueba de integración `int/matriz-permisos-006.e2e-spec.ts`: cada endpoint nuevo con sin
   sesión 401 y cada rol que no corresponde 403, sin cambiar datos (SC-007)
-- [ ] T045 [P] Prueba de integración `int/privacidad-006.e2e-spec.ts` con el logger capturador:
+- [X] T045 [P] Prueba de integración `int/privacidad-006.e2e-spec.ts` con el logger capturador:
   registros, URL, errores, eventos, avisos, auditorías, verificación pública y PDF sin documento, RUC,
   celular, correo ni dirección del titular (la dirección solo para el inspector asignado y el detalle
   del personal) (SC-008)
-- [ ] T046 Medir SC-001 (inspector registra el resultado con 2 fotos, ≤ 3 min) y SC-002 (jefatura
+- [X] T046 Medir SC-001 (inspector registra el resultado con 2 fotos, ≤ 3 min) y SC-002 (jefatura
   asigna, ≤ 1 min) y el tiempo de la verificación pública (SC-006, ≤ 2 s) con un recorrido automatizado a 360 px en un clon aislado con datos ficticios; bajar
   el clon con `-v`. Sin k6, Lighthouse ni ZAP (quedan para el despliegue, 007)
-- [ ] T047 Actualizar `README.md` (funcionalidad 006, con el recorrido completo de una licencia para
+- [X] T047 Actualizar `README.md` (funcionalidad 006, con el recorrido completo de una licencia para
   probarlo a mano y los tiempos de T046) y `docs/03-diseno-de-software/diagrama-casos-de-uso.md`
   (CU08, CU09, CU10, CU15, CU17, CU18, CU19 y CU25 a "✅ Hecho")
-- [ ] T048 Cadena completa de CI en local (`build`, `lint`, `formato`, `typecheck`, `test:unit`,
+- [X] T048 Cadena completa de CI en local (`build`, `lint`, `formato`, `typecheck`, `test:unit`,
   `test:integracion` con PostgreSQL temporal en 5433 y Redis en 16379, pruebas del portal,
   `cobertura` ≥ 80 % por archivo en `dominio` y `aplicacion`, `regla-dependencia`, `contrato`) y
   gitleaks sin hallazgos. Sin push ni PR (los hace la usuaria)
