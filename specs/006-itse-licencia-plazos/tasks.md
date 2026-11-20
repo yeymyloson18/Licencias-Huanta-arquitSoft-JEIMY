@@ -44,7 +44,7 @@ que la implementación y deben fallar primero.
   [data-model.md](./data-model.md) (`plazo_restante_dias` con `CHECK (… >= 0)`, `numero_certificado`
   varchar(30) y `certificado_emitido_en` date con su CHECK conjunto, `atendida_por` uuid, `evento_id`
   bigint UNIQUE y `reintentar_en` timestamptz en `mensaje`, 16 feriados de 2026 con
-  `ON CONFLICT DO NOTHING`); actualizar `schema.prisma`, `docs/05-modelo-de-datos/esquema.sql`,
+  `ON CONFLICT DO NOTHING`, y marcar como procesados los `EstadoExpedienteCambiado` pendientes de la 005 para no enviar avisos atrasados); actualizar `schema.prisma`, `docs/05-modelo-de-datos/esquema.sql`,
   `datos-semilla.sql` si corresponde y `modelo-entidad-relacion.md`; pasar la prueba
   `esquema-equivalente`
 - [ ] T006 [P] `com/infraestructura/despachador-eventos.ts`: el manejador recibe `(datos, { id })`
@@ -53,7 +53,7 @@ que la implementación y deben fallar primero.
   §1 (INICIAR_INSPECCION_PREVIA, EMITIR_LICENCIA, EMITIR_LICENCIA_PROVISIONAL, ESPERAR_ITSE_POSTERIOR,
   FINALIZAR, DENEGAR_POR_ITSE, DERIVAR_A_FISCALIZACION) con sus pruebas en
   `test-tra/dominio/maquina-estados.spec.ts`
-- [ ] T008 [P] Ayudantes de prueba: `int/../apoyo/itse-prueba.ts` (`limpiar006`, `sembrarLicencia`,
+- [ ] T008 [P] Ayudantes de prueba: `apps/api/test/apoyo/itse-prueba.ts` (`limpiar006`, `sembrarLicencia`,
   `sembrarInspeccion`) y limpieza de los eventos nuevos en `limpiarTramites`
 
 **Punto de control**: contrato, migración y piezas compartidas listas.
@@ -241,7 +241,7 @@ vence en 29 días → un solo aviso aunque el reloj corra dos veces.
 - [ ] T040 [P] [US5] Prueba de integración `int/avisos.e2e-spec.ts`: cambio de estado → un aviso
   cifrado y enviado al simulado (`dev:aviso:*`); evento repetido → un aviso; envío que falla →
   reintentos y FALLIDO; certificado que vence en 29 días → un solo `ITSE_POR_VENCER` con el reloj dos
-  veces
+  veces y con **dos aplicaciones a la vez** contra la misma base (SC-005)
 
 ### Implementación de la historia 5
 
@@ -269,7 +269,7 @@ vence en 29 días → un solo aviso aunque el reloj corra dos veces.
   celular, correo ni dirección del titular (la dirección solo para el inspector asignado y el detalle
   del personal) (SC-008)
 - [ ] T046 Medir SC-001 (inspector registra el resultado con 2 fotos, ≤ 3 min) y SC-002 (jefatura
-  asigna, ≤ 1 min) con un recorrido automatizado a 360 px en un clon aislado con datos ficticios; bajar
+  asigna, ≤ 1 min) y el tiempo de la verificación pública (SC-006, ≤ 2 s) con un recorrido automatizado a 360 px en un clon aislado con datos ficticios; bajar
   el clon con `-v`. Sin k6, Lighthouse ni ZAP (quedan para el despliegue, 007)
 - [ ] T047 Actualizar `README.md` (funcionalidad 006, con el recorrido completo de una licencia para
   probarlo a mano y los tiempos de T046) y `docs/03-diseno-de-software/diagrama-casos-de-uso.md`

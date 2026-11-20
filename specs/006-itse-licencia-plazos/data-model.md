@@ -32,6 +32,10 @@ INSERT INTO plazos.feriado (fecha, descripcion, alcance, registrado_por) VALUES
     ('2026-01-01', 'Año Nuevo', 'NACIONAL', '00000000-0000-0000-0000-000000000000'),
     … (16 filas, tabla de research §R-17)
 ON CONFLICT (fecha) DO NOTHING;
+
+-- 6. Los cambios de estado anteriores a la 006 no generan avisos atrasados (análisis H3).
+UPDATE comun.evento_pendiente SET procesado_en = now()
+ WHERE tipo = 'EstadoExpedienteCambiado' AND procesado_en IS NULL;
 ```
 
 ## 1. `tramites.expediente` (de la 004)

@@ -33,6 +33,9 @@ un orquestador central (más piezas sin beneficio).
 parámetro es nuevo y opcional para los manejadores existentes). `notificaciones` lo usa como clave de
 idempotencia del aviso (`mensaje.evento_id UNIQUE`).
 
+Los `EstadoExpedienteCambiado` que la 005 dejó pendientes se marcan como procesados en la migración
+0010: avisar hoy de cambios de hace días confundiría al titular (análisis H3).
+
 **Por qué**: un mismo estado puede repetirse en la vida del expediente (EN_EVALUACION tras subsanar),
 así que el contenido del evento no basta para distinguir un reintento de un cambio nuevo.
 
