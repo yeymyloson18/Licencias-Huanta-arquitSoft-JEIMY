@@ -55,13 +55,13 @@ const preparar = () => {
 };
 
 describe('VerificarOtpAdministrado (paso 2 de la identidad, aclaración 2 de la 004)', () => {
-  it('con el código correcto entrega el token de 15 minutos ligado a la verificación', async () => {
+  it('con el código correcto entrega el token de 30 minutos ligado a la verificación', async () => {
     const { verificar, verificarOtp } = preparar();
     const { desafioId } = await verificar.ejecutar({ ...TITULAR, ip: '10.0.0.1' });
 
     const token = await verificarOtp.ejecutar({ desafioId, codigo: '123456', ip: '10.0.0.1' });
 
-    expect(token).toEqual({ token: `identidad:${desafioId}`, expiraEn: 900 });
+    expect(token).toEqual({ token: `identidad:${desafioId}`, expiraEn: 1800 });
   });
 
   it.each([

@@ -13,6 +13,7 @@ import {
   ObtenerDetalleExpediente,
 } from './aplicacion/bandeja-expedientes';
 import { ConsultarEstado } from './aplicacion/consultar-estado';
+import { DescartarDocumentosVencidos } from './aplicacion/descartar-documentos-vencidos';
 import { PresentarSolicitud } from './aplicacion/presentar-solicitud';
 import { SubirDocumento } from './aplicacion/subir-documento';
 import type { AlmacenArchivos } from './dominio/puertos/almacen-archivos';
@@ -22,6 +23,7 @@ import { GeneradorIdsCrypto } from './infraestructura/generador-ids-crypto';
 import { LimitadorConsultasRedis } from './infraestructura/limitador-consultas-redis';
 import { HuellaSha256 } from './infraestructura/huella-sha256';
 import { RelojSistema } from './infraestructura/reloj-sistema';
+import { TareaDescarteDocumentos } from './infraestructura/tarea-descarte-documentos';
 import { RepositorioExpedientesPostgres } from './infraestructura/repositorio-expedientes-postgres';
 import { RepositorioDocumentosTemporalesPostgres } from './infraestructura/repositorio-documentos-temporales-postgres';
 import { UnidadDeTrabajoTramitesPostgres } from './infraestructura/unidad-de-trabajo-tramites-postgres';
@@ -42,6 +44,19 @@ const reloj = new RelojSistema();
   // `ConsultaController` va antes: `POST expedientes/consultar` es una ruta fija.
   controllers: [ConsultaController, DocumentosController, ExpedientesController, BandejaController],
   providers: [
+    {
+      provide: TareaDescarteDocumentos,
+      inject: [PrismaServicio, ALMACEN_ARCHIVOS],
+      useFactory: (prisma: PrismaServicio, almacen: AlmacenArchivos) =>
+        new TareaDescarteDocumentos(
+          prisma,
+          new DescartarDocumentosVencidos({
+            documentos: new RepositorioDocumentosTemporalesPostgres(prisma),
+            almacen,
+            reloj,
+          }),
+        ),
+    },
     {
       provide: ListarExpedientes,
       inject: [PrismaServicio, PROTECTOR_DATOS],

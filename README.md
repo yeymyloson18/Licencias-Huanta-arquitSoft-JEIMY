@@ -259,6 +259,96 @@ el navegador:
 | Desde el inicio hasta ver la licencia propuesta, solo con el teclado (SC-001)                | 69 s   | ≤ 3 min  |
 | Desde el menú hasta guardar un cambio de tasa y de un requisito, con un error antes (SC-007) | 52 s   | ≤ 3 min  |
 
+## Solicitud, consulta, mesa de partes y bandeja (funcionalidad 004)
+
+- **Presentar en línea** (botón "Presentar solicitud" en la ficha de cada licencia): la persona
+  confirma su identidad (DNI con fecha de emisión o carné de extranjería, RUC y celular; también los
+  del representante, si actúa uno) con un código de 6 dígitos y recibe un **permiso de 30 minutos**
+  para una sola solicitud. El formulario muestra cuántos minutos quedan y avisa cuando faltan 5.
+  Pide los documentos en el orden de la receta (PDF, JPG o PNG reales de hasta 10 MB; el tipo se
+  revisa por el contenido) y, al presentar, entrega el comprobante con el número `EXP-AAAA-NNNNNN`.
+  Enviar la misma solicitud varias veces crea un solo expediente. Lo escrito vive solo en la memoria
+  de la pestaña.
+- **Consultar el estado** (`/consulta`, sin cuenta): con el número de expediente y el DNI, carné de
+  extranjería o RUC del titular, en un formulario POST (nada queda en la URL). Muestra el estado en
+  lenguaje sencillo, qué sigue y el historial; nunca el documento, el RUC, el celular, el correo ni
+  la dirección. Tras 5 fallos desde el mismo origen en 15 minutos, se bloquea con la hora para
+  reintentar.
+- **Mesa de partes** (`/personal/mesa-partes/nueva`, rol MESA_PARTES): el mismo formulario; la
+  identidad se comprueba con el servicio de identificación sin código al celular.
+- **Bandeja del personal** (`/personal/expedientes`, roles MESA_PARTES, EVALUADOR y JEFATURA): todos
+  los expedientes con filtros por estado y ruta; el detalle muestra el documento enmascarado y la
+  dirección, registra quién lo vio y permite descargar los documentos.
+- **Documentos sin usar**: una tarea de la API borra cada hora los que tienen más de 24 horas (solo
+  una réplica a la vez, con un candado de PostgreSQL).
+- **Servicio de identificación simulado** (el real aún no está contratado). Datos FICTICIOS:
+
+  | Caso                    | Documento    | Fecha de emisión | RUC         |
+  | ----------------------- | ------------ | ---------------- | ----------- |
+  | Titular de prueba 1     | DNI 40000001 | 2020-01-15       | 10400000011 |
+  | Representante de prueba | DNI 40000002 | 2019-05-10       | —           |
+  | Titular extranjero      | CE 000123456 | —                | 15000123456 |
+  | Servicio caído (503)    | DNI 49999999 | —                | —           |
+
+  En desarrollo el código no se envía por SMS: queda en Redis con la clave `dev:otp:<desafioId>`.
+
+### Resultados de la funcionalidad 004
+
+Mediciones del 19 y 20/11/2026 en un clon con su propio nombre de proyecto de Compose y puertos,
+con datos y usuarios ficticios, en la misma computadora de la 003 (AMD Ryzen 7 5825U, 15.3 GB de RAM,
+Windows 11 con Docker Desktop).
+
+Auditoría Lighthouse 12 (modo móvil). La solicitud y el comprobante dependen del permiso en memoria,
+así que se midieron en modo instantánea dentro del recorrido real (ese modo no mide rendimiento):
+
+| Pantalla                                           | Rendimiento | Accesibilidad | Buenas prácticas | SEO |
+| -------------------------------------------------- | ----------- | ------------- | ---------------- | --- |
+| `/tramite/identidad?licencia=LIC-02`               | 99          | 100           | 96               | 91  |
+| `/tramite/solicitud?licencia=LIC-02` (instantánea) | —           | 100           | 100              | 80  |
+| `/tramite/comprobante/<número>` (instantánea)      | —           | 100           | 100              | 80  |
+| `/consulta`                                        | 99          | 100           | 96               | 91  |
+
+El 96 tiene la misma causa aceptada en la 002 y la 003 (sin sesión, `POST /auth/renovar` responde
+401 y el navegador lo anota en la consola). A 360 px ninguna pantalla nueva tiene desplazamiento
+horizontal: identidad, solicitud, comprobante, consulta, bandeja, detalle y mesa de partes. El
+escaneo base de OWASP ZAP sobre identidad y consulta no dejó alertas altas, medias ni bajas (solo
+informativas).
+
+Prueba de carga de EQ-01 / SC-002 con k6 (`tests/carga/eq01-consulta.js`, `grafana/k6:0.54.0`):
+consultas correctas sobre 200 expedientes sembrados, cada usuario con su propio origen para medir la
+API y no el límite de intentos, y de 1 a 3 s de espera entre consultas.
+
+| Usuarios virtuales | Duración       | Peticiones | p95 (meta < 2 s) | Errores (meta < 1 %) | Resultado |
+| ------------------ | -------------- | ---------- | ---------------- | -------------------- | --------- |
+| 100 (humo)         | 2 min + subida | 6,793      | 15.6 ms          | 0 %                  | Cumple    |
+| 1,000              | 2 min + subida | 66,527     | 113.6 ms         | 0.02 % (18)          | Cumple    |
+
+Con 1,000 usuarios la API usó cerca de 4.9 núcleos y 269 MB, PostgreSQL 33 % de un núcleo y Redis
+12 %. Los 18 fallos no dejaron errores en los registros de la API; como en la 003, se atribuyen a la
+red de Docker Desktop entre el contenedor de k6 y el stack. **Pendiente para el entorno desplegado:**
+confirmar SC-002 con k6 en otra máquina (aquí k6 y el sistema comparten la computadora) y comprobar
+TLS 1.3 con testssl.sh (EQ-04); en local no hay TLS. Para repetir la carga:
+
+```bash
+docker run --rm -i -e BASE=http://host.docker.internal:<puerto-api>/api/v1 \
+  -e NUMEROS=<expedientes sembrados, separados por comas> -e DOCUMENTO=40000001 \
+  -e USUARIOS=1000 -e DURACION=2m grafana/k6:0.54.0 run - < tests/carga/eq01-consulta.js
+```
+
+Recorrido de la guía de validación (`specs/004-solicitud-consulta/quickstart.md`, escenarios 1 a 4)
+contra la API del clon: 23 de 23 comprobaciones correctas. Con **2 réplicas de la API** detrás del
+nginx del portal (`--scale api=2`), 6 de 6 solicitudes presentadas seguidas se crearon y 12 de 12
+documentos se descargaron con el mismo SHA-256 con que se subieron; las dos réplicas atendieron
+peticiones (la API no guarda estado y el almacén de documentos es un volumen compartido).
+
+Tiempos a 360 px, con un recorrido automatizado que escribe tecla por tecla y hace pausas de
+lectura (no reemplaza la prueba con personas que pide SC-001):
+
+| Tarea                                                                                               | Tiempo | Objetivo |
+| --------------------------------------------------------------------------------------------------- | ------ | -------- |
+| Desde la ficha de LIC-02 hasta el comprobante, con identidad y los documentos obligatorios (SC-001) | 81 s   | ≤ 15 min |
+| Mesa de partes: registrar una solicitud presencial con documentos ya digitalizados (SC-010)         | 47 s   | ≤ 10 min |
+
 ## Verificaciones automáticas
 
 Cada pull request y cada push a `main` ejecutan en GitHub Actions (`.github/workflows/ci.yml`)

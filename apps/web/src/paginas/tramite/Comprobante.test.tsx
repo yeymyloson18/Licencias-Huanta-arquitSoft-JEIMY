@@ -15,7 +15,7 @@ const EXPEDIENTE = {
   canal: 'EN_LINEA',
   presentadoEn: '2026-11-19T15:00:00.000Z',
   vencePlazoEn: null,
-  siguientePaso: 'La municipalidad revisará tus documentos.',
+  siguientePaso: 'La municipalidad revisará tus documentos y confirmará el nivel de riesgo',
 };
 
 const montar = (estado: unknown) =>
@@ -51,7 +51,9 @@ describe('Página Comprobante del trámite', () => {
     expect(dato('Estado')).toBe('Registrado');
     expect(dato('Presentada el')).toMatch(/19 de noviembre de 2026/);
     expect(screen.getByRole('heading', { name: 'Qué sigue' })).toBeInTheDocument();
-    expect(screen.getByText('La municipalidad revisará tus documentos.')).toBeInTheDocument();
+    expect(
+      screen.getByText('La municipalidad revisará tus documentos y confirmará el nivel de riesgo.'),
+    ).toBeInTheDocument();
   });
 
   it('"Imprimir" abre la impresión del navegador', async () => {

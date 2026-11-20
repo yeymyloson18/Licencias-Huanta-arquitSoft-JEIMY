@@ -45,4 +45,24 @@ export class RepositorioDocumentosTemporalesPostgres implements RepositorioDocum
       subidoEn: fila.subido_en,
     }));
   }
+
+  async listarVencidos(
+    antesDe: Date,
+    limite: number,
+  ): Promise<{ readonly id: string; readonly claveAlmacen: string }[]> {
+    // Índice ix_documento_temporal_subido_en.
+    const filas = await this.prisma.documento_temporal.findMany({
+      where: { subido_en: { lt: antesDe } },
+      select: { id: true, clave_almacen: true },
+      orderBy: { subido_en: 'asc' },
+      take: limite,
+    });
+    return filas.map((fila) => ({ id: fila.id, claveAlmacen: fila.clave_almacen }));
+  }
+
+  async borrar(ids: readonly string[]): Promise<void> {
+    if (ids.length > 0) {
+      await this.prisma.documento_temporal.deleteMany({ where: { id: { in: [...ids] } } });
+    }
+  }
 }

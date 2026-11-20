@@ -38,7 +38,7 @@ export const revisarFormulario = (
 ): Record<string, string> => {
   const errores: Record<string, string> = {};
   const obligatorios: [keyof BorradorSolicitud, string][] = [
-    ['nombreTitular', 'Escribe el nombre del titular'],
+    ['nombreTitular', 'Escribe el nombre completo del titular'],
     ['giro', 'Escribe el giro del negocio'],
     ['direccion', 'Escribe la dirección del establecimiento'],
     ['zona', 'Escribe la zona o barrio'],
@@ -164,8 +164,8 @@ export interface PropiedadesFormulario {
 }
 
 const ETIQUETAS: Record<string, string> = {
-  nombreTitular: 'Nombre o razón social del titular',
-  razonSocial: 'Razón social',
+  nombreTitular: 'Nombre completo del titular',
+  razonSocial: 'Razón social de la empresa',
   correo: 'Correo',
   nombreComercial: 'Nombre comercial',
   giro: 'Giro',
@@ -266,7 +266,11 @@ export function FormularioSolicitud({
           required
           {...campo('nombreTitular')}
         />
-        <CampoFormulario etiqueta="Razón social (opcional)" {...campo('razonSocial')} />
+        <CampoFormulario
+          etiqueta="Razón social de la empresa (opcional)"
+          ayuda="Solo si el titular es una empresa."
+          {...campo('razonSocial')}
+        />
         <CampoFormulario
           etiqueta="Correo (opcional)"
           type="email"

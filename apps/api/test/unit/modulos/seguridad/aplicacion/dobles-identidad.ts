@@ -122,7 +122,7 @@ export class LimitadorIdentidadFalso implements LimitadorIntentosIdentidad {
 
 /** Token `identidad:<verificacionId>`. */
 export class EmisorIdentidadFalso implements EmisorTokensIdentidad {
-  readonly segundosDeVidaIdentidad = 900;
+  readonly segundosDeVidaIdentidad = 1800;
   firmarIdentidad(verificacionId: string): Promise<string> {
     return Promise.resolve(`identidad:${verificacionId}`);
   }

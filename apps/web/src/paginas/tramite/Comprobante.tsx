@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
 import type { ExpedienteRegistrado } from '../../servicios/clienteApi';
+import { conPuntoFinal } from '../../componentes/formato';
 import { useTramite } from '../../tramite/ContextoTramite';
 
 // Comprobante de la presentación (CU04 de la 004, contracts/portal-tramite.md). Los datos llegan en
@@ -68,8 +69,10 @@ export function Comprobante() {
 
           <h2 className="ficha__subtitulo">Qué sigue</h2>
           <p>
-            {datos?.siguientePaso ??
-              'La municipalidad revisará tu solicitud. Puedes consultar su estado con el número de expediente.'}
+            {conPuntoFinal(
+              datos?.siguientePaso ??
+                'La municipalidad revisará tu solicitud. Puedes consultar su estado con el número de expediente.',
+            )}
           </p>
 
           <div className="formulario__acciones comprobante__acciones">

@@ -18,4 +18,10 @@ export interface RepositorioDocumentosTemporales {
   crear(documento: DocumentoTemporal): Promise<void>;
   /** Los que existan de esa lista (los ids mal formados se ignoran). */
   obtenerVarios(ids: readonly string[]): Promise<DocumentoTemporal[]>;
+  /** Los subidos antes de `antesDe`, del más antiguo al más nuevo, hasta `limite`. */
+  listarVencidos(
+    antesDe: Date,
+    limite: number,
+  ): Promise<{ readonly id: string; readonly claveAlmacen: string }[]>;
+  borrar(ids: readonly string[]): Promise<void>;
 }

@@ -65,7 +65,8 @@ describe('Página Consulta', () => {
     expect(
       screen.getByText('Tu solicitud está en evaluación', { selector: 'dd' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('La municipalidad está revisando tus documentos')).toBeInTheDocument();
+    // El texto de la API no trae punto final: la página lo agrega.
+    expect(screen.getByText('La municipalidad está revisando tus documentos.')).toBeInTheDocument();
     const historial = within(screen.getByRole('list')).getAllByRole('listitem');
     expect(historial.map((item) => item.textContent)).toEqual([
       expect.stringMatching(/^Tu solicitud fue registrada y espera evaluación/),

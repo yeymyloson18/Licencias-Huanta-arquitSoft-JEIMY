@@ -13,6 +13,10 @@ import { reiniciarSesion } from '../../sesion/almacen-sesion';
 
 type Usuario = ReturnType<typeof userEvent.setup>;
 
+// Estas pruebas escriben todo el formulario tecla por tecla y suben documentos; con la suite completa
+// en paralelo alguna superaba a veces los 5 s por defecto de Jest. 15 s deja margen sin ocultar cuelgues.
+jest.setTimeout(15_000);
+
 const EXPEDIENTE = {
   numero: 'EXP-2026-000200',
   estado: 'REGISTRADO',
@@ -51,10 +55,7 @@ const llenarTitularExtranjero = async (usuario: Usuario) => {
 };
 
 const llenarFormulario = async (usuario: Usuario) => {
-  await usuario.type(
-    screen.getByLabelText('Nombre o razón social del titular'),
-    'Titular Extranjero',
-  );
+  await usuario.type(screen.getByLabelText('Nombre completo del titular'), 'Titular Extranjero');
   await usuario.type(screen.getByLabelText('Giro'), 'Bodega');
   await usuario.type(screen.getByLabelText('Dirección'), 'Jr. Ficticio 456');
   await usuario.type(screen.getByLabelText('Zona'), 'Centro');

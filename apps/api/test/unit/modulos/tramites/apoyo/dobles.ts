@@ -83,6 +83,21 @@ export class DocumentosTemporalesEnMemoria implements RepositorioDocumentosTempo
       }),
     );
   }
+  listarVencidos(antesDe: Date, limite: number) {
+    return Promise.resolve(
+      [...this.documentos.values()]
+        .filter((documento) => documento.subidoEn < antesDe)
+        .sort((a, b) => a.subidoEn.getTime() - b.subidoEn.getTime())
+        .slice(0, limite)
+        .map((documento) => ({ id: documento.id, claveAlmacen: documento.claveAlmacen })),
+    );
+  }
+  borrar(ids: readonly string[]): Promise<void> {
+    for (const id of ids) {
+      this.documentos.delete(id);
+    }
+    return Promise.resolve();
+  }
 }
 
 export const RECETA_LIC02: RecetaAlPresentar = {

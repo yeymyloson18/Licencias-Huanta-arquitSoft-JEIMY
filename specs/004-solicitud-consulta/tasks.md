@@ -467,44 +467,52 @@ REGISTRADO + ruta B, abrir uno y descargar un documento; CAJA recibe 403.
 **Propósito**: privacidad, tareas programadas, escenarios de calidad, documentación y verificación
 final.
 
-- [ ] T061 [P] Prueba de integración `int/privacidad-tramites.e2e-spec.ts` con el logger capturador de
+- [X] T061 [P] Prueba de integración `int/privacidad-tramites.e2e-spec.ts` con el logger capturador de
   la 002: recorre identidad, subida, presentación (en línea y presencial), consulta correcta y
   fallida, bandeja y detalle, y comprueba que ningún registro, URL, error, evento ni fila de auditoría
   contiene los documentos, RUC, celulares, correos ni direcciones de los datos de prueba (SC-005)
-- [ ] T062 Crear `tra/aplicacion/descartar-documentos-vencidos.ts` y
+  _Nota de implementación:_ además revisa las cabeceras de respuesta, que ninguna respuesta exitosa traiga documento, RUC, celular ni correo, que solo el detalle del personal muestre la dirección y que en la base los datos del expediente estén cifrados (9 pruebas).
+- [X] T062 Crear `tra/aplicacion/descartar-documentos-vencidos.ts` y
   `tra/infraestructura/tarea-descarte-documentos.ts` (cada hora, `setInterval` con `unref()`, solo si
   obtiene `pg_try_advisory_lock`; borra filas y archivos de más de 24 h y registra solo cuántos
   borró), con prueba unitaria del caso de uso y de integración que siembra un documento de 25 h y
   otro de 1 h (research §R-09)
-- [ ] T063 [P] Crear `tests/carga/eq01-consulta.js` (k6, mismas variables y umbrales que
+  _Nota de implementación:_ se usa `pg_try_advisory_xact_lock` dentro de una transacción en lugar de `pg_try_advisory_lock`: con el pool de conexiones de Prisma, el candado de sesión podría quedar en otra conexión y no soltarse; el de transacción se suelta solo al terminar. La primera pasada ocurre una hora después de arrancar. La prueba de integración también comprueba que, si otra réplica tiene el candado, la pasada se salta, y que el registro no tiene nombres ni claves.
+- [X] T063 [P] Crear `tests/carga/eq01-consulta.js` (k6, mismas variables y umbrales que
   `eq01-catalogo.js`: `p(95)<2000` y `rate<0.01`) que consulta expedientes sembrados con datos
   correctos, repartidos entre varios orígenes para no chocar con el límite; ejecutarlo en un stack
   aislado con 100 y con 1,000 usuarios y anotar p95, errores y la máquina (EQ-01, SC-002)
-- [ ] T064 Auditoría Lighthouse 12 móvil, en un stack aislado, sobre `/tramite/identidad`,
+  _Nota de implementación:_ k6 se conecta directo al puerto de la API y cada usuario virtual simula su propio origen con `X-Forwarded-For` (la API confía en un salto). 100 usuarios: p95 15.6 ms, 0 % de errores; 1,000 usuarios: p95 113.6 ms, 0.02 % (18, sin errores en la API). SC-002 queda anotado en el README como pendiente de confirmar en el entorno desplegado, porque k6 y el sistema compartieron la computadora.
+- [X] T064 Auditoría Lighthouse 12 móvil, en un stack aislado, sobre `/tramite/identidad`,
   `/tramite/solicitud?licencia=LIC-02` (con permiso), `/tramite/comprobante/<número>` y `/consulta`:
   accesibilidad ≥ 90 y buenas prácticas ≥ 90 (SC-009); sin desplazamiento horizontal a 360 px en
   todas las pantallas nuevas, incluidas las del personal. Escaneo base de OWASP ZAP sobre las
   pantallas nuevas sin alertas altas ni medias. La comprobación de TLS 1.3 con testssl.sh (EQ-04)
   queda anotada en el README como pendiente para el entorno desplegado, porque en local no hay TLS
-- [ ] T065 Recorrer los escenarios 1 a 7 de [quickstart.md](./quickstart.md) en un clon con su propio
+  _Nota de implementación:_ la solicitud y el comprobante se midieron con Lighthouse en modo instantánea dentro del recorrido real (dependen del permiso en memoria); ese modo no mide rendimiento. Accesibilidad 100 en las cuatro pantallas; buenas prácticas 96 (identidad, consulta) y 100 (solicitud, comprobante). Sin desplazamiento horizontal a 360 px en las 7 pantallas nuevas. ZAP sobre identidad y consulta: 0 alertas altas, medias o bajas.
+- [X] T065 Recorrer los escenarios 1 a 7 de [quickstart.md](./quickstart.md) en un clon con su propio
   nombre de proyecto y puertos, con usuarios ficticios y **sin tocar el stack principal ni su
   administrador**; medir SC-001 (≤ 15 min) y SC-010 (≤ 10 min) en el navegador. Además, levantar 2
   réplicas de la API (`--scale api=2`), subir los documentos y presentar varias veces seguidas
   (el balanceador reparte las peticiones) y comprobar que el expediente se crea (constitución: API
   sin estado, research §R-08). Al terminar, bajar el stack con `-v` y borrar el clon
-- [ ] T066 Actualizar `README.md` (sección de la funcionalidad 004: presentar, consultar, mesa de
+  _Nota de implementación:_ escenarios 1 a 4 con un guion de 23 comprobaciones de la API (23 correctas); escenario 5 a 360 px con un recorrido automatizado que escribe tecla por tecla y hace pausas de lectura: SC-001 81 s y SC-010 47 s (no reemplaza la prueba con personas); escenario 6 es T063 y el 7 es T067. Como mis corridas anteriores agotaron el límite de 3 códigos por celular, la medición de tiempos usó celulares ficticios nuevos (987650001 y 987650002) y otro usuario ficticio del personal, sin borrar contadores. Con 2 réplicas: 6 de 6 solicitudes creadas y 12 de 12 documentos descargados con el mismo SHA-256; las dos réplicas consumieron CPU. El clon (`clon004`) se bajó con `down -v`; el stack principal no se tocó.
+- [X] T066 Actualizar `README.md` (sección de la funcionalidad 004: presentar, consultar, mesa de
   partes, bandeja, datos ficticios del servicio simulado y resultados de k6, Lighthouse, ZAP y
   tiempos), ADR-007 en `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`
   (`tokenIdentidad` de un solo uso y con audiencia propia) y
   `docs/03-diseno-de-software/diagrama-casos-de-uso.md` (CU03, CU04, CU06 y CU12 a "✅ Hecho")
-- [ ] T067 Cadena completa de CI en local: `npm run build`, `lint`, `formato`, `test:unit`,
+  _Nota de implementación:_ el ADR-007 documenta el permiso de 30 minutos (decisión de la prueba manual), su audiencia propia y el uso único por el índice sobre `verificacion_id`. También se actualizó el quickstart (`expiraEn = 1800` y el comando de k6 con los expedientes sembrados).
+- [X] T067 Cadena completa de CI en local: `npm run build`, `lint`, `formato`, `test:unit`,
   `test:integracion` (PostgreSQL temporal en 5433 y Redis aislado), `cobertura` (≥ 80 % de líneas y
   ramas por archivo en `tramites/dominio`, `tramites/aplicacion`, `seguridad/dominio` y
   `seguridad/aplicacion`), `regla-dependencia` y `contrato`; `gitleaks` con 0 hallazgos
+  _Nota de implementación:_ unitarias 802, integración 322 (30 suites), portal 211; gitleaks 0 hallazgos en 168 commits y en el árbol de trabajo. La suite del portal falló 2 veces de unas 10 en `MesaPartes.test.tsx`: con todo en paralelo, alguna prueba que llena el formulario completo superaba el límite de 5 s de Jest. Se le dio un límite de 15 s a ese archivo; después, 8 de 8 corridas en verde.
 - [ ] T068 Preparar la descripción del PR de `004-solicitud-consulta` hacia `main` (resultados de k6,
   Lighthouse, ZAP y tiempos; SC-002 pendiente de confirmar en el entorno desplegado si aplica) y
   confirmar los 5 checks en verde. **Hacer push y abrir o actualizar el PR solo con la autorización
   explícita de la usuaria**
+  _Nota de implementación:_ la descripción está en `specs/004-solicitud-consulta/descripcion-pr.md`. Queda sin marcar porque los 5 checks solo se pueden confirmar después del push (lo hace la usuaria) y el PR #31 lo actualiza Claude en la web.
 
 ---
 

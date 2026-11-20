@@ -24,7 +24,7 @@ let subidos = 0;
 const manejadoresBase: Record<string, Manejador> = {
   ...baseTramite,
   'POST /identidad/verificar': () => json(DESAFIO_PRUEBA),
-  'POST /identidad/verificar-otp': () => json({ token: 'token-identidad', expiraEn: 900 }),
+  'POST /identidad/verificar-otp': () => json({ token: 'token-identidad', expiraEn: 1800 }),
   'POST /documentos': () => {
     subidos += 1;
     return json(
@@ -71,7 +71,7 @@ const pdf = (nombre = 'solicitud.pdf') =>
   new File(['%PDF-1.4 ficticio'], nombre, { type: 'application/pdf' });
 
 const llenarDatos = async (usuario: Usuario) => {
-  await usuario.type(screen.getByLabelText('Nombre o razón social del titular'), 'Titular Uno');
+  await usuario.type(screen.getByLabelText('Nombre completo del titular'), 'Titular Uno');
   await usuario.type(screen.getByLabelText('Giro'), 'Bodega');
   await usuario.type(screen.getByLabelText('Dirección'), 'Jr. Ficticio 123');
   await usuario.type(screen.getByLabelText('Zona'), 'Centro');
@@ -133,6 +133,34 @@ describe('Página Solicitud del trámite', () => {
     expect(
       screen.getByText('Carta poder', { selector: '.documento__nombre', exact: false }),
     ).toHaveTextContent('Obligatorio');
+  });
+
+  it('muestra cuántos minutos quedan del permiso de 30 minutos', async () => {
+    await llegarAlFormulario();
+
+    expect(
+      screen.getByText('Te quedan 30 minutos para presentar la solicitud.'),
+    ).toBeInTheDocument();
+  });
+
+  it('avisa cuando faltan 5 minutos o menos', async () => {
+    await llegarAlFormulario({
+      'POST /identidad/verificar-otp': () => json({ token: 'token-identidad', expiraEn: 240 }),
+    });
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      /Te quedan 4 minutos para presentar la solicitud\. Si se acaba el tiempo/,
+    );
+  });
+
+  it('cada campo del titular tiene su propia etiqueta', async () => {
+    await llegarAlFormulario();
+
+    expect(screen.getByLabelText('Nombre completo del titular')).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Razón social de la empresa (opcional)', { exact: false }),
+    ).not.toBe(screen.getByLabelText('Nombre completo del titular'));
+    expect(screen.queryByLabelText(/Nombre o razón social/)).not.toBeInTheDocument();
   });
 
   it('sube un documento con el token de identidad y permite reemplazarlo', async () => {

@@ -31,7 +31,7 @@ ficticio como `987000001`.
    `celularEnmascarado = 9*****001`.
 2. Con fecha de emisión equivocada: 422 con un mensaje que no dice qué dato falló; no se envía código.
 3. Con el DNI `49999999`: 503 que sugiere mesa de partes.
-4. `POST $API/identidad/verificar-otp` con el código de Redis: 200 con `token` y `expiraEn = 900`.
+4. `POST $API/identidad/verificar-otp` con el código de Redis: 200 con `token` y `expiraEn = 1800` (30 minutos).
 5. Seis verificaciones fallidas seguidas con el mismo documento: la 6.ª responde 429 con `Retry-After`.
 
 ## Escenario 2: presentar en línea (historia 1, FR-008 a FR-022)
@@ -82,8 +82,9 @@ ficticio como `987000001`.
 ## Escenario 6: carga de la consulta (EQ-01, SC-002)
 
 ```bash
-docker run --rm -i -e BASE=http://host.docker.internal:<puerto>/api/v1 -e USUARIOS=100 -e DURACION=2m \
-  grafana/k6:0.54.0 run - < tests/carga/eq01-consulta.js
+docker run --rm -i -e BASE=http://host.docker.internal:<puerto-api>/api/v1 \
+  -e NUMEROS=<expedientes sembrados, separados por comas> -e DOCUMENTO=40000001 \
+  -e USUARIOS=100 -e DURACION=2m grafana/k6:0.54.0 run - < tests/carga/eq01-consulta.js
 ```
 
 Con expedientes de prueba sembrados y consultas correctas (no deben chocar con el límite de

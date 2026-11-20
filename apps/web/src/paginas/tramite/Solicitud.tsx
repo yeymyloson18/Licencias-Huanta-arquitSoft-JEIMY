@@ -10,6 +10,7 @@ import {
   subirDocumento,
 } from '../../servicios/clienteApi';
 import { type BorradorSolicitud, useTramite } from '../../tramite/ContextoTramite';
+import { TiempoRestante } from '../../tramite/TiempoRestante';
 
 // Formulario del trámite en línea (CU04 de la 004, contracts/portal-tramite.md). Necesita el permiso
 // de identidad en memoria; sin él vuelve a la identidad.
@@ -168,6 +169,7 @@ export function Solicitud() {
       </header>
 
       <main className="contenido tramite">
+        <TiempoRestante venceEn={permiso.venceEn} />
         {estado.tipo === 'cargando' && (
           <p className="aviso" role="status">
             Cargando la licencia…

@@ -86,3 +86,9 @@ const CONDICIONES = {
 /** Etiqueta de un requisito condicional; `null` si se pide siempre. */
 export const etiquetaCondicion = (condicion: keyof typeof CONDICIONES): string | null =>
   CONDICIONES[condicion];
+
+/** Una frase para mostrar como oración: termina en punto si no trae ya un signo final. */
+export const conPuntoFinal = (frase: string): string => {
+  const texto = frase.trim();
+  return texto === '' || /[.!?…]$/.test(texto) ? texto : `${texto}.`;
+};

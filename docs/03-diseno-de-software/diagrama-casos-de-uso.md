@@ -125,16 +125,16 @@ La jefatura y el administrador también entran con CU11 (vista 2), como todo el 
 | --- | --- | --- | --- | --- | --- | --- |
 | CU01 | Usar el asistente de ruta | Administrado | HU01 | RF01 | 003 | ✅ Hecho |
 | CU02 | Consultar requisitos, tasa y plazo | Administrado | HU01, HU03 | RF02, RF05 | 001 (lista) y 003 (detalle) | ✅ Hecho |
-| CU03 | Verificar identidad con OTP | Administrado | HU02 | RF06 | 004 | Pendiente |
-| CU04 | Presentar solicitud en línea | Administrado | HU02 | RF04, RF06, RF07 | 004 | Pendiente |
+| CU03 | Verificar identidad con OTP | Administrado | HU02 | RF06 | 004 | ✅ Hecho |
+| CU04 | Presentar solicitud en línea | Administrado | HU02 | RF04, RF06, RF07 | 004 | ✅ Hecho |
 | CU05 | Subsanar observación | Administrado | HU02, HU07 | RF04, RF09 | 004 y 006 | Pendiente |
-| CU06 | Consultar estado del trámite | Administrado | HU05 | RF03 | 004 | Pendiente |
+| CU06 | Consultar estado del trámite | Administrado | HU05 | RF03 | 004 | ✅ Hecho |
 | CU07 | Descargar esquela de pago | Administrado | HU04 | RF11 | 005 | Pendiente |
 | CU08 | Descargar licencia con QR | Administrado | HU06 | RF13 | 009 | Pendiente |
 | CU09 | Verificar licencia por QR | Cualquier persona | HU06 | RF13 | 009 | Pendiente |
 | CU10 | Recibir avisos del trámite | Administrado | HU05, HU11 | RF14, RF20 | 008 | Pendiente |
 | CU11 | Iniciar sesión con OTP | Todo el personal | HU15 | RF16 | 002 | ✅ Hecho |
-| CU12 | Registrar solicitud presencial | Mesa de partes | HU02 | RF04, RF07 | 004 | Pendiente |
+| CU12 | Registrar solicitud presencial | Mesa de partes | HU02 | RF04, RF07 | 004 | ✅ Hecho |
 | CU13 | Evaluar expediente | Evaluador | HU07 | RF07, RF09 | 006 | Pendiente |
 | CU14 | Generar esquela de pago | Sistema (desde CU13) | HU04 | RF05, RF11 | 005 | Pendiente |
 | CU15 | Registrar resultado ITSE con fotos | Inspector ITSE | HU08 | RF10 | 007 | Pendiente |

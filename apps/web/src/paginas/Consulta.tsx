@@ -1,5 +1,6 @@
 import { type SyntheticEvent, useEffect, useRef, useState } from 'react';
 import { CampoFormulario } from '../componentes/CampoFormulario';
+import { conPuntoFinal } from '../componentes/formato';
 import { consultarEstado, type EstadoPublico } from '../servicios/clienteApi';
 
 // Consulta pública del estado (CU05 de la 004, contracts/portal-tramite.md). El número y el documento
@@ -151,7 +152,7 @@ export function Consulta() {
             {estado.siguientePaso && (
               <>
                 <h3 className="ficha__subtitulo">Qué sigue</h3>
-                <p>{estado.siguientePaso}</p>
+                <p>{conPuntoFinal(estado.siguientePaso)}</p>
               </>
             )}
             <h3 className="ficha__subtitulo">Historial</h3>

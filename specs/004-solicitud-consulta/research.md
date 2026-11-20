@@ -39,7 +39,7 @@ y qué alternativas se descartaron.
     intentos; el envío simulado de la 002.
   - `seguridad.verificacion_identidad` (ya existe) guarda solo huellas HMAC: documento, RUC y, nuevo
     en la 0006, `representante_documento_hmac`. El celular queda como `destino_hmac` del código.
-  - Al acertar el código se firma el `tokenIdentidad`: JWT de 15 minutos con audiencia
+  - Al acertar el código se firma el `tokenIdentidad`: JWT de 30 minutos (decisión de la prueba manual, ver spec.md) con audiencia
     `identidad-administrado` (distinta del token del personal, que no se acepta en su lugar ni al
     revés) y `jti` = id de la verificación.     No lleva datos personales. "Un solo uso" significa un solo expediente (aclaración 2): mientras
     dure, el mismo token sirve para subir varios documentos.
