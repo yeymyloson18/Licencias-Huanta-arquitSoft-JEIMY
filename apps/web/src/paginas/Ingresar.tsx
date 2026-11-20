@@ -18,7 +18,8 @@ const dosDigitos = (numero: number) => String(numero).padStart(2, '0');
 /** Solo rutas internas del personal: nunca una URL externa ni `//otro-sitio`. */
 const destinoSeguro = (estado: unknown): string => {
   const volverA = (estado as { volverA?: unknown } | null)?.volverA;
-  return typeof volverA === 'string' && /^\/(admin|cambiar-clave)(\/[\w-]+)*$/.test(volverA)
+  return typeof volverA === 'string' &&
+    /^\/(admin|personal|cambiar-clave)(\/[\w-]+)*$/.test(volverA)
     ? volverA
     : '/';
 };

@@ -2,6 +2,13 @@ import { type SyntheticEvent, useEffect, useId, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { CampoFormulario } from '../../componentes/CampoFormulario';
 import {
+  aIdentidadSolicitud,
+  CamposIdentidad,
+  deIdentidadSolicitud,
+  IDENTIDAD_VACIA,
+  type IdentidadEscrita,
+} from '../../componentes/CamposIdentidad';
+import {
   type DesafioOtp,
   type ErrorCampo,
   type IdentidadSolicitud,
@@ -59,89 +66,6 @@ const mensajeCodigo = (resultado: Exclude<ResultadoCodigoIdentidad, { tipo: 'ok'
   }
 };
 
-type TipoDocumento = 'DNI' | 'CE';
-
-interface DatosPersona {
-  readonly tipoDocumento: TipoDocumento;
-  readonly numeroDocumento: string;
-  readonly fechaEmision: string;
-}
-
-const PERSONA_VACIA: DatosPersona = { tipoDocumento: 'DNI', numeroDocumento: '', fechaEmision: '' };
-
-const aPersona = (datos: DatosPersona) => ({
-  tipoDocumento: datos.tipoDocumento,
-  numeroDocumento: datos.numeroDocumento.trim().toUpperCase(),
-  ...(datos.tipoDocumento === 'DNI' ? { fechaEmision: datos.fechaEmision } : {}),
-});
-
-const dePersona = (persona: {
-  tipoDocumento: TipoDocumento;
-  numeroDocumento: string;
-  fechaEmision?: string | null;
-}): DatosPersona => ({
-  tipoDocumento: persona.tipoDocumento,
-  numeroDocumento: persona.numeroDocumento,
-  fechaEmision: persona.fechaEmision ?? '',
-});
-
-interface PropiedadesPersona {
-  readonly prefijo: string;
-  readonly titulo: string;
-  readonly datos: DatosPersona;
-  readonly errores: Readonly<Record<string, string>>;
-  readonly alCambiar: (datos: DatosPersona) => void;
-}
-
-/** Tipo, número y fecha de emisión (solo DNI) del titular o del representante. */
-function DatosDocumento({ prefijo, titulo, datos, errores, alCambiar }: PropiedadesPersona) {
-  const idTipo = useId();
-  return (
-    <fieldset className="formulario__seccion">
-      <legend>{titulo}</legend>
-      <div className="campo">
-        <label className="campo__etiqueta" htmlFor={idTipo}>
-          Tipo de documento
-        </label>
-        <select
-          id={idTipo}
-          className="campo__entrada"
-          value={datos.tipoDocumento}
-          onChange={(evento) => {
-            alCambiar({ ...datos, tipoDocumento: evento.target.value as TipoDocumento });
-          }}
-        >
-          <option value="DNI">DNI</option>
-          <option value="CE">Carné de extranjería</option>
-        </select>
-      </div>
-      <CampoFormulario
-        etiqueta="Número de documento"
-        inputMode={datos.tipoDocumento === 'DNI' ? 'numeric' : 'text'}
-        autoComplete="off"
-        required
-        value={datos.numeroDocumento}
-        error={errores[`${prefijo}numeroDocumento`]}
-        onChange={(evento) => {
-          alCambiar({ ...datos, numeroDocumento: evento.target.value });
-        }}
-      />
-      {datos.tipoDocumento === 'DNI' && (
-        <CampoFormulario
-          etiqueta="Fecha de emisión del DNI"
-          type="date"
-          required
-          value={datos.fechaEmision}
-          error={errores[`${prefijo}fechaEmision`]}
-          onChange={(evento) => {
-            alCambiar({ ...datos, fechaEmision: evento.target.value });
-          }}
-        />
-      )}
-    </fieldset>
-  );
-}
-
 const porCampo = (errores: readonly ErrorCampo[]): Record<string, string> =>
   Object.fromEntries(errores.map((error) => [error.campo, error.mensaje]));
 
@@ -158,15 +82,8 @@ export function Identidad() {
   const idSelector = useId();
   const titulo = useRef<HTMLHeadingElement>(null);
 
-  const anterior = tramite.identidad;
-  const [titular, setTitular] = useState<DatosPersona>(
-    anterior ? dePersona(anterior) : PERSONA_VACIA,
-  );
-  const [ruc, setRuc] = useState(anterior?.ruc ?? '');
-  const [celular, setCelular] = useState(anterior?.celular ?? '');
-  const [conRepresentante, setConRepresentante] = useState(Boolean(anterior?.representante));
-  const [representante, setRepresentante] = useState<DatosPersona>(
-    anterior?.representante ? dePersona(anterior.representante) : PERSONA_VACIA,
+  const [escrita, setEscrita] = useState<IdentidadEscrita>(() =>
+    tramite.identidad ? deIdentidadSolicitud(tramite.identidad) : IDENTIDAD_VACIA,
   );
 
   const [licencias, setLicencias] = useState<EstadoLicencias>({ tipo: 'cargando' });
@@ -207,12 +124,7 @@ export function Identidad() {
   const inicialValida =
     licencias.tipo === 'lista' && licencias.licencias.some((r) => r.codigo === codigoInicial);
 
-  const identidadEscrita = (): IdentidadSolicitud => ({
-    ...aPersona(titular),
-    ruc: ruc.trim(),
-    celular: celular.trim(),
-    ...(conRepresentante ? { representante: aPersona(representante) } : {}),
-  });
+  const identidadEscrita = (): IdentidadSolicitud => aIdentidadSolicitud(escrita);
 
   const pedirCodigo = async (identidad: IdentidadSolicitud, reenvio: boolean) => {
     setEnviando(true);
@@ -352,57 +264,12 @@ export function Identidad() {
                   </div>
                 ))}
 
-              <DatosDocumento
-                prefijo=""
-                titulo="Titular"
-                datos={titular}
+              <CamposIdentidad
+                valor={escrita}
                 errores={errores}
-                alCambiar={setTitular}
+                alCambiar={setEscrita}
+                ayudaCelular="Te enviaremos aquí el código de verificación."
               />
-              <CampoFormulario
-                etiqueta="RUC"
-                inputMode="numeric"
-                autoComplete="off"
-                required
-                value={ruc}
-                error={errores.ruc}
-                onChange={(evento) => {
-                  setRuc(evento.target.value);
-                }}
-              />
-              <CampoFormulario
-                etiqueta="Celular"
-                type="tel"
-                inputMode="numeric"
-                autoComplete="tel-national"
-                required
-                ayuda="Te enviaremos aquí el código de verificación."
-                value={celular}
-                error={errores.celular}
-                onChange={(evento) => {
-                  setCelular(evento.target.value);
-                }}
-              />
-
-              <label className="casilla">
-                <input
-                  type="checkbox"
-                  checked={conRepresentante}
-                  onChange={(evento) => {
-                    setConRepresentante(evento.target.checked);
-                  }}
-                />
-                Actúo como representante legal o apoderado
-              </label>
-              {conRepresentante && (
-                <DatosDocumento
-                  prefijo="representante."
-                  titulo="Representante"
-                  datos={representante}
-                  errores={errores}
-                  alCambiar={setRepresentante}
-                />
-              )}
 
               <div className="formulario__acciones">
                 <button type="submit" className="boton" disabled={enviando}>

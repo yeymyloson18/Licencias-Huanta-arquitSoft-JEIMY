@@ -17,6 +17,13 @@ export type ResultadoIdentidad =
   | { readonly tipo: 'NO_CONFIRMADA' }
   | { readonly tipo: 'DATOS_INVALIDOS'; readonly campos: readonly string[] };
 
+/** Mesa de partes: el titular se comprueba con el servicio de identificación, sin código. */
+export type ResultadoIdentidadPresencial =
+  | { readonly tipo: 'VALIDA' }
+  | { readonly tipo: 'NO_COINCIDE' }
+  | { readonly tipo: 'NO_DISPONIBLE' }
+  | { readonly tipo: 'DATOS_INVALIDOS'; readonly campos: readonly string[] };
+
 /**
  * Puerto: comprueba la identidad del solicitante (lo implementa un adaptador de la fachada de
  * Seguridad). En línea compara con la identidad confirmada con el código (research §R-05).
@@ -26,4 +33,5 @@ export interface VerificadorIdentidad {
     verificacionId: string,
     identidad: IdentidadSolicitud,
   ): Promise<ResultadoIdentidad>;
+  verificarPresencial(identidad: IdentidadSolicitud): Promise<ResultadoIdentidadPresencial>;
 }

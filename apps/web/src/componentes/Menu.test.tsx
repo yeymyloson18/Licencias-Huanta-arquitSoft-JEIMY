@@ -74,6 +74,32 @@ describe('Menú del personal', () => {
     },
   );
 
+  it('mesa de partes ve "Registrar solicitud" (004)', async () => {
+    simularApi(conSesion(['MESA_PARTES']));
+    montarEn('/');
+
+    const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+
+    expect(within(menu).getByRole('link', { name: 'Registrar solicitud' })).toHaveAttribute(
+      'href',
+      '/personal/mesa-partes/nueva',
+    );
+  });
+
+  it.each(['CAJA', 'EVALUADOR', 'ADMINISTRADOR'])(
+    '%s no ve "Registrar solicitud" (004)',
+    async (rol) => {
+      simularApi(conSesion([rol]));
+      montarEn('/');
+
+      const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+
+      expect(
+        within(menu).queryByRole('link', { name: 'Registrar solicitud' }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   it('"Cerrar sesión" llama a la API y vuelve a /ingresar', async () => {
     const llamadas = simularApi(conSesion(['CAJA']));
     montarEn('/');

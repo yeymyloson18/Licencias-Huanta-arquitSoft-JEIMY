@@ -17,6 +17,7 @@ import type {
 } from '../../../../../src/modulos/tramites/dominio/puertos/unidad-de-trabajo-tramites';
 import type {
   ResultadoIdentidad,
+  ResultadoIdentidadPresencial,
   VerificadorIdentidad,
 } from '../../../../../src/modulos/tramites/dominio/puertos/verificador-identidad';
 import type { RecetaAlPresentar } from '../../../../../src/modulos/tramites/dominio/receta-al-presentar';
@@ -118,8 +119,12 @@ export class CatalogoFalso implements CatalogoRecetas {
 
 export class VerificadorFalso implements VerificadorIdentidad {
   resultado: ResultadoIdentidad = { tipo: 'CONFIRMADA' };
+  presencial: ResultadoIdentidadPresencial = { tipo: 'VALIDA' };
   confirmarEnLinea(): Promise<ResultadoIdentidad> {
     return Promise.resolve(this.resultado);
+  }
+  verificarPresencial(): Promise<ResultadoIdentidadPresencial> {
+    return Promise.resolve(this.presencial);
   }
 }
 
@@ -149,7 +154,10 @@ export class UnidadDeTrabajoFalsa implements UnidadDeTrabajoTramites {
     }
     this.correlativo += 1;
     const expediente = solicitud.armar(NumeroExpediente.crear(solicitud.anio, this.correlativo));
-    if (this.expedientes.some((otro) => otro.verificacionId === expediente.verificacionId)) {
+    if (
+      expediente.verificacionId !== null &&
+      this.expedientes.some((otro) => otro.verificacionId === expediente.verificacionId)
+    ) {
       return Promise.resolve({ tipo: 'PERMISO_USADO' });
     }
     this.expedientes.push(expediente);

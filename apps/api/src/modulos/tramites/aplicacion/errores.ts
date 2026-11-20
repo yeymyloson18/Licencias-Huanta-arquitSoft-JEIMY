@@ -31,3 +31,11 @@ export class ErrorPermisoUsado extends Error {
     this.name = 'ErrorPermisoUsado';
   }
 }
+
+/** El servicio de identificación no responde en mesa de partes (503). */
+export class ErrorIdentificacionNoDisponible extends Error {
+  constructor() {
+    super('El servicio de identificación no está disponible');
+    this.name = 'ErrorIdentificacionNoDisponible';
+  }
+}

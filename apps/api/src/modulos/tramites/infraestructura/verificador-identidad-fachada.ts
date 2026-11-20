@@ -2,6 +2,7 @@ import type { FachadaSeguridad } from '../../seguridad/fachada';
 import type {
   IdentidadSolicitud,
   ResultadoIdentidad,
+  ResultadoIdentidadPresencial,
   VerificadorIdentidad,
 } from '../dominio/puertos/verificador-identidad';
 
@@ -14,5 +15,9 @@ export class VerificadorIdentidadFachada implements VerificadorIdentidad {
     identidad: IdentidadSolicitud,
   ): Promise<ResultadoIdentidad> {
     return this.seguridad.confirmarIdentidadEnLinea(verificacionId, identidad);
+  }
+
+  verificarPresencial(identidad: IdentidadSolicitud): Promise<ResultadoIdentidadPresencial> {
+    return this.seguridad.verificarIdentidadPresencial(identidad);
   }
 }

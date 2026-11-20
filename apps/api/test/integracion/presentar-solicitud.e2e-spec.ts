@@ -220,7 +220,7 @@ describe('Presentar la solicitud en línea (CU04 de la 004)', () => {
     expect(JSON.stringify(respuesta.body)).toContain('Idempotency-Key');
   });
 
-  it('sin token responde 401; con un token del personal también', async () => {
+  it('sin token responde 401; con la sesión de un rol que no es MESA_PARTES, 403', async () => {
     const sinToken = await request(app.getHttpServer())
       .post('/api/v1/expedientes')
       .set('Idempotency-Key', randomUUID())
@@ -232,7 +232,7 @@ describe('Presentar la solicitud en línea (CU04 de la 004)', () => {
     const conPersonal = await caja
       .pedir('post', '/expedientes', {})
       .set('Idempotency-Key', randomUUID());
-    expect(conPersonal.status).toBe(401);
+    expect(conPersonal.status).toBe(403);
   });
 
   it.each([

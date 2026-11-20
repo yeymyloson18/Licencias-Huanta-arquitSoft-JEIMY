@@ -10,10 +10,12 @@ import { Consulta } from './paginas/Consulta';
 import { Ingresar } from './paginas/Ingresar';
 import { Inicio } from './paginas/Inicio';
 import { Licencia } from './paginas/Licencia';
+import { MesaPartes } from './paginas/personal/MesaPartes';
 import { Comprobante } from './paginas/tramite/Comprobante';
 import { Identidad } from './paginas/tramite/Identidad';
 import { Solicitud } from './paginas/tramite/Solicitud';
 import { useSesion } from './sesion/ProveedorSesion';
+import { ProveedorMesaPartes } from './tramite/ContextoMesaPartes';
 import { ProveedorTramite } from './tramite/ContextoTramite';
 
 interface EstadoNavegacion {
@@ -47,50 +49,60 @@ function Diseno() {
 export function RutasAplicacion() {
   return (
     <ProveedorTramite>
-      <Routes>
-        <Route element={<Diseno />}>
-          <Route path="/" element={<Inicio />} />
-          <Route path="/asistente" element={<Asistente />} />
-          <Route path="/licencias/:codigo" element={<Licencia />} />
-          <Route path="/ingresar" element={<Ingresar />} />
-          <Route path="/consulta" element={<Consulta />} />
-          <Route path="/tramite/identidad" element={<Identidad />} />
-          <Route path="/tramite/solicitud" element={<Solicitud />} />
-          <Route path="/tramite/comprobante/:numero" element={<Comprobante />} />
-          <Route
-            path="/admin/usuarios"
-            element={
-              <RutaProtegida roles={['ADMINISTRADOR']}>
-                <Usuarios />
-              </RutaProtegida>
-            }
-          />
-          <Route
-            path="/admin/catalogo"
-            element={
-              <RutaProtegida roles={['ADMINISTRADOR']}>
-                <Catalogo />
-              </RutaProtegida>
-            }
-          />
-          <Route
-            path="/admin/catalogo/:codigo"
-            element={
-              <RutaProtegida roles={['ADMINISTRADOR']}>
-                <EditarReceta />
-              </RutaProtegida>
-            }
-          />
-          <Route
-            path="/cambiar-clave"
-            element={
-              <RutaProtegida permitirClaveTemporal>
-                <CambiarClave />
-              </RutaProtegida>
-            }
-          />
-        </Route>
-      </Routes>
+      <ProveedorMesaPartes>
+        <Routes>
+          <Route element={<Diseno />}>
+            <Route path="/" element={<Inicio />} />
+            <Route path="/asistente" element={<Asistente />} />
+            <Route path="/licencias/:codigo" element={<Licencia />} />
+            <Route path="/ingresar" element={<Ingresar />} />
+            <Route path="/consulta" element={<Consulta />} />
+            <Route path="/tramite/identidad" element={<Identidad />} />
+            <Route path="/tramite/solicitud" element={<Solicitud />} />
+            <Route path="/tramite/comprobante/:numero" element={<Comprobante />} />
+            <Route
+              path="/admin/usuarios"
+              element={
+                <RutaProtegida roles={['ADMINISTRADOR']}>
+                  <Usuarios />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/admin/catalogo"
+              element={
+                <RutaProtegida roles={['ADMINISTRADOR']}>
+                  <Catalogo />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/admin/catalogo/:codigo"
+              element={
+                <RutaProtegida roles={['ADMINISTRADOR']}>
+                  <EditarReceta />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/personal/mesa-partes/nueva"
+              element={
+                <RutaProtegida roles={['MESA_PARTES']}>
+                  <MesaPartes />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/cambiar-clave"
+              element={
+                <RutaProtegida permitirClaveTemporal>
+                  <CambiarClave />
+                </RutaProtegida>
+              }
+            />
+          </Route>
+        </Routes>
+      </ProveedorMesaPartes>
     </ProveedorTramite>
   );
 }

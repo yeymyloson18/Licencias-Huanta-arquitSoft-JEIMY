@@ -23,7 +23,11 @@ import type {
   VerificadorIdentidad,
 } from '../dominio/puertos/verificador-identidad';
 import type { RecetaAlPresentar } from '../dominio/receta-al-presentar';
-import { ErrorIdentidadNoConfirmada, ErrorPermisoUsado } from './errores';
+import {
+  ErrorIdentidadNoConfirmada,
+  ErrorIdentificacionNoDisponible,
+  ErrorPermisoUsado,
+} from './errores';
 
 export interface DependenciasPresentarSolicitud {
   readonly unidad: UnidadDeTrabajoTramites;
@@ -50,8 +54,13 @@ export interface SolicitudEntrante {
   readonly documentos: readonly DocumentoAdjunto[];
 }
 
-/** Por dónde llega la solicitud. En línea, con la verificación de identidad del token. */
-export type CanalEntrante = { readonly tipo: 'EN_LINEA'; readonly verificacionId: string };
+/**
+ * Por dónde llega la solicitud: en línea, con la verificación de identidad del token; en mesa de
+ * partes, con el usuario del personal que la registra (historia 3).
+ */
+export type CanalEntrante =
+  | { readonly tipo: 'EN_LINEA'; readonly verificacionId: string }
+  | { readonly tipo: 'MESA_PARTES'; readonly usuarioId: string };
 
 export interface PresentacionRegistrada extends ExpedienteRegistrado {
   readonly siguientePaso: string;
@@ -144,7 +153,7 @@ export class PresentarSolicitud {
         crearExpediente({
           numero,
           receta,
-          canal: 'EN_LINEA',
+          canal: canal.tipo,
           titular: {
             tipoDocumento: identidad.tipoDocumento,
             numeroDocumento: identidad.numeroDocumento.trim().toUpperCase(),
@@ -168,8 +177,8 @@ export class PresentarSolicitud {
             requisitoOrden: ordenPorRequisito.get(adjunto.requisitoId) ?? 0,
           })),
           presentadoEn,
-          registradoPor: null,
-          verificacionId: canal.verificacionId,
+          registradoPor: canal.tipo === 'MESA_PARTES' ? canal.usuarioId : null,
+          verificacionId: canal.tipo === 'EN_LINEA' ? canal.verificacionId : null,
         }),
     });
 
@@ -224,6 +233,10 @@ export class PresentarSolicitud {
     canal: CanalEntrante,
     identidad: IdentidadSolicitud,
   ): Promise<void> {
+    if (canal.tipo === 'MESA_PARTES') {
+      await this.verificarPresencial(identidad);
+      return;
+    }
     const resultado = await this.d.verificador.confirmarEnLinea(canal.verificacionId, identidad);
     if (resultado.tipo === 'DATOS_INVALIDOS') {
       throw new ErrorValidacionSolicitud(
@@ -235,6 +248,32 @@ export class PresentarSolicitud {
     }
     if (resultado.tipo === 'NO_CONFIRMADA') {
       throw new ErrorIdentidadNoConfirmada();
+    }
+  }
+
+  /** Mesa de partes: el servicio de identificación comprueba al titular, sin código. */
+  private async verificarPresencial(identidad: IdentidadSolicitud): Promise<void> {
+    const resultado = await this.d.verificador.verificarPresencial(identidad);
+    switch (resultado.tipo) {
+      case 'VALIDA':
+        return;
+      case 'DATOS_INVALIDOS':
+        throw new ErrorValidacionSolicitud(
+          resultado.campos.map((campo) => ({
+            campo: `identidad.${campo}`,
+            mensaje: 'El dato de identidad no es válido',
+          })),
+        );
+      case 'NO_COINCIDE':
+        // El mismo mensaje para cualquier dato (FR-007).
+        throw new ErrorValidacionSolicitud([
+          {
+            campo: 'identidad',
+            mensaje: 'Los datos no coinciden con el servicio de identificación',
+          },
+        ]);
+      case 'NO_DISPONIBLE':
+        throw new ErrorIdentificacionNoDisponible();
     }
   }
 
@@ -272,7 +311,10 @@ export class PresentarSolicitud {
     const errores: ErrorCampoSolicitud[] = [];
     for (const adjunto of adjuntos) {
       const documento = porId.get(adjunto.documentoId);
-      const esDelSolicitante = documento?.verificacionId === canal.verificacionId;
+      const esDelSolicitante =
+        canal.tipo === 'EN_LINEA'
+          ? documento?.verificacionId === canal.verificacionId
+          : documento?.usuarioId === canal.usuarioId;
       if (documento === undefined || !esDelSolicitante) {
         // Un documento ajeno se responde igual que uno inexistente: no se revela que existe.
         errores.push({

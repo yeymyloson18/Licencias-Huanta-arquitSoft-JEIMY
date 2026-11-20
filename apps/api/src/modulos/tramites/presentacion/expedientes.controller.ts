@@ -1,10 +1,6 @@
 import { Body, Controller, Headers, Post, Res, UseGuards } from '@nestjs/common';
 import { ErrorValidacion } from '../../../compartido/presentacion/filtro-problema';
-import {
-  IdentidadActual,
-  type IdentidadConfirmada,
-  TokenIdentidadGuard,
-} from '../../seguridad/fachada';
+import { type Solicitante, SolicitanteActual, SolicitanteGuard } from '../../seguridad/fachada';
 import { PresentarSolicitud, type PresentacionRegistrada } from '../aplicacion/presentar-solicitud';
 import { esquemaNuevaSolicitud, validarConEsquema } from './esquemas-tramites';
 import { traducirErrorTramites } from './traducir-errores';
@@ -35,11 +31,11 @@ export class ExpedientesController {
   constructor(private readonly presentarSolicitud: PresentarSolicitud) {}
 
   @Post()
-  @UseGuards(TokenIdentidadGuard)
+  @UseGuards(SolicitanteGuard)
   async presentar(
     @Body() cuerpo: unknown,
     @Headers('idempotency-key') claveIdempotencia: string | undefined,
-    @IdentidadActual() identidad: IdentidadConfirmada,
+    @SolicitanteActual() solicitante: Solicitante,
     @Res({ passthrough: true }) respuesta: RespuestaHttp,
   ) {
     respuesta.setHeader('Cache-Control', 'no-store');
@@ -54,7 +50,10 @@ export class ExpedientesController {
       const resultado = await this.presentarSolicitud.ejecutar({
         solicitud,
         claveIdempotencia: claveIdempotencia.toLowerCase(),
-        canal: { tipo: 'EN_LINEA', verificacionId: identidad.verificacionId },
+        canal:
+          solicitante.canal === 'EN_LINEA'
+            ? { tipo: 'EN_LINEA', verificacionId: solicitante.verificacionId }
+            : { tipo: 'MESA_PARTES', usuarioId: solicitante.usuarioId },
       });
       respuesta.status(resultado.tipo === 'CREADO' ? 201 : 200);
       respuesta.setHeader('Location', `/api/v1/expedientes/${resultado.expediente.numero}`);

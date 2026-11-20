@@ -553,3 +553,66 @@ export const consultarEstado = async (
     return { tipo: 'no-disponible' };
   }
 };
+
+// ----------------------------------------------------------------- mesa de partes (004)
+
+/** Sube un documento con la sesión de MESA_PARTES; ante un 401 renueva la sesión una vez. */
+export const subirDocumentoPersonal = async (
+  archivo: File,
+): Promise<ResultadoSubida | { readonly tipo: 'sin-permiso' }> => {
+  const intentar = async () => {
+    const token = obtenerToken();
+    if (token === null) {
+      return { tipo: 'no-autenticado' } as const;
+    }
+    return subirDocumento(token, archivo);
+  };
+  const primero = await intentar();
+  if (primero.tipo !== 'no-autenticado' || !(await renovarSesion())) {
+    return primero;
+  }
+  return intentar();
+};
+
+export type ResultadoRegistroPresencial =
+  | { readonly tipo: 'ok'; readonly expediente: ExpedienteRegistrado }
+  | { readonly tipo: 'invalido'; readonly errores: readonly ErrorCampo[] }
+  | { readonly tipo: 'no-autenticado' }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'servicio-caido' }
+  | { readonly tipo: 'no-disponible' };
+
+/**
+ * Registra la solicitud presencial con la sesión del personal (el middleware agrega el token y
+ * renueva la sesión una vez). La misma `Idempotency-Key` en los reintentos (FR-020).
+ */
+export const registrarSolicitudPresencial = async (
+  solicitud: NuevaSolicitud,
+  claveIdempotencia: string,
+): Promise<ResultadoRegistroPresencial> => {
+  try {
+    const { data, error, response } = await cliente.POST('/expedientes', {
+      params: { header: { 'Idempotency-Key': claveIdempotencia } },
+      body: solicitud,
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', expediente: data };
+    }
+    switch (response.status) {
+      case 422:
+        return { tipo: 'invalido', errores: erroresDe(error) };
+      case 401:
+        return { tipo: 'no-autenticado' };
+      case 403:
+        return { tipo: 'sin-permiso' };
+      case 503:
+        return tipoDeProblema(error) === 'identificacion-no-disponible'
+          ? { tipo: 'servicio-caido' }
+          : { tipo: 'no-disponible' };
+      default:
+        return { tipo: 'no-disponible' };
+    }
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};

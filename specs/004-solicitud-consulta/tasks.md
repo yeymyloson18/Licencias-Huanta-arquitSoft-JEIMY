@@ -372,13 +372,14 @@ prueba y comprobar canal, `registrado_por` y auditoría `REGISTRAR_PRESENCIAL`; 
 
 ### Pruebas de la historia 3 ⚠️
 
-- [ ] T048 [P] [US3] Prueba unitaria `test-seg/aplicacion/verificar-identidad-presencial.spec.ts`:
+- [X] T048 [P] [US3] Prueba unitaria `test-seg/aplicacion/verificar-identidad-presencial.spec.ts`:
   `COINCIDE` → válida sin enviar código; `NO_COINCIDE` → error sin nombrar el dato; `NO_DISPONIBLE` →
   servicio no disponible; con representante, las dos identidades
-- [ ] T049 [P] [US3] Ampliar `test-tra/aplicacion/presentar-solicitud.spec.ts` con el canal presencial:
+- [X] T049 [P] [US3] Ampliar `test-tra/aplicacion/presentar-solicitud.spec.ts` con el canal presencial:
   identidad comprobada por la fachada presencial, `registradoPor` = usuario, auditoría
   `REGISTRAR_PRESENCIAL`, historial con el usuario y el comentario "Registrada en mesa de partes"
-- [ ] T050 [P] [US3] Prueba de integración `int/mesa-partes.e2e-spec.ts` con `clienteConRoles`:
+  _Nota de implementación:_ la auditoría `REGISTRAR_PRESENCIAL` la escribe el adaptador de PostgreSQL según el canal; la prueba unitaria comprueba canal, `registradoPor` e historial, y la de integración (T050) comprueba la fila de auditoría. El doble `UnidadDeTrabajoFalsa` ya no trata `verificacionId = null` como permiso repetido.
+- [X] T050 [P] [US3] Prueba de integración `int/mesa-partes.e2e-spec.ts` con `clienteConRoles`:
   MESA_PARTES sube documentos y registra → 201 con `canal = MESA_PARTES`; en la base `registrado_por`
   y la auditoría; falta un documento → 422 como en línea; identidad que no coincide → 422; servicio
   caído (`49999999`) → 503; documentos subidos por otro usuario no sirven; con CAJA, INSPECTOR,
@@ -386,19 +387,22 @@ prueba y comprobar canal, `registrado_por` y auditoría `REGISTRAR_PRESENCIAL`; 
 
 ### Implementación de la historia 3
 
-- [ ] T051 [US3] Crear `seg/aplicacion/verificar-identidad-presencial.ts` y exponer
+- [X] T051 [US3] Crear `seg/aplicacion/verificar-identidad-presencial.ts` y exponer
   `verificarIdentidadPresencial(identidad)` en `seg/fachada.ts`. Debe pasar T048
-- [ ] T052 [US3] Ampliar `tra/aplicacion/presentar-solicitud.ts` y `tra/presentacion/expedientes.controller.ts`
+  _Nota de implementación:_ además se creó `seg/presentacion/solicitante.guard.ts` (`SolicitanteGuard` y `@SolicitanteActual()`, exportados por la fachada): acepta el token de identidad o una sesión con rol MESA_PARTES (otro rol → 403, sin nada → 401). `@RequiereRoles` no sirve aquí porque cualquiera de sus dos guards rechaza el token del otro canal.
+- [X] T052 [US3] Ampliar `tra/aplicacion/presentar-solicitud.ts` y `tra/presentacion/expedientes.controller.ts`
   con el canal presencial: `POST expedientes` y `POST documentos` aceptan también la sesión con
   `@RequiereRoles('MESA_PARTES')` y `@UsuarioActual()` (otro rol → 403); identidad por la fachada
   presencial. Deben pasar T049 y T050
-- [ ] T053 [US3] Prueba `web/paginas/personal/MesaPartes.test.tsx` y página
+  _Nota de implementación:_ en mesa de partes, una identidad que no coincide responde 422 con `campo = identidad` (mismo mensaje para cualquier dato) y el servicio caído 503 `identificacion-no-disponible`. Se actualizó `int/presentar-solicitud.e2e-spec.ts` (fase 3): un token del personal sin MESA_PARTES ahora responde 403, como dice el contrato, y no 401.
+- [X] T053 [US3] Prueba `web/paginas/personal/MesaPartes.test.tsx` y página
   `web/paginas/personal/MesaPartes.tsx`: elegir la licencia, identidad del titular (con fecha de
   emisión y representante, sin código) y el mismo `FormularioSolicitud`; al terminar muestra el
   comprobante para imprimir; sesión vencida → conserva lo escrito en memoria y pide ingresar (como la
   003); ruta `/personal/mesa-partes/nueva` con `<RutaProtegida roles={['MESA_PARTES']}>` en
   `web/Aplicacion.tsx` y opción "Registrar solicitud" en `web/componentes/Menu.tsx` solo para
   MESA_PARTES (actualizar `Menu.test.tsx`)
+  _Nota de implementación:_ los campos de identidad se movieron a `web/componentes/CamposIdentidad.tsx` y los usan la identidad en línea y mesa de partes. Lo escrito vive en `web/tramite/ContextoMesaPartes.tsx` (memoria, por encima de las rutas; tiene datos personales, por eso no usa `sessionStorage` como el borrador del catálogo de la 003). `Ingresar` ahora permite volver a `/personal/...`. El comprobante reutiliza la página `/tramite/comprobante/:numero`.
 
 **Punto de control**: las historias 1, 2 y 3 funcionan; el trámite presencial sigue el mismo camino.
 

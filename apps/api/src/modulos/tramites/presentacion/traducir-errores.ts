@@ -3,6 +3,7 @@ import { ErrorValidacion } from '../../../compartido/presentacion/filtro-problem
 import {
   ErrorArchivoDemasiadoGrande,
   ErrorIdentidadNoConfirmada,
+  ErrorIdentificacionNoDisponible,
   ErrorPermisoUsado,
   ErrorTipoArchivoNoPermitido,
 } from '../aplicacion/errores';
@@ -15,6 +16,9 @@ export const traducirErrorTramites = (error: unknown): unknown => {
   }
   if (error instanceof ErrorIdentidadNoConfirmada) {
     return ErrorProblema.identidadNoConfirmada();
+  }
+  if (error instanceof ErrorIdentificacionNoDisponible) {
+    return ErrorProblema.identificacionNoDisponible();
   }
   if (error instanceof ErrorPermisoUsado) {
     return ErrorProblema.permisoUsado();

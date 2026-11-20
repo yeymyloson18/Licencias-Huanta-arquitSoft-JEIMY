@@ -1,5 +1,6 @@
 import {
   ErrorIdentidadNoConfirmada,
+  ErrorIdentificacionNoDisponible,
   ErrorPermisoUsado,
 } from '../../../../../src/modulos/tramites/aplicacion/errores';
 import {
@@ -305,4 +306,133 @@ const solicitudReceta = (ruta: 'A' | 'B' | 'C') => ({
   plazoItseDias: null,
   vigenciaMeses: 12,
   requisitos: [],
+});
+
+describe('PresentarSolicitud en mesa de partes (historia 3 de la 004)', () => {
+  const USUARIO = 'usuario-mesa-1';
+
+  /** Documentos subidos por el usuario de mesa de partes. */
+  const prepararPresencial = () => {
+    const preparado = preparar();
+    for (const [id, documento] of preparado.documentos.documentos) {
+      preparado.documentos.documentos.set(id, {
+        ...documento,
+        verificacionId: null,
+        usuarioId: USUARIO,
+      });
+    }
+    return preparado;
+  };
+
+  const registrar = (casoDeUso: PresentarSolicitud, datos: SolicitudEntrante = solicitud()) =>
+    casoDeUso.ejecutar({
+      solicitud: datos,
+      claveIdempotencia: 'clave-presencial',
+      canal: { tipo: 'MESA_PARTES', usuarioId: USUARIO },
+    });
+
+  it('registra con canal MESA_PARTES, quién lo registró y el historial con el usuario', async () => {
+    const { casoDeUso, unidad } = prepararPresencial();
+
+    const resultado = await registrar(casoDeUso);
+
+    expect(resultado.tipo).toBe('CREADO');
+    expect(resultado.expediente.canal).toBe('MESA_PARTES');
+    const [expediente] = unidad.expedientes;
+    expect(expediente?.canal).toBe('MESA_PARTES');
+    expect(expediente?.registradoPor).toBe(USUARIO);
+    expect(expediente?.verificacionId).toBeNull();
+    expect(expediente?.historial).toEqual([
+      expect.objectContaining({
+        estadoNuevo: 'REGISTRADO',
+        usuarioId: USUARIO,
+        comentario: 'Registrada en mesa de partes',
+      }),
+    ]);
+  });
+
+  it('comprueba la identidad con la fachada presencial, no con el permiso en línea', async () => {
+    const { casoDeUso, verificador } = prepararPresencial();
+    const enLinea = jest.spyOn(verificador, 'confirmarEnLinea');
+    const presencial = jest.spyOn(verificador, 'verificarPresencial');
+
+    await registrar(casoDeUso);
+
+    expect(presencial).toHaveBeenCalledTimes(1);
+    expect(enLinea).not.toHaveBeenCalled();
+  });
+
+  it('una identidad que no coincide se rechaza sin nombrar el dato', async () => {
+    const { casoDeUso, verificador, unidad } = prepararPresencial();
+    verificador.presencial = { tipo: 'NO_COINCIDE' };
+
+    expect(await camposDe(registrar(casoDeUso))).toEqual(['identidad']);
+    expect(unidad.expedientes).toHaveLength(0);
+  });
+
+  it('una identidad con formato inválido se informa por campo', async () => {
+    const { casoDeUso, verificador } = prepararPresencial();
+    verificador.presencial = { tipo: 'DATOS_INVALIDOS', campos: ['ruc'] };
+
+    expect(await camposDe(registrar(casoDeUso))).toEqual(['identidad.ruc']);
+  });
+
+  it('si el servicio de identificación no responde, no registra nada', async () => {
+    const { casoDeUso, verificador, unidad } = prepararPresencial();
+    verificador.presencial = { tipo: 'NO_DISPONIBLE' };
+
+    await expect(registrar(casoDeUso)).rejects.toBeInstanceOf(ErrorIdentificacionNoDisponible);
+    expect(unidad.expedientes).toHaveLength(0);
+  });
+
+  it('los documentos subidos por otro usuario o por un administrado no sirven', async () => {
+    const { casoDeUso, documentos } = prepararPresencial();
+    const otroUsuario = documentos.documentos.get('doc-1');
+    if (otroUsuario) documentos.documentos.set('doc-1', { ...otroUsuario, usuarioId: 'otro' });
+    const enLinea = documentos.documentos.get('doc-3');
+    if (enLinea) {
+      documentos.documentos.set('doc-3', {
+        ...enLinea,
+        usuarioId: null,
+        verificacionId: VERIFICACION,
+      });
+    }
+
+    expect(await camposDe(registrar(casoDeUso))).toEqual([
+      'documentos.requisito.11',
+      'documentos.requisito.13',
+    ]);
+  });
+
+  it('falta un documento obligatorio → el mismo error que en línea', async () => {
+    const { casoDeUso } = prepararPresencial();
+
+    expect(
+      await camposDe(
+        registrar(
+          casoDeUso,
+          solicitud({ documentos: [{ requisitoId: 13, documentoId: 'doc-3' }] }),
+        ),
+      ),
+    ).toEqual(['documentos.requisito.11']);
+  });
+
+  it('varios registros presenciales no chocan por el permiso de un solo uso', async () => {
+    const { casoDeUso, unidad } = prepararPresencial();
+    await registrar(casoDeUso);
+
+    const segundo = await casoDeUso.ejecutar({
+      solicitud: solicitud({
+        documentos: [
+          { requisitoId: 11, documentoId: 'doc-2' },
+          { requisitoId: 13, documentoId: 'doc-4' },
+        ],
+      }),
+      claveIdempotencia: 'otra-clave',
+      canal: { tipo: 'MESA_PARTES', usuarioId: USUARIO },
+    });
+
+    expect(segundo.tipo).toBe('CREADO');
+    expect(unidad.expedientes).toHaveLength(2);
+  });
 });
