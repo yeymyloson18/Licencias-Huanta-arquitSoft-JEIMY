@@ -119,6 +119,18 @@ describe('Menú del personal', () => {
     );
   });
 
+  it.each([
+    ['ADMINISTRADOR', 'Feriados', '/admin/feriados'],
+    ['JEFATURA', 'Alertas', '/personal/alertas'],
+  ])('%s ve "%s" (006)', async (rol, etiqueta, ruta) => {
+    simularApi(conSesion([rol]));
+    montarEn('/');
+
+    const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+
+    expect(within(menu).getByRole('link', { name: etiqueta })).toHaveAttribute('href', ruta);
+  });
+
   it('jefatura ve "Auditoría" (005)', async () => {
     simularApi(conSesion(['JEFATURA']));
     montarEn('/');

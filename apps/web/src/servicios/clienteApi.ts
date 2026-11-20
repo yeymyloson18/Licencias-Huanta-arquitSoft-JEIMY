@@ -1379,3 +1379,45 @@ export const eliminarFeriado = async (fecha: string): Promise<ResultadoFeriado> 
     return { tipo: 'no-disponible' };
   }
 };
+
+// ----------------------------------------------------------------- alertas de plazos (006)
+
+export type AlertaPlazo = components['schemas']['AlertaPlazo'];
+
+/** Alertas sin atender, de la más urgente a la menos urgente (rol JEFATURA). */
+export const listarAlertas = async (): Promise<
+  | { readonly tipo: 'ok'; readonly alertas: readonly AlertaPlazo[] }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' }
+> => {
+  try {
+    const { data, response } = await cliente.GET('/plazos/alertas', {
+      params: { query: { pendientes: true } },
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', alertas: data };
+    }
+    return response.status === 401 || response.status === 403
+      ? { tipo: 'sin-permiso' }
+      : { tipo: 'no-disponible' };
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** Marca una alerta como atendida (rol JEFATURA). */
+export const atenderAlerta = async (
+  id: number,
+): Promise<'ok' | 'ya-atendida' | 'no-disponible'> => {
+  try {
+    const { response } = await cliente.POST('/plazos/alertas/{alertaId}/atender', {
+      params: { path: { alertaId: id } },
+    });
+    if (response.ok) {
+      return 'ok';
+    }
+    return response.status === 409 || response.status === 404 ? 'ya-atendida' : 'no-disponible';
+  } catch {
+    return 'no-disponible';
+  }
+};

@@ -25,4 +25,5 @@ export interface RepositorioVencimientos {
     plazo: { readonly vencePlazoEn: string | null; readonly plazoRestanteDias: number | null },
   ): Promise<void>;
   conPlazo(estados: readonly EstadoExpediente[]): Promise<ExpedienteConPlazo[]>;
+  estadosDe(numeros: readonly string[]): Promise<ReadonlyMap<string, EstadoExpediente>>;
 }

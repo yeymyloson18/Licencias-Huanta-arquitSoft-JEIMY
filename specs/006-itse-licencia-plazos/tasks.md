@@ -204,22 +204,22 @@ una alerta; jefatura la atiende.
 
 ### Pruebas de la historia 4 ⚠️
 
-- [ ] T034 [P] [US4] Pruebas unitarias `test-pla/aplicacion/generar-alertas.spec.ts` (2 o menos y
+- [X] T034 [P] [US4] Pruebas unitarias `test-pla/aplicacion/generar-alertas.spec.ts` (2 o menos y
   vencidos sí; 3 o más no; estados sin plazo no) y `alertas.spec.ts` (orden por urgencia, atender una
   vez)
-- [ ] T035 [P] [US4] Prueba de integración `int/reloj-alertas.e2e-spec.ts`: una alerta por expediente y
+- [X] T035 [P] [US4] Prueba de integración `int/reloj-alertas.e2e-spec.ts`: una alerta por expediente y
   vencimiento aunque el reloj corra dos veces; **dos aplicaciones a la vez** contra la misma base → una
   sola ejecución y alertas sin duplicar (EQ-07); `GET /plazos/alertas` ordenado; atender → 200 y
   repetir → 409; otro rol → 403
 
 ### Implementación de la historia 4
 
-- [ ] T036 [US4] `pla/aplicacion/generar-alertas.ts` y `alertas.ts`; `tra/fachada.ts`
+- [X] T036 [US4] `pla/aplicacion/generar-alertas.ts` y `alertas.ts`; `tra/fachada.ts`
   `expedientesConPlazo()` y `estadosDe(numeros)`. Deben pasar T034
-- [ ] T037 [US4] `pla/infraestructura/repositorio-alertas-postgres.ts`, `reloj-plazos.ts` (candado
+- [X] T037 [US4] `pla/infraestructura/repositorio-alertas-postgres.ts`, `reloj-plazos.ts` (candado
   `pg_try_advisory_xact_lock(4006001)`, `RELOJ_PLAZOS_INTERVALO_MS`, 0 en pruebas) y
   `pla/presentacion/alertas.controller.ts`. Deben pasar T035
-- [ ] T038 [US4] Portal: `web/paginas/personal/Alertas.tsx`, ruta, menú "Alertas" y pruebas
+- [X] T038 [US4] Portal: `web/paginas/personal/Alertas.tsx`, ruta, menú "Alertas" y pruebas
 
 **Punto de control**: la jefatura ve las alertas.
 

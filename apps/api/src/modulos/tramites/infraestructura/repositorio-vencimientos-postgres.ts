@@ -58,6 +58,21 @@ export class RepositorioVencimientosPostgres implements RepositorioVencimientos 
         : [],
     );
   }
+
+  async estadosDe(numeros: readonly string[]): Promise<ReadonlyMap<string, EstadoExpediente>> {
+    if (numeros.length === 0) {
+      return new Map();
+    }
+    const filas = await this.prisma.expediente.findMany({
+      where: { numero: { in: [...new Set(numeros)] } },
+      select: { numero: true, estado: true },
+    });
+    return new Map(
+      filas.flatMap((fila) =>
+        esEstadoExpediente(fila.estado) ? [[fila.numero, fila.estado] as const] : [],
+      ),
+    );
+  }
 }
 
 /** Adaptador de `PlazosHabiles` sobre la fachada de Plazos (principio I). */

@@ -20,7 +20,7 @@ export class FachadaTramites {
     private readonly lectorModulos?: LectorParaModulos,
     private readonly plazos?: {
       readonly completar: CompletarVencimientos;
-      readonly vencimientos: Pick<RepositorioVencimientos, 'conPlazo'>;
+      readonly vencimientos: Pick<RepositorioVencimientos, 'conPlazo' | 'estadosDe'>;
     },
   ) {}
 
@@ -66,6 +66,11 @@ export class FachadaTramites {
    */
   direccionDelLocal(numeroExpediente: string): Promise<string | null> {
     return this.modulos().direccionDelLocal(numeroExpediente);
+  }
+
+  /** Estado de cada expediente (alertas de la jefatura, 006). */
+  estadosDe(numeros: readonly string[]): Promise<ReadonlyMap<string, EstadoExpediente>> {
+    return this.plazosDeTramites().vencimientos.estadosDe(numeros);
   }
 
   private plazosDeTramites() {
