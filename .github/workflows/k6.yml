@@ -1,0 +1,85 @@
+# Pruebas de carga contra la dirección pública (criterio 13, EQ-01 y EQ-02; research §R-13).
+# A pedido (Actions → k6 → Run workflow). Corre en un runner de GitHub: otra máquina distinta del
+# servidor. Con replicas=1 detiene api-b por SSH durante la prueba y la vuelve a levantar al final.
+name: k6
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Dirección pública, por ejemplo https://164-90-143-165.sslip.io'
+        required: true
+      escenario:
+        description: 'eq01-100, eq01-1000 o eq02-picos'
+        required: true
+        default: eq01-100
+        type: choice
+        options: [eq01-100, eq01-1000, eq02-picos]
+      replicas:
+        description: 'Réplicas de la API durante la prueba (1 o 2)'
+        required: true
+        default: '2'
+        type: choice
+        options: ['2', '1']
+      numeros:
+        description: 'Expedientes de demostración para la consulta, separados por comas'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  carga:
+    name: carga
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BASE: ${{ inputs.base_url }}/api/v1
+      ESCENARIO: ${{ inputs.escenario }}
+      REPLICAS: ${{ inputs.replicas }}
+      NUMEROS: ${{ inputs.numeros }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Llave SSH (solo si se pide 1 réplica)
+        if: inputs.replicas == '1'
+        env:
+          SSH_LLAVE: ${{ secrets.SSH_LLAVE }}
+          SSH_HUELLA_SERVIDOR: ${{ secrets.SSH_HUELLA_SERVIDOR }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_LLAVE" > ~/.ssh/despliegue && chmod 600 ~/.ssh/despliegue
+          printf '%s\n' "$SSH_HUELLA_SERVIDOR" > ~/.ssh/known_hosts
+
+      - name: Dejar una sola réplica
+        if: inputs.replicas == '1'
+        env:
+          DESTINO: ${{ secrets.SERVIDOR_USUARIO }}@${{ secrets.SERVIDOR_IP }}
+        run: ssh -i ~/.ssh/despliegue "$DESTINO" 'cd ~/licencias && docker compose stop api-b'
+
+      - name: Ejecutar k6
+        run: |
+          mkdir -p resultados
+          case "$ESCENARIO" in
+            eq01-100)  script=eq01-catalogo.js; extra="-e USUARIOS=100 -e DURACION=2m" ;;
+            eq01-1000) script=eq01-catalogo.js; extra="-e USUARIOS=1000 -e DURACION=3m" ;;
+            eq02-picos) script=eq02-picos.js;   extra="-e NUMEROS=$NUMEROS" ;;
+          esac
+          docker run --rm -i -v "$PWD/resultados:/resultados" -e BASE="$BASE" $extra \
+            grafana/k6:0.54.0 run --summary-export "/resultados/${ESCENARIO}-${REPLICAS}.json" - \
+            < "tests/carga/$script" | tee "resultados/${ESCENARIO}-${REPLICAS}.txt"
+
+      - name: Volver a las 2 réplicas
+        if: always() && inputs.replicas == '1'
+        env:
+          DESTINO: ${{ secrets.SERVIDOR_USUARIO }}@${{ secrets.SERVIDOR_IP }}
+        run: ssh -i ~/.ssh/despliegue "$DESTINO" 'cd ~/licencias && docker compose start api-b'
+
+      - name: Guardar el resumen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-${{ inputs.escenario }}-${{ inputs.replicas }}
+          path: resultados/
+          retention-days: 90

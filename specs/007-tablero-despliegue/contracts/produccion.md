@@ -12,7 +12,7 @@ Lo que debe cumplir `infra/produccion/` y lo que comprueban `verificar-local.sh`
 | `migrar` (perfil `migrar`) | `${IMAGEN_API}:${VERSION}` | ninguno | 256 MB | Se ejecuta y termina: `prisma migrate deploy` con la conexión directa |
 | `pgbouncer` | `edoburu/pgbouncer:v1.23.1-p3` | ninguno | 32 MB | `pg_isready -h 127.0.0.1 -p 5432` |
 | `postgres` | `postgres:16-alpine` | ninguno | 512 MB | `pg_isready` |
-| `redis` | `redis:7-alpine` (`--maxmemory 64mb --maxmemory-policy allkeys-lru`) | ninguno | 96 MB | `redis-cli ping` |
+| `redis` | `redis:7-alpine` (`--maxmemory 64mb --maxmemory-policy noeviction`) | ninguno | 96 MB | `redis-cli ping` |
 
 Todos los servicios tienen `restart: unless-stopped`. Las APIs dependen de `pgbouncer` y de `redis`
 sanos. Caddy no depende de las APIs: si las dos fallan, devuelve 502 en `/api/*` y el portal sigue

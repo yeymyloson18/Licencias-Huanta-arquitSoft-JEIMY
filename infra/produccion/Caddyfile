@@ -1,0 +1,69 @@
+# Punto de entrada de producción (007, research §R-05; contracts/produccion.md).
+# Caddy sirve el portal (horneado en esta imagen) y reparte /api/ entre las dos réplicas de la API.
+# El dominio sale de UNA variable: DOMINIO (sin dominio propio, <ip-con-guiones>.sslip.io; con
+# DOMINIO=localhost, Caddy usa su certificado interno para la prueba local).
+{
+	# Sin panel de administración hacia afuera: solo para la comprobación de salud del contenedor.
+	admin 127.0.0.1:2019
+	servers {
+		# Un solo salto de proxy: la IP real del visitante llega en X-Forwarded-For (TRUST_PROXY_SALTOS=1).
+		trusted_proxies static private_ranges
+	}
+}
+
+{$DOMINIO} {
+	# Constitución, principio VII: solo TLS 1.3.
+	tls {
+		protocols tls1.3
+	}
+
+	encode zstd gzip
+
+	# Cabeceras de seguridad: las mismas de apps/web/cabeceras-seguridad.conf (portal de desarrollo)
+	# más HSTS. verificar-local.sh comprueba que coincidan.
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
+		Cross-Origin-Embedder-Policy "require-corp"
+		-Server
+		-X-Powered-By
+	}
+
+	# API: dos réplicas con comprobación de salud; una réplica caída deja de recibir tráfico. La API
+	# define su propio Cache-Control (catálogo con max-age=60, datos personales con no-store).
+	handle /api/* {
+		request_body {
+			max_size 11MB
+		}
+		reverse_proxy api-a:3000 api-b:3000 {
+			lb_policy round_robin
+			lb_try_duration 5s
+			lb_try_interval 250ms
+			health_uri /api/v1/salud
+			health_interval 5s
+			health_timeout 3s
+			fail_duration 10s
+		}
+	}
+
+	# Archivos con huella en el nombre: caché de un año, inmutable.
+	handle /assets/* {
+		root * /srv
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# Portal (SPA): cualquier otra ruta devuelve index.html, que no se guarda en caché.
+	handle {
+		root * /srv
+		header Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

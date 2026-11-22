@@ -1,0 +1,116 @@
+# Despliegue continuo (criterio 12; specs/007-tablero-despliegue, research §R-10).
+# Se dispara cuando el flujo CI termina en `main`, y solo sigue si terminó en verde (los 5 checks).
+# Construye las imágenes de la API y del portal, las publica en GHCR, copia infra/produccion al
+# servidor y ejecuta desplegar.sh (migraciones, una réplica a la vez, humo y vuelta atrás).
+# Secretos: SSH_LLAVE, SSH_HUELLA_SERVIDOR, SERVIDOR_IP y SERVIDOR_USUARIO (guía del VPS, paso 8).
+name: CD
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: produccion
+  cancel-in-progress: false
+
+jobs:
+  desplegar:
+    name: desplegar
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: produccion
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - name: Nombres de las imágenes
+        id: imagenes
+        run: |
+          duenio="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          echo "api=ghcr.io/${duenio}/licencias-huanta-api" >> "$GITHUB_OUTPUT"
+          echo "portal=ghcr.io/${duenio}/licencias-huanta-portal" >> "$GITHUB_OUTPUT"
+          echo "version=sha-${SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Imagen de la API
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          target: final
+          push: true
+          tags: |
+            ${{ steps.imagenes.outputs.api }}:${{ steps.imagenes.outputs.version }}
+            ${{ steps.imagenes.outputs.api }}:latest
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+
+      - name: Imagen del portal (Caddy)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          target: produccion
+          push: true
+          tags: |
+            ${{ steps.imagenes.outputs.portal }}:${{ steps.imagenes.outputs.version }}
+            ${{ steps.imagenes.outputs.portal }}:latest
+          cache-from: type=gha,scope=portal
+          cache-to: type=gha,scope=portal,mode=max
+
+      - name: Llave SSH y huella del servidor (sin aceptar huellas desconocidas)
+        env:
+          SSH_LLAVE: ${{ secrets.SSH_LLAVE }}
+          SSH_HUELLA_SERVIDOR: ${{ secrets.SSH_HUELLA_SERVIDOR }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_LLAVE" > ~/.ssh/despliegue
+          chmod 600 ~/.ssh/despliegue
+          printf '%s\n' "$SSH_HUELLA_SERVIDOR" > ~/.ssh/known_hosts
+
+      - name: Copiar la configuración de producción
+        env:
+          DESTINO: ${{ secrets.SERVIDOR_USUARIO }}@${{ secrets.SERVIDOR_IP }}
+        run: |
+          ssh -i ~/.ssh/despliegue "$DESTINO" 'mkdir -p ~/licencias'
+          scp -i ~/.ssh/despliegue \
+            infra/produccion/docker-compose.yml infra/produccion/desplegar.sh \
+            infra/produccion/respaldo.sh infra/produccion/restaurar.sh \
+            "$DESTINO":licencias/
+          ssh -i ~/.ssh/despliegue "$DESTINO" 'chmod 700 ~/licencias/*.sh'
+
+      - name: Desplegar (migraciones, una réplica a la vez, humo y vuelta atrás)
+        env:
+          DESTINO: ${{ secrets.SERVIDOR_USUARIO }}@${{ secrets.SERVIDOR_IP }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.imagenes.outputs.version }}
+        run: |
+          # El token del job caduca al terminar: el servidor no guarda credenciales permanentes.
+          printf '%s' "$GHCR_TOKEN" | ssh -i ~/.ssh/despliegue "$DESTINO" \
+            "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
+          ssh -i ~/.ssh/despliegue "$DESTINO" "cd ~/licencias && ./desplegar.sh '$VERSION'"
+
+      - name: Cerrar la sesión del registro en el servidor
+        if: always()
+        env:
+          DESTINO: ${{ secrets.SERVIDOR_USUARIO }}@${{ secrets.SERVIDOR_IP }}
+        run: ssh -i ~/.ssh/despliegue "$DESTINO" 'docker logout ghcr.io' || true

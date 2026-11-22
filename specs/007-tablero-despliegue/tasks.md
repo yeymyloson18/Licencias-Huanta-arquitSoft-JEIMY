@@ -234,7 +234,7 @@ proyectos).
 
 **Prueba independiente**: `prod/verificar-local.sh` termina con todo "OK".
 
-- [ ] T022 [US4] Etapa `produccion` en `apps/web/Dockerfile`: Caddy con `dist` y el Caddyfile. La
+- [X] T022 [US4] Etapa `produccion` en `apps/web/Dockerfile`: Caddy con `dist` y el Caddyfile. La
   etapa final por defecto sigue siendo nginx. Además, `prod/Caddyfile` (research §R-05,
   [contracts/produccion.md](./contracts/produccion.md)) con:
   - `{$DOMINIO}`;
@@ -243,7 +243,7 @@ proyectos).
   - cabeceras de seguridad iguales a las de `apps/web/cabeceras-seguridad.conf` más HSTS;
   - balanceo con salud a `api-a` y `api-b`;
   - límite de cuerpo.
-- [ ] T023 [US4] `prod/docker-compose.yml` con:
+- [X] T023 [US4] `prod/docker-compose.yml` con:
   - `caddy`, `api-a`, `api-b`, `migrar` (perfil), `pgbouncer`, `postgres` y `redis`;
   - límites de memoria, salud y `restart`;
   - solo Caddy publica puertos;
@@ -259,7 +259,7 @@ proyectos).
   - baja el proyecto con `-v`.
 
   Ejecutarlo y guardar la salida en `dep/resultados.md`.
-- [ ] T025 [P] [US4] `prod/verificar-puertos.sh <ip>` (desde fuera) y
+- [X] T025 [P] [US4] `prod/verificar-puertos.sh <ip>` (desde fuera) y
   `dep/guia-vps.md`:
   - droplet;
   - llave SSH en PowerShell;
@@ -290,7 +290,7 @@ proyectos).
 **Prueba independiente**: con `verificar-local.sh`, el respaldo y la restauración coinciden en los
 conteos y PgBouncer no pasa de 20 conexiones.
 
-- [ ] T028 [US5] `prod/respaldo.sh` (research §R-09):
+- [X] T028 [US5] `prod/respaldo.sh` (research §R-09):
   - `pg_dump -Fc` y `tar` de los documentos;
   - escribe en `.parcial` y renombra al terminar;
   - borra las copias de más de 7 días solo después del éxito;
@@ -319,7 +319,7 @@ conteos y PgBouncer no pasa de 20 conexiones.
 **Prueba independiente**: en el proyecto local de producción, `desplegar.sh` con una versión buena
 sale con 0 y con una que no arranca sale con 1 y queda en la anterior.
 
-- [ ] T031 [US6] `prod/desplegar.sh <version>` (research §R-06,
+- [X] T031 [US6] `prod/desplegar.sh <version>` (research §R-06,
   [contracts/produccion.md](./contracts/produccion.md)):
   - guarda la versión anterior;
   - hace `pull` y `migrar`;
@@ -332,7 +332,7 @@ sale con 0 y con una que no arranca sale con 1 y queda en la anterior.
   - construye dos etiquetas locales, una buena y una "rota" (API que sale al arrancar);
   - ejecuta `desplegar.sh` con cada una;
   - durante el despliegue bueno, un sondeo de `/api/v1/salud` cada 200 ms no ve ningún error.
-- [ ] T033 [US6] `wf/cd.yml` (research §R-10):
+- [X] T033 [US6] `wf/cd.yml` (research §R-10):
   - `workflow_run` de CI en `main` con `success`;
   - construcción y publicación en GHCR (`sha-<7>`);
   - SSH con `known_hosts` fijo;
@@ -343,7 +343,7 @@ sale con 0 y con una que no arranca sale con 1 y queda en la anterior.
 
   Validar la sintaxis con `actionlint` (contenedor `rhysd/actionlint:1.7.4`) y gitleaks sin
   hallazgos.
-- [ ] T033b [US6] `prod/revisar-migraciones.sh`: avisa con código 1 si una migración nueva respecto de
+- [X] T033b [US6] `prod/revisar-migraciones.sh`: avisa con código 1 si una migración nueva respecto de
   `main` contiene `DROP TABLE`, `DROP COLUMN`, `RENAME` o `ALTER COLUMN … TYPE` sin el comentario
   `-- compatible: <motivo>`. Además, la regla "agregar antes de quitar" se escribe en `dep/guia-vps.md`
   y en `.github/pull_request_template.md`. Probarlo con una migración de ejemplo temporal (FR-035).
@@ -358,7 +358,7 @@ sale con 0 y con una que no arranca sale con 1 y queda en la anterior.
 
 **Objetivo**: flujos de medición preparados, plantilla SUS y datos de demostración.
 
-- [ ] T035 [P] [US7] `tests/carga/eq02-picos.js` (`stages` 100 → 500 → 1,000, umbrales p95 y errores)
+- [X] T035 [P] [US7] `tests/carga/eq02-picos.js` (`stages` 100 → 500 → 1,000, umbrales p95 y errores)
   y `wf/k6.yml`:
   - `workflow_dispatch` con `base_url`, `escenario` y `replicas`;
   - SSH para detener o levantar `api-b`, siempre;
@@ -366,7 +366,7 @@ sale con 0 y con una que no arranca sale con 1 y queda en la anterior.
 
   Validar con `actionlint` y probar los scripts de k6 en local contra el compose de desarrollo con
   pocos usuarios.
-- [ ] T036 [P] [US7] `wf/calidad-produccion.yml` (ZAP baseline que falla con alertas altas o medias,
+- [X] T036 [P] [US7] `wf/calidad-produccion.yml` (ZAP baseline que falla con alertas altas o medias,
   Lighthouse móvil con accesibilidad ≥ 0.9 en 4 pantallas, testssl de protocolos y cabeceras).
   Validar con `actionlint`.
 - [ ] T037 [P] [US7] `dep/sus.md`: las 10 preguntas del SUS en español, instrucciones para 5
@@ -378,6 +378,13 @@ sale con 0 y con una que no arranca sale con 1 y queda en la anterior.
   (SC-007, SC-008, SC-010 y SC-011).
 
 ---
+
+> Nota (2026-11-22): para no agotar la memoria del equipo, no se construyen imágenes en local. Quedan
+> sin ejecutar las comprobaciones que levantan la producción en un proyecto aislado (T024, T029 y
+> T032, con `verificar-local.sh`) y la validación de los flujos con `actionlint`. Los archivos de
+> producción, los scripts, los flujos y las guías están escritos y revisados; `revisar-migraciones.sh`
+> se probó con una migración temporal. La primera ejecución real será en el droplet 164.90.143.165
+> (T027, T034 y T038, **[servidor]**).
 
 ## Fase 10: Acabado y temas transversales
 
