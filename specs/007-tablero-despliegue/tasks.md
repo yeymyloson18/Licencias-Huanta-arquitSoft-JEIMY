@@ -390,7 +390,7 @@ sale con 0 y con una que no arranca sale con 1 y queda en la anterior.
 
 - [X] T039 [P] Prueba de integración `int/matriz-permisos-007.e2e-spec.ts`: tablero y reporte (JSON y
   CSV) con 401 sin sesión y 403 para los 5 roles que no son JEFATURA (SC-003).
-- [ ] T040 [P] Prueba de integración `int/privacidad-007.e2e-spec.ts` con el logger capturador. Ni el
+- [X] T040 [P] Prueba de integración `int/privacidad-007.e2e-spec.ts` con el logger capturador. Ni el
   tablero, ni el reporte, ni el CSV, ni las claves de caché `rep:*`, ni los registros, ni las URL
   contienen documento, RUC, celular, correo, dirección ni nombre completo del titular (SC-004).
 - [ ] T041 Medir SC-001: tablero con 10,000 expedientes sembrados en un clon aislado, ≤ 3 s a 360 px,
