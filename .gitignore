@@ -15,3 +15,4 @@ zap-informe.json
 # Resultados de Playwright (007)
 tests/e2e/informe/
 tests/e2e/resultados/
+tests/e2e/.datos/

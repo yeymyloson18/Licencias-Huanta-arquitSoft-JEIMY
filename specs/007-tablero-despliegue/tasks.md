@@ -180,7 +180,7 @@ una hoja de cálculo.
 **Prueba independiente**: `npm run e2e` contra el compose de desarrollo pasa los 4 casos (2 rutas × 2
 proyectos).
 
-- [ ] T017 [US3] Comando `apps/api/src/scripts/sembrar-demostracion.ts` (research §R-12):
+- [X] T017 [US3] Comando `apps/api/src/scripts/sembrar-demostracion.ts` (research §R-12):
   - un usuario por rol (`demo.<rol>@ejemplo.pe`) con una clave aleatoria;
   - 3 expedientes de ejemplo (rutas A, B y C);
   - es idempotente y acepta `--regenerar`;
@@ -189,11 +189,11 @@ proyectos).
 
   Se compila a `dist/scripts/` y lo prueba `int/sembrar-demostracion.e2e-spec.ts` (crea, no duplica,
   `--salida` rechazado en producción, ninguna clave en el logger capturador).
-- [ ] T018 [P] [US3] `tests/e2e/apoyo/`:
+- [X] T018 [P] [US3] `tests/e2e/apoyo/`:
   - `sistema.ts`: siembra con `docker compose exec`, lectura de `dev:otp:<id>` con `redis-cli` y
     ayudantes de ingreso del personal con OTP;
   - archivos ficticios (PDF y JPG).
-- [ ] T019 [US3] `tests/e2e/ruta-a.spec.ts`:
+- [X] T019 [US3] `tests/e2e/ruta-a.spec.ts`:
   1. el asistente lleva a LIC-02;
   2. identidad con OTP (el `desafioId` se toma de la respuesta interceptada);
   3. solicitud con documentos y comprobante;
@@ -202,14 +202,14 @@ proyectos).
   6. el evaluador aprueba;
   7. la consulta muestra "Descargar licencia" (descarga el PDF);
   8. `/verificar/<código>` muestra la licencia vigente con el titular abreviado.
-- [ ] T020 [US3] `tests/e2e/ruta-b.spec.ts`:
+- [X] T020 [US3] `tests/e2e/ruta-b.spec.ts`:
   1. solicitud LIC-03;
   2. evaluación;
   3. pago;
   4. la jefatura asigna;
   5. el inspector registra un resultado favorable con 2 fotos;
   6. la consulta muestra la licencia emitida.
-- [ ] T021 [US3] `wf/e2e.yml`:
+- [X] T021 [US3] `wf/e2e.yml`:
   - se dispara en `pull_request` y `push` a `main`;
   - levanta `infra/docker-compose.yml`;
   - instala Chromium con dependencias;
@@ -221,6 +221,10 @@ proyectos).
   propio, puertos propios) y bajarlo con `-v`.
 
 **Punto de control**: el sistema completo probado en el navegador (criterio 6).
+
+> Nota (2026-11-22): la construcción del clon aislado para ejecutar T019 y T020 en local se detuvo por
+> falta de memoria en el equipo. Por decisión de la usuaria, la ejecución de los recorridos queda a
+> cargo del flujo `e2e.yml` en GitHub Actions; el código está escrito, compila y pasa ESLint.
 
 ---
 

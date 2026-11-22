@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test';
+import { URL_BASE } from './apoyo/sistema';
 
 // Pruebas de extremo a extremo de la 007 (criterio 6, research §R-11): recorridos completos de las
 // rutas A y B en el navegador, contra el sistema levantado con infra/docker-compose.yml. Datos
@@ -19,7 +20,7 @@ export default defineConfig({
   reporter: enCi ? [['list'], ['html', { open: 'never', outputFolder: 'informe' }]] : 'list',
   outputDir: 'resultados',
   use: {
-    baseURL: process.env.E2E_URL ?? 'http://localhost:8080',
+    baseURL: URL_BASE,
     locale: 'es-PE',
     timezoneId: 'America/Lima',
     trace: 'retain-on-failure',

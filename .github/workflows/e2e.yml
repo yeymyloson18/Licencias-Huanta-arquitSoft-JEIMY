@@ -1,0 +1,54 @@
+# Pruebas de extremo a extremo con Playwright (criterio 6; specs/007-tablero-despliegue, research §R-11).
+# Corren contra el mismo docker compose de desarrollo, en tamaño celular y de escritorio. NO es uno de
+# los 5 checks obligatorios de `main` (aclaración del 2026-11-20): su resultado se ve en el PR.
+name: E2E
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      # Valores FICTICIOS de .env.example: el compose de desarrollo ya los trae por defecto.
+      RELOJ_PLAZOS_INTERVALO_MS: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Instalar Chromium de Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Levantar el sistema
+        run: docker compose -f infra/docker-compose.yml up -d --build --wait
+      - name: Recorridos de las rutas A y B (celular y escritorio)
+        run: npm run e2e
+      - name: Registros del sistema si falla
+        if: failure()
+        run: docker compose -f infra/docker-compose.yml logs --no-color api web > sistema.log
+      - name: Informe y evidencias
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-informe
+          path: |
+            tests/e2e/informe
+            tests/e2e/resultados
+            sistema.log
+          retention-days: 7
+      - name: Bajar el sistema
+        if: always()
+        run: docker compose -f infra/docker-compose.yml down -v
