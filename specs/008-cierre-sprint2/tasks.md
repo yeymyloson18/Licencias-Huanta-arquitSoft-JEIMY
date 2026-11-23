@@ -77,13 +77,13 @@ responde 404.
 
 ## Fase 3: Historia de usuario 3 - Reporte de cobertura publicado (P2)
 
-- [ ] T008 [US3] Configurar la cobertura:
+- [X] T008 [US3] Configurar la cobertura:
   - `apps/api/jest.config.ts` con `json-summary` en los reportes;
   - `apps/web`: script `cobertura` (`jest --coverage`, reportes `text`, `lcov` y `json-summary`, sin
     umbral).
-- [ ] T009 [US3] En `wf/ci.yml`, el job `cobertura` (mismo nombre) agrega la cobertura del portal y
+- [X] T009 [US3] En `wf/ci.yml`, el job `cobertura` (mismo nombre) agrega la cobertura del portal y
   `actions/upload-artifact` con `apps/api/coverage` y `apps/web/coverage`. Los otros 4 jobs no se tocan.
-- [ ] T010 [P] [US3] `ana/resumen-cobertura.mjs`: lee los `coverage-summary.json` y genera la tabla por
+- [X] T010 [P] [US3] `ana/resumen-cobertura.mjs`: lee los `coverage-summary.json` y genera la tabla por
   módulo y capa, con líneas y ramas. Ejecutarlo en local para obtener la tabla del README.
 
 ---

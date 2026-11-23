@@ -31,7 +31,7 @@ const config: Config = {
   ],
   collectCoverageFrom: ['src/**/*.ts'],
   coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov'],
+  coverageReporters: ['text', 'lcov', 'json-summary'],
   coverageThreshold: {
     './src/**/dominio/**/*.ts': { lines: 80, branches: 80 },
     './src/**/aplicacion/**/*.ts': { lines: 80, branches: 80 },
