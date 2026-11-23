@@ -150,16 +150,16 @@ responde 404.
 
 ## Fase 7: Historias de usuario 7 y 8 - Caché, SOLID y patrones (P3)
 
-- [ ] T020 [P] [US7] `s2/cache.md`:
+- [X] T020 [P] [US7] `s2/cache.md`:
   - tabla de claves (archivo, TTL e invalidación);
   - qué no se guarda y por qué;
   - qué pasa si Redis falla en lectura y en seguridad;
   - cabeceras `Cache-Control` del portal y de la API;
   - la medición (aciertos y p50 y p95 con y sin caché), pendiente del artefacto.
-- [ ] T021 [P] [US8] `s2/solid-y-patrones.md`: SOLID con un ejemplo real por principio (archivo,
+- [X] T021 [P] [US8] `s2/solid-y-patrones.md`: SOLID con un ejemplo real por principio (archivo,
   fragmento y qué se perdería sin él), los 10 patrones con su archivo, el diagrama Mermaid de la regla
   de dependencia y el enlace al job `regla-dependencia`.
-- [ ] T022 [US8] `ana/verificar-citas.mjs`: comprueba que cada archivo citado en `s2/*.md` existe y
+- [X] T022 [US8] `ana/verificar-citas.mjs`: comprueba que cada archivo citado en `s2/*.md` existe y
   contiene la frase citada entre comillas invertidas, y que cada enlace relativo existe. Ejecutarlo en
   local.
 
