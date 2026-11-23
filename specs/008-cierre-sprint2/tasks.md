@@ -27,9 +27,9 @@ flujo y sus scripts están escritos y validados en local donde se pueda (sintaxi
 
 ## Fase 1: Preparación
 
-- [ ] T001 Agregar `swagger-ui-dist` 5.17.14 y `yaml` 2.6.1 (versión exacta) a las dependencias de
+- [X] T001 Agregar `swagger-ui-dist` 5.17.14 y `yaml` 2.6.1 (versión exacta) a las dependencias de
   producción de `apps/api`. Comprobar que `npm ci` y el typecheck siguen en verde.
-- [ ] T002 [P] Crear las carpetas `s2/`, `pm/` y `ana/`, cada una con un README breve que explique para
+- [X] T002 [P] Crear las carpetas `s2/`, `pm/` y `ana/`, cada una con un README breve que explique para
   qué es.
 
 ---
