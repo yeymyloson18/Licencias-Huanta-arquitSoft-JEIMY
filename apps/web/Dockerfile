@@ -14,6 +14,9 @@ COPY tsconfig.base.json ./
 COPY docs/06-contrato-api/openapi.yaml docs/06-contrato-api/
 COPY packages/contracts packages/contracts
 COPY apps/web apps/web
+# 008: el portal de producción se compila sin el enlace a /api/docs (cd.yml pasa DOCS_API=false).
+ARG DOCS_API=true
+ENV VITE_DOCS_API=$DOCS_API
 RUN npm run generar && npm run build -w apps/web
 
 # ---- Producción (007): Caddy sirve el portal y es el punto de entrada con HTTPS ----
@@ -27,5 +30,6 @@ EXPOSE 80 443 443/udp
 FROM nginx:1-alpine AS final
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY apps/web/cabeceras-seguridad.conf /etc/nginx/snippets/cabeceras-seguridad.conf
+COPY apps/web/cabeceras-docs.conf /etc/nginx/snippets/cabeceras-docs.conf
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html
 EXPOSE 80

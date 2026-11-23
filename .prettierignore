@@ -8,3 +8,4 @@ tecnologia/
 packages/contracts/src/generado
 package-lock.json
 *.sql
+tests/postman/licencias-huanta.postman_collection.json

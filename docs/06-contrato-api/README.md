@@ -9,6 +9,19 @@ por los 9 módulos del monolito. Es la fuente única de verdad entre el Portal W
 
 Para verlo ahora mismo: abre [editor.swagger.io](https://editor.swagger.io) y pega el contenido de `openapi.yaml`.
 
+## Documentación interactiva (008)
+
+Con el sistema levantado, la propia API sirve **Swagger UI** en
+[`/api/docs/`](http://localhost:8080/api/docs/) y este contrato en JSON en `/api/docs/openapi.json`.
+Los dos se generan al arrancar desde este mismo `openapi.yaml`, que es la única fuente de verdad.
+
+- Para probar un endpoint protegido, pegue el token del personal en **Authorize**. El token no se guarda
+  en el navegador.
+- La documentación está activa por defecto en desarrollo y pruebas y apagada en producción
+  (`DOCS_API=true|false`).
+- El primer servidor del contrato es `/api/v1` (mismo origen), así las peticiones de prueba van al
+  mismo sistema que sirve la documentación.
+
 ## Convenciones
 
 | Tema               | Regla                                                                                                                                                                                                                                                                    | Motivo                                                                                                                            |

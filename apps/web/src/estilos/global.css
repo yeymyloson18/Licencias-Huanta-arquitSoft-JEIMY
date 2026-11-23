@@ -976,3 +976,10 @@ video {
 .tablero__total {
   font-size: 1.25rem;
 }
+
+/* Pie del portal (008): enlace a la documentación de la API. */
+.pie {
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.9375rem;
+}

@@ -22,6 +22,8 @@ info:
   license:
     name: Uso académico – UNSCH 2026
 servers:
+  - url: /api/v1
+    description: Mismo origen (portal o API); lo usa la documentación interactiva en /api/docs (008)
   - url: http://localhost:3000/api/v1
     description: Desarrollo local (Docker Compose)
   - url: https://api.licencias.example.pe/api/v1

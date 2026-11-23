@@ -8,6 +8,15 @@ const config: Config = {
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.jest.json' }],
   },
+  // 008: reporte publicado por el job `cobertura` del CI (sin umbral para el portal).
+  collectCoverageFrom: [
+    'src/**/*.{ts,tsx}',
+    '!src/**/*.test.{ts,tsx}',
+    '!src/**/*.d.ts',
+    '!src/main.tsx',
+  ],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text-summary', 'lcov', 'json-summary'],
   moduleNameMapper: {
     '\\.css$': '<rootDir>/src/__mocks__/estilo.ts',
   },

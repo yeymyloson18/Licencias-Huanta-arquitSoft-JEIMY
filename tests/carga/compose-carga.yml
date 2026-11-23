@@ -1,0 +1,11 @@
+# Ajustes del compose de desarrollo para la carga del Sprint 2 (008, research §R-06). Solo en GitHub
+# Actions:
+#   TRUST_PROXY_SALTOS=2 RELOJ_PLAZOS_INTERVALO_MS=0 docker compose -f infra/docker-compose.yml \
+#     -f tests/carga/compose-carga.yml up -d --build --wait --scale api=2
+# - La API no publica su puerto (si no, la segunda réplica chocaría con la primera). El tráfico entra
+#   por nginx (puerto 8080), que alterna entre las dos réplicas.
+# - TRUST_PROXY_SALTOS=2: cada usuario virtual simula su origen con X-Forwarded-For; así se mide el
+#   sistema y no el límite de intentos por origen de la consulta. Es un ajuste SOLO de esta prueba.
+services:
+  api:
+    ports: !reset []

@@ -1,0 +1,55 @@
+# Recorrido de humo con Postman y Newman (008, research §R-05; contracts/flujos-sprint2.md).
+# Endpoints públicos con éxito, protegidos con 401 sin token y 403 con un rol que no corresponde.
+# NO es uno de los 5 checks obligatorios de `main` (aclaración del 2026-11-22). Sin secretos: los
+# usuarios y tokens se generan en el ejecutor y el entorno con tokens nunca se sube.
+name: Postman
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: postman-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  humo:
+    name: humo
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Levantar el sistema (compose de desarrollo)
+        run: docker compose -f infra/docker-compose.yml up -d --build --wait
+      - name: Preparar el entorno con tokens (solo en el ejecutor)
+        run: node tests/postman/preparar-entorno.mjs "$RUNNER_TEMP/entorno.json"
+      - name: Recorrido de humo con Newman
+        run: |
+          mkdir -p newman
+          npx --yes -p newman@6.2.1 -p newman-reporter-htmlextra@1.23.1 newman run \
+            tests/postman/humo.postman_collection.json \
+            -e "$RUNNER_TEMP/entorno.json" \
+            -r cli,htmlextra,junit \
+            --reporter-htmlextra-export newman/informe.html \
+            --reporter-htmlextra-skipHeaders Authorization \
+            --reporter-htmlextra-omitHeaders \
+            --reporter-junit-export newman/junit.xml
+      - name: Registros del sistema si falla
+        if: failure()
+        run: docker compose -f infra/docker-compose.yml logs --no-color api > newman/sistema.log
+      - name: Informe de Newman
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman
+          path: newman/
+          retention-days: 30
+      - name: Bajar el sistema
+        if: always()
+        run: docker compose -f infra/docker-compose.yml down -v

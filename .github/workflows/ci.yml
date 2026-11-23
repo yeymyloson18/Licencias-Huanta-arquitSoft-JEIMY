@@ -119,6 +119,19 @@ jobs:
         run: npm exec -w apps/api -- prisma generate
       - name: Cobertura de dominio y aplicacion (≥ 80 %)
         run: npm run cobertura
+      - name: Cobertura del portal (reporte, sin umbral)
+        run: npm run cobertura -w apps/web
+      - name: Resumen por módulo y capa
+        run: node tests/analisis/resumen-cobertura.mjs >> "$GITHUB_STEP_SUMMARY"
+      - name: Publicar los reportes de cobertura (HTML y lcov)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura
+          path: |
+            apps/api/coverage
+            apps/web/coverage
+          retention-days: 30
 
   regla-dependencia:
     name: regla-dependencia
