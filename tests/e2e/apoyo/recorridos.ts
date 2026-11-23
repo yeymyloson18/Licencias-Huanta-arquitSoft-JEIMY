@@ -1,5 +1,13 @@
 import { type Browser, expect, type Page } from '@playwright/test';
-import { ARCHIVOS, hoyLima, ingresar, leerOtp, type Rol, URL_BASE } from './sistema';
+import {
+  aislarLimitesDePrueba,
+  ARCHIVOS,
+  hoyLima,
+  ingresar,
+  leerOtp,
+  type Rol,
+  URL_BASE,
+} from './sistema';
 
 // Pasos comunes de los recorridos de extremo a extremo (007). Titular FICTICIO que reconoce el servicio
 // de identificación simulado de la 004.
@@ -48,6 +56,7 @@ export const presentarSolicitud = async (
   nivelRiesgo: 'Medio' | 'Alto',
   codigoEsperado: string,
 ): Promise<string> => {
+  aislarLimitesDePrueba();
   await pagina.goto('/asistente');
   for (const opcion of ['Otro negocio', 'No', nivelRiesgo]) {
     await pagina.getByRole('radio', { name: opcion, exact: true }).check();

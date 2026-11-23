@@ -100,9 +100,33 @@ export const codigoVerificacion = (numeroExpediente: string): string => {
   );
 };
 
+/**
+ * Solo en el compose de pruebas de E2E: borra los contadores de envíos de código y de verificación de
+ * identidad (002 y 004). Cada recorrido entra con los mismos usuarios de demostración y el mismo
+ * titular ficticio, y con dos tamaños de pantalla y reintentos se superan los 3 códigos cada 15
+ * minutos. Los límites siguen activos y probados en las pruebas de integración; aquí solo se aísla
+ * un recorrido del anterior. Nunca se usa contra producción (URL_BASE apunta al compose local).
+ */
+export const aislarLimitesDePrueba = (): void => {
+  docker(
+    compose(
+      'exec',
+      '-T',
+      'redis',
+      'redis-cli',
+      'EVAL',
+      "for _, patron in ipairs(ARGV) do for _, k in ipairs(redis.call('KEYS', patron)) do redis.call('DEL', k) end end return 1",
+      '0',
+      'lim:envios:usuario:*',
+      'lim:identidad:*',
+    ),
+  );
+};
+
 /** Ingreso del personal con clave y código (002). */
 export const ingresar = async (pagina: Page, rol: Rol): Promise<void> => {
   const persona = usuario(rol);
+  aislarLimitesDePrueba();
   await pagina.goto('/ingresar');
   await pagina.getByLabel('Correo').fill(persona.correo);
   await pagina.getByLabel('Clave').fill(persona.clave);

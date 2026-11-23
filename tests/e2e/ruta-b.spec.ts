@@ -41,7 +41,7 @@ test('ruta B: de la solicitud a la licencia con inspección previa favorable', a
     .getByRole('article', { name: `Inspección de ${numero}` })
     .getByRole('link', { name: 'Registrar resultado' })
     .click();
-  await inspector.getByRole('radio', { name: 'Favorable' }).check();
+  await inspector.getByRole('radio', { name: 'Favorable', exact: true }).check();
   await inspector.getByLabel('Observaciones').fill('Local en orden, extintor vigente');
   await inspector.getByLabel('Número del certificado ITSE').fill(`ITSE-E2E-${numero.slice(-6)}`);
   await inspector.getByLabel('Fecha de emisión del certificado').fill(hoyLima());
