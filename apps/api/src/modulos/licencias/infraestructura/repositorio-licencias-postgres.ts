@@ -1,7 +1,13 @@
 import { Prisma } from '@prisma/client';
-import { comoFechaBase, deFechaBase, type Fecha } from '../../../compartido/dominio/fecha-lima';
+import {
+  comoFechaBase,
+  deFechaBase,
+  type Fecha,
+  fechaLima,
+} from '../../../compartido/dominio/fecha-lima';
 import type { PrismaServicio } from '../../../compartido/infraestructura/prisma.servicio';
 import { crearCertificado, Licencia, type TipoLicencia } from '../dominio/licencia';
+import type { LectorLicenciasParaReportes, LicenciaParaReporte } from '../dominio/lector-reportes';
 import type { RepositorioLicencias, ResultadoEmision } from '../dominio/puertos';
 
 const CON_CERTIFICADO = {
@@ -55,8 +61,71 @@ const eventoEmitida = (licencia: Licencia) => {
  * evento `LicenciaEmitida` van en una transacción; el índice `ux_licencia_vigente_por_expediente`
  * impide una segunda licencia vigente.
  */
-export class RepositorioLicenciasPostgres implements RepositorioLicencias {
+const CAMPOS_REPORTE = {
+  numero: true,
+  codigo_receta: true,
+  titular_publico: true,
+  giro: true,
+  zona: true,
+  estado: true,
+  emitida_en: true,
+} as const;
+
+const aFilaReporte = (
+  fila: {
+    numero: string;
+    codigo_receta: string;
+    titular_publico: string;
+    giro: string;
+    zona: string;
+    estado: string;
+  },
+  fecha: Fecha,
+): LicenciaParaReporte => ({
+  numero: fila.numero,
+  codigoReceta: fila.codigo_receta,
+  titularPublico: fila.titular_publico,
+  giro: fila.giro,
+  zona: fila.zona,
+  estado: fila.estado,
+  fecha,
+});
+
+export class RepositorioLicenciasPostgres
+  implements RepositorioLicencias, LectorLicenciasParaReportes
+{
   constructor(private readonly prisma: PrismaServicio) {}
+
+  async vigentes(codigoReceta: string | undefined): Promise<LicenciaParaReporte[]> {
+    const filas = await this.prisma.licencia.findMany({
+      where: {
+        estado: 'VIGENTE',
+        ...(codigoReceta === undefined ? {} : { codigo_receta: codigoReceta }),
+      },
+      select: CAMPOS_REPORTE,
+      orderBy: { numero: 'asc' },
+    });
+    return filas.map((fila) => aFilaReporte(fila, fechaLima(fila.emitida_en)));
+  }
+
+  async itsePorVencer(
+    desde: Fecha,
+    hasta: Fecha,
+    codigoReceta: string | undefined,
+  ): Promise<LicenciaParaReporte[]> {
+    const certificados = await this.prisma.certificado_itse.findMany({
+      where: {
+        vence_en: { gte: comoFechaBase(desde), lte: comoFechaBase(hasta) },
+        licencia: {
+          estado: 'VIGENTE',
+          ...(codigoReceta === undefined ? {} : { codigo_receta: codigoReceta }),
+        },
+      },
+      select: { vence_en: true, licencia: { select: CAMPOS_REPORTE } },
+      orderBy: [{ vence_en: 'asc' }, { numero: 'asc' }],
+    });
+    return certificados.map((c) => aFilaReporte(c.licencia, deFechaBase(c.vence_en)));
+  }
 
   async vigenteDe(numeroExpediente: string): Promise<Licencia | null> {
     const fila = await this.prisma.licencia.findFirst({

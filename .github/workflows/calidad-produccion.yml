@@ -1,0 +1,93 @@
+# Seguridad y calidad contra la dirección pública (EQ-04 y EQ-05; research §R-13). A pedido.
+# - ZAP baseline: falla si hay alertas altas o medias.
+# - Lighthouse móvil: accesibilidad ≥ 0.9 en las pantallas principales.
+# - testssl.sh: protocolos (solo TLS 1.3) y cabeceras de seguridad.
+name: Calidad en produccion
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Dirección pública, por ejemplo https://164-90-143-165.sslip.io'
+        required: true
+      codigo_verificacion:
+        description: 'Código de verificación de una licencia de demostración (para /verificar)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  zap:
+    name: zap
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Escaneo ZAP baseline
+        run: |
+          mkdir -p zap && chmod 777 zap
+          docker run --rm -v "$PWD/zap:/zap/wrk" ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py -t "${{ inputs.base_url }}" -r informe.html -J informe.json -I || true
+          # Falla solo con alertas altas (3) o medias (2).
+          altas_medias="$(jq '[.site[].alerts[] | select((.riskcode|tonumber) >= 2)] | length' zap/informe.json)"
+          echo "Alertas altas o medias: $altas_medias"
+          test "$altas_medias" -eq 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap
+          path: zap/
+          retention-days: 90
+
+  lighthouse:
+    name: lighthouse
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Lighthouse móvil (accesibilidad ≥ 0.9)
+        env:
+          BASE: ${{ inputs.base_url }}
+          CODIGO: ${{ inputs.codigo_verificacion }}
+        run: |
+          urls="\"$BASE/\", \"$BASE/asistente\", \"$BASE/consulta\""
+          if [ -n "$CODIGO" ]; then urls="$urls, \"$BASE/verificar/$CODIGO\""; fi
+          cat > lighthouserc.json <<EOF
+          {"ci": {
+            "collect": {"url": [$urls], "numberOfRuns": 1,
+              "settings": {"formFactor": "mobile",
+                "screenEmulation": {"mobile": true, "width": 360, "height": 740, "deviceScaleFactor": 2, "disabled": false}}},
+            "assert": {"assertions": {"categories:accessibility": ["error", {"minScore": 0.9}]}}
+          }}
+          EOF
+          npx --yes @lhci/cli@0.14.0 collect
+          npx --yes @lhci/cli@0.14.0 assert
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse
+          path: .lighthouseci/
+          retention-days: 90
+
+  tls:
+    name: tls
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: testssl.sh (protocolos y cabeceras)
+        run: |
+          mkdir -p tls && chmod 777 tls
+          host="$(echo '${{ inputs.base_url }}' | sed -E 's#^https?://##; s#/.*$##')"
+          docker run --rm -v "$PWD/tls:/salida" drwetter/testssl.sh:3.2 \
+            --protocols --headers --quiet --logfile /salida/testssl.txt "$host"
+          # Solo TLS 1.3 (constitución, principio VII): TLS 1.2 y anteriores deben figurar como no ofrecidos.
+          ! grep -E '^ ?TLS 1(\.[012])? +offered' tls/testssl.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: testssl
+          path: tls/
+          retention-days: 90

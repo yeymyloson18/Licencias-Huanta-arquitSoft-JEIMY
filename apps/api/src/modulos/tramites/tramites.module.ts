@@ -33,6 +33,8 @@ import { FachadaPlazos } from '../plazos/fachada';
 const PLAZOS_HABILES = Symbol('PLAZOS_HABILES');
 import { TransicionesSistema } from './aplicacion/transiciones-sistema';
 import { LectorParaModulosPostgres } from './infraestructura/lector-para-modulos-postgres';
+import { LectorParaReportesPostgres } from './infraestructura/lector-para-reportes-postgres';
+import { DatosParaReportes } from './aplicacion/datos-para-reportes';
 import {
   manejadorLicenciaEmitida,
   manejadorResultadoItse,
@@ -301,10 +303,12 @@ const reloj = new RelojSistema();
         plazos: PlazosHabiles,
       ) => {
         const vencimientos = new RepositorioVencimientosPostgres(prisma);
-        return new FachadaTramites(lector, new LectorParaModulosPostgres(prisma, protector), {
-          completar: new CompletarVencimientos({ vencimientos, plazos, reloj }),
-          vencimientos,
-        });
+        return new FachadaTramites(
+          lector,
+          new LectorParaModulosPostgres(prisma, protector),
+          { completar: new CompletarVencimientos({ vencimientos, plazos, reloj }), vencimientos },
+          new DatosParaReportes(new LectorParaReportesPostgres(prisma)),
+        );
       },
     },
     // Transiciones del sistema por ruta (006): licencia emitida, resultado ITSE y pago de ruta B.

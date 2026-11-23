@@ -921,3 +921,58 @@ video {
   height: auto;
   border-radius: 4px;
 }
+
+/* Tablero de la jefatura (007): gráficos SVG que se adaptan al ancho y tablas con desplazamiento
+   propio, para que la página no tenga desplazamiento horizontal a 360 px. */
+.grafico {
+  margin: 1rem 0 0;
+}
+
+.grafico__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 40rem;
+}
+
+.grafico__etiqueta {
+  font-size: 12px;
+  fill: var(--color-texto);
+}
+
+.grafico__barra {
+  fill: var(--color-primario);
+}
+
+.grafico__marca {
+  stroke: var(--color-error-borde);
+  stroke-width: 2;
+}
+
+.grafico__resumen {
+  margin: 0.5rem 0;
+  color: var(--color-texto-suave);
+  font-size: 0.9375rem;
+}
+
+.grafico__tabla {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla th,
+.tabla td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--color-borde);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.tablero__total {
+  font-size: 1.25rem;
+}

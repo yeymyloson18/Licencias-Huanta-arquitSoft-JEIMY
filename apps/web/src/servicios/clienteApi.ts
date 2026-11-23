@@ -1421,3 +1421,114 @@ export const atenderAlerta = async (
     return 'no-disponible';
   }
 };
+
+// ----------------------------------------------------------------- tablero de la jefatura (007)
+
+export type Tablero = components['schemas']['Tablero'];
+
+/** Tablero de un rango (sin fechas, el mes actual). Rol JEFATURA. */
+export const obtenerTablero = async (
+  rango: { readonly desde: string; readonly hasta: string } | null,
+): Promise<
+  | { readonly tipo: 'ok'; readonly tablero: Tablero }
+  | {
+      readonly tipo: 'invalido';
+      readonly errores: readonly { readonly campo: string; readonly mensaje: string }[];
+    }
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' }
+> => {
+  try {
+    const { data, error, response } = await cliente.GET('/reportes/tablero', {
+      params: { query: rango ?? {} },
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', tablero: data };
+    }
+    if (response.status === 422) {
+      const errores = (error as { errores?: { campo: string; mensaje: string }[] } | undefined)
+        ?.errores;
+      return { tipo: 'invalido', errores: errores ?? [] };
+    }
+    return response.status === 401 || response.status === 403
+      ? { tipo: 'sin-permiso' }
+      : { tipo: 'no-disponible' };
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+// ----------------------------------------------------------------- reporte de licencias (007)
+
+export type FilaReporte = components['schemas']['FilaReporte'];
+export type SituacionReporte = 'VIGENTES' | 'EN_TRAMITE' | 'ITSE_POR_VENCER';
+export interface FiltroReporte {
+  readonly situacion: SituacionReporte;
+  readonly codigoReceta?: string;
+  readonly giro?: string;
+  readonly zona?: string;
+}
+
+type ResultadoReporte<T> =
+  | ({ readonly tipo: 'ok'; readonly truncado: boolean } & T)
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-disponible' };
+
+const consultaReporte = (filtro: FiltroReporte) => ({
+  situacion: filtro.situacion,
+  ...(filtro.codigoReceta ? { codigoReceta: filtro.codigoReceta } : {}),
+  ...(filtro.giro?.trim() ? { giro: filtro.giro.trim() } : {}),
+  ...(filtro.zona?.trim() ? { zona: filtro.zona.trim() } : {}),
+});
+
+const fallaReporte = (status: number) =>
+  status === 401 || status === 403
+    ? ({ tipo: 'sin-permiso' } as const)
+    : ({ tipo: 'no-disponible' } as const);
+
+/** Reporte de licencias en JSON (rol JEFATURA). */
+export const reporteLicencias = async (
+  filtro: FiltroReporte,
+): Promise<ResultadoReporte<{ readonly filas: readonly FilaReporte[] }>> => {
+  try {
+    const { data, response } = await cliente.GET('/reportes/licencias', {
+      params: { query: consultaReporte(filtro) },
+    });
+    // El contrato declara JSON y CSV: sin `formato`, la respuesta es el arreglo JSON.
+    if (response.ok && Array.isArray(data)) {
+      return {
+        tipo: 'ok',
+        filas: data,
+        truncado: response.headers.get('X-Reporte-Truncado') === 'true',
+      };
+    }
+    return fallaReporte(response.status);
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** El mismo reporte en CSV, con el nombre que manda el servidor. */
+export const descargarReporteCsv = async (
+  filtro: FiltroReporte,
+): Promise<ResultadoReporte<{ readonly csv: Blob; readonly nombre: string }>> => {
+  try {
+    const { data, response } = await cliente.GET('/reportes/licencias', {
+      params: { query: { ...consultaReporte(filtro), formato: 'csv' } },
+      parseAs: 'blob',
+    });
+    if (response.ok && data !== undefined) {
+      const disposicion = response.headers.get('Content-Disposition') ?? '';
+      const nombre = /filename="([^"]+)"/.exec(disposicion)?.[1] ?? 'reporte.csv';
+      return {
+        tipo: 'ok',
+        csv: data,
+        nombre,
+        truncado: response.headers.get('X-Reporte-Truncado') === 'true',
+      };
+    }
+    return fallaReporte(response.status);
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};

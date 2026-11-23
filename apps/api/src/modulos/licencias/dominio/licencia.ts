@@ -1,5 +1,5 @@
 import { type Fecha, fechaLima, sumarMeses } from '../../../compartido/dominio/fecha-lima';
-import { titularPublico } from './titular-publico';
+import { titularPublico } from '../../../compartido/dominio/titular-publico';
 
 export type TipoLicencia = 'DEFINITIVA' | 'PROVISIONAL';
 export type EstadoLicencia = 'VIGENTE' | 'VENCIDA';

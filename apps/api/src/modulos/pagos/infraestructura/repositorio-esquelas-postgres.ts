@@ -1,5 +1,9 @@
 import { Prisma } from '@prisma/client';
 import type { PrismaServicio } from '../../../compartido/infraestructura/prisma.servicio';
+import type {
+  LectorPagosRegistrados,
+  PagoRegistrado,
+} from '../dominio/puertos/lector-pagos-registrados';
 import { Esquela } from '../dominio/esquela';
 import type {
   CorreccionRecibo,
@@ -25,7 +29,7 @@ class ResultadoAnticipado extends Error {
 }
 
 /** Adaptador de `pagos.esquela` y `pagos.auditoria` (ADR-004: una esquela por expediente). */
-export class RepositorioEsquelasPostgres implements RepositorioEsquelas {
+export class RepositorioEsquelasPostgres implements RepositorioEsquelas, LectorPagosRegistrados {
   constructor(private readonly prisma: PrismaServicio) {}
 
   async crearSiNoExiste(esquela: Esquela): Promise<boolean> {
@@ -37,6 +41,24 @@ export class RepositorioEsquelasPostgres implements RepositorioEsquelas {
               ${new Prisma.Decimal(datos.monto)}, ${datos.generadaEn})
       ON CONFLICT DO NOTHING`;
     return insertadas > 0;
+  }
+
+  async pagadasEntre(desde: Date, hasta: Date): Promise<PagoRegistrado[]> {
+    const filas = await this.prisma.esquela.findMany({
+      where: { pagada_en: { gte: desde, lt: hasta } },
+      select: { codigo_receta: true, monto: true, pagada_en: true },
+    });
+    return filas.flatMap((fila) =>
+      fila.pagada_en === null
+        ? []
+        : [
+            {
+              codigoReceta: fila.codigo_receta,
+              monto: fila.monto.toFixed(2),
+              pagadaEn: fila.pagada_en,
+            },
+          ],
+    );
   }
 
   async obtener(codigo: string): Promise<Esquela | null> {

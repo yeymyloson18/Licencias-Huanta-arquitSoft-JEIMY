@@ -279,6 +279,7 @@ CREATE INDEX ix_expediente_consulta ON tramites.expediente (numero, documento_hm
 CREATE INDEX ix_expediente_ruc ON tramites.expediente (ruc_hmac);
 CREATE INDEX ix_expediente_estado ON tramites.expediente (estado, vence_plazo_en);
 CREATE INDEX ix_expediente_bandeja ON tramites.expediente (evaluador_id, estado);
+CREATE INDEX ix_expediente_presentado ON tramites.expediente (presentado_en);  -- 007
 
 CREATE TABLE tramites.documento (
     id                  uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -339,6 +340,8 @@ CREATE TABLE tramites.historial_estado (
     ocurrido_en         timestamptz   NOT NULL DEFAULT now()
 );
 CREATE INDEX ix_historial_expediente ON tramites.historial_estado (expediente_id, ocurrido_en);
+CREATE INDEX ix_historial_decision ON tramites.historial_estado (ocurrido_en)  -- 007
+    WHERE estado_nuevo IN ('APROBADO', 'LICENCIA_EMITIDA', 'LICENCIA_PROVISIONAL', 'DENEGADO');
 
 CREATE TABLE tramites.auditoria (
     id                  bigint        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -455,6 +458,7 @@ CREATE TABLE licencias.licencia (
     clave_pdf           varchar(300)
 );
 CREATE UNIQUE INDEX ux_licencia_vigente_por_expediente ON licencias.licencia (numero_expediente) WHERE estado = 'VIGENTE';
+CREATE INDEX ix_licencia_situacion ON licencias.licencia (estado, codigo_receta);  -- 007
 
 CREATE TABLE licencias.certificado_itse (
     id                  uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -466,6 +470,7 @@ CREATE TABLE licencias.certificado_itse (
     CHECK (vence_en > emitido_en)
 );
 CREATE INDEX ix_itse_por_vencer ON licencias.certificado_itse (vence_en) WHERE aviso_enviado_en IS NULL;
+CREATE INDEX ix_certificado_vence ON licencias.certificado_itse (vence_en);  -- 007
 
 CREATE TABLE licencias.auditoria (
     id                  bigint        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

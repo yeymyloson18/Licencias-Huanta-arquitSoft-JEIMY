@@ -1549,24 +1549,43 @@ paths:
       tags: [Reportes]
       operationId: obtenerTablero
       summary: Trámites, tiempos de atención frente al plazo del TUPA e ingresos en caja (RF19, HU10).
+      description: >-
+        Solo rol JEFATURA (007). Sin `desde` ni `hasta` toma el mes actual (del día 1 a hoy, en hora de Lima);
+        con solo uno de los dos responde 422. El rango es inclusivo y de 366 días como máximo. El servidor
+        reutiliza el resultado 5 minutos para el mismo rango. Los expedientes por estado son los presentados en
+        el rango (con su estado actual); el tiempo de atención usa los expedientes cuya primera decisión final
+        (APROBADO, LICENCIA_EMITIDA, LICENCIA_PROVISIONAL o DENEGADO) cayó en el rango, en días hábiles y sin
+        los días con el plazo suspendido; los ingresos usan la fecha de registro del pago.
       security: [{ bearerPersonal: [] }]
       parameters:
-        - { name: desde, in: query, required: true, schema: { type: string, format: date } }
-        - { name: hasta, in: query, required: true, schema: { type: string, format: date } }
+        - { name: desde, in: query, required: false, schema: { type: string, format: date } }
+        - { name: hasta, in: query, required: false, schema: { type: string, format: date } }
       responses:
         '200':
           description: Indicadores.
+          headers:
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Tablero' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
 
   /reportes/licencias:
     get:
       tags: [Reportes]
       operationId: reporteLicencias
       summary: Licencias vigentes, en trámite y con ITSE por vencer, por tipo, giro y zona (RF18).
+      description: >-
+        Solo rol JEFATURA (007). Devuelve 5,000 filas como máximo; `X-Reporte-Truncado: true` indica que hay
+        más y conviene ajustar los filtros. Giro y zona se comparan sin distinguir mayúsculas ni tildes. Orden:
+        VIGENTES por número, EN_TRAMITE por presentación (de la más antigua a la más nueva) e ITSE_POR_VENCER
+        por vencimiento (del más cercano al más lejano; vencen en 30 días o menos). EN_TRAMITE son los
+        estados REGISTRADO, EN_EVALUACION, OBSERVADO, PENDIENTE_PAGO, PAGADO, EN_INSPECCION y APROBADO. El CSV
+        va en UTF-8 con BOM, separado por punto y coma, con fin de línea CRLF y las columnas
+        `numero;codigoReceta;titular;giro;zona;estado;fecha`; un valor que empieza con `=`, `+`, `-` o `@`
+        lleva un apóstrofo delante para que la hoja de cálculo no lo tome como fórmula.
       security: [{ bearerPersonal: [] }]
       parameters:
         - name: situacion
@@ -1574,23 +1593,33 @@ paths:
           required: true
           schema: { type: string, enum: [VIGENTES, EN_TRAMITE, ITSE_POR_VENCER] }
         - $ref: '#/components/parameters/CodigoRecetaFiltro'
-        - { name: giro, in: query, schema: { type: string } }
-        - { name: zona, in: query, schema: { type: string } }
+        - { name: giro, in: query, schema: { type: string, maxLength: 150 } }
+        - { name: zona, in: query, schema: { type: string, maxLength: 150 } }
         - name: formato
           in: query
           schema: { type: string, enum: [json, csv], default: json }
       responses:
         '200':
           description: Reporte.
+          headers:
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
+            X-Reporte-Truncado:
+              schema: { type: string, enum: ['true', 'false'] }
+              description: Hay más de 5,000 filas.
+            Content-Disposition:
+              schema: { type: string }
+              description: 'Solo en CSV: attachment; filename="reporte-<situacion>-<AAAA-MM-DD>.csv"'
           content:
             application/json:
               schema:
                 type: array
+                maxItems: 5000
                 items: { $ref: '#/components/schemas/FilaReporte' }
             text/csv:
               schema: { type: string }
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '403': { $ref: '#/components/responses/SinPermiso' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
 
   # ===================================================================== OPERACIÓN
   /salud:
@@ -2389,22 +2418,37 @@ components:
     # ------------------------------------------------------------- reportes y operación
     Tablero:
       type: object
-      required: [expedientesPorEstado, tiempoPromedioPorReceta, ingresos]
+      required: [desde, hasta, generadoEn, expedientesPorEstado, tiempoPromedioPorReceta, ingresos]
       properties:
+        desde: { type: string, format: date }
+        hasta: { type: string, format: date }
+        generadoEn: { type: string, format: date-time }
         expedientesPorEstado:
           type: object
-          additionalProperties: { type: integer }
+          propertyNames: { $ref: '#/components/schemas/EstadoExpediente' }
+          additionalProperties: { type: integer, minimum: 0 }
         tiempoPromedioPorReceta:
           type: array
           items:
             type: object
-            required: [codigoReceta, plazoTupaDias, promedioDiasHabiles, dentroDelPlazo]
+            required: [codigoReceta, plazoTupaDias, atendidos, promedioDiasHabiles, dentroDelPlazo]
             properties:
               codigoReceta: { $ref: '#/components/schemas/CodigoReceta' }
-              plazoTupaDias: { type: integer }
-              promedioDiasHabiles: { type: number }
+              plazoTupaDias: { type: integer, minimum: 0 }
+              atendidos:
+                type: integer
+                minimum: 0
+                description: Expedientes cuya atención terminó en el rango.
+              promedioDiasHabiles:
+                type: [number, 'null']
+                description: Días hábiles con un decimal; null si no hubo expedientes atendidos (sin datos).
               dentroDelPlazo:
-                { type: number, description: Porcentaje de expedientes atendidos dentro del plazo. }
+                type: [number, 'null']
+                minimum: 0
+                maximum: 100
+                description: >-
+                  Porcentaje (un decimal) de expedientes atendidos dentro del plazo; null sin datos o con plazo 0
+                  (no aplica).
         ingresos:
           type: object
           required: [total, porReceta]
@@ -2415,14 +2459,24 @@ components:
               additionalProperties: { $ref: '#/components/schemas/Soles' }
     FilaReporte:
       type: object
+      required: [numero, codigoReceta, titular, giro, zona, estado, fecha]
       properties:
-        numero: { type: string }
+        numero:
+          type: string
+          description: Número de la licencia o, en EN_TRAMITE, del expediente.
         codigoReceta: { $ref: '#/components/schemas/CodigoReceta' }
-        titular: { type: string }
+        titular:
+          type: string
+          description: Nombre público abreviado (nunca el nombre completo ni datos de contacto).
         giro: { type: string }
         zona: { type: string }
         estado: { type: string }
-        fecha: { type: string, format: date }
+        fecha:
+          type: string
+          format: date
+          description: >-
+            Emisión de la licencia (VIGENTES), presentación (EN_TRAMITE) o vencimiento del ITSE
+            (ITSE_POR_VENCER).
     Salud:
       type: object
       required: [estado, baseDeDatos, cache]

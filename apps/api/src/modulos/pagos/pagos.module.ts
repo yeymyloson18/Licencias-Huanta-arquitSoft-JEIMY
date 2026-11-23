@@ -48,7 +48,7 @@ const ESTADO_EXPEDIENTE = Symbol('ESTADO_EXPEDIENTE');
     {
       provide: FachadaPagos,
       inject: [REPOSITORIO_ESQUELAS],
-      useFactory: (esquelas: RepositorioEsquelas) => new FachadaPagos(esquelas),
+      useFactory: (esquelas: RepositorioEsquelasPostgres) => new FachadaPagos(esquelas, esquelas),
     },
     {
       provide: DescargarPdfEsquela,
@@ -59,7 +59,7 @@ const ESTADO_EXPEDIENTE = Symbol('ESTADO_EXPEDIENTE');
     {
       provide: REPOSITORIO_ESQUELAS,
       inject: [PrismaServicio],
-      useFactory: (prisma: PrismaServicio): RepositorioEsquelas =>
+      useFactory: (prisma: PrismaServicio): RepositorioEsquelasPostgres =>
         new RepositorioEsquelasPostgres(prisma),
     },
     {

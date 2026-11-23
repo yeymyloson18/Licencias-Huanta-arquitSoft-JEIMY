@@ -13,3 +13,7 @@ docs/fuentes
 docs/img
 packages/contracts/src/generado
 *.log
+infra/produccion/.env
+tests/e2e/.datos
+tests/e2e/resultados
+tests/e2e/informe

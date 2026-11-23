@@ -1,0 +1,154 @@
+# Sistema en producción (007, contracts/produccion.md; guía en docs/07-despliegue/guia-vps.md).
+#   cd ~/licencias && docker compose up -d            (con el .env del servidor, ver .env.ejemplo)
+#   ./desplegar.sh sha-abc1234                         (actualiza una réplica a la vez)
+# Solo Caddy publica puertos (80 y 443). La base, la caché, PgBouncer y la API viven en la red
+# interna. Límites de memoria pensados para un servidor de 2 GB (FR-027): ~1.5 GB en total.
+name: licencias
+
+x-api: &api
+  image: ${IMAGEN_API:?Falta IMAGEN_API}:${VERSION:?Falta VERSION}
+  restart: unless-stopped
+  # En producción las migraciones las aplica `desplegar.sh` con el servicio `migrar`, no cada réplica.
+  command: ['node', 'dist/main.js']
+  environment:
+    # PgBouncer en modo transacción: sin sentencias preparadas y pocas conexiones por réplica (R-07).
+    DATABASE_URL: postgresql://${POSTGRES_USER:?}:${POSTGRES_PASSWORD:?}@pgbouncer:5432/${POSTGRES_DB:?}?pgbouncer=true&connection_limit=10
+    REDIS_URL: redis://redis:6379
+    PUERTO_API: 3000
+    NODE_ENV: production
+    JWT_SECRETO: ${JWT_SECRETO:?}
+    CLAVE_CIFRADO_DATOS: ${CLAVE_CIFRADO_DATOS:?}
+    CLAVE_HMAC_DATOS: ${CLAVE_HMAC_DATOS:?}
+    ENVIO_OTP: ${ENVIO_OTP:-simulado}
+    URL_PUBLICA_PORTAL: https://${DOMINIO:?}
+    TRUST_PROXY_SALTOS: ${TRUST_PROXY_SALTOS:-1}
+    RELOJ_PLAZOS_INTERVALO_MS: ${RELOJ_PLAZOS_INTERVALO_MS:-3600000}
+    AVISOS_INTERVALO_MS: ${AVISOS_INTERVALO_MS:-5000}
+    CATALOGO_CACHE_TTL_SEGUNDOS: 240
+    SALUD_TIMEOUT_MS: 2000
+    ALMACEN_ARCHIVOS_RUTA: /var/lib/licencias/archivos
+  volumes:
+    - archivos-tramites:/var/lib/licencias/archivos
+  depends_on:
+    pgbouncer:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  healthcheck:
+    test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3000/api/v1/salud || exit 1']
+    interval: 10s
+    timeout: 5s
+    retries: 3
+    start_period: 30s
+  deploy:
+    resources:
+      limits:
+        memory: 384m
+
+services:
+  caddy:
+    image: ${IMAGEN_PORTAL:?Falta IMAGEN_PORTAL}:${VERSION:?Falta VERSION}
+    restart: unless-stopped
+    environment:
+      DOMINIO: ${DOMINIO:?Falta DOMINIO}
+    ports:
+      - '${PUERTO_HTTP:-80}:80'
+      - '${PUERTO_HTTPS:-443}:443'
+      - '${PUERTO_HTTPS:-443}:443/udp'
+    volumes:
+      - caddy-datos:/data
+      - caddy-config:/config
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:2019/config/ > /dev/null || exit 1']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+  api-a: *api
+  api-b: *api
+
+  # Migraciones con la conexión DIRECTA (Prisma migrate necesita candados de sesión, R-06).
+  migrar:
+    image: ${IMAGEN_API:?}:${VERSION:?}
+    profiles: ['migrar']
+    command: ['prisma', 'migrate', 'deploy', '--schema', 'prisma/schema.prisma']
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:?}:${POSTGRES_PASSWORD:?}@postgres:5432/${POSTGRES_DB:?}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.23.1-p3
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:?}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?}
+      DB_NAME: ${POSTGRES_DB:?}
+      AUTH_TYPE: scram-sha-256
+      POOL_MODE: transaction
+      DEFAULT_POOL_SIZE: ${PGBOUNCER_POOL:-20}
+      MAX_CLIENT_CONN: 200
+      LISTEN_PORT: 5432
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -p 5432 || exit 1']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 32m
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ${POSTGRES_DB:?}
+    volumes:
+      - datos-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # noeviction: nunca descartar contadores de intentos ni códigos (EQ-04); si se llena, falla cerrado.
+    command: ['redis-server', '--maxmemory', '64mb', '--maxmemory-policy', 'noeviction']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 96m
+
+volumes:
+  datos-postgres:
+  archivos-tramites:
+  caddy-datos:
+  caddy-config:

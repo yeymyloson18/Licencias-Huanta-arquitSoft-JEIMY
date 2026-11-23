@@ -16,7 +16,14 @@ COPY packages/contracts packages/contracts
 COPY apps/web apps/web
 RUN npm run generar && npm run build -w apps/web
 
-# ---- Imagen final ----
+# ---- Producción (007): Caddy sirve el portal y es el punto de entrada con HTTPS ----
+# Se construye con `--target produccion` (flujo cd.yml). La etapa por defecto sigue siendo nginx.
+FROM caddy:2.8-alpine AS produccion
+COPY infra/produccion/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/apps/web/dist /srv
+EXPOSE 80 443 443/udp
+
+# ---- Imagen final (desarrollo y CI) ----
 FROM nginx:1-alpine AS final
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY apps/web/cabeceras-seguridad.conf /etc/nginx/snippets/cabeceras-seguridad.conf

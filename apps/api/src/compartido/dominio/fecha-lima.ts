@@ -55,3 +55,6 @@ export const comoFechaBase = (fecha: Fecha): Date => aUtc(fecha);
 
 /** Una columna `date` de la base (medianoche UTC) como fecha de calendario. */
 export const deFechaBase = (fecha: Date): Fecha => deUtc(fecha);
+
+/** Instante en que empieza el día de Lima (00:00 de Lima = 05:00 UTC; Perú no cambia de hora). */
+export const inicioDiaLima = (fecha: Fecha): Date => new Date(`${fecha}T05:00:00Z`);

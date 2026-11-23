@@ -1,5 +1,5 @@
 import { esFechaValida, type Fecha, sumarDias } from '../../../compartido/dominio/fecha-lima';
-import { CalendarioHabil } from '../dominio/calendario-habil';
+import { CalendarioHabil } from '../../../compartido/dominio/calendario-habil';
 import { crearFeriado, ErrorDatoFeriado, type Feriado } from '../dominio/feriado';
 import type { RepositorioFeriados } from '../dominio/puertos';
 
@@ -67,6 +67,10 @@ export class CalcularPlazos {
     const [inicio, fin] = hoy < vence ? [hoy, vence] : [vence, hoy];
     const calendario = await this.calendario(inicio, fin);
     return calendario.diasHabilesRestantes(hoy, vence);
+  }
+
+  feriadosEntre(desde: Fecha, hasta: Fecha): Promise<ReadonlySet<Fecha>> {
+    return this.feriados.fechasEntre(desde, hasta);
   }
 
   private async calendario(desde: Fecha, hasta: Fecha): Promise<CalendarioHabil> {

@@ -8,7 +8,7 @@ import {
   Licencia,
   numeroLicencia,
 } from '../../../../../src/modulos/licencias/dominio/licencia';
-import { titularPublico } from '../../../../../src/modulos/licencias/dominio/titular-publico';
+import { titularPublico } from '../../../../../src/compartido/dominio/titular-publico';
 
 // Datos FICTICIOS.
 const EXPEDIENTE: DatosExpedienteParaLicencia = {

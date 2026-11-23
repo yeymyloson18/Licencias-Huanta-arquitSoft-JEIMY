@@ -5,6 +5,11 @@ import {
   type CompletarVencimientos,
   ESTADOS_PLAZO_CORRIENDO,
 } from './aplicacion/completar-vencimientos';
+import type {
+  AtencionTerminada,
+  DatosParaReportes,
+  FilaEnTramite,
+} from './aplicacion/datos-para-reportes';
 import {
   type EstadoExpediente,
   esEstadoExpediente,
@@ -17,6 +22,8 @@ import type { DatosParaLicencia, LectorParaModulos } from './dominio/puertos/lec
 export type { EstadoExpediente } from './dominio/estado-publico';
 export type { DatosParaLicencia } from './dominio/puertos/lector-para-modulos';
 
+export type { AtencionTerminada, FilaEnTramite } from './aplicacion/datos-para-reportes';
+
 /** Operaciones de Trámites que usan otros módulos (Pagos, Licencias…). Sin datos personales. */
 export class FachadaTramites {
   constructor(
@@ -26,6 +33,7 @@ export class FachadaTramites {
       readonly completar: CompletarVencimientos;
       readonly vencimientos: Pick<RepositorioVencimientos, 'conPlazo' | 'estadosDe'>;
     },
+    private readonly reportes?: DatosParaReportes,
   ) {}
 
   /**
@@ -92,6 +100,31 @@ export class FachadaTramites {
     estado: string,
   ): { readonly descripcion: string; readonly siguientePaso: string } | null {
     return esEstadoExpediente(estado) ? TEXTO_ESTADO_PUBLICO[estado] : null;
+  }
+
+  /** Expedientes presentados en el rango, por estado actual (tablero de la jefatura, 007). */
+  conteoPorEstado(desde: string, hasta: string): Promise<Readonly<Record<string, number>>> {
+    return this.paraReportes().conteoPorEstado(desde, hasta);
+  }
+
+  /**
+   * Expedientes cuya primera decisión final cayó en el rango, con los días en que el plazo estuvo
+   * suspendido (tablero, 007). Sin datos personales.
+   */
+  atencionesTerminadas(desde: string, hasta: string): Promise<AtencionTerminada[]> {
+    return this.paraReportes().atencionesTerminadas(desde, hasta);
+  }
+
+  /** Expedientes sin decisión final, con el titular abreviado (reporte "en trámite", 007). */
+  expedientesEnTramite(codigoReceta?: string): Promise<FilaEnTramite[]> {
+    return this.paraReportes().expedientesEnTramite(codigoReceta);
+  }
+
+  private paraReportes(): DatosParaReportes {
+    if (this.reportes === undefined) {
+      throw new Error('La fachada de Trámites no tiene los datos para reportes');
+    }
+    return this.reportes;
   }
 
   private plazosDeTramites() {

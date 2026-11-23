@@ -36,13 +36,14 @@ const REPOSITORIO_LICENCIAS = Symbol('REPOSITORIO_LICENCIAS');
     {
       provide: REPOSITORIO_LICENCIAS,
       inject: [PrismaServicio],
-      useFactory: (prisma: PrismaServicio): RepositorioLicencias =>
+      useFactory: (prisma: PrismaServicio): RepositorioLicenciasPostgres =>
         new RepositorioLicenciasPostgres(prisma),
     },
     {
       provide: FachadaLicencias,
       inject: [REPOSITORIO_LICENCIAS],
-      useFactory: (licencias: RepositorioLicencias) => new FachadaLicencias(licencias),
+      useFactory: (licencias: RepositorioLicenciasPostgres) =>
+        new FachadaLicencias(licencias, undefined, licencias),
     },
     {
       provide: EmitirLicencia,

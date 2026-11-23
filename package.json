@@ -13,15 +13,18 @@
   "scripts": {
     "generar": "npm run generar -w packages/contracts",
     "build": "npm run generar && npm run build --workspaces --if-present",
-    "typecheck": "npm run generar && npm run typecheck --workspaces --if-present",
+    "typecheck": "npm run generar && npm run typecheck --workspaces --if-present && npm run typecheck:e2e",
     "lint": "eslint .",
     "formato": "prettier --check .",
     "test": "npm run generar && npm test --workspaces --if-present",
     "cobertura": "npm run cobertura -w apps/api",
     "regla-dependencia": "depcruise apps/api/src --config .dependency-cruiser.cjs --output-type err-long",
-    "contrato": "redocly lint docs/06-contrato-api/openapi.yaml"
+    "contrato": "redocly lint docs/06-contrato-api/openapi.yaml",
+    "e2e": "playwright test -c tests/e2e/playwright.config.ts",
+    "typecheck:e2e": "tsc -p tests/e2e/tsconfig.json"
   },
   "devDependencies": {
+    "@playwright/test": "1.49.1",
     "@redocly/cli": "^2.79.0",
     "dependency-cruiser": "^17.4.3",
     "eslint": "^10.15.0",
