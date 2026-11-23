@@ -183,7 +183,7 @@ responde 404.
 
 ## Fase 9: Acabado
 
-- [ ] T026 Verificaciones en local: `lint`, `typecheck`, `formato`, `test:unit`, `cobertura` (≥ 80 %),
+- [X] T026 Verificaciones en local: `lint`, `typecheck`, `formato`, `test:unit`, `cobertura` (≥ 80 %),
   `regla-dependencia`, `contrato`, `verificar-citas.mjs` y gitleaks. Sin integración local ni
   imágenes; las pruebas de integración y los flujos nuevos corren en GitHub Actions.
 
