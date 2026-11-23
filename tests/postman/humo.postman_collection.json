@@ -1,0 +1,520 @@
+{
+  "info": {
+    "name": "Licencias Huanta – recorrido de humo (008)",
+    "description": "Recorrido de humo del Sprint 2: endpoints públicos con éxito, protegidos con 401 sin token y 403 con un rol que no corresponde. Los tokens NO están en el repositorio: el flujo postman.yml los genera en el ejecutor con usuarios de demostración.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Públicos",
+      "item": [
+        {
+          "name": "Salud del sistema",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/salud",
+              "host": ["{{baseUrl}}"],
+              "path": ["salud"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Salud del sistema: responde 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('responde en menos de 2 s (EQ-01)', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "pm.test('base de datos OK', function () {",
+                  "  pm.expect(pm.response.json().baseDeDatos).to.eql('OK');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catálogo de licencias",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/catalogo/recetas?tipo=LICENCIA",
+              "host": ["{{baseUrl}}"],
+              "path": ["catalogo", "recetas"],
+              "query": [
+                {
+                  "key": "tipo",
+                  "value": "LICENCIA"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Catálogo de licencias: responde 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('responde en menos de 2 s (EQ-01)', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "pm.test('lista con al menos una licencia y caché pública de 60 s', function () {",
+                  "  pm.expect(pm.response.json().length).to.be.above(0);",
+                  "  pm.expect(pm.response.headers.get('Cache-Control')).to.eql('public, max-age=60');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ficha de LIC-02",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/catalogo/recetas/LIC-02",
+              "host": ["{{baseUrl}}"],
+              "path": ["catalogo", "recetas", "LIC-02"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Ficha de LIC-02: responde 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('responde en menos de 2 s (EQ-01)', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "pm.test('es LIC-02 con requisitos', function () {",
+                  "  const ficha = pm.response.json();",
+                  "  pm.expect(ficha.codigo).to.eql('LIC-02');",
+                  "  pm.expect(ficha.requisitos.length).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Preguntas del asistente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/asistente/preguntas",
+              "host": ["{{baseUrl}}"],
+              "path": ["asistente", "preguntas"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Preguntas del asistente: responde 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('responde en menos de 2 s (EQ-01)', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Propuesta del asistente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/asistente/proponer",
+              "host": ["{{baseUrl}}"],
+              "path": ["asistente", "proponer"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"respuestas\": {\"TIPO_ESTABLECIMIENTO\": \"OTRO\", \"ES_CESIONARIO\": \"NO\", \"NIVEL_RIESGO\": \"MEDIO\"}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Propuesta del asistente: responde 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('responde en menos de 2 s (EQ-01)', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "pm.test('propone LIC-02', function () {",
+                  "  pm.expect(pm.response.json().resultado).to.eql('PROPUESTA');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Protegidos sin sesión (401)",
+      "item": [
+        {
+          "name": "Bandeja sin sesión",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/expedientes",
+              "host": ["{{baseUrl}}"],
+              "path": ["expedientes"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Bandeja sin sesión: responde 401', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('responde en menos de 2 s (EQ-01)', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tablero sin sesión",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/tablero",
+              "host": ["{{baseUrl}}"],
+              "path": ["reportes", "tablero"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Tablero sin sesión: responde 401', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('responde en menos de 2 s (EQ-01)', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Usuarios sin sesión",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Usuarios sin sesión: responde 401', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('responde en menos de 2 s (EQ-01)', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Feriados sin sesión",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feriados?anio=2026",
+              "host": ["{{baseUrl}}"],
+              "path": ["feriados"],
+              "query": [
+                {
+                  "key": "anio",
+                  "value": "2026"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Feriados sin sesión: responde 401', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('responde en menos de 2 s (EQ-01)', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Rol que no corresponde (403)",
+      "item": [
+        {
+          "name": "Tablero con rol CAJA",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCaja}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/tablero",
+              "host": ["{{baseUrl}}"],
+              "path": ["reportes", "tablero"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Tablero con rol CAJA: responde 403', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});",
+                  "pm.test('responde en menos de 2 s (EQ-01)', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Usuarios con rol CAJA",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCaja}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Usuarios con rol CAJA: responde 403', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});",
+                  "pm.test('responde en menos de 2 s (EQ-01)', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar feriado con rol CAJA",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCaja}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feriados",
+              "host": ["{{baseUrl}}"],
+              "path": ["feriados"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"fecha\": \"2026-12-31\", \"descripcion\": \"Feriado ficticio\", \"alcance\": \"LOCAL\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Registrar feriado con rol CAJA: responde 403', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});",
+                  "pm.test('responde en menos de 2 s (EQ-01)', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Rol correcto (200)",
+      "item": [
+        {
+          "name": "Tablero con rol JEFATURA",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenJefatura}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/tablero",
+              "host": ["{{baseUrl}}"],
+              "path": ["reportes", "tablero"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Tablero con rol JEFATURA: responde 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('responde en menos de 2 s (EQ-01)', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "pm.test('sin datos personales ni caché del navegador', function () {",
+                  "  pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -21,7 +21,8 @@
     "regla-dependencia": "depcruise apps/api/src --config .dependency-cruiser.cjs --output-type err-long",
     "contrato": "redocly lint docs/06-contrato-api/openapi.yaml",
     "e2e": "playwright test -c tests/e2e/playwright.config.ts",
-    "typecheck:e2e": "tsc -p tests/e2e/tsconfig.json"
+    "typecheck:e2e": "tsc -p tests/e2e/tsconfig.json",
+    "postman:generar": "npx --yes -p openapi-to-postmanv2@4.20.1 openapi2postmanv2 -s docs/06-contrato-api/openapi.yaml -o tests/postman/licencias-huanta.postman_collection.json -p -O folderStrategy=Tags,requestParametersResolution=Example,includeAuthInfoInExample=false"
   },
   "devDependencies": {
     "@playwright/test": "1.49.1",

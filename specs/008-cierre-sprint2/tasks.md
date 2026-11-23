@@ -90,15 +90,15 @@ responde 404.
 
 ## Fase 4: Historia de usuario 4 - Recorrido de humo con Postman (P2)
 
-- [ ] T011 [US4] `pm/licencias-huanta.postman_collection.json` generada con
+- [X] T011 [US4] `pm/licencias-huanta.postman_collection.json` generada con
   `npx openapi-to-postmanv2@4.20.1` (script `npm run postman:generar`), con `baseUrl` como variable.
-- [ ] T012 [P] [US4] Archivos del humo:
+- [X] T012 [P] [US4] Archivos del humo:
   - `pm/humo.postman_collection.json` (public, 401, 403 de CAJA y 200 de JEFATURA, con
     `pm.test` y sin cuerpos con datos personales);
   - `pm/desarrollo.postman_environment.json`, con `baseUrl` y los tokens vacíos;
   - `pm/preparar-entorno.mjs`: siembra, ingresa con OTP y escribe un entorno temporal fuera del
     repositorio.
-- [ ] T013 [US4] **[CI]** `wf/postman.yml`, que se dispara en `pull_request` y `workflow_dispatch`:
+- [X] T013 [US4] **[CI]** `wf/postman.yml`, que se dispara en `pull_request` y `workflow_dispatch`:
   1. levanta el compose y espera a que esté sano;
   2. prepara el entorno;
   3. ejecuta `npx newman@6 run … -r cli,htmlextra,junit`;
