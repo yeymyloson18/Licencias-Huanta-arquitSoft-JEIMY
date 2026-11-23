@@ -39,9 +39,9 @@ Sin funciones de negocio nuevas. Se agregan cinco cosas.
 
 **Lo que no se ejecuta en local** (por la memoria del equipo): no se construyen imágenes, no se levanta
 el sistema completo, no corre k6 ni Newman. Los planes de consulta tampoco se obtienen en local. Todo
-eso queda en los flujos. En local solo corren lint, tipos, formato, pruebas unitarias y la prueba de
-integración de Swagger, que es liviana y usa los contenedores temporales `pg-pruebas-008` y
-`redis-pruebas-008`. Los documentos se escriben con el análisis del código y con los resultados ya
+eso queda en los flujos. En local solo corren lint, tipos, formato y pruebas unitarias. Swagger se prueba con
+un módulo Nest mínimo sin base de datos (prueba unitaria con Supertest). La prueba de integración con
+la aplicación completa corre en el job `pruebas` del CI. Los documentos se escriben con el análisis del código y con los resultados ya
 obtenidos. Las cifras que salen de los flujos quedan como "pendiente de la ejecución del flujo", con
 la instrucción para completarlas.
 
