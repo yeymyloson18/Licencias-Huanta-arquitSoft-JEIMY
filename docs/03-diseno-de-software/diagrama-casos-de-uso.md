@@ -142,9 +142,9 @@ La jefatura y el administrador también entran con CU11 (vista 2), como todo el 
 | CU17 | Emitir licencia con QR | Sistema (desde CU15 o CU16) | HU06 | RF13, RF25 | 006 | ✅ Hecho |
 | CU18 | Asignar inspector | Jefatura | HU08 | RF10 | 006 | ✅ Hecho |
 | CU19 | Recibir alertas de plazos | Jefatura | HU09 | RF08 | 006 | ✅ Hecho |
-| CU20 | Ver tablero y reportes | Jefatura | HU10 | RF18, RF19 | 009 | Pendiente |
+| CU20 | Ver tablero y reportes | Jefatura | HU10 | RF18, RF19 | 007 | ✅ Hecho |
 | CU21 | Corregir número de recibo | Jefatura | HU17 | RF24 | 005 | ✅ Hecho |
-| CU22 | Consultar auditoría | Jefatura | HU17 | RF25 | 009 | Pendiente |
+| CU22 | Consultar auditoría | Jefatura | HU17 | RF25 | 007 | ✅ Hecho |
 | CU23 | Gestionar usuarios y roles | Administrador | HU15 | RF17, RF22 | 002 | ✅ Hecho |
 | CU24 | Actualizar recetas del catálogo | Administrador | HU14 | RF21 | 003 | ✅ Hecho |
 | CU25 | Registrar feriados | Administrador | HU16 | RF23 | 006 | ✅ Hecho |

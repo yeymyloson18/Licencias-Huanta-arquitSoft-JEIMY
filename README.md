@@ -463,6 +463,105 @@ licencia, verificación, PDF, plazos, alertas y avisos sin que el documento, el 
 correo ni la dirección del titular aparezcan donde no corresponde. Quedan para el despliegue (007):
 k6, Lighthouse y ZAP.
 
+## Tablero, despliegue en la nube y pruebas del sistema (funcionalidad 007)
+
+**Dirección pública:** https://164-90-143-165.sslip.io (droplet `164.90.143.165`, 2 GB, Ubuntu 24.04
+LTS). Mientras no haya dominio propio, el nombre lo da sslip.io. Con un dominio se cambia la variable
+`DOMINIO` y se sigue [`docs/07-despliegue/dominio-cloudflare.md`](docs/07-despliegue/dominio-cloudflare.md).
+
+- **Tablero** (`/personal/tablero`, rol JEFATURA). Rango de fechas, por defecto el mes actual. Muestra:
+  - los expedientes presentados por estado;
+  - el tiempo promedio de atención en días hábiles por licencia frente al plazo del TUPA, sin contar
+    los días con el plazo suspendido, y el porcentaje atendido dentro del plazo;
+  - los ingresos en caja, total y por licencia, exactos al céntimo.
+
+  Los gráficos son SVG con título, resumen en texto y tabla de datos, y se usan a 360 px sin
+  desplazamiento horizontal.
+
+- **Reporte de licencias** (en el mismo tablero). Situaciones: vigentes, en trámite o ITSE por vencer
+  en 30 días. Filtros por licencia, giro y zona, sin distinguir mayúsculas ni tildes.
+  - Descarga en **CSV** que abre bien en Excel en español: UTF-8 con BOM, punto y coma y CRLF.
+  - Solo muestra el titular público abreviado.
+  - Devuelve 5,000 filas como máximo y avisa si hay más.
+- **Módulo `reportes`**. Lee los datos solo por las fachadas de trámites, pagos, licencias, plazos y
+  catálogo. Guarda cada resultado 5 minutos en Redis (`rep:*`); si Redis falla, calcula directo.
+  Migración `0011`: solo índices.
+- **Producción** (`infra/produccion/`):
+  - Caddy sirve el portal y da HTTPS automático con **solo TLS 1.3**, caché por ruta, compresión y
+    cabeceras de seguridad;
+  - dos réplicas de la API (`api-a` y `api-b`) con balanceo y comprobación de salud;
+  - PgBouncer en modo transacción, PostgreSQL 16 y Redis 7, sin puertos expuestos;
+  - límites de memoria para 2 GB y respaldo diario de la base y los documentos (7 días).
+- **Despliegue continuo** (`cd.yml`). Cuando el CI de `main` termina en verde:
+  1. construye las imágenes y las publica en GHCR;
+  2. entra al servidor por SSH;
+  3. aplica las migraciones;
+  4. actualiza una réplica a la vez;
+  5. prueba `/api/v1/salud` y, si falla, vuelve a la versión anterior.
+- **Pruebas del sistema completo** (`e2e.yml`). Playwright recorre la ruta A completa (asistente,
+  identidad con código, solicitud, riesgo, pago, aprobación, licencia y verificación del QR) y la ruta
+  B hasta la inspección favorable, en celular y escritorio. Corre en cada PR, fuera de los 5 checks
+  obligatorios.
+- **Mediciones a pedido**: `k6.yml` (EQ-01 y EQ-02, con 1 y 2 réplicas) y `calidad-produccion.yml`
+  (ZAP baseline, Lighthouse móvil y testssl).
+- **Datos de demostración**:
+  `docker compose exec api-a node dist/scripts/sembrar-demostracion.js` crea un usuario por rol (las
+  claves se muestran una sola vez y no quedan en ningún archivo) y 3 expedientes de ejemplo.
+
+### Cómo desplegar
+
+La primera vez, siga [`docs/07-despliegue/guia-vps.md`](docs/07-despliegue/guia-vps.md):
+
+1. llave SSH desde PowerShell;
+2. cortafuegos;
+3. Docker;
+4. usuario `despliegue`;
+5. `.env` con secretos generados en el servidor;
+6. secretos en GitHub;
+7. primer despliegue.
+
+Después, cada cambio aprobado en `main` se despliega solo. Para volver a una versión anterior a mano,
+en el servidor:
+
+```bash
+cd ~/licencias && ./desplegar.sh sha-<commit-anterior>
+```
+
+### Resultados de la funcionalidad 007
+
+Pruebas automáticas:
+
+- el tablero y el reporte se comprobaron en local con 20 casos de integración: conteos, días
+  hábiles con feriados y suspensiones, montos al céntimo, CSV, caché y 401/403/422;
+- la matriz de permisos, la prueba de privacidad y los recorridos E2E de la 007 quedaron escritos y se
+  ejecutan en GitHub Actions. En local no se corrieron para no agotar la memoria del equipo.
+
+Las mediciones contra la dirección pública (puertos, TLS, ZAP, Lighthouse y k6) se registran en
+[`docs/07-despliegue/resultados.md`](docs/07-despliegue/resultados.md) después del primer despliegue.
+Hasta entonces figuran como pendientes.
+
+### Estado de los criterios del proyecto
+
+El plan de trabajo con la lista completa de los 16 criterios no está en el repositorio. La tabla
+muestra los criterios que el repositorio cita con su número. Las filas marcadas "por completar"
+debe llenarlas la usuaria con el nombre del criterio.
+
+| Criterio | Qué pide (según el repositorio)                                                         | Estado                                 | Evidencia                                                                           |
+| -------- | --------------------------------------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------- |
+| 1, 2 y 3 | Casos de uso, ADR y backlog (PR #29); el 3 también cubre el esqueleto del sistema (001) | ✅ Hecho                               | `docs/03-diseno-de-software/`, ADR-001 a ADR-010, `specs/001-esqueleto-sistema/`    |
+| 4        | por completar                                                                           | —                                      | —                                                                                   |
+| 5        | Pruebas de contrato contra `openapi.yaml`                                               | ✅ Hecho                               | `docs/06-contrato-api/`, `esperarCumpleContrato` en las pruebas de integración      |
+| 6        | Pruebas de extremo a extremo                                                            | ✅ Hecho (corre en el CI)              | `tests/e2e/`, `.github/workflows/e2e.yml`                                           |
+| 7        | por completar                                                                           | —                                      | —                                                                                   |
+| 8        | Escalabilidad del portal y del backend                                                  | ✅ Hecho (medición pendiente)          | Dos réplicas con balanceo, portal estático con caché de un año; `k6.yml`            |
+| 9        | Escalabilidad de la base de datos                                                       | 🟡 Parcial                             | PgBouncer y respaldos con restauración; Patroni queda como siguiente paso (ADR-008) |
+| 10       | Dominio, DNS y CDN                                                                      | 🟡 Parcial                             | HTTPS con sslip.io y Let's Encrypt; Cloudflare espera un dominio propio (ADR-010)   |
+| 11       | Caché                                                                                   | ✅ Hecho                               | Redis (catálogo y reportes), caché del navegador por ruta en Caddy, compresión      |
+| 12       | Integración y despliegue continuos                                                      | ✅ Hecho (primer despliegue pendiente) | `ci.yml` (5 checks) y `cd.yml` con vuelta atrás                                     |
+| 13       | Pruebas de carga con k6                                                                 | ✅ Preparado (medición pendiente)      | `tests/carga/`, `k6.yml`                                                            |
+| 14       | Citado por la 001 junto con los criterios 3 y 12                                        | ✅ Hecho                               | `specs/001-esqueleto-sistema/`                                                      |
+| 15 y 16  | por completar                                                                           | —                                      | —                                                                                   |
+
 ## Verificaciones automáticas
 
 Cada pull request y cada push a `main` ejecutan en GitHub Actions (`.github/workflows/ci.yml`)
@@ -479,6 +578,15 @@ cinco verificaciones. Las cinco deben terminar en verde para poder fusionar:
 > **No cambie los nombres de estos checks** (`compilacion`, `pruebas`, `cobertura`,
 > `regla-dependencia`, `contrato`): la protección de la rama `main` los exige por nombre. Si se
 > renombra un job, hay que actualizar también esa protección y esta tabla.
+
+> Además de estos cinco checks, hay flujos que **no** bloquean la fusión (007):
+>
+> | Flujo                   | Cuándo corre                            | Qué hace                  |
+> | ----------------------- | --------------------------------------- | ------------------------- |
+> | `E2E`                   | En cada PR                              | Playwright                |
+> | `CD`                    | Cuando el CI de `main` termina en verde | Despliegue al servidor    |
+> | `k6`                    | A pedido                                | Pruebas de carga          |
+> | `Calidad en produccion` | A pedido                                | ZAP, Lighthouse y testssl |
 
 ### Protección de `main`
 

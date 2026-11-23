@@ -270,7 +270,7 @@ proyectos).
   - secretos en GitHub;
   - primer despliegue;
   - cómo vigilar la memoria.
-- [ ] T026 [P] [US4] `dep/dominio-cloudflare.md` (DNS con proxy, CDN solo `/assets/`, Full strict,
+- [X] T026 [P] [US4] `dep/dominio-cloudflare.md` (DNS con proxy, CDN solo `/assets/`, Full strict,
   origen solo con rangos de Cloudflare, `TRUST_PROXY_SALTOS=2` y `trusted_proxies`) y actualización
   de ADR-010 en `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md` con lo implementado y
   lo pendiente sin dominio.
@@ -304,7 +304,7 @@ conteos y PgBouncer no pasa de 20 conexiones.
     `pg_stat_activity` son ≤ 20;
   - ejecuta `respaldo.sh` y `restaurar.sh` (todo `ok`);
   - comprueba que una copia fallida no borra la anterior.
-- [ ] T030 [P] [US5] `dep/respaldo-restauracion.md` (cron, bajar copias con `scp` desde PowerShell
+- [X] T030 [P] [US5] `dep/respaldo-restauracion.md` (cron, bajar copias con `scp` desde PowerShell
   cada semana, restaurar paso a paso) y actualización de ADR-008 (PgBouncer y respaldos hechos;
   Patroni como siguiente paso, con el motivo).
 
@@ -369,7 +369,7 @@ sale con 0 y con una que no arranca sale con 1 y queda en la anterior.
 - [X] T036 [P] [US7] `wf/calidad-produccion.yml` (ZAP baseline que falla con alertas altas o medias,
   Lighthouse móvil con accesibilidad ≥ 0.9 en 4 pantallas, testssl de protocolos y cabeceras).
   Validar con `actionlint`.
-- [ ] T037 [P] [US7] `dep/sus.md`: las 10 preguntas del SUS en español, instrucciones para 5
+- [X] T037 [P] [US7] `dep/sus.md`: las 10 preguntas del SUS en español, instrucciones para 5
   personas, cómo calcular el puntaje y una tabla para anotar los resultados. También
   `dep/resultados.md`, con la plantilla de k6, ZAP, Lighthouse, testssl y puertos más los resultados
   locales.
@@ -395,7 +395,7 @@ sale con 0 y con una que no arranca sale con 1 y queda en la anterior.
   contienen documento, RUC, celular, correo, dirección ni nombre completo del titular (SC-004).
 - [ ] T041 Medir SC-001: tablero con 10,000 expedientes sembrados en un clon aislado, ≤ 3 s a 360 px,
   sin desplazamiento horizontal. Bajar el clon con `-v`.
-- [ ] T042 Documentación:
+- [X] T042 Documentación:
   - `README.md`: funcionalidad 007, cómo desplegar, la dirección pública como pendiente
     **[servidor]**, los resultados y el estado de los 16 criterios del proyecto;
   - `dep/README.md`;
