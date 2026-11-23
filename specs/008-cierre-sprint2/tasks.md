@@ -167,16 +167,16 @@ responde 404.
 
 ## Fase 8: Historia de usuario 2 - Evidencias de calidad e informe del Sprint 2 (P1)
 
-- [ ] T023 [US2] `s2/atributos-de-calidad.md`: una fila por EQ-01 a EQ-07, con estímulo, medida,
+- [X] T023 [US2] `s2/atributos-de-calidad.md`: una fila por EQ-01 a EQ-07, con estímulo, medida,
   herramienta, resultado, evidencia y estado, más el detalle por escenario. Usa los resultados de 003 a
   007 y deja como pendientes del artefacto los de 2,000 usuarios y Newman.
-- [ ] T024 [US2] `s2/README.md`, el informe:
+- [X] T024 [US2] `s2/README.md`, el informe:
   - las 8 actividades y los 5 entregables con su evidencia;
   - arquitectura (estilo, enfoque y 9 módulos);
   - funcionalidades con sus historias de usuario;
   - cifras de pruebas y cobertura (con la tabla de T010);
   - limitaciones.
-- [ ] T025 [US2] README principal con enlaces a `s2/`, a `/api/docs` y a los artefactos de los flujos.
+- [X] T025 [US2] README principal con enlaces a `s2/`, a `/api/docs` y a los artefactos de los flujos.
   El diagrama de casos de uso no cambia.
 
 ---
