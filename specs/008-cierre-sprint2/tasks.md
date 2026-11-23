@@ -40,14 +40,14 @@ flujo y sus scripts están escritos y validados en local donde se pueda (sintaxi
 `/api/docs/openapi.json` es igual al YAML y lleva la CSP de la documentación. Con `DOCS_API=false`,
 responde 404.
 
-- [ ] T003 [P] [US1] Pruebas unitarias:
+- [X] T003 [P] [US1] Pruebas unitarias:
   - `test/unit/operacion/documentacion/contrato-api.spec.ts`: lee y convierte el YAML; un archivo que no
     existe o no es un objeto lanza un error claro;
   - `test/unit/compartido/configuracion.spec.ts`: `DOCS_API` por defecto `true`, `false` con
     `NODE_ENV=production`, y se puede forzar en cualquier entorno;
   - `test/unit/operacion/documentacion/documentacion.module.spec.ts`: Nest mínimo con Supertest para
     las rutas, la CSP, el JSON idéntico y el 404 cuando está apagada.
-- [ ] T004 [US1] Implementar:
+- [X] T004 [US1] Implementar:
   - `doc/contrato-api.ts`;
   - `doc/documentacion.module.ts`, con estáticos de `swagger-ui-dist`, `index.html` e
     `inicializador.js` propios (`validatorUrl: null`, sin código en línea) y la CSP de research §R-03;
@@ -57,7 +57,7 @@ responde 404.
   - el registro en `app.module.ts`, montado fuera de `/api/v1`.
 
   Deben pasar las pruebas de T003.
-- [ ] T005 [P] [US1] Cabeceras y despliegue:
+- [X] T005 [P] [US1] Cabeceras y despliegue:
   - `apps/web/nginx.conf` con `location /api/docs` y el snippet `apps/web/cabeceras-docs.conf`, copiado
     en `apps/web/Dockerfile`;
   - `infra/produccion/Caddyfile` con `handle /api/docs*`;
@@ -65,10 +65,10 @@ responde 404.
 
   Prueba `test/unit/operacion/documentacion/cabeceras-config.spec.ts`: lee esos archivos y comprueba
   que solo `/api/docs` tiene la CSP ajustada y que la estricta no cambió.
-- [ ] T006 [P] [US1] **[CI]** Prueba de integración `test/integracion/documentacion-api.e2e-spec.ts`
+- [X] T006 [P] [US1] **[CI]** Prueba de integración `test/integracion/documentacion-api.e2e-spec.ts`
   con la aplicación completa: `/api/docs` responde 200, el JSON es igual al YAML y `/api/v1/salud`
   conserva sus cabeceras.
-- [ ] T007 [P] [US1] Enlace "Documentación de la API" en el portal: en el pie, solo si
+- [X] T007 [P] [US1] Enlace "Documentación de la API" en el portal: en el pie, solo si
   `VITE_DOCS_API !== 'false'`, con su prueba. También en el README del contrato.
 
 **Punto de control**: el docente puede probar la API desde el navegador.

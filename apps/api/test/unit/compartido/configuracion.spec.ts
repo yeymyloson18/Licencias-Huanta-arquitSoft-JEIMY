@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import {
   cargarConfiguracion,
   ErrorConfiguracion,
+  resolverDocsApi,
 } from '../../../src/compartido/infraestructura/configuracion';
 
 const secreto = 'clave_muy_secreta';
@@ -181,6 +182,24 @@ describe('cargarConfiguracion', () => {
 
       expect(mensaje).toContain(variable);
       expect(mensaje).not.toContain(valorEjemplo);
+    });
+  });
+
+  describe('documentación interactiva (008)', () => {
+    it('activa por defecto en desarrollo y pruebas, apagada en producción', () => {
+      expect(cargarConfiguracion(base).docsApi).toBe(true);
+      expect(cargarConfiguracion({ ...base, NODE_ENV: 'test' }).docsApi).toBe(true);
+      expect(resolverDocsApi(undefined, 'production')).toBe(false);
+    });
+
+    it('DOCS_API la fuerza en cualquier entorno y DOCS_API_CONTRATO indica el archivo', () => {
+      expect(resolverDocsApi('true', 'production')).toBe(true);
+      expect(cargarConfiguracion({ ...base, DOCS_API: 'false' }).docsApi).toBe(false);
+      expect(cargarConfiguracion(base).docsApiContrato).toBeNull();
+      expect(
+        cargarConfiguracion({ ...base, DOCS_API_CONTRATO: '/srv/contrato.yaml' }).docsApiContrato,
+      ).toBe('/srv/contrato.yaml');
+      expect(() => cargarConfiguracion({ ...base, DOCS_API: 'si' })).toThrow();
     });
   });
 });

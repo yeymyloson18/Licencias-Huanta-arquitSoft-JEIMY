@@ -35,6 +35,16 @@
 		-X-Powered-By
 	}
 
+	# Documentación interactiva (008): apagada por defecto en producción (DOCS_API). Si se enciende,
+	# lleva su propia CSP (estilos en línea de Swagger UI); el resto conserva la estricta.
+	handle /api/docs* {
+		header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		reverse_proxy api-a:3000 api-b:3000 {
+			lb_policy round_robin
+			header_down -Content-Security-Policy
+		}
+	}
+
 	# API: dos réplicas con comprobación de salud; una réplica caída deja de recibir tráfico. La API
 	# define su propio Cache-Control (catálogo con max-age=60, datos personales con no-store).
 	handle /api/* {

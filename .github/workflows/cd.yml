@@ -70,6 +70,9 @@ jobs:
           context: .
           file: apps/web/Dockerfile
           target: produccion
+          # 008: sin el enlace a /api/docs (la documentación está apagada en producción).
+          build-args: |
+            DOCS_API=false
           push: true
           tags: |
             ${{ steps.imagenes.outputs.portal }}:${{ steps.imagenes.outputs.version }}

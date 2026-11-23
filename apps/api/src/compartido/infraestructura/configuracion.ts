@@ -68,6 +68,9 @@ const esquemaConfiguracion = z.object({
   URL_PUBLICA_PORTAL: z.url().default('http://localhost:8080'),
   RELOJ_PLAZOS_INTERVALO_MS: z.coerce.number().int().min(0).default(3_600_000),
   AVISOS_INTERVALO_MS: z.coerce.number().int().min(0).default(5000),
+  // 008: documentación interactiva en /api/docs. Sin valor: activa salvo en producción.
+  DOCS_API: z.enum(['true', 'false']).optional(),
+  DOCS_API_CONTRATO: z.string().min(1).optional(),
 });
 
 // Valores ficticios de .env.example: prohibidos en producción (research.md §R-16 de la 002).
@@ -102,6 +105,10 @@ export interface Configuracion {
   readonly relojPlazosIntervaloMs: number;
   /** Cada cuánto se envían los avisos pendientes; 0 = solo a mano (pruebas). */
   readonly avisosIntervaloMs: number;
+  /** Swagger UI en /api/docs (008): por defecto activa salvo en producción. */
+  readonly docsApi: boolean;
+  /** Ruta del openapi.yaml; `null` = buscarlo en la imagen o en el repositorio. */
+  readonly docsApiContrato: string | null;
 }
 
 export class ErrorConfiguracion extends Error {
@@ -117,6 +124,10 @@ export class ErrorConfiguracion extends Error {
     this.name = 'ErrorConfiguracion';
   }
 }
+
+/** Swagger UI (008): `DOCS_API` manda; sin valor, activa salvo en producción. */
+export const resolverDocsApi = (valor: 'true' | 'false' | undefined, entorno: Entorno): boolean =>
+  valor === undefined ? entorno !== 'production' : valor === 'true';
 
 export const cargarConfiguracion = (
   env: Readonly<Record<string, string | undefined>>,
@@ -184,5 +195,7 @@ export const cargarConfiguracion = (
     urlPublicaPortal: datos.URL_PUBLICA_PORTAL,
     relojPlazosIntervaloMs: datos.RELOJ_PLAZOS_INTERVALO_MS,
     avisosIntervaloMs: datos.AVISOS_INTERVALO_MS,
+    docsApi: resolverDocsApi(datos.DOCS_API, datos.NODE_ENV),
+    docsApiContrato: datos.DOCS_API_CONTRATO ?? null,
   };
 };

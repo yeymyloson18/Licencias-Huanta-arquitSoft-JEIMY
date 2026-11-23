@@ -1,5 +1,6 @@
 import { Outlet, Route, Routes, useLocation } from 'react-router';
 import { Menu } from './componentes/Menu';
+import { PiePagina } from './componentes/PiePagina';
 import { RutaProtegida } from './componentes/RutaProtegida';
 import { Catalogo } from './paginas/admin/Catalogo';
 import { EditarReceta } from './paginas/admin/EditarReceta';
@@ -49,6 +50,7 @@ function Diseno() {
         </p>
       )}
       <Outlet />
+      <PiePagina />
     </>
   );
 }

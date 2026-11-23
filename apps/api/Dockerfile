@@ -41,6 +41,8 @@ COPY --from=dependencias-produccion --chown=node:node /app/apps/api/node_modules
 COPY --from=build --chown=node:node /app/node_modules/.prisma /app/node_modules/.prisma
 COPY --from=build --chown=node:node /app/apps/api/dist ./dist
 COPY --chown=node:node apps/api/prisma ./prisma
+# Contrato para la documentación interactiva /api/docs (008): una sola fuente de verdad.
+COPY --chown=node:node docs/06-contrato-api/openapi.yaml ./contrato/openapi.yaml
 # package.json: la configuración toma de aquí la versión del servicio.
 COPY --chown=node:node apps/api/package.json ./
 # Carpeta del almacén de documentos (004): el volumen con nombre copia su dueño la primera vez, así
