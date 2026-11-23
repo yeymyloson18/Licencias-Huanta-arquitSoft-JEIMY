@@ -1,0 +1,110 @@
+# Mediciones pesadas del Sprint 2 (008, research §R-06 y §R-07; contracts/flujos-sprint2.md). A pedido:
+# Actions → "Carga Sprint 2" → Run workflow. Nada de esto corre en la computadora de la usuaria.
+#   - carga: compose de desarrollo con 2 réplicas de la API, siembra, k6 progresivo hasta 2,000
+#     usuarios, catálogo con y sin Redis, y muestras de CPU, memoria, Redis y PostgreSQL.
+#   - planes-bd: solo PostgreSQL y las migraciones, 10,000 expedientes y EXPLAIN de las consultas
+#     críticas.
+# Superar los umbrales de EQ-01 NO hace fallar el flujo (se marca en el resumen); solo falla si el
+# sistema no arranca o k6 no produce resumen. Sin secretos: todo se genera en el ejecutor.
+name: Carga Sprint 2
+
+on:
+  workflow_dispatch:
+    inputs:
+      usuarios_max:
+        description: 'Usuarios simultáneos al final de la subida (por defecto 2000)'
+        required: false
+        default: '2000'
+
+permissions:
+  contents: read
+
+jobs:
+  carga:
+    name: carga
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      COMPOSE: docker compose -f infra/docker-compose.yml -f tests/carga/compose-carga.yml
+      TRUST_PROXY_SALTOS: '2'
+      RELOJ_PLAZOS_INTERVALO_MS: '0'
+      BASE: http://localhost:8080/api/v1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Máquina del ejecutor
+        run: |
+          mkdir -p resultados && chmod 777 resultados
+          { echo "procesadores: $(nproc)"; free -h; } | tee resultados/maquina.txt
+
+      - name: Levantar el sistema con 2 réplicas de la API
+        run: $COMPOSE up -d --build --wait --scale api=2
+
+      - name: Sembrar usuarios y expedientes de demostración (ficticios)
+        run: |
+          $COMPOSE exec -T api node dist/scripts/sembrar-demostracion.js --salida - > "$RUNNER_TEMP/semilla.json"
+          # Pares número:documento de los 3 expedientes de ejemplo (documentos 41000001 a 41000003).
+          PARES="$(node -e "const s=require(process.argv[1]); console.log(s.expedientes.map((n,i)=>n+':4100000'+(i+1)).join(','))" "$RUNNER_TEMP/semilla.json")"
+          echo "PARES=$PARES" >> "$GITHUB_ENV"
+          echo "Expedientes sembrados: $(echo "$PARES" | tr ',' '\n' | wc -l)"
+
+      - name: Empezar a medir recursos
+        run: |
+          nohup sh tests/carga/medir-recursos.sh resultados/recursos.jsonl resultados/.midiendo > /dev/null 2>&1 &
+          $COMPOSE exec -T redis redis-cli INFO stats | grep -E '^keyspace_(hits|misses)' > resultados/redis-antes.txt
+
+      - name: k6 progresivo hasta ${{ inputs.usuarios_max }} usuarios
+        run: |
+          docker run --rm --network host --ulimit nofile=65536:65536 \
+            -v "$PWD/tests/carga:/scripts:ro" -v "$PWD/resultados:/resultados" \
+            -e BASE -e PARES -e USUARIOS_MAX="${{ inputs.usuarios_max }}" \
+            -e K6_WEB_DASHBOARD=true -e K6_WEB_DASHBOARD_EXPORT=/resultados/informe.html \
+            grafana/k6:0.54.0 run --summary-export /resultados/resumen.json /scripts/sprint2-progresivo.js \
+            | tee resultados/k6.txt || echo "k6 terminó con umbrales superados (se documenta)."
+          test -s resultados/resumen.json
+
+      - name: Catálogo con Redis
+        run: |
+          $COMPOSE exec -T redis redis-cli INFO stats | grep -E '^keyspace_(hits|misses)' > resultados/redis-despues.txt
+          docker run --rm --network host -v "$PWD/tests/carga:/scripts:ro" -v "$PWD/resultados:/resultados" \
+            -e BASE grafana/k6:0.54.0 run --summary-export /resultados/cache-con.json /scripts/cache-comparacion.js \
+            > resultados/cache-con.txt || true
+
+      - name: Catálogo sin Redis (PostgreSQL directo)
+        run: |
+          $COMPOSE stop redis
+          docker run --rm --network host -v "$PWD/tests/carga:/scripts:ro" -v "$PWD/resultados:/resultados" \
+            -e BASE grafana/k6:0.54.0 run --summary-export /resultados/cache-sin.json /scripts/cache-comparacion.js \
+            > resultados/cache-sin.txt || true
+          curl -s "$BASE/salud" > resultados/salud-sin-redis.json || true
+          $COMPOSE start redis
+
+      - name: Resumen por etapa
+        if: always()
+        run: |
+          rm -f resultados/.midiendo
+          if [ -s resultados/resumen.json ]; then
+            node tests/carga/etapas.mjs resultados/resumen.json resultados/cache-con.json resultados/cache-sin.json \
+              | tee resultados/etapas.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          { echo; echo '### Redis (keyspace) antes y después de la carga progresiva'; echo '```';
+            cat resultados/redis-antes.txt resultados/redis-despues.txt 2>/dev/null; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Registros del sistema
+        if: always()
+        run: $COMPOSE logs --no-color --tail 300 api web > resultados/registros.txt 2>&1 || true
+
+      - name: Guardar resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: carga-sprint2
+          path: resultados/
+          retention-days: 90
+
+      - name: Bajar el sistema
+        if: always()
+        run: $COMPOSE down -v

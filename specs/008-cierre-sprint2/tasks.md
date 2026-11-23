@@ -108,17 +108,17 @@ responde 404.
 
 ## Fase 5: Historia de usuario 5 - Carga progresiva hasta 2,000 usuarios (P2)
 
-- [ ] T014 [P] [US5] Scripts de carga:
+- [X] T014 [P] [US5] Scripts de carga:
   - `car/sprint2-progresivo.js`: etapas de 100 a 2,000, mezcla y umbrales de research §R-06, y pares
     `numero:documento`;
   - `car/cache-comparacion.js`: solo el catálogo, 50 usuarios durante 1 min.
-- [ ] T015 [P] [US5] Apoyo de la carga:
+- [X] T015 [P] [US5] Apoyo de la carga:
   - `car/compose-carga.yml`: API sin puerto propio, `TRUST_PROXY_SALTOS=2` y reloj en 0;
   - `car/medir-recursos.sh`: `docker stats`, `INFO` de Redis y `pg_stat_activity` y
     `pg_stat_database` cada 10 s, en JSON por líneas;
-  - `car/etapas.sh`: `jq` sobre la salida JSON de k6 para obtener p50, p95, errores y peticiones/s por
+  - `car/etapas.mjs` (Node, probado en local con un resumen ficticio): lee el resumen de k6 con las métricas por etiqueta `etapa` y escribe p50, p95, p99, errores y peticiones por
     etapa.
-- [ ] T016 [US5] **[CI]** `wf/carga-sprint2.yml`, job `carga`:
+- [X] T016 [US5] **[CI]** `wf/carga-sprint2.yml`, job `carga`:
   1. compose con `--scale api=2` y espera a que esté sano;
   2. siembra con `sembrar-demostracion`;
   3. arranca la medición de recursos;
