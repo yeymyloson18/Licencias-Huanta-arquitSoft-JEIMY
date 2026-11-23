@@ -562,6 +562,37 @@ debe llenarlas la usuaria con el nombre del criterio.
 | 14       | Citado por la 001 junto con los criterios 3 y 12                                        | ✅ Hecho                               | `specs/001-esqueleto-sistema/`                                                      |
 | 15 y 16  | por completar                                                                           | —                                      | —                                                                                   |
 
+## Cierre del Sprint 2 (funcionalidad 008)
+
+El informe del Sprint 2 está en **[`docs/08-sprint-2/`](docs/08-sprint-2/README.md)**, con las 8
+actividades y los 5 entregables de la guía y el enlace a la evidencia de cada uno.
+
+| Documento                                                        | Contenido                                                                                  |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| [Informe del Sprint 2](docs/08-sprint-2/README.md)               | Actividades, entregables, arquitectura, funcionalidades, pruebas, cobertura y limitaciones |
+| [Atributos de calidad](docs/08-sprint-2/atributos-de-calidad.md) | EQ-01 a EQ-07: medida esperada, herramienta, resultado, evidencia y estado                 |
+| [Base de datos](docs/08-sprint-2/base-de-datos.md)               | Esquemas, índices, planes con 10,000 expedientes, bloqueos y conexiones                    |
+| [Caché](docs/08-sprint-2/cache.md)                               | Claves de Redis, TTL, invalidación, qué pasa si falla y medición                           |
+| [SOLID y patrones](docs/08-sprint-2/solid-y-patrones.md)         | Un ejemplo real por principio y los patrones con su archivo                                |
+
+- **Documentación interactiva de la API**: con el sistema levantado, abra
+  <http://localhost:8080/api/docs/>. Es Swagger UI generado desde
+  `docs/06-contrato-api/openapi.yaml`. El contrato en JSON está en `/api/docs/openapi.json`.
+  - Para los endpoints protegidos, pegue el token del personal en **Authorize**.
+  - Está activa en desarrollo y apagada en producción (`DOCS_API`).
+  - El pie del portal tiene el enlace.
+- **Postman**: importe `tests/postman/licencias-huanta.postman_collection.json` y el entorno
+  `tests/postman/desarrollo.postman_environment.json`, que tiene los tokens vacíos.
+- **Artefactos de GitHub Actions** (_Actions_ → la ejecución → _Artifacts_):
+
+  | Artefacto       | Flujo                  | Cuándo        | Contenido                                                 |
+  | --------------- | ---------------------- | ------------- | --------------------------------------------------------- |
+  | `cobertura`     | job `cobertura` del CI | Cada PR       | Reporte HTML y lcov de la API y del portal                |
+  | `newman`        | `Postman`              | Cada PR       | Informe del recorrido de humo                             |
+  | `carga-sprint2` | `Carga Sprint 2`       | A pedido      | k6 hasta 2,000 usuarios, recursos y caché con y sin Redis |
+  | `planes-bd`     | `Carga Sprint 2`       | A pedido      | Planes de consulta con 10,000 expedientes                 |
+  | `e2e-informe`   | `E2E`                  | Solo si falla | Evidencias de Playwright                                  |
+
 ## Verificaciones automáticas
 
 Cada pull request y cada push a `main` ejecutan en GitHub Actions (`.github/workflows/ci.yml`)
@@ -581,12 +612,14 @@ cinco verificaciones. Las cinco deben terminar en verde para poder fusionar:
 
 > Además de estos cinco checks, hay flujos que **no** bloquean la fusión (007):
 >
-> | Flujo                   | Cuándo corre                            | Qué hace                  |
-> | ----------------------- | --------------------------------------- | ------------------------- |
-> | `E2E`                   | En cada PR                              | Playwright                |
-> | `CD`                    | Cuando el CI de `main` termina en verde | Despliegue al servidor    |
-> | `k6`                    | A pedido                                | Pruebas de carga          |
-> | `Calidad en produccion` | A pedido                                | ZAP, Lighthouse y testssl |
+> | Flujo                   | Cuándo corre                            | Qué hace                                           |
+> | ----------------------- | --------------------------------------- | -------------------------------------------------- |
+> | `E2E`                   | En cada PR                              | Playwright                                         |
+> | `CD`                    | Cuando el CI de `main` termina en verde | Despliegue al servidor                             |
+> | `k6`                    | A pedido                                | Pruebas de carga                                   |
+> | `Calidad en produccion` | A pedido                                | ZAP, Lighthouse y testssl                          |
+> | `Postman`               | En cada PR y a pedido                   | Recorrido de humo con Newman (008)                 |
+> | `Carga Sprint 2`        | A pedido                                | k6 hasta 2,000 usuarios y planes de consulta (008) |
 
 ### Protección de `main`
 
