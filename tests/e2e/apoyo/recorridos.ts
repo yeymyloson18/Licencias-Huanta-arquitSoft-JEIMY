@@ -7,8 +7,18 @@ export const TITULAR = {
   documento: '40000001',
   fechaEmision: '2020-01-15',
   ruc: '10400000011',
-  celular: '987650001',
   nombre: 'Titular de Prueba Uno',
+};
+
+/**
+ * Celular ficticio distinto en cada solicitud: el sistema solo envía 3 códigos por celular cada 15
+ * minutos (004), y los recorridos, sus reintentos y los dos tamaños de pantalla piden más.
+ */
+let envios = 0;
+const celularNuevo = (): string => {
+  envios += 1;
+  const sufijo = ((Date.now() + envios * 7919 + process.pid) % 100_000_000).toString();
+  return `9${sufijo.padStart(8, '0')}`;
 };
 
 /** Una página nueva en un contexto propio (otra persona, otro celular), con el mismo tamaño. */
@@ -52,7 +62,7 @@ export const presentarSolicitud = async (
   await pagina.getByLabel('Número de documento').fill(TITULAR.documento);
   await fijarFecha(pagina, 'input[type=date]', TITULAR.fechaEmision);
   await pagina.getByLabel('RUC').fill(TITULAR.ruc);
-  await pagina.getByLabel('Celular').fill(TITULAR.celular);
+  await pagina.getByLabel('Celular').fill(celularNuevo());
   const respuesta = pagina.waitForResponse((r) => r.url().endsWith('/identidad/verificar'));
   await pagina.getByRole('button', { name: 'Enviar código' }).click();
   const { desafioId } = (await (await respuesta).json()) as { desafioId: string };
@@ -61,7 +71,7 @@ export const presentarSolicitud = async (
 
   await expect(pagina.getByRole('group', { name: 'Documentos' })).toBeVisible();
   await pagina.getByLabel('Nombre completo del titular').fill(TITULAR.nombre);
-  await pagina.getByLabel('Giro').fill('Bodega');
+  await pagina.getByLabel('Giro', { exact: true }).fill('Bodega');
   await pagina.getByLabel('Dirección').fill('Jr. Ficticio 123, Huanta');
   await pagina.getByLabel('Zona').fill('Centro');
   await pagina.getByLabel('Área del local en m²').fill('40');
