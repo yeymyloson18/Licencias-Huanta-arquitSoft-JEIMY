@@ -15,10 +15,10 @@ Los escenarios y sus medidas están en
 
 | EQ | Atributo | Estímulo | Medida esperada (Sprint 1) | Herramienta | Resultado obtenido | Evidencia | Estado |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| EQ-01 | Rendimiento | Consultas del catálogo y del estado, hasta 1,000 usuarios | p95 ≤ 2 s y < 1 % de errores | k6 | **1,000 usuarios**: catálogo p95 6.4 ms con 0.01 % de errores (003); consulta del estado p95 113.6 ms con 0.02 % de errores (004). **2,000 usuarios**: pendiente de `carga-sprint2.yml` | README §003 y §004; artefacto `carga-sprint2` | Cumple parcialmente (1,000 cumple; 2,000 se completa con el flujo; falta confirmarlo en el servidor) |
-| EQ-02 | Escalabilidad | Picos de 1,000 a 10,000 usuarios | p95 ≤ 3 s con más instancias | k6 + `--scale api=2` | Dos réplicas detrás de nginx atendieron solicitudes y descargas sin errores (004). Carga progresiva hasta 2,000 con 2 réplicas: pendiente del flujo. 10,000 no es alcanzable en el entorno del curso | README §004; `carga-sprint2.yml` | Cumple parcialmente |
+| EQ-01 | Rendimiento | Consultas del catálogo y del estado, hasta 1,000 usuarios | p95 ≤ 2 s y < 1 % de errores | k6 | **1,000 usuarios**: catálogo p95 6.4 ms con 0.01 % de errores (003); consulta del estado p95 113.6 ms con 0.02 % de errores (004). **Carga progresiva hasta 2,000 usuarios** (008, después del ajuste de nginx): p95 **6 ms** en 2,000 y **0 %** de errores en 387,235 peticiones | [`evidencias/carga-2000-despues.txt`](evidencias/carga-2000-despues.txt); README §003 y §004 | Cumple (falta repetirlo contra el servidor en el Sprint 3) |
+| EQ-02 | Escalabilidad | Picos de 1,000 a 10,000 usuarios | p95 ≤ 3 s con más instancias | k6 + `--scale api=2` | Dos réplicas detrás de nginx atendieron solicitudes y descargas sin errores (004). Carga progresiva hasta 2,000 con 2 réplicas: 0 % de errores, p95 6 ms; cada réplica llegó a 64 % de CPU y 210 MiB. Se encontró y corrigió el cuello de botella del proxy (ver detalle). 10,000 no es alcanzable en el entorno del curso | [`evidencias/carga-2000-antes.txt`](evidencias/carga-2000-antes.txt) y [`-despues.txt`](evidencias/carga-2000-despues.txt) | Cumple parcialmente (hasta 2,000) |
 | EQ-03 | Disponibilidad | Cae una instancia o la base | 99.5 % mensual; recuperación ≤ 5 min sin perder pagos | Docker, PgBouncer, respaldos y Uptime Kuma | Réplicas sin estado; la salud informa `DEGRADADO` si cae Redis y sigue atendiendo; la cola de eventos es idempotente y los pagos usan transacciones. Respaldos y restauración preparados (007). La disponibilidad mensual solo se mide en producción | `apps/api/src/operacion/salud/`, `infra/produccion/` | Pendiente (Sprint 3) |
-| EQ-04 | Seguridad | Accesos sin sesión, sin rol o con datos ajenos | 100 % rechazados; bloqueo al 6.º intento; sin datos personales en errores ni en el QR | Jest + Supertest, ZAP, testssl | Matrices de permisos: 75 casos (005), 57 (006) y las del tablero y reportes (007), todas con 401 o 403 y sin cambiar datos. Pruebas de privacidad en 004 a 007. ZAP baseline: 0 alertas altas, medias o bajas en el portal (002 y 004). Recorrido de humo con Newman (401 y 403): pendiente de `postman.yml`. TLS en internet: Sprint 3 | `apps/api/test/integracion/` (`matriz-permisos-*` y `privacidad-*`); artefacto `newman` | Cumple parcialmente (falta TLS en el servidor) |
+| EQ-04 | Seguridad | Accesos sin sesión, sin rol o con datos ajenos | 100 % rechazados; bloqueo al 6.º intento; sin datos personales en errores ni en el QR | Jest + Supertest, ZAP, testssl | Matrices de permisos: 75 casos (005), 57 (006) y las del tablero y reportes (007), todas con 401 o 403 y sin cambiar datos. Pruebas de privacidad en 004 a 007. ZAP baseline: 0 alertas altas, medias o bajas en el portal (002 y 004). Recorrido de humo con Newman: 13 peticiones y 31 pruebas, 0 fallas (PR #35). TLS en internet: Sprint 3 | `apps/api/test/integracion/` (`matriz-permisos-*` y `privacidad-*`); artefacto `newman` | Cumple parcialmente (falta TLS en el servidor) |
 | EQ-05 | Usabilidad | Un administrado nuevo presenta desde el celular | 90 % en ≤ 15 min sin ayuda | Lighthouse, cronómetro y SUS | Accesibilidad Lighthouse móvil **100** en asistente, ficha, identidad, solicitud, comprobante y consulta (003 y 004). Recorrido automatizado a 360 px desde la ficha hasta el comprobante: **81 s** (004). Sin desplazamiento horizontal a 360 px. SUS con 5 personas: plantilla lista (`docs/07-despliegue/sus.md`) | README §003 y §004 | Cumple parcialmente (falta la prueba con personas) |
 | EQ-06 | Mantenibilidad | Cambia una tasa o un requisito del TUPA | 0 líneas de código para cambiar una tasa; los demás módulos siguen en verde | Jest, dependency-cruiser y GitHub Actions | El administrador cambia tasas y requisitos desde `/admin/catalogo` sin tocar código (003). Regla de dependencia en verde en cada PR (0 violaciones). Más de 1,100 pruebas unitarias y 580 de integración en el CI | `apps/api/src/modulos/catalogo/`, `.dependency-cruiser.cjs`, job `regla-dependencia` | Cumple |
 | EQ-07 | Disponibilidad del reloj de plazos | Un expediente se acerca a su vencimiento | 100 % de los expedientes genera **una** alerta; ninguna duplicada | Jest con fechas simuladas y 2 instancias | Prueba con **2 aplicaciones a la vez** contra la misma base: una sola alerta por expediente y vencimiento (candado `pg_try_advisory_xact_lock` + `UNIQUE`). Feriados de 2026 cargados y días hábiles probados con fechas simuladas (006) | `apps/api/test/integracion/reloj-alertas.e2e-spec.ts`, `apps/api/test/unit/compartido/dominio/calendario-habil.spec.ts` | Cumple |
@@ -39,23 +39,46 @@ Los escenarios y sus medidas están en
 - **Recursos**: se guardan el uso de CPU y memoria de cada contenedor, los aciertos de Redis y las
   conexiones y aciertos de caché de PostgreSQL (`recursos.jsonl`).
 
-> **Pendiente de la ejecución del flujo**: *Actions → Carga Sprint 2 → Run workflow*. Copie aquí la
-> tabla "Carga progresiva hasta 2,000 usuarios" del resumen del job (también en `etapas.md` del
-> artefacto `carga-sprint2`). Si alguna etapa dice "umbral superado", déjelo así y anote la causa.
+Resultado de la corrida 45106710381 (GitHub Actions, 4 procesadores y 15 GiB, 2 réplicas de la API):
 
 | Usuarios | Peticiones | p50 (ms) | p95 (ms) | p99 (ms) | Errores | Estado |
 | --- | --- | --- | --- | --- | --- | --- |
-| 100 | pendiente | pendiente | pendiente | pendiente | pendiente | pendiente |
-| 500 | pendiente | pendiente | pendiente | pendiente | pendiente | pendiente |
-| 1,000 | pendiente | pendiente | pendiente | pendiente | pendiente | pendiente |
-| 1,500 | pendiente | pendiente | pendiente | pendiente | pendiente | pendiente |
-| 2,000 | pendiente | pendiente | pendiente | pendiente | pendiente | pendiente |
+| 100 | 5,208 | 1 | 4 | 5 | 0.00 % | cumple |
+| 500 | 12,415 | 0 | 4 | 5 | 0.00 % | cumple |
+| 1,000 | 32,445 | 0 | 4 | 6 | 0.00 % | cumple |
+| 1,500 | 53,763 | 0 | 4 | 7 | 0.00 % | cumple |
+| 2,000 | 283,404 | 1 | 6 | 14 | 0.00 % | cumple |
+
+Total: **387,235 peticiones en 10 minutos, p95 6 ms, 0 % de errores** (k6: 100 % de comprobaciones).
+
+**Recursos en el pico** (máximo durante la carga): cada réplica de la API 64 % de CPU y 210 MiB;
+nginx 18 % y 26 MiB; PostgreSQL 14 % y 52 MiB con **2 conexiones activas como máximo**; Redis 10 % y
+5 MiB. k6 usó 107 % de CPU (más de un procesador) en la misma máquina.
+
+**Cuello de botella encontrado y corregido** (ejemplo de la actividad 8: medir, diagnosticar, corregir):
+
+| | Antes (corrida 45103775695) | Después (corrida 45106710381) |
+| --- | --- | --- |
+| 1,500 usuarios | p95 29 ms, **11.8 %** de errores | p95 4 ms, 0 % |
+| 2,000 usuarios | p95 912 ms, **12.9 %** de errores | p95 6 ms, 0 % |
+| Errores | 37,962 respuestas **502** de nginx | ninguno |
+| Causa en el registro de nginx | `connect() failed (99: Address not available)` y luego `no live upstreams` | — |
+
+- **Causa**: nginx abría una conexión TCP nueva hacia la API por cada petición. A más de 400
+  peticiones por segundo se agotaron los puertos de la máquina; al primer error nginx daba por caída
+  cada réplica (`max_fails=1`) y respondía 502 en cascada. La API y la base nunca fallaron.
+- **Corrección** ([`apps/web/nginx.conf`](../../apps/web/nginx.conf) y
+  [`nginx-principal.conf`](../../apps/web/nginx-principal.conf)): conexiones persistentes hacia las
+  réplicas (`keepalive 128`, HTTP/1.1, cierre a los 4 s, antes que Node), `worker_connections 8192` y
+  una réplica sale del reparto recién tras 3 fallas en 5 s.
+- **Lección para el Sprint 3**: el proxy de producción (Caddy) también debe reutilizar conexiones
+  hacia la API; se verifica con `k6.yml` contra el servidor.
 
 **Límites del entorno, a tener en cuenta al leer los números**:
 
 - El generador de carga (k6) y el sistema comparten la máquina del ejecutor: 2 a 4 procesadores. Con
   2,000 usuarios, k6 consume procesador que le falta al sistema.
-- nginx de desarrollo trae 1,024 conexiones por proceso y cada petición usa dos (cliente y API).
+- nginx traía 1,024 conexiones por proceso y abría una conexión nueva hacia la API por petición; se corrigió (ver arriba).
 - Si una etapa alta se degrada, lo más probable es el procesador compartido, no la base de datos.
 - La medida definitiva es del Sprint 3, con k6 en otra máquina (`k6.yml`) contra el servidor.
 
@@ -70,15 +93,15 @@ Los escenarios y sus medidas están en
   - el tablero responde 200 con JEFATURA.
 - **Tokens**: se generan en el ejecutor; ninguno está en el repositorio.
 
-> **Pendiente de la ejecución del flujo**: anote aquí el resultado del artefacto `newman` (peticiones
-> y pruebas aprobadas).
+Resultado del flujo `postman.yml` en el PR #35 (corrida 45101490560): **13 peticiones, 31 pruebas,
+0 fallas**, tiempo promedio de respuesta 10 ms (máximo 34 ms).
 
 | Grupo | Peticiones | Pruebas aprobadas |
 | --- | --- | --- |
-| Públicos | 5 | pendiente |
-| Sin sesión (401) | 4 | pendiente |
-| Rol que no corresponde (403) | 3 | pendiente |
-| Rol correcto (200) | 1 | pendiente |
+| Públicos (salud, catálogo, ficha, preguntas y propuesta) | 5 | 14 de 14 |
+| Sin sesión (401) | 4 | 8 de 8 |
+| Rol que no corresponde (403) | 3 | 6 de 6 |
+| Rol correcto (200, tablero con JEFATURA y sin datos personales) | 1 | 3 de 3 |
 
 ### EQ-04: pruebas automáticas de permisos y privacidad (ya en el CI)
 

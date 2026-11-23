@@ -1,0 +1,72 @@
+Corrida 45106710381 (GitHub Actions, rama 009-carga-2000-ajustes, commit fd39367), 4 procesadores y 15 GiB.
+
+--- etapas
+### Carga progresiva hasta 2,000 usuarios (EQ-01)
+
+| Usuarios | Peticiones | p50 (ms) | p95 (ms) | p99 (ms) | Errores | Estado |
+| --- | --- | --- | --- | --- | --- | --- |
+| 100 | 5208 | 1 | 4 | 5 | 0.00 % | cumple |
+| 500 | 12415 | 0 | 4 | 5 | 0.00 % | cumple |
+| 1000 | 32445 | 0 | 4 | 6 | 0.00 % | cumple |
+| 1500 | 53763 | 0 | 4 | 7 | 0.00 % | cumple |
+| 2000 | 283404 | 1 | 6 | 14 | 0.00 % | cumple |
+
+Total: 387235 peticiones, p95 6 ms, errores 0.00 %.
+
+### Catálogo con y sin Redis (50 usuarios, 1 minuto)
+
+| Caché | Peticiones | p50 (ms) | p95 (ms) | Errores |
+| --- | --- | --- | --- | --- |
+| con Redis | 3006 | 1 | 1 | 0.00 % |
+| sin Redis (PostgreSQL directo) | 3008 | 2 | 3 | 0.00 % |
+--- redis antes y después
+keyspace_hits:0
+keyspace_misses:3
+keyspace_hits:602479
+keyspace_misses:36
+--- recursos: máximo de CPU y memoria por contenedor
+licencias-huanta-web-1 CPU máx 18.15% memoria 26.44MiB
+licencias-huanta-api-2 CPU máx 61.61% memoria 209.3MiB
+licencias-huanta-api-1 CPU máx 64.15% memoria 201.1MiB
+licencias-huanta-postgres-1 CPU máx 14.22% memoria 52.34MiB
+licencias-huanta-redis-1 CPU máx 10.31% memoria 4.562MiB
+musing_galois CPU máx 106.89% memoria 329.9MiB
+exciting_rhodes CPU máx 3.5% memoria 23.59MiB
+crazy_boyd CPU máx 3.69% memoria 23.57MiB
+postgres {"maxActivas":2,"aciertos":"99.93%"}
+
+--- resumen de k6
+     checks.........................: 100.00% 387235 out of 387235
+     data_received..................: 675 MB  1.1 MB/s
+     data_sent......................: 72 MB   119 kB/s
+     http_req_blocked...............: avg=6.52µs  med=4.49µs   p(90)=5.98µs  p(95)=6.96µs   p(99)=20.47µs  max=7.31ms  
+     http_req_connecting............: avg=1.16µs  med=0s       p(90)=0s      p(95)=0s       p(99)=0s       max=7.1ms   
+   ✓ http_req_duration..............: avg=2.09ms  med=984.28µs p(90)=4.68ms  p(95)=6.27ms   p(99)=12.58ms  max=113.85ms
+     ✓ { etapa:0100 }...............: avg=1.94ms  med=1.22ms   p(90)=4.54ms  p(95)=4.94ms   p(99)=5.8ms    max=26.21ms 
+     ✓ { etapa:0500 }...............: avg=1.64ms  med=974.77µs p(90)=3.98ms  p(95)=4.32ms   p(99)=5.46ms   max=21.04ms 
+     ✓ { etapa:1000 }...............: avg=1.55ms  med=841.55µs p(90)=3.83ms  p(95)=4.33ms   p(99)=6.08ms   max=33.15ms 
+     ✓ { etapa:1500 }...............: avg=1.72ms  med=872.9µs  p(90)=4.12ms  p(95)=4.93ms   p(99)=7.93ms   max=61.65ms 
+     ✓ { etapa:2000 }...............: avg=2.24ms  med=1.03ms   p(90)=5.07ms  p(95)=6.98ms   p(99)=14.11ms  max=113.85ms
+       { expected_response:true }...: avg=2.09ms  med=984.28µs p(90)=4.68ms  p(95)=6.27ms   p(99)=12.58ms  max=113.85ms
+   ✓ http_req_failed................: 0.00%   0 out of 387235
+     ✓ { etapa:0100 }...............: 0.00%   0 out of 5208
+     ✓ { etapa:0500 }...............: 0.00%   0 out of 12415
+     ✓ { etapa:1000 }...............: 0.00%   0 out of 32445
+     ✓ { etapa:1500 }...............: 0.00%   0 out of 53763
+     ✓ { etapa:2000 }...............: 0.00%   0 out of 283404
+     http_req_receiving.............: avg=62.65µs med=47.18µs  p(90)=73.25µs p(95)=104.46µs p(99)=390.94µs max=19.61ms 
+     http_req_sending...............: avg=23.02µs med=15.08µs  p(90)=24.41µs p(95)=32.38µs  p(99)=174.12µs max=20.2ms  
+     http_req_tls_handshaking.......: avg=0s      med=0s       p(90)=0s      p(95)=0s       p(99)=0s       max=0s      
+     http_req_waiting...............: avg=2ms     med=904.64µs p(90)=4.58ms  p(95)=6.16ms   p(99)=12.35ms  max=113.81ms
+     http_reqs......................: 387235  642.609344/s
+     ✓ { etapa:0100 }...............: 5208    8.64258/s
+     ✓ { etapa:0500 }...............: 12415   20.602464/s
+     ✓ { etapa:1000 }...............: 32445   53.841879/s
+     ✓ { etapa:1500 }...............: 53763   89.218707/s
+     ✓ { etapa:2000 }...............: 283404  470.303713/s
+     iteration_duration.............: avg=2s      med=2s       p(90)=2.8s    p(95)=2.9s     p(99)=2.98s    max=3.09s   
+     iterations.....................: 336665  558.689361/s
+     vus............................: 1       min=0                max=2000
+     vus_max........................: 2000    min=2000             max=2000
+
+

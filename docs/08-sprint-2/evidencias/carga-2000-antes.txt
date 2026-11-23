@@ -1,0 +1,46 @@
+Corrida 45103775695 (antes del ajuste de nginx), commit 0b74812.
+
+--- nginx: errores por tipo
+  37950 no live upstreams while connecting to upstream
+     16 connect() to 172.18.0.5:3000 failed (99: Address not available) while connecting to upstream
+     16 connect() to 172.18.0.4:3000 failed (99: Address not available) while connecting to upstream
+--- nginx: respuestas 5xx
+  37962 " 502 
+--- API: niveles de registro
+--- resumen de k6
+     checks.........................: 89.13% 311325 out of 349287
+     data_received..................: 574 MB 952 kB/s
+     data_sent......................: 64 MB  106 kB/s
+     fallas_502.....................: 37962  63.025696/s
+     http_req_blocked...............: avg=7.87µs   med=4.83µs   p(90)=6.25µs   p(95)=7.28µs   p(99)=22.08µs  max=38.91ms 
+     http_req_connecting............: avg=1.88µs   med=0s       p(90)=0s       p(95)=0s       p(99)=0s       max=38.71ms 
+   ✓ http_req_duration..............: avg=158.7ms  med=3.84ms   p(90)=634.61ms p(95)=836.46ms p(99)=1.17s    max=1.59s   
+     ✓ { etapa:0100 }...............: avg=1.97ms   med=1.27ms   p(90)=4.46ms   p(95)=4.95ms   p(99)=6.25ms   max=20.36ms 
+     ✓ { etapa:0500 }...............: avg=1.76ms   med=1.03ms   p(90)=4.09ms   p(95)=4.53ms   p(99)=6.08ms   max=21.07ms 
+     ✓ { etapa:1000 }...............: avg=1.75ms   med=993.99µs p(90)=4.11ms   p(95)=4.77ms   p(99)=6.92ms   max=28.39ms 
+     ✓ { etapa:1500 }...............: avg=7.61ms   med=1.73ms   p(90)=18.63ms  p(95)=29.49ms  p(99)=76.65ms  max=327.63ms
+     ✓ { etapa:2000 }...............: avg=222.73ms med=18.54ms  p(90)=744.88ms p(95)=911.67ms p(99)=1.22s    max=1.59s   
+       { expected_response:true }...: avg=177.17ms med=5.2ms    p(90)=674.93ms p(95)=862.69ms p(99)=1.19s    max=1.59s   
+   ✗ http_req_failed................: 10.86% 37962 out of 349287
+     ✓ { etapa:0100 }...............: 0.00%  0 out of 5335
+     ✓ { etapa:0500 }...............: 0.00%  0 out of 12289
+     ✓ { etapa:1000 }...............: 0.00%  0 out of 32204
+     ✗ { etapa:1500 }...............: 11.75% 6205 out of 52779
+     ✗ { etapa:2000 }...............: 12.87% 31757 out of 246680
+     http_req_receiving.............: avg=106.98µs med=52.56µs  p(90)=117.44µs p(95)=261.02µs p(99)=691.21µs max=410.59ms
+     http_req_sending...............: avg=42.25µs  med=15.02µs  p(90)=26.56µs  p(95)=38.66µs  p(99)=259.92µs max=123.82ms
+     http_req_tls_handshaking.......: avg=0s       med=0s       p(90)=0s       p(95)=0s       p(99)=0s       max=0s      
+     http_req_waiting...............: avg=158.56ms med=3.74ms   p(90)=634.37ms p(95)=836.25ms p(99)=1.17s    max=1.59s   
+     http_reqs......................: 349287 579.897164/s
+     ✓ { etapa:0100 }...............: 5335   8.857333/s
+     ✓ { etapa:0500 }...............: 12289  20.402581/s
+     ✓ { etapa:1000 }...............: 32204  53.466085/s
+     ✓ { etapa:1500 }...............: 52779  87.625341/s
+     ✓ { etapa:2000 }...............: 246680 409.545824/s
+     iteration_duration.............: avg=2.18s    med=2.17s    p(90)=2.98s    p(95)=3.27s    p(99)=3.83s    max=5.38s   
+     iterations.....................: 308869 512.79394/s
+     vus............................: 5      min=0                max=2000
+     vus_max........................: 2000   min=2000             max=2000
+
+
+time="2026-11-23T03:16:04Z" level=error msg="thresholds on metrics 'http_req_failed, http_req_failed{etapa:1500}, http_req_failed{etapa:2000}' have been crossed"
