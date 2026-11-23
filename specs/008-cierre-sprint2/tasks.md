@@ -131,15 +131,15 @@ responde 404.
 
 ## Fase 6: Historia de usuario 6 - Análisis de la base de datos (P3)
 
-- [ ] T017 [P] [US6] `ana/sembrar-10000.sql` (data-model) y `ana/planes-consultas.sql`, con
+- [X] T017 [P] [US6] `ana/sembrar-10000.sql` (data-model) y `ana/planes-consultas.sql`, con
   `EXPLAIN (ANALYZE, BUFFERS)` de las 6 consultas, copiadas del código y citando el archivo.
-- [ ] T018 [US6] **[CI]** Job `planes-bd` en `wf/carga-sprint2.yml`:
+- [X] T018 [US6] **[CI]** Job `planes-bd` en `wf/carga-sprint2.yml`:
   1. servicio `postgres:16-alpine`;
   2. `npm ci` y `prisma migrate deploy`;
   3. siembra y `ANALYZE`;
   4. planes;
   5. artefacto `planes.txt`.
-- [ ] T019 [US6] `s2/base-de-datos.md`:
+- [X] T019 [US6] `s2/base-de-datos.md`:
   - esquemas por módulo y por qué;
   - tabla de índices, con la consulta a la que sirve cada uno;
   - las 6 consultas con su SQL y el plan esperado (las salidas reales se pegan desde el artefacto);

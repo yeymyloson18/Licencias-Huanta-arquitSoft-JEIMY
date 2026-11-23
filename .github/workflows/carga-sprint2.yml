@@ -108,3 +108,50 @@ jobs:
       - name: Bajar el sistema
         if: always()
         run: $COMPOSE down -v
+
+  planes-bd:
+    name: planes-bd
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          # Credenciales FICTICIAS de .env.example, solo para el contenedor efímero del ejecutor.
+          POSTGRES_USER: licencias
+          POSTGRES_PASSWORD: cambiar_en_produccion_solo_desarrollo
+          POSTGRES_DB: licencias
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U licencias -d licencias"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://licencias:cambiar_en_produccion_solo_desarrollo@localhost:5432/licencias
+      PGPASSWORD: cambiar_en_produccion_solo_desarrollo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Migraciones
+        run: npm exec -w apps/api -- prisma migrate deploy
+      - name: Sembrar 10,000 expedientes ficticios
+        run: psql -h localhost -U licencias -d licencias -f tests/analisis/sembrar-10000.sql | tee siembra.txt
+      - name: Planes de las consultas críticas
+        run: |
+          mkdir -p planes
+          psql -h localhost -U licencias -d licencias -f tests/analisis/planes-consultas.sql > planes/planes.txt
+          mv siembra.txt planes/
+          { echo '### Planes de consulta con 10,000 expedientes'; echo '```'; head -c 60000 planes/planes.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Guardar los planes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: planes-bd
+          path: planes/
+          retention-days: 90
