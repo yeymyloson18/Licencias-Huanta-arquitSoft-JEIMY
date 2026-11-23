@@ -33,6 +33,27 @@ Escenarios de calidad EQ-01 a EQ-07. El despliegue en el servidor es del Sprint 
 corren en los ejecutores de la integración continua, no en local. Esto incluye la carga de 2,000
 usuarios, el recorrido de Postman y los planes de consulta con 10,000 expedientes.
 
+## Aclaraciones
+
+### Sesión 2026-11-22
+
+Por indicación de la usuaria, cada pregunta se respondió con la opción recomendada.
+
+- P: ¿El recorrido de humo con Postman pasa a ser un control obligatorio para fusionar? → R: No. Corre
+  en un flujo propio en cada pull request y a pedido, y su resultado se ve en el PR. Los 5 controles
+  obligatorios no cambian.
+- P: ¿La documentación interactiva queda activa o apagada en producción hasta el Sprint 3? → R:
+  Apagada por defecto en producción y activa por defecto en desarrollo y pruebas. Un valor de
+  configuración la enciende o la apaga en cualquier entorno.
+- P: Si la carga de 2,000 usuarios supera los umbrales, ¿el flujo termina en rojo? → R: No. El flujo
+  termina en verde y el resumen marca "umbral superado" con la etapa; solo falla si el sistema no
+  arranca o la carga no se puede ejecutar. Así el resultado se documenta con honestidad sin bloquear.
+- P: ¿Se exige un porcentaje mínimo de cobertura al portal? → R: No se agrega un umbral nuevo. Se
+  publica su reporte junto al de la API. El umbral del 80 % sigue en dominio y aplicación de la API.
+- P: ¿Dónde corren los planes de consulta con 10,000 expedientes? → R: En un trabajo aparte del mismo
+  flujo de carga, a pedido, solo con la base de datos y las migraciones (sin levantar el sistema
+  completo). Deja las salidas como archivo descargable.
+
 ## Escenarios de usuario y pruebas *(obligatorio)*
 
 ### Historia de usuario 1 - Documentación interactiva de la API (Prioridad: P1)
@@ -287,8 +308,8 @@ regla de dependencia con un diagrama y la evidencia de su verificación automát
   formato de máquina, generados al arrancar desde el contrato único del repositorio, sin duplicarlo.
 - **FR-002**: La página DEBE permitir probar los endpoints públicos y, con un token pegado, los
   protegidos.
-- **FR-003**: La documentación DEBE poder desactivarse con un valor de configuración. Por defecto está
-  activa fuera de producción; en producción la decisión queda para el Sprint 3.
+- **FR-003**: La documentación DEBE poder encenderse o apagarse con un valor de configuración. Por
+  defecto está activa en desarrollo y pruebas y apagada en producción, hasta que el Sprint 3 decida.
 - **FR-004**: Solo la página de documentación PUEDE tener una política de contenido distinta. Las
   cabeceras de seguridad del resto del sistema NO DEBEN cambiar.
 - **FR-005**: Los recursos de la página DEBEN servirse desde el propio sistema, sin cargar nada de
@@ -300,8 +321,8 @@ regla de dependencia con un diagrama y la evidencia de su verificación automát
 - **FR-007**: Debe existir en el repositorio una colección de Postman generada desde el contrato y un
   entorno de desarrollo sin claves ni tokens.
 - **FR-008**: Un recorrido de humo DEBE probar los endpoints públicos y los 401 y 403 de los protegidos.
-  DEBE ejecutarse en la integración continua en cada pull request y a pedido, y dejar un reporte
-  navegable como archivo descargable.
+  DEBE ejecutarse en un flujo propio de la integración continua, en cada pull request y a pedido, sin
+  sumarse a los 5 controles obligatorios. DEBE dejar un reporte navegable como archivo descargable.
 - **FR-009**: Los usuarios que necesite el recorrido DEBEN crearse en el ejecutor, con claves generadas
   ahí mismo.
 
@@ -310,7 +331,7 @@ regla de dependencia con un diagrama y la evidencia de su verificación automát
 - **FR-010**: El control de cobertura DEBE publicar como archivo descargable el reporte navegable y el
   estándar de la API y del portal, sin cambiar el nombre de ninguno de los 5 controles obligatorios.
 - **FR-011**: El README DEBE mostrar la tabla de cobertura por módulo y capa, con dominio y aplicación
-  en 80 % o más.
+  en 80 % o más. Al portal no se le agrega un umbral nuevo; solo se publica su reporte.
 
 **Carga de 2,000 usuarios (historia 5)**
 
@@ -324,7 +345,8 @@ regla de dependencia con un diagrama y la evidencia de su verificación automát
   las métricas de la caché (aciertos y fallos) y de la base de datos (conexiones activas y aciertos de
   su caché interna).
 - **FR-015**: Los resultados DEBEN documentarse tal como salgan, con la etapa donde se superen los
-  umbrales y la causa probable.
+  umbrales y la causa probable. El flujo termina en verde aunque se superen los umbrales y lo indica en
+  el resumen. Solo falla si el sistema no arranca o la carga no se puede ejecutar.
 
 **Base de datos (historia 6)**
 
@@ -342,7 +364,8 @@ regla de dependencia con un diagrama y la evidencia de su verificación automát
   - toma de eventos;
   - reloj de plazos.
 
-  Se ejecuta en la integración continua y sus salidas se copian al documento.
+  Se ejecuta en un trabajo aparte del flujo de carga, a pedido, solo con la base de datos y las
+  migraciones. Sus salidas quedan como archivo descargable y se copian al documento.
 
 **Caché (historia 7)**
 
@@ -444,8 +467,8 @@ regla de dependencia con un diagrama y la evidencia de su verificación automát
 - Las mediciones pesadas corren en los ejecutores estándar de la integración continua (2 a 4
   procesadores y unos 7 a 16 GB). El generador de carga y el sistema comparten la máquina, así que los
   resultados son un piso, no el rendimiento real del servidor.
-- La documentación interactiva queda activa por defecto fuera de producción. En producción la
-  decisión es del Sprint 3.
+- La documentación interactiva queda activa por defecto en desarrollo y pruebas y apagada en
+  producción. El Sprint 3 decide si se enciende allí.
 - Los documentos se escriben en español sencillo, con tablas, listos para copiar al informe final.
 - El contrato no cambia, salvo para documentar las rutas de la documentación si hiciera falta.
 - Se reutilizan los resultados ya obtenidos en las funcionalidades 003 a 007:
