@@ -11,7 +11,12 @@
     la imagen. Se convierte con `yaml` y se sirve como JSON con `Cache-Control: no-cache`.
   - Swagger tiene "Authorize" con el esquema `bearerPersonal` del contrato, así que se pega el token
     del personal. `persistAuthorization: false`: el token no se guarda en `localStorage`.
-  - Las peticiones "Try it out" van al mismo origen (`servers` del contrato o la URL actual).
+  - Las peticiones "Try it out" van al mismo origen: el contrato agrega como **primer** servidor el
+    relativo `/api/v1` ("Mismo origen: portal o API"). Sin él, Swagger usaría
+    `http://localhost:3000/api/v1`, otro origen desde el portal (8080), y la CSP (`connect-src
+    'self'`) lo bloquearía (hallazgo H1 del análisis).
+  - `validatorUrl: null`: Swagger UI no consulta el validador externo `validator.swagger.io` (FR-005,
+    hallazgo H2).
 - **Por qué**: hay una sola fuente de verdad, no hay decoradores que dupliquen el contrato y no se
   carga nada de terceros (FR-001 y FR-005). `swagger-ui-express` agrega una dependencia más y genera
   HTML con script en línea, lo que obligaría a abrir `script-src`.
@@ -22,6 +27,8 @@
 
 - **Decisión**: no. Las rutas de la documentación no son parte de la API de negocio y quedan fuera de
   `/api/v1`. Se describen en el README del contrato y en `contracts/documentacion-api.md`.
+- **Único cambio del contrato**: agregar el servidor relativo `/api/v1` como primero de `servers`
+  (R-01). No cambia rutas, esquemas ni respuestas: solo documenta dónde se prueba la API.
 - **Por qué**: el contrato describe la API que consume el portal. Meter la documentación dentro de sí
   misma no aporta. La entrada dice "salvo para documentar /api/docs si corresponde", y no corresponde.
 

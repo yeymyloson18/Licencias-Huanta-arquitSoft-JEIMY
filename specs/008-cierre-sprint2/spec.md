@@ -470,7 +470,8 @@ regla de dependencia con un diagrama y la evidencia de su verificación automát
 - La documentación interactiva queda activa por defecto en desarrollo y pruebas y apagada en
   producción. El Sprint 3 decide si se enciende allí.
 - Los documentos se escriben en español sencillo, con tablas, listos para copiar al informe final.
-- El contrato no cambia, salvo para documentar las rutas de la documentación si hiciera falta.
+- El contrato solo cambia para agregar el servidor relativo del mismo origen, de modo que la
+  documentación interactiva pruebe los endpoints contra el sistema que la sirve.
 - Se reutilizan los resultados ya obtenidos en las funcionalidades 003 a 007:
   - k6 con 1,000 usuarios, Lighthouse y ZAP;
   - matrices de permisos y pruebas de privacidad;

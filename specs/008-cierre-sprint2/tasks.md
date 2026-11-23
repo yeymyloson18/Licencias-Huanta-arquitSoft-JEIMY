@@ -50,7 +50,9 @@ responde 404.
 - [ ] T004 [US1] Implementar:
   - `doc/contrato-api.ts`;
   - `doc/documentacion.module.ts`, con estáticos de `swagger-ui-dist`, `index.html` e
-    `inicializador.js` propios y la CSP de research §R-03;
+    `inicializador.js` propios (`validatorUrl: null`, sin código en línea) y la CSP de research §R-03;
+  - en `openapi.yaml`, el servidor relativo `/api/v1` como primero de `servers` (research §R-01); luego
+    `npm run contrato` y `npm run generar`;
   - `DOCS_API` y `DOCS_API_CONTRATO` en `configuracion.ts` y en `.env.example`;
   - el registro en `app.module.ts`, montado fuera de `/api/v1`.
 
