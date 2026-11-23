@@ -28,6 +28,7 @@ EXPOSE 80 443 443/udp
 
 # ---- Imagen final (desarrollo y CI) ----
 FROM nginx:1-alpine AS final
+COPY apps/web/nginx-principal.conf /etc/nginx/nginx.conf
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY apps/web/cabeceras-seguridad.conf /etc/nginx/snippets/cabeceras-seguridad.conf
 COPY apps/web/cabeceras-docs.conf /etc/nginx/snippets/cabeceras-docs.conf
