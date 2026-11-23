@@ -95,7 +95,18 @@ jobs:
 
       - name: Registros del sistema
         if: always()
-        run: $COMPOSE logs --no-color --tail 300 api web > resultados/registros.txt 2>&1 || true
+        run: |
+          $COMPOSE logs --no-color --tail 300 api web > resultados/registros.txt 2>&1 || true
+          # Resumen en el registro del flujo (los artefactos no siempre se pueden descargar): errores
+          # del proxy y de la API, sin datos personales (la API no los registra, principio VII).
+          echo '--- nginx: errores por tipo'
+          $COMPOSE logs --no-color web 2>&1 | grep -E '\[(error|crit|alert)\]' \
+            | sed -E 's/.*\[(error|crit|alert)\] [0-9#]+: \*?[0-9]* ?//; s/, client:.*//' \
+            | sort | uniq -c | sort -rn | head -15 || true
+          echo '--- nginx: respuestas 5xx'
+          $COMPOSE logs --no-color web 2>&1 | grep -oE '" (5[0-9]{2}) ' | sort | uniq -c || true
+          echo '--- API: niveles de registro'
+          $COMPOSE logs --no-color api 2>&1 | grep -oE '"level":"?[a-z0-9]+' | sort | uniq -c || true
 
       - name: Guardar resultados
         if: always()
