@@ -16,6 +16,26 @@ la persona: si lo viera, podría entrar haciéndose pasar por ella y la auditor�
 
 **Amplía**: la 009 (auditoría de seguridad y panel) y la 002 y la 004 (envío del código).
 
+## Aclaraciones
+
+### Sesión 2026-11-24
+
+Por indicación de la usuaria, cada pregunta se respondió con la opción recomendada.
+
+- P: Al alcanzar el límite de 3 códigos en 15 minutos, ¿se reutiliza una acción existente (por
+  ejemplo, "Cuenta bloqueada") o se crea una nueva? → R: Una acción nueva, **"Límite de códigos
+  alcanzado"** (`CODIGO_LIMITE_ALCANZADO`, grupo Ingresos). "Cuenta bloqueada" significa demasiados
+  intentos fallidos y suma a los ingresos fallidos del panel; mezclarlos confundiría las cifras.
+- P: ¿Cuentan los envíos fallidos en la tarjeta "Códigos enviados" del panel? → R: No. La tarjeta
+  cuenta los entregados (hoy y 7 días), cuántos de esos terminaron en ingreso correcto y, aparte,
+  cuántos envíos fallaron hoy.
+- P: ¿El CSV de la auditoría incluye el resultado del intento de cada "Código enviado"? → R: Sí. Se
+  agrega una columna final `desenlace`, vacía para las demás acciones; las 6 columnas de la 009
+  quedan iguales y en el mismo orden.
+- P: ¿Con qué formato se enmascara el destino? → R: El mismo de todo el sistema: celular
+  `9*****321` (primer dígito y los 3 últimos) y correo `ju***@correo.pe`. Así coincide con el asunto
+  del buzón y con la pantalla de ingreso.
+
 ## Escenarios de usuario y pruebas *(obligatorio)*
 
 ### Historia de usuario 1 - Ver en la auditoría cada código enviado (Prioridad: P1)
@@ -122,7 +142,8 @@ administrador vea un pedido insistente.
   sin datos (igual que los intentos fallidos de la 009).
 - **Código de identidad del administrado**: no hay cuenta ni ingreso posterior que vincular; su
   resultado posterior no se muestra.
-- **Destino corto o raro**: el enmascarado nunca muestra más de los 3 últimos dígitos.
+- **Destino corto o raro**: el enmascarado nunca muestra más que el primer dígito y los 3 últimos.
+- **Envío fallido en el panel**: cuenta en "fallaron hoy", no en los entregados.
 
 ## Requisitos *(obligatorio)*
 
@@ -144,11 +165,18 @@ administrador vea un pedido insistente.
   intento: ingreso correcto, código incorrecto, bloqueo, sin usar (vencido) o pendiente (vigente).
 - **FR-007**: El vínculo entre el envío y su resultado MUST hacerse con un identificador del intento
   que no sea un dato personal.
-- **FR-008**: El panel MUST mostrar los códigos enviados hoy y en los últimos 7 días, y cuántos
-  terminaron en ingreso correcto, con un enlace a la auditoría filtrada por "Código enviado".
+- **FR-008**: El panel MUST mostrar los códigos entregados hoy y en los últimos 7 días, cuántos de
+  ellos terminaron en ingreso correcto y cuántos envíos fallaron hoy, con un enlace a la auditoría
+  filtrada por "Código enviado".
 - **FR-009**: Los últimos eventos de la ficha del usuario MUST incluir sus "Código enviado".
-- **FR-010**: Al alcanzar el límite de 3 códigos en 15 minutos, la auditoría MUST registrar ese
-  límite (la regla no cambia).
+- **FR-010**: Al alcanzar el límite de 3 códigos en 15 minutos, la auditoría MUST registrar la acción
+  nueva "Límite de códigos alcanzado" (la regla no cambia). Esta acción no suma a los ingresos
+  fallidos del panel.
+- **FR-012**: El CSV de la auditoría MUST agregar al final la columna `desenlace` (el resultado del
+  intento de cada "Código enviado" del personal; vacía en lo demás), sin cambiar las 6 columnas de la
+  009.
+- **FR-013**: El destino MUST enmascararse como en el resto del sistema: celular `9*****321` y correo
+  `ju***@correo.pe`.
 - **FR-011**: Los permisos MUST seguir iguales: solo ADMINISTRADOR ve la auditoría y el panel (401
   sin sesión, 403 con otro rol).
 
