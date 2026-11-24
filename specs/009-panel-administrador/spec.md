@@ -328,7 +328,8 @@ buzón; después usarlo para entrar.
 - El "último ingreso" es el último ingreso correcto registrado en la auditoría.
 - La auditoría empieza a llenarse desde esta funcionalidad: no se reconstruyen eventos anteriores, salvo
   el historial de roles, que ya existe.
-- El CSV usa el mismo formato que los reportes de la 007 (separador coma, UTF-8 con BOM).
+- El CSV usa el mismo formato que los reportes de la 007 (UTF-8 con BOM, separado por punto y coma,
+  fin de línea CRLF y protección contra fórmulas).
 - Fuera de alcance: roles personalizados, borrar usuarios, correo o SMS reales (Sprint 3) y alertas
   automáticas por correo al administrador.
 - Restricción del entorno de la usuaria: poca memoria. Lo pesado lo valida la integración continua.
