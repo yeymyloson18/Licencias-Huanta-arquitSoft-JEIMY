@@ -28,9 +28,9 @@ Un commit convencional al terminar cada fase, en la rama `011-mi-perfil-inicio-r
 
 ## Fase 1: Preparación (rama y contrato primero)
 
-- [ ] T001 Crear y cambiar a la rama `011-mi-perfil-inicio-rol` desde `main` actualizado
+- [X] T001 Crear y cambiar a la rama `011-mi-perfil-inicio-rol` desde `main` actualizado
       (`git switch -c 011-mi-perfil-inicio-rol`); confirmar con `git branch --show-current`
-- [ ] T002 Editar `docs/06-contrato-api/openapi.yaml` según `contracts/api-perfil.md`:
+- [X] T002 Editar `docs/06-contrato-api/openapi.yaml` según `contracts/api-perfil.md`:
   - **Esquema `PerfilPropio`** en `components/schemas`, junto a `Usuario`:
     - `type: object`, `additionalProperties: false`;
     - `required: [nombreCompleto, correo, celularEnmascarado, roles, ultimoIngreso, sesionesAbiertas]`;
@@ -50,7 +50,7 @@ Un commit convencional al terminar cada fase, en la rama `011-mi-perfil-inicio-r
   - **`POST /auth/cambiar-clave`**: cambiar solo `summary` y `description`, para decir que también es
     el cambio voluntario desde "Mi perfil" (011). El cuerpo y las respuestas no cambian.
   - **Descripción general**: agregar la línea de la 011.
-- [ ] T003 Actualizar la matriz de permisos en `docs/06-contrato-api/README.md`:
+- [X] T003 Actualizar la matriz de permisos en `docs/06-contrato-api/README.md`:
   - `GET /perfil`: sin token 401, clave temporal 403, cualquier rol 200 propio, sin roles 200 propio;
   - `POST /auth/cambiar-clave`: sin cambios, con la nota "voluntario u obligatorio".
   Después correr `npm run contrato` (sin errores nuevos) y `npm run generar` (regenera

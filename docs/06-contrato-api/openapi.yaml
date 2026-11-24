@@ -21,6 +21,8 @@ info:
       edición de recetas (`/admin/catalogo/*`) y de feriados (`/feriados*`) quedan registrados en
       `GET /admin/auditoria` sin datos personales. Ingresos y usuarios se registran en la misma transacción
       que su cambio; catálogo y feriados, por la cola de eventos (pueden tardar unos segundos en verse).
+    - Mi perfil (011): `GET /perfil` devuelve solo los datos de quien tiene la sesión; no recibe ningún
+      identificador. El cambio de clave voluntario usa la misma `POST /auth/cambiar-clave`.
   contact:
     name: Jeimy Gregori Sulca Ccorimanya
   license:
@@ -146,10 +148,12 @@ paths:
     post:
       tags: [Seguridad]
       operationId: cambiarClave
-      summary: Cambia la clave del usuario autenticado; obligatorio cuando la clave es temporal (FR-022).
+      summary: Cambia la clave del usuario autenticado; obligatorio con clave temporal (FR-022) y voluntario desde Mi perfil (011).
       description: |
-        Única operación permitida con `debeCambiarClave = true`. La clave actual incorrecta cuenta como
-        intento fallido. Al terminar se cierran las demás sesiones del usuario y se entrega un token nuevo.
+        Única operación permitida con `debeCambiarClave = true`. También la usa cualquier usuario del
+        personal para cambiar su clave cuando quiera, desde Mi perfil (011), con las mismas reglas. La clave
+        actual incorrecta cuenta como intento fallido. Al terminar se cierran las demás sesiones del usuario,
+        se entrega un token nuevo y se registra CLAVE_CAMBIADA en la auditoría de seguridad.
       security: [{ bearerPersonal: [] }]
       requestBody:
         required: true
@@ -167,6 +171,32 @@ paths:
         '401': { $ref: '#/components/responses/NoAutenticado' }
         '422': { $ref: '#/components/responses/NoProcesable' }
         '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+
+  /perfil:
+    get:
+      tags: [Seguridad]
+      operationId: obtenerMiPerfil
+      summary: Datos propios de quien tiene la sesión del personal (011, cualquier rol).
+      description: >-
+        Nombre completo, correo, celular enmascarado, roles vigentes, último ingreso correcto y sesiones
+        abiertas de quien tiene la sesión. No recibe ningún identificador: nunca devuelve el perfil de otra
+        persona. Nunca incluye la clave, ningún código ni el celular completo. Con clave temporal responde
+        403 `debe-cambiar-clave`. `Cache-Control: no-store`.
+      security: [{ bearerPersonal: [] }]
+      responses:
+        '200':
+          description: Perfil de quien tiene la sesión.
+          headers:
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PerfilPropio' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403':
+          description: La clave es temporal y debe cambiarse antes (`debe-cambiar-clave`, FR-022).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
 
   /identidad/verificar:
     post:
@@ -2102,6 +2132,25 @@ components:
           items: { $ref: '#/components/schemas/Rol' }
         activo: { type: boolean }
         debeCambiarClave: { type: boolean }
+    PerfilPropio:
+      type: object
+      additionalProperties: false
+      required: [nombreCompleto, correo, celularEnmascarado, roles, ultimoIngreso, sesionesAbiertas]
+      properties:
+        nombreCompleto: { type: string }
+        correo: { type: string, format: email }
+        celularEnmascarado:
+          {
+            type: string,
+            example: '9*****321',
+            description: El celular nunca se devuelve completo (FR-028).,
+          }
+        roles:
+          type: array
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/Rol' }
+        ultimoIngreso: { type: [string, 'null'], format: date-time }
+        sesionesAbiertas: { type: integer, minimum: 0 }
     NuevoUsuario:
       type: object
       required: [correo, nombreCompleto, celular, claveTemporal, roles]
