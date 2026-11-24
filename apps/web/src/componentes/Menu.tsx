@@ -1,6 +1,7 @@
 import type { components } from '@licencias/contracts';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { useSesion } from '../sesion/ProveedorSesion';
+import { inicioDe } from '../sesion/inicio';
 
 type Rol = components['schemas']['Rol'];
 
@@ -66,7 +67,8 @@ export function Menu() {
       </Link>
       <ul className="menu__opciones">
         <li>
-          <Link to="/">Inicio</Link>
+          {/* Su pantalla principal, no el portal público del ciudadano (011, FR-020). */}
+          <Link to={inicioDe(sesion.usuario.roles)}>Inicio</Link>
         </li>
         {visibles.map((opcion) => (
           <li key={opcion.ruta}>

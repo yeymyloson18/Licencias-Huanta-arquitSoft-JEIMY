@@ -171,6 +171,23 @@ E2E ingresa con CAJA y llega a `/personal/caja`.
   Hoy ninguna pantalla de llegada lee ese aviso, así que se perdía. `CambiarClave` (T011 y la tarea
   de US3) sigue enviando `state: { aviso: 'Su clave se cambió' }`. Correr T008 en verde.
 
+- [X] T037 [US1] "Inicio" del menú del personal lleva a su pantalla principal (FR-020, escenario 7
+      de US1). Se agregó después de la implementación de la Fase 3, como corrección; toma el
+      siguiente número libre para no mover los identificadores de las demás tareas.
+  - **Prueba primero**, en `apps/web/src/componentes/Menu.test.tsx`:
+    - para cada rol (`ADMINISTRADOR` → `/admin`, `MESA_PARTES` y `EVALUADOR` →
+      `/personal/expedientes`, `CAJA` → `/personal/caja`, `INSPECTOR` →
+      `/personal/inspecciones`, `JEFATURA` → `/personal/tablero`) y sin roles (→ `/perfil`), el
+      enlace "Inicio" apunta a su pantalla;
+    - con varios roles sigue la prioridad (por ejemplo, `['INSPECTOR', 'CAJA']` → `/personal/caja`);
+    - ningún enlace del menú tiene `href="/"`;
+    - el portal público sigue abierto: con sesión, `montarEn('/')` muestra la página de inicio
+      pública, sin redirigir.
+  - **Implementación**, en `apps/web/src/componentes/Menu.tsx`:
+    `<Link to={inicioDe(sesion.usuario.roles)}>Inicio</Link>` (con `inicioDe` de
+    `sesion/inicio.ts`). No se toca ninguna ruta pública.
+  - Correr `npm test -w apps/web`.
+
 **Punto de control**: US1 completa. Commit `feat(web): cada rol llega a su pantalla al ingresar`.
 
 ---

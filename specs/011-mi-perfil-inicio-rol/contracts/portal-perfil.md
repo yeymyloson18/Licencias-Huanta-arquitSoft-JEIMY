@@ -6,6 +6,9 @@
 - "Mi perfil" es un enlace a `/perfil`, visible para cualquier rol (incluso sin roles), con
   `aria-current="page"` cuando la pantalla activa es `/perfil`.
 - Sin sesión, el menú no se muestra (sin cambios). El administrado nunca ve "Mi perfil".
+- "Inicio" lleva a `inicioDe(roles)` (FR-020): la pantalla principal de su rol, o `/perfil` sin
+  roles. El menú no enlaza a `/` (portal público del ciudadano). Las páginas públicas siguen
+  abiertas para todos y no se redirigen.
 
 ## `/perfil` (`paginas/personal/MiPerfil.tsx`, nueva)
 

@@ -275,4 +275,38 @@ describe('Menú del personal', () => {
     await screen.findByRole('heading', { level: 1 });
     expect(screen.queryByRole('link', { name: 'Mi perfil' })).not.toBeInTheDocument();
   });
+
+  it.each<[string[], string]>([
+    [['ADMINISTRADOR'], '/admin'],
+    [['MESA_PARTES'], '/personal/expedientes'],
+    [['EVALUADOR'], '/personal/expedientes'],
+    [['CAJA'], '/personal/caja'],
+    [['INSPECTOR'], '/personal/inspecciones'],
+    [['JEFATURA'], '/personal/tablero'],
+    [['INSPECTOR', 'CAJA'], '/personal/caja'],
+    [[], '/perfil'],
+  ])(
+    'con roles %j, "Inicio" lleva a %s y nada del menú va a "/" (011, FR-020)',
+    async (roles, pantalla) => {
+      simularApi(conSesion(roles));
+      montarEn('/');
+
+      const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+
+      expect(within(menu).getByRole('link', { name: 'Inicio' })).toHaveAttribute('href', pantalla);
+      const destinos = within(menu)
+        .getAllByRole('link')
+        .map((enlace) => enlace.getAttribute('href'));
+      expect(destinos).not.toContain('/');
+    },
+  );
+
+  it('con sesión, el portal público sigue abierto sin redirigir (011, FR-020)', async () => {
+    simularApi(conSesion(['CAJA']));
+    montarEn('/');
+
+    await screen.findByRole('navigation', { name: 'Menú del personal' });
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/licencia/i);
+    expect(screen.queryByRole('heading', { level: 1, name: 'Caja' })).not.toBeInTheDocument();
+  });
 });
