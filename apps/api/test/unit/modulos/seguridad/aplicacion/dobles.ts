@@ -46,6 +46,7 @@ import type {
   EstadoBloqueo,
 } from '../../../../../src/modulos/seguridad/dominio/puertos/bloqueos-cuentas';
 import type {
+  AsignacionHistorial,
   CifrasUsuarios,
   ConsultaPanel,
 } from '../../../../../src/modulos/seguridad/dominio/puertos/consulta-panel';
@@ -543,6 +544,10 @@ export class ConsultaPanelFalsa implements ConsultaPanel {
   }
   sesionesAbiertasDe(usuarioId: string): Promise<number> {
     return Promise.resolve(this.sesionesPorUsuario.get(usuarioId) ?? 0);
+  }
+  readonly historiales = new Map<string, AsignacionHistorial[]>();
+  historialRoles(usuarioId: string): Promise<readonly AsignacionHistorial[]> {
+    return Promise.resolve(this.historiales.get(usuarioId) ?? []);
   }
 }
 

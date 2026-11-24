@@ -183,28 +183,28 @@ CSV.
 
 **Prueba independiente**: cerrar las sesiones de un usuario y desbloquear una cuenta desde la ficha.
 
-- [ ] T030 [P] [US3] Dominio `dominio/reglas-acciones-administrador.ts` (`ErrorAccionSobreSiMismo`
+- [X] T030 [P] [US3] Dominio `dominio/reglas-acciones-administrador.ts` (`ErrorAccionSobreSiMismo`
       para cerrar sesiones y desbloquear) con prueba unitaria; problema `accionSobreSiMismo()` (409) en
       `apps/api/src/compartido/presentacion/error-problema.ts`
-- [ ] T031 [US3] Casos de uso `aplicacion/cerrar-sesiones-de-usuario.ts` (revoca en la base con
+- [X] T031 [US3] Casos de uso `aplicacion/cerrar-sesiones-de-usuario.ts` (revoca en la base con
       `SESIONES_CERRADAS` en la misma transacción y marca en la caché) y
       `aplicacion/desbloquear-cuenta.ts` (borra el contador de la cuenta y registra
       `CUENTA_DESBLOQUEADA`; 503 si Redis no responde), con pruebas unitarias
-- [ ] T032 [US3] Caso de uso `aplicacion/obtener-ficha-usuario.ts` (último ingreso, sesiones
+- [X] T032 [US3] Caso de uso `aplicacion/obtener-ficha-usuario.ts` (último ingreso, sesiones
       abiertas, bloqueo, historial de roles con nombres, últimos 10 eventos) con prueba unitaria
-- [ ] T033 [US3] Controlador `presentacion/usuarios.controller.ts`: `GET /usuarios/:usuarioId` (404 si
+- [X] T033 [US3] Controlador `presentacion/usuarios.controller.ts`: `GET /usuarios/:usuarioId` (404 si
       el id no es uuid), `POST …/cerrar-sesiones` (200 `{ sesionesCerradas }`) y `POST …/desbloquear`
       (204), con la traducción de errores 404/409/503
-- [ ] T034 [US3] Integración en `administrador.e2e-spec.ts`: la sesión cerrada deja de servir en la
+- [X] T034 [US3] Integración en `administrador.e2e-spec.ts`: la sesión cerrada deja de servir en la
       siguiente petición y el usuario sigue activo; el desbloqueado puede volver a intentar; "no a sí
       mismo" → 409; ficha con historial de roles; respuestas validadas con `validarContrato`
-- [ ] T035 [P] [US3] Integración `apps/api/test/integracion/matriz-permisos-009.e2e-spec.ts`: las 5
+- [X] T035 [P] [US3] Integración `apps/api/test/integracion/matriz-permisos-009.e2e-spec.ts`: las 5
       operaciones nuevas, sin sesión 401 y con cada uno de los otros 5 roles 403, sin cambiar datos
-- [ ] T036 [P] [US3] Integración `apps/api/test/integracion/privacidad-009.e2e-spec.ts`: ni correo,
+- [X] T036 [P] [US3] Integración `apps/api/test/integracion/privacidad-009.e2e-spec.ts`: ni correo,
       ni celular, ni clave, ni código, ni IP en `seguridad.auditoria`, en el CSV, en las respuestas de
       la auditoría ni en los registros capturados
-- [ ] T037 [P] [US3] Portal: `apps/web/src/componentes/Confirmacion.tsx` (diálogo nativo, foco en
-      Cancelar, Escape) con prueba; `apps/web/src/paginas/admin/FichaUsuario.tsx` y
+- [X] T037 [P] [US3] Portal: `apps/web/src/componentes/Confirmacion.tsx` (diálogo modal `alertdialog`,
+      foco en Cancelar, Escape) con prueba; `apps/web/src/paginas/admin/FichaUsuario.tsx` y
       `FichaUsuario.test.tsx` (datos, botones con confirmación, ocultos en la ficha propia,
       "Desbloquear" deshabilitado si no hay dato, historial, últimos eventos); `obtenerFichaUsuario`,
       `cerrarSesionesDeUsuario` y `desbloquearUsuario` en `clienteApi.ts`; ruta `/admin/usuarios/:id`;

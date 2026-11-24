@@ -158,8 +158,9 @@
 
 - El administrador entra a `/admin` cuando no hay un destino guardado: `Ingresar` y `CambiarClave`
   eligen `/admin` si la sesión tiene el rol ADMINISTRADOR; si no, `/` como hoy.
-- **Confirmación**: componente `Confirmacion` con `<dialog>` nativo (`showModal`), foco en "Cancelar",
-  `Escape` cancela; sin dependencias nuevas.
+- **Confirmación**: componente `Confirmacion` como diálogo modal propio (`role="alertdialog"`,
+  `aria-modal`), foco en "Cancelar", `Escape` cancela; sin dependencias nuevas. Se descartó `<dialog>`
+  con `showModal` porque jsdom no lo implementa y las pruebas del portal no podrían cubrirlo.
 - **"No disponible"**: si `bloqueos` viene `null`, la tarjeta muestra "No disponible" y el botón
   "Desbloquear" queda deshabilitado con su motivo.
 - **Filtros de usuario en la auditoría**: un `<select>` con la lista de usuarios (`GET /usuarios`,

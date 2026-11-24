@@ -1,11 +1,26 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Put, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Header,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import { z } from 'zod';
 import { ErrorProblema } from '../../../compartido/presentacion/error-problema';
 import { ErrorValidacion } from '../../../compartido/presentacion/filtro-problema';
 import { ActualizarUsuario } from '../aplicacion/actualizar-usuario';
 import { AsignarClaveTemporal } from '../aplicacion/asignar-clave-temporal';
 import { BuscarUsuarios } from '../aplicacion/buscar-usuarios';
+import { aVista } from '../aplicacion/consultar-auditoria';
+import { CerrarSesionesDeUsuario } from '../aplicacion/cerrar-sesiones-de-usuario';
 import { CrearUsuario } from '../aplicacion/crear-usuario';
+import { DesbloquearCuenta } from '../aplicacion/desbloquear-cuenta';
+import { type FichaUsuario, ObtenerFichaUsuario } from '../aplicacion/obtener-ficha-usuario';
 import {
   ErrorClaveInvalida,
   ErrorCorreoEnUso,
@@ -15,6 +30,9 @@ import {
 import { ListarUsuarios, type PaginaDeUsuarios } from '../aplicacion/listar-usuarios';
 import { ReemplazarRoles } from '../aplicacion/reemplazar-roles';
 import { ErrorDominio } from '../dominio/error-dominio';
+import { ErrorLimitadorNoDisponible } from '../dominio/puertos/limitador-intentos';
+import { ErrorAccionSobreSiMismo } from '../dominio/reglas-acciones-administrador';
+import { aEventoRespuesta } from './administrador.controller';
 import { PoliticaClave } from '../dominio/politica-clave';
 import { ErrorUltimoAdministrador } from '../dominio/regla-ultimo-administrador';
 import { ROLES } from '../dominio/rol';
@@ -111,7 +129,53 @@ export class UsuariosController {
     private readonly actualizarUsuario: ActualizarUsuario,
     private readonly reemplazarRoles: ReemplazarRoles,
     private readonly asignarClaveTemporal: AsignarClaveTemporal,
+    private readonly obtenerFicha: ObtenerFichaUsuario,
+    private readonly cerrarSesiones: CerrarSesionesDeUsuario,
+    private readonly desbloquearCuenta: DesbloquearCuenta,
   ) {}
+
+  /** Ficha con el estado de seguridad (009). Un id que no es uuid responde 404. */
+  @Get(':usuarioId')
+  @Header('Cache-Control', 'no-store')
+  async ficha(@Param('usuarioId') usuarioId: string) {
+    exigirUuid(usuarioId);
+    try {
+      return aFichaRespuesta(await this.obtenerFicha.ejecutar(usuarioId));
+    } catch (error) {
+      throw traducirErrorFicha(error);
+    }
+  }
+
+  @Post(':usuarioId/cerrar-sesiones')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  async cerrarSusSesiones(
+    @Param('usuarioId') usuarioId: string,
+    @UsuarioActual() administrador: UsuarioAutenticado,
+  ): Promise<{ sesionesCerradas: number }> {
+    exigirUuid(usuarioId);
+    try {
+      return {
+        sesionesCerradas: await this.cerrarSesiones.ejecutar(usuarioId, administrador.usuarioId),
+      };
+    } catch (error) {
+      throw traducirErrorFicha(error);
+    }
+  }
+
+  @Post(':usuarioId/desbloquear')
+  @HttpCode(204)
+  async desbloquear(
+    @Param('usuarioId') usuarioId: string,
+    @UsuarioActual() administrador: UsuarioAutenticado,
+  ): Promise<void> {
+    exigirUuid(usuarioId);
+    try {
+      await this.desbloquearCuenta.ejecutar(usuarioId, administrador.usuarioId);
+    } catch (error) {
+      throw traducirErrorFicha(error);
+    }
+  }
 
   @Get()
   async listar(@Query() consulta: unknown): Promise<PaginaRespuesta> {
@@ -192,6 +256,48 @@ export class UsuariosController {
     }
   }
 }
+
+const UUID = z.uuid();
+
+/** Un id que no es uuid no puede existir: 404 sin consultar la base. */
+const exigirUuid = (usuarioId: string): void => {
+  if (!UUID.safeParse(usuarioId).success) {
+    throw ErrorProblema.noEncontrado();
+  }
+};
+
+/** Forma del contrato (`FichaUsuario`): fechas en ISO y nombres de quien asignó o retiró. */
+const aFichaRespuesta = (ficha: FichaUsuario) => ({
+  ...aUsuarioRespuesta(ficha.usuario),
+  ultimoIngreso: ficha.ultimoIngreso?.toISOString() ?? null,
+  sesionesAbiertas: ficha.sesionesAbiertas,
+  bloqueo:
+    ficha.bloqueo === null
+      ? null
+      : { bloqueada: ficha.bloqueo.bloqueada, hasta: ficha.bloqueo.hasta?.toISOString() ?? null },
+  historialRoles: ficha.historialRoles.map((asignacion) => ({
+    rol: asignacion.rol,
+    asignadoPor: asignacion.asignadoPor,
+    asignadoEn: asignacion.asignadoEn.toISOString(),
+    retiradoPor: asignacion.retiradoPor,
+    retiradoEn: asignacion.retiradoEn?.toISOString() ?? null,
+  })),
+  ultimosEventos: ficha.ultimosEventos.map((fila) => aEventoRespuesta(aVista(fila))),
+});
+
+/** Errores de la ficha y de sus acciones (009). */
+const traducirErrorFicha = (error: unknown): unknown => {
+  if (error instanceof ErrorAccionSobreSiMismo) {
+    return ErrorProblema.accionSobreSiMismo();
+  }
+  if (error instanceof ErrorLimitadorNoDisponible) {
+    return ErrorProblema.bloqueosNoDisponibles();
+  }
+  if (error instanceof ErrorUsuarioNoEncontrado) {
+    return ErrorProblema.noEncontrado();
+  }
+  return error;
+};
 
 /** Convierte los errores de aplicación y dominio en problemas HTTP del contrato. */
 const traducirError = (error: unknown, campoClave = 'claveTemporal'): unknown => {

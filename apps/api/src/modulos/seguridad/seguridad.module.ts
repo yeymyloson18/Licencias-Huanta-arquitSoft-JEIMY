@@ -1,3 +1,6 @@
+import { CerrarSesionesDeUsuario } from './aplicacion/cerrar-sesiones-de-usuario';
+import { DesbloquearCuenta } from './aplicacion/desbloquear-cuenta';
+import { ObtenerFichaUsuario } from './aplicacion/obtener-ficha-usuario';
 import { ObtenerPanel } from './aplicacion/obtener-panel';
 import type { BloqueosCuentas } from './dominio/puertos/bloqueos-cuentas';
 import type { ConsultaPanel } from './dominio/puertos/consulta-panel';
@@ -206,6 +209,43 @@ import {
         auditoria: RepositorioAuditoria,
         reloj: Reloj,
       ) => new ObtenerPanel({ consulta, bloqueos, auditoria, reloj }),
+    },
+    {
+      provide: ObtenerFichaUsuario,
+      inject: [
+        REPOSITORIO_USUARIOS,
+        CONSULTA_PANEL,
+        BLOQUEOS_CUENTAS,
+        REPOSITORIO_AUDITORIA,
+        RELOJ,
+      ],
+      useFactory: (
+        usuarios: RepositorioUsuarios,
+        consulta: ConsultaPanel,
+        bloqueos: BloqueosCuentas,
+        auditoria: RepositorioAuditoria,
+        reloj: Reloj,
+      ) => new ObtenerFichaUsuario({ usuarios, consulta, bloqueos, auditoria, reloj }),
+    },
+    {
+      provide: CerrarSesionesDeUsuario,
+      inject: [REPOSITORIO_USUARIOS, REPOSITORIO_SESIONES, ALMACEN_VERSION_SEGURIDAD, RELOJ],
+      useFactory: (
+        usuarios: RepositorioUsuarios,
+        sesiones: RepositorioSesiones,
+        almacen: AlmacenVersionSeguridad,
+        reloj: Reloj,
+      ) => new CerrarSesionesDeUsuario({ usuarios, sesiones, almacen, reloj }),
+    },
+    {
+      provide: DesbloquearCuenta,
+      inject: [REPOSITORIO_USUARIOS, BLOQUEOS_CUENTAS, REPOSITORIO_AUDITORIA, RELOJ],
+      useFactory: (
+        usuarios: RepositorioUsuarios,
+        bloqueos: BloqueosCuentas,
+        auditoria: RepositorioAuditoria,
+        reloj: Reloj,
+      ) => new DesbloquearCuenta({ usuarios, bloqueos, auditoria, reloj }),
     },
     {
       provide: ConsultarAuditoria,

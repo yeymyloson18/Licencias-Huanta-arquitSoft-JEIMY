@@ -8,6 +8,7 @@ import { clienteConRoles, type ClienteConSesion } from '../apoyo/admin-prueba';
 import { crearAplicacionDePrueba } from '../apoyo/aplicacion-prueba';
 import { limpiarSeguridad } from '../apoyo/limpiar-seguridad';
 import { limpiarClavesSeguridad } from '../apoyo/redis-prueba';
+import { iniciarSesionDePrueba } from '../apoyo/sesion-prueba';
 import { crearUsuarioDePrueba } from '../apoyo/usuarios-prueba';
 import { esperarCumpleContrato } from '../apoyo/validarContrato';
 
@@ -124,5 +125,109 @@ describe('Panel del administrador (009)', () => {
     expect((lista.body as { total: number }).total).toBeGreaterThan(20);
     expect(msPanel).toBeLessThan(2000);
     expect(msLista).toBeLessThan(2000);
+  });
+
+  describe('ficha del usuario', () => {
+    const UUID_INEXISTENTE = '00000000-0000-4000-8000-000000000999';
+
+    it('cerrar todas sus sesiones: la sesión deja de servir y el usuario sigue activo', async () => {
+      const caja = await clienteConRoles(app, prisma, redis, ['CAJA']);
+      await caja.pedir('get', '/feriados?anio=2026').expect(200);
+
+      const respuesta = await admin
+        .pedir('post', `/usuarios/${caja.usuario.id}/cerrar-sesiones`)
+        .expect(200);
+      await esperarCumpleContrato('post', '/usuarios/{usuarioId}/cerrar-sesiones', respuesta);
+
+      expect(respuesta.body).toEqual({ sesionesCerradas: 1 });
+      expect((await caja.pedir('get', '/feriados?anio=2026')).status).toBe(401);
+      const fila = await prisma.usuario.findUniqueOrThrow({ where: { id: caja.usuario.id } });
+      expect(fila.activo).toBe(true);
+      await iniciarSesionDePrueba(app, redis, caja.usuario);
+      const [evento] = await prisma.auditoriaSeguridad.findMany({
+        where: { afectado_usuario_id: caja.usuario.id, accion: 'SESIONES_CERRADAS' },
+      });
+      expect(evento).toMatchObject({
+        actor_usuario_id: admin.usuario.id,
+        detalle: { sesiones: 1 },
+      });
+    });
+
+    it('desbloquear: la cuenta puede volver a intentar sin esperar los 15 minutos', async () => {
+      const bloqueada = await crearUsuarioDePrueba(prisma);
+      for (let i = 0; i < 5; i += 1) {
+        await intentar(bloqueada.correo, 'Equivocada2026', `10.8.3.${String(i)}`).expect(401);
+      }
+      await intentar(bloqueada.correo, bloqueada.clave, '10.8.3.8').expect(429);
+      const fichaBloqueada = await admin.pedir('get', `/usuarios/${bloqueada.id}`).expect(200);
+      expect((fichaBloqueada.body as { bloqueo: { bloqueada: boolean } }).bloqueo.bloqueada).toBe(
+        true,
+      );
+
+      const respuesta = await admin.pedir('post', `/usuarios/${bloqueada.id}/desbloquear`);
+      expect(respuesta.status).toBe(204);
+
+      await intentar(bloqueada.correo, bloqueada.clave, '10.8.3.9').expect(200);
+      expect(
+        await prisma.auditoriaSeguridad.count({
+          where: { afectado_usuario_id: bloqueada.id, accion: 'CUENTA_DESBLOQUEADA' },
+        }),
+      ).toBe(1);
+    });
+
+    it('no puede cerrar sus propias sesiones ni desbloquearse (409)', async () => {
+      for (const accion of ['cerrar-sesiones', 'desbloquear']) {
+        const respuesta = await admin.pedir('post', `/usuarios/${admin.usuario.id}/${accion}`);
+        expect(respuesta.status).toBe(409);
+        await esperarCumpleContrato('post', `/usuarios/{usuarioId}/${accion}`, respuesta);
+        expect((respuesta.body as { type: string }).type).toMatch(/accion-sobre-si-mismo$/);
+      }
+      await admin.pedir('get', '/admin/panel').expect(200);
+    });
+
+    it('la ficha trae el historial de roles con nombres, el bloqueo y los últimos eventos', async () => {
+      const persona = await crearUsuarioDePrueba(prisma, { roles: ['CAJA'] });
+      await admin
+        .pedir('put', `/usuarios/${persona.id}/roles`, { roles: ['EVALUADOR'] })
+        .expect(200);
+      await iniciarSesionDePrueba(app, redis, persona);
+
+      const respuesta = await admin.pedir('get', `/usuarios/${persona.id}`).expect(200);
+      await esperarCumpleContrato('get', '/usuarios/{usuarioId}', respuesta);
+
+      const ficha = respuesta.body as {
+        celularEnmascarado: string;
+        roles: string[];
+        ultimoIngreso: string | null;
+        sesionesAbiertas: number;
+        bloqueo: { bloqueada: boolean } | null;
+        historialRoles: { rol: string; retiradoPor: { nombre: string } | null }[];
+        ultimosEventos: { accion: string }[];
+      };
+      expect(ficha.roles).toEqual(['EVALUADOR']);
+      expect(ficha.celularEnmascarado).not.toBe(persona.celular);
+      expect(ficha.ultimoIngreso).not.toBeNull();
+      expect(ficha.sesionesAbiertas).toBe(1);
+      expect(ficha.bloqueo).toEqual({ bloqueada: false, hasta: null });
+      expect(ficha.historialRoles.map((h) => [h.rol, h.retiradoPor?.nombre ?? null])).toEqual([
+        ['CAJA', admin.usuario.nombre],
+        ['EVALUADOR', null],
+      ]);
+      expect(ficha.ultimosEventos.map((e) => e.accion)).toEqual([
+        'INGRESO_CORRECTO',
+        'ROL_ASIGNADO',
+        'ROL_QUITADO',
+      ]);
+      expect(respuesta.headers['cache-control']).toBe('no-store');
+    });
+
+    it('un usuario que no existe o un id que no es uuid responde 404', async () => {
+      for (const ruta of [`/usuarios/${UUID_INEXISTENTE}`, '/usuarios/no-es-un-uuid']) {
+        const respuesta = await admin.pedir('get', ruta);
+        expect(respuesta.status).toBe(404);
+      }
+      await admin.pedir('post', `/usuarios/${UUID_INEXISTENTE}/cerrar-sesiones`).expect(404);
+      await admin.pedir('post', `/usuarios/${UUID_INEXISTENTE}/desbloquear`).expect(404);
+    });
   });
 });

@@ -1,6 +1,10 @@
 import type { Prisma } from '@prisma/client';
 import type { PrismaServicio } from '../../../compartido/infraestructura/prisma.servicio';
-import type { CifrasUsuarios, ConsultaPanel } from '../dominio/puertos/consulta-panel';
+import type {
+  AsignacionHistorial,
+  CifrasUsuarios,
+  ConsultaPanel,
+} from '../dominio/puertos/consulta-panel';
 import { esRol, type Rol } from '../dominio/rol';
 import { TREINTA_MINUTOS_MS } from '../dominio/sesion';
 import { esUuid } from './uuid';
@@ -56,5 +60,41 @@ export class ConsultaPanelPostgres implements ConsultaPanel {
     return this.prisma.sesion.count({
       where: { usuario_id: usuarioId, ...sesionesAbiertas(ahora) },
     });
+  }
+
+  async historialRoles(usuarioId: string): Promise<readonly AsignacionHistorial[]> {
+    if (!esUuid(usuarioId)) {
+      return [];
+    }
+    const filas = await this.prisma.usuario_rol.findMany({
+      where: { usuario_id: usuarioId },
+      orderBy: [{ asignado_en: 'asc' }, { id: 'asc' }],
+    });
+    const ids = [
+      ...new Set(
+        filas.flatMap((fila) => [
+          fila.asignado_por,
+          ...(fila.retirado_por ? [fila.retirado_por] : []),
+        ]),
+      ),
+    ];
+    const nombres = new Map(
+      (
+        await this.prisma.usuario.findMany({
+          where: { id: { in: ids } },
+          select: { id: true, nombre_completo: true },
+        })
+      ).map((fila) => [fila.id, fila.nombre_completo]),
+    );
+    const persona = (id: string) => ({ id, nombre: nombres.get(id) ?? 'Usuario no encontrado' });
+    return filas
+      .filter((fila) => esRol(fila.rol_codigo))
+      .map((fila) => ({
+        rol: fila.rol_codigo as Rol,
+        asignadoPor: persona(fila.asignado_por),
+        asignadoEn: fila.asignado_en,
+        retiradoPor: fila.retirado_por === null ? null : persona(fila.retirado_por),
+        retiradoEn: fila.retirado_en,
+      }));
   }
 }

@@ -1,4 +1,5 @@
 import type { Rol } from '../rol';
+import type { PersonaAuditoria } from './repositorio-auditoria';
 
 /** Conteos de usuarios y sesiones para el panel (research §R-06 de la 009). */
 export interface CifrasUsuarios {
@@ -10,6 +11,15 @@ export interface CifrasUsuarios {
   readonly sesionesAbiertas: number;
 }
 
+/** Una asignación de rol del historial (`seguridad.usuario_rol`), con los nombres. */
+export interface AsignacionHistorial {
+  readonly rol: Rol;
+  readonly asignadoPor: PersonaAuditoria;
+  readonly asignadoEn: Date;
+  readonly retiradoPor: PersonaAuditoria | null;
+  readonly retiradoEn: Date | null;
+}
+
 /** Lecturas del panel y de la ficha que no son de la auditoría. */
 export interface ConsultaPanel {
   cifrasUsuarios(ahora: Date): Promise<CifrasUsuarios>;
@@ -17,4 +27,6 @@ export interface ConsultaPanel {
   contarCuentasExistentes(correosHmac: readonly string[]): Promise<number>;
   /** Sesiones abiertas de un usuario (misma regla que `cifrasUsuarios`). */
   sesionesAbiertasDe(usuarioId: string, ahora: Date): Promise<number>;
+  /** Todas las asignaciones del usuario, vigentes y retiradas, de la más antigua a la más nueva. */
+  historialRoles(usuarioId: string): Promise<readonly AsignacionHistorial[]>;
 }
