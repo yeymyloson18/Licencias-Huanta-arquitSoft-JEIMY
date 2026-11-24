@@ -77,6 +77,7 @@ Los errores usan `application/problem+json`; el campo `type` es `https://licenci
 | `ya-registrada`          | 409    | La inspección ya tiene resultado (006)                                                       |
 | `alerta-atendida`        | 409    | La alerta ya se marcó como atendida (006)                                                    |
 | `feriado-repetido`       | 409    | Ya hay un feriado en esa fecha (006)                                                         |
+| `accion-sobre-si-mismo`  | 409    | El administrador intenta cerrar sus propias sesiones o desbloquearse a sí mismo (009)        |
 
 ## Matriz de permisos por rol (propuesta para EQ-04)
 
@@ -87,6 +88,8 @@ Cada celda marcada es una prueba automática que debe responder 2xx; cada celda 
 | Ver catálogo, usar asistente, verificar QR                                |       ✓        |     ✓     |        ✓         |  ✓   |    ✓     |   ✓    |                ✓                 |
 | Editar recetas del catálogo (RF21)                                        |                |           |                  |      |          |   ✓    |                                  |
 | Gestionar usuarios y roles (RF22)                                         |                |           |                  |      |          |   ✓    |                                  |
+| Panel del administrador y auditoría de seguridad, con CSV (009)           |                |           |                  |      |          |   ✓    |                                  |
+| Ficha del usuario, cerrar sus sesiones y desbloquear su cuenta (009)      |                |           |                  |      |          |   ✓    |                                  |
 | Ver feriados del año                                                      |       ✓        |     ✓     |        ✓         |  ✓   |    ✓     |   ✓    |                                  |
 | Registrar y eliminar feriados (RF23)                                      |                |           |                  |      |          |   ✓    |                                  |
 | Presentar solicitud y subir documentos                                    |       ✓        |           |                  |      |          |        |          tokenIdentidad          |
@@ -108,11 +111,17 @@ Cada celda marcada es una prueba automática que debe responder 2xx; cada celda 
 
 Pendiente: aprobar esta matriz con la Municipalidad (estado del escenario EQ-04).
 
+Separación de funciones (009): el administrador cuida los accesos y la configuración (auditoría de
+seguridad en `GET /admin/auditoria`); la jefatura supervisa el trámite (auditoría de pagos y
+decisiones). Ninguno ve la auditoría del otro. Las 5 operaciones de la 009 se prueban en
+`apps/api/test/integracion/matriz-permisos-009.e2e-spec.ts`: sin sesión 401 y con cada uno de los
+otros 5 roles 403.
+
 ## Operaciones por módulo
 
 | Módulo               | Operaciones                                                                                                                                                                                                                                                                                                  |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Seguridad y Usuarios | `iniciarSesion`, `verificarOtpPersonal`, `renovarSesion`, `cerrarSesion`, `verificarIdentidadAdministrado`, `verificarOtpAdministrado`, `cambiarClave`, `listarUsuarios`, `buscarUsuarios`, `crearUsuario`, `actualizarUsuario`, `asignarRoles`, `asignarClaveTemporal`                                      |
+| Seguridad y Usuarios | `iniciarSesion`, `verificarOtpPersonal`, `renovarSesion`, `cerrarSesion`, `verificarIdentidadAdministrado`, `verificarOtpAdministrado`, `cambiarClave`, `listarUsuarios`, `buscarUsuarios`, `crearUsuario`, `actualizarUsuario`, `asignarRoles`, `asignarClaveTemporal`, `obtenerFichaUsuario`, `cerrarSesionesDeUsuario`, `desbloquearUsuario`, `obtenerPanelAdministrador`, `consultarAuditoriaSeguridad` |
 | Catálogo y Asistente | `listarRecetas`, `obtenerReceta`, `actualizarReceta`, `listarRecetasAdmin`, `obtenerRecetaAdmin`, `obtenerPreguntasAsistente`, `proponerLicencia`                                                                                                                                                            |
 | Trámites             | `subirDocumento`, `presentarSolicitud`, `listarExpedientes`, `consultarEstado`, `obtenerExpediente`, `obtenerTitularParaCaja`, `iniciarEvaluacion`, `confirmarNivelRiesgo`, `aprobarEvaluacion`, `observarExpediente`, `denegarExpediente`, `subsanarObservacion`, `auditoriaTramites`, `descargarDocumento` |
 | Pagos en caja        | `consultarEsquela`, `descargarEsquela`, `registrarPagoEnCaja`, `corregirNumeroRecibo`, `auditoriaPagos`                                                                                                                                                                                                      |

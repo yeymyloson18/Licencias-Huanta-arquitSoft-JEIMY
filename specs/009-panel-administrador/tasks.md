@@ -20,17 +20,17 @@ terminar cada fase.
 
 ## Fase 1: Preparación (contrato primero y dependencias)
 
-- [ ] T001 Agregar `nodemailer` 6.9.16 a `dependencies` y `@types/nodemailer` 6.4.17 a
+- [X] T001 Agregar `nodemailer` 10.4.0 a `dependencies` y `@types/nodemailer` 8.0.2 a
       `devDependencies` en `apps/api/package.json` (versiones exactas) y actualizar `package-lock.json`
       con `npm install`
-- [ ] T002 Editar `docs/06-contrato-api/openapi.yaml`: esquemas `AccionAuditoriaSeguridad` (21
+- [X] T002 Editar `docs/06-contrato-api/openapi.yaml`: esquemas `AccionAuditoriaSeguridad` (21
       valores), `EventoAuditoriaSeguridad`, `PaginaAuditoriaSeguridad`, `PanelAdministrador`,
       `FichaUsuario`, problema `accion-sobre-si-mismo` (409) y las operaciones `GET /admin/panel`,
       `GET /admin/auditoria` (json y csv, `X-Auditoria-Truncada`), `GET /usuarios/{usuarioId}`,
       `POST /usuarios/{usuarioId}/cerrar-sesiones` y `POST /usuarios/{usuarioId}/desbloquear`, según
       `contracts/api-administrador.md` (nulos con `type: [<tipo>, 'null']` de OpenAPI 3.1); anotar en las operaciones de auth, usuarios, catálogo y
       feriados que registran o publican su evento
-- [ ] T003 Actualizar la matriz de permisos y la sección del administrador en
+- [X] T003 Actualizar la matriz de permisos y la sección del administrador en
       `docs/06-contrato-api/README.md`; correr `npm run contrato` (sin errores nuevos) y
       `npm run generar` (`packages/contracts`)
 
