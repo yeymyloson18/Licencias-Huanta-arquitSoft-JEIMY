@@ -11,6 +11,8 @@ const VIDA_SEGUNDOS = 300;
  * (FR-031).
  */
 export class EnviadorOtpSimulado implements EnviadorOTP {
+  readonly canal = 'SIMULADO' as const;
+
   constructor(private readonly redis: Redis) {}
 
   async enviar(_destino: Celular, codigo: string, usuarioId: string): Promise<void> {

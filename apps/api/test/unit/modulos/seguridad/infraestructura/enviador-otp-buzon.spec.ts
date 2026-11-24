@@ -9,6 +9,7 @@ const preparar = (fallaSimulado = false, fallaBuzon = false) => {
   const mensajes: { asunto: string; texto: string }[] = [];
   const enviador = new EnviadorOtpBuzon(
     {
+      canal: 'SIMULADO',
       enviar: (_destino, codigo) => {
         if (fallaSimulado) {
           return Promise.reject(new ErrorEnvioOtp());
@@ -37,6 +38,7 @@ describe('EnviadorOtpBuzon (009)', () => {
     await enviador.enviar(celular, '123456', 'usuario-1');
 
     expect(simulados).toEqual(['123456']);
+    expect(enviador.canal).toBe('BUZON');
     expect(mensajes).toHaveLength(1);
     expect(mensajes[0]?.asunto).toBe('Código de verificación para 9*****321');
     expect(mensajes[0]?.asunto).not.toContain('987654321');

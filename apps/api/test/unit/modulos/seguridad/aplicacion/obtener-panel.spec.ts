@@ -40,6 +40,7 @@ describe('Panel del administrador: dominio (009)', () => {
         afectado: null,
         objeto: null,
         resultado: 'EXITO' as const,
+        codigoEnviado: null,
       })),
     });
 

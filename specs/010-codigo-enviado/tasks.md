@@ -22,21 +22,21 @@
 
 ## Fase 2: Base (bloquea todas las historias)
 
-- [ ] T002 Migración `apps/api/prisma/migrations/0013_codigos_enviados/migration.sql`: reemplazar
+- [X] T002 Migración `apps/api/prisma/migrations/0013_codigos_enviados/migration.sql`: reemplazar
       `ck_auditoria_seg_accion` con las 23 acciones, columna `intento_id uuid NULL` e índice parcial
       `ix_auditoria_seg_intento`; reflejarlo en `docs/05-modelo-de-datos/esquema.sql`,
       `modelo-entidad-relacion.md` y `apps/api/prisma/schema.prisma` (mismo commit)
-- [ ] T003 [P] Dominio `apps/api/src/modulos/seguridad/dominio/accion-auditoria.ts`: las 2 acciones
+- [X] T003 [P] Dominio `apps/api/src/modulos/seguridad/dominio/accion-auditoria.ts`: las 2 acciones
       (grupo Ingresos, textos "Código enviado" y "Límite de códigos alcanzado"); pruebas en
       `test/unit/modulos/seguridad/dominio/accion-auditoria.spec.ts`
-- [ ] T004 [P] Dominio `dominio/evento-auditoria.ts`: detalle `proposito`, `canal`, `destino`
+- [X] T004 [P] Dominio `dominio/evento-auditoria.ts`: detalle `proposito`, `canal`, `destino`
       (celular `9*****321` o correo `ju***@dominio`), `entrega`; `segundos` también en el límite;
       `intentoId` (identificador interno, solo en las acciones de research §R-02); fábricas
       `eventoCodigoEnviado` y `eventoLimiteCodigos`; pruebas en `evento-auditoria.spec.ts`
-- [ ] T005 [P] Dominio `dominio/desenlace-codigo.ts` (research §R-03) con prueba unitaria
-- [ ] T006 Puerto `dominio/puertos/enviador-otp.ts`: `readonly canal`; adaptadores simulado
+- [X] T005 [P] Dominio `dominio/desenlace-codigo.ts` (research §R-03) con prueba unitaria
+- [X] T006 Puerto `dominio/puertos/enviador-otp.ts`: `readonly canal`; adaptadores simulado
       (`SIMULADO`) y buzón (`BUZON`); dobles de prueba
-- [ ] T007 Repositorio de auditoría (puerto y `infraestructura/repositorio-auditoria-postgres.ts`):
+- [X] T007 Repositorio de auditoría (puerto y `infraestructura/repositorio-auditoria-postgres.ts`):
       guardar `intento_id`; en `buscar`, las acciones posteriores con el mismo intento y el detalle
       del código para armar `codigoEnviado` con el desenlace; `resumenCodigos(desde)`; doble en
       `test/unit/modulos/seguridad/aplicacion/dobles.ts`

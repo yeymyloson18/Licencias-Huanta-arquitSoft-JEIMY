@@ -81,16 +81,18 @@ describe('resolverFiltroAuditoria (research §R-08 de la 009)', () => {
   });
 });
 
-const fila = (extra: Partial<FilaAuditoria> = {}): FilaAuditoria => ({
-  id: '1',
-  ocurridoEn: new Date('2026-11-23T20:05:09Z'),
-  accion: 'ROL_ASIGNADO',
-  actor: { id: 'a', nombre: 'Ana Admin' },
-  afectado: { id: 'b', nombre: 'Beto; "Caja"' },
-  objeto: null,
-  resultado: 'EXITO',
-  ...extra,
-});
+const fila = (extra: Partial<FilaAuditoria> = {}): FilaAuditoria =>
+  ({
+    id: '1',
+    ocurridoEn: new Date('2026-11-23T20:05:09Z'),
+    accion: 'ROL_ASIGNADO',
+    actor: { id: 'a', nombre: 'Ana Admin' },
+    afectado: { id: 'b', nombre: 'Beto; "Caja"' },
+    objeto: null,
+    resultado: 'EXITO',
+    codigoEnviado: null,
+    ...extra,
+  }) as FilaAuditoria;
 
 describe('CSV de la auditoría (formato de la 007)', () => {
   it('fecha y hora en Lima', () => {

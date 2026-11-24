@@ -1,5 +1,12 @@
 import type { AccionAuditoria } from '../accion-auditoria';
-import type { EventoAuditoria, ResultadoAuditoria } from '../evento-auditoria';
+import type { DesenlaceCodigo } from '../desenlace-codigo';
+import type {
+  CanalCodigo,
+  EntregaCodigo,
+  EventoAuditoria,
+  PropositoCodigo,
+  ResultadoAuditoria,
+} from '../evento-auditoria';
 
 /** Filtro de la consulta (research §R-08). `hasta` es exclusivo; los ids son internos. */
 export interface FiltroAuditoria {
@@ -15,6 +22,24 @@ export interface PersonaAuditoria {
   readonly nombre: string;
 }
 
+/** Lo visible de un `CODIGO_ENVIADO` (010): nunca el código ni el identificador del intento. */
+export interface CodigoEnviadoVista {
+  readonly proposito: PropositoCodigo;
+  readonly canal: CanalCodigo;
+  readonly destino: string;
+  readonly entrega: EntregaCodigo;
+  /** Resultado del intento en el ingreso del personal; `null` en la identidad del administrado. */
+  readonly desenlace: DesenlaceCodigo | null;
+}
+
+/** Códigos enviados desde un instante (panel, 010). */
+export interface ResumenCodigos {
+  readonly entregados: number;
+  /** Entregados que terminaron en un ingreso correcto. */
+  readonly conIngreso: number;
+  readonly fallidos: number;
+}
+
 /** Una fila lista para mostrar: con nombres, sin `detalle` ni `origen_hmac`. */
 export interface FilaAuditoria {
   readonly id: string;
@@ -24,6 +49,8 @@ export interface FilaAuditoria {
   readonly afectado: PersonaAuditoria | null;
   readonly objeto: string | null;
   readonly resultado: ResultadoAuditoria;
+  /** Solo en `CODIGO_ENVIADO` (010); `null` en las demás acciones. */
+  readonly codigoEnviado: CodigoEnviadoVista | null;
 }
 
 export interface PaginaAuditoria {
@@ -52,4 +79,6 @@ export interface RepositorioAuditoria {
   ultimoIngreso(usuarioId: string): Promise<Date | null>;
   /** Intentos de ingreso fallidos desde ese instante (research §R-06). */
   contarIngresosFallidos(desde: Date): Promise<number>;
+  /** Códigos enviados desde ese instante: entregados, con ingreso correcto y fallidos (010). */
+  resumenCodigos(desde: Date): Promise<ResumenCodigos>;
 }

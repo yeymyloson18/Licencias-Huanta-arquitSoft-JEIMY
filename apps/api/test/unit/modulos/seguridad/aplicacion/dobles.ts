@@ -33,11 +33,14 @@ import type {
   RepositorioSesiones,
 } from '../../../../../src/modulos/seguridad/dominio/puertos/repositorio-sesiones';
 import type {
+  CodigoEnviadoVista,
   FilaAuditoria,
   FiltroAuditoria,
   PaginaAuditoria,
   RepositorioAuditoria,
+  ResumenCodigos,
 } from '../../../../../src/modulos/seguridad/dominio/puertos/repositorio-auditoria';
+import { desenlaceDelCodigo } from '../../../../../src/modulos/seguridad/dominio/desenlace-codigo';
 import { ACCIONES_INGRESO_FALLIDO } from '../../../../../src/modulos/seguridad/dominio/accion-auditoria';
 import type { EventoAuditoria } from '../../../../../src/modulos/seguridad/dominio/evento-auditoria';
 import type {
@@ -143,6 +146,7 @@ export class EmisorFalso implements EmisorTokens {
 }
 
 export class EnviadorFalso implements EnviadorOTP {
+  readonly canal = 'SIMULADO' as const;
   readonly enviados: { destino: string; codigo: string; usuarioId: string }[] = [];
   falla = false;
   enviar(destino: Celular, codigo: string, usuarioId: string): Promise<void> {
@@ -191,6 +195,39 @@ export class AuditoriaEnMemoria implements RepositorioAuditoria {
   readonly eventos: EventoAuditoria[] = [];
   readonly nombres = new Map<string, string>();
   falla = false;
+  /** Hora con la que se calcula el desenlace de los códigos (010). */
+  ahora = new Date(T0.getTime() + 60_000);
+  private codigoDe(evento: EventoAuditoria): CodigoEnviadoVista | null {
+    if (evento.accion !== 'CODIGO_ENVIADO') {
+      return null;
+    }
+    const d = evento.detalle;
+    const proposito = d.proposito ?? 'INGRESO_PERSONAL';
+    const entrega = d.entrega ?? 'ENTREGADO';
+    const posteriores = this.eventos
+      .filter(
+        (e) =>
+          evento.intentoId !== null &&
+          e.intentoId === evento.intentoId &&
+          e.accion !== 'CODIGO_ENVIADO',
+      )
+      .map((e) => e.accion);
+    return {
+      proposito,
+      canal: d.canal ?? 'SIMULADO',
+      destino: d.destino ?? '',
+      entrega,
+      desenlace:
+        proposito === 'IDENTIDAD_ADMINISTRADO'
+          ? null
+          : desenlaceDelCodigo({
+              entrega,
+              posteriores,
+              enviadoEn: evento.ocurridoEn,
+              ahora: this.ahora,
+            }),
+    };
+  }
   registrar(evento: EventoAuditoria): Promise<boolean> {
     if (this.falla) {
       return Promise.reject(new Error('base caída'));
@@ -233,6 +270,7 @@ export class AuditoriaEnMemoria implements RepositorioAuditoria {
         afectado: persona(evento.afectadoUsuarioId),
         objeto: evento.objeto,
         resultado: evento.resultado,
+        codigoEnviado: this.codigoDe(evento),
       }));
     return Promise.resolve({
       filas: filas.slice(desplazamiento, desplazamiento + cantidad),
@@ -251,6 +289,22 @@ export class AuditoriaEnMemoria implements RepositorioAuditoria {
         (e) => ACCIONES_INGRESO_FALLIDO.includes(e.accion) && e.ocurridoEn >= desde,
       ).length,
     );
+  }
+  resumenCodigos(desde: Date): Promise<ResumenCodigos> {
+    const enviados = this.eventos.filter(
+      (e) => e.accion === 'CODIGO_ENVIADO' && e.ocurridoEn >= desde,
+    );
+    const entregados = enviados.filter((e) => e.resultado === 'EXITO');
+    return Promise.resolve({
+      entregados: entregados.length,
+      conIngreso: entregados.filter((e) =>
+        this.eventos.some(
+          (p) =>
+            e.intentoId !== null && p.intentoId === e.intentoId && p.accion === 'INGRESO_CORRECTO',
+        ),
+      ).length,
+      fallidos: enviados.length - entregados.length,
+    });
   }
   acciones(): string[] {
     return this.eventos.map((e) => e.accion);
