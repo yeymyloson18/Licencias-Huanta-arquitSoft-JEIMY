@@ -12,6 +12,8 @@ export const ACCIONES_AUDITORIA = [
   'ORIGEN_BLOQUEADO',
   'CIERRE_SESION',
   'CLAVE_CAMBIADA',
+  'CODIGO_ENVIADO',
+  'CODIGO_LIMITE_ALCANZADO',
   // Gestión de usuarios
   'USUARIO_CREADO',
   'USUARIO_EDITADO',
@@ -47,6 +49,8 @@ const DESCRIPCIONES: Readonly<Record<AccionAuditoria, DescripcionAccion>> = {
   ORIGEN_BLOQUEADO: { grupo: 'INGRESOS', texto: 'Origen bloqueado por intentos' },
   CIERRE_SESION: { grupo: 'INGRESOS', texto: 'Cierre de sesión' },
   CLAVE_CAMBIADA: { grupo: 'INGRESOS', texto: 'Clave cambiada' },
+  CODIGO_ENVIADO: { grupo: 'INGRESOS', texto: 'Código enviado' },
+  CODIGO_LIMITE_ALCANZADO: { grupo: 'INGRESOS', texto: 'Límite de códigos alcanzado' },
   USUARIO_CREADO: { grupo: 'GESTION_USUARIOS', texto: 'Usuario creado' },
   USUARIO_EDITADO: { grupo: 'GESTION_USUARIOS', texto: 'Usuario editado' },
   USUARIO_DESACTIVADO: { grupo: 'GESTION_USUARIOS', texto: 'Usuario desactivado' },

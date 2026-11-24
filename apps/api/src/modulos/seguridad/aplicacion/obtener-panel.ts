@@ -30,17 +30,20 @@ export class ObtenerPanel {
   async ejecutar(): Promise<PanelAdministrador> {
     const ahora = this.d.reloj.ahora();
     const limites = limitesIngresosFallidos(ahora);
-    const [cifras, bloqueos, fallidosHoy, fallidos7Dias, ultimos] = await Promise.all([
-      this.d.consulta.cifrasUsuarios(ahora),
-      this.d.bloqueos.bloqueosActuales(),
-      this.d.auditoria.contarIngresosFallidos(limites.hoy),
-      this.d.auditoria.contarIngresosFallidos(limites.ultimos7Dias),
-      this.d.auditoria.buscar(
-        { desde: DESDE_SIEMPRE, hasta: new Date(ahora.getTime() + 60_000) },
-        0,
-        ULTIMOS_EVENTOS,
-      ),
-    ]);
+    const [cifras, bloqueos, fallidosHoy, fallidos7Dias, codigosHoy, codigos7Dias, ultimos] =
+      await Promise.all([
+        this.d.consulta.cifrasUsuarios(ahora),
+        this.d.bloqueos.bloqueosActuales(),
+        this.d.auditoria.contarIngresosFallidos(limites.hoy),
+        this.d.auditoria.contarIngresosFallidos(limites.ultimos7Dias),
+        this.d.auditoria.resumenCodigos(limites.hoy),
+        this.d.auditoria.resumenCodigos(limites.ultimos7Dias),
+        this.d.auditoria.buscar(
+          { desde: DESDE_SIEMPRE, hasta: new Date(ahora.getTime() + 60_000) },
+          0,
+          ULTIMOS_EVENTOS,
+        ),
+      ]);
     // Solo cuentan las cuentas que existen: un correo inventado bloqueado no es una cuenta.
     const resumen =
       bloqueos === null
@@ -54,6 +57,8 @@ export class ObtenerPanel {
       bloqueos: resumen,
       fallidosHoy,
       fallidos7Dias,
+      codigosHoy,
+      codigos7Dias,
       ultimosEventos: ultimos.filas,
     });
   }

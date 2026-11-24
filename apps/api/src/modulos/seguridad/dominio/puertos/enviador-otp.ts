@@ -1,3 +1,4 @@
+import type { CanalCodigo } from '../evento-auditoria';
 import type { Celular } from '../celular';
 
 /** Falló el envío del código: el usuario puede pedir otro y el intento no cuenta como fallido. */
@@ -13,5 +14,7 @@ export class ErrorEnvioOtp extends Error {
  * simulado; cambiarlo no toca los casos de uso (SC-011).
  */
 export interface EnviadorOTP {
+  /** Medio del envío, para la auditoría de los códigos enviados (010). Nunca el código. */
+  readonly canal: CanalCodigo;
   enviar(destino: Celular, codigo: string, usuarioId: string): Promise<void>;
 }

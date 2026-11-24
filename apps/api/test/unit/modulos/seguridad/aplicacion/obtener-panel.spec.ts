@@ -1,7 +1,9 @@
 import { ObtenerPanel } from '../../../../../src/modulos/seguridad/aplicacion/obtener-panel';
 import {
+  eventoCodigoEnviado,
   eventoGestion,
   eventoIngreso,
+  eventoPropio,
 } from '../../../../../src/modulos/seguridad/dominio/evento-auditoria';
 import {
   armarPanel,
@@ -32,6 +34,8 @@ describe('Panel del administrador: dominio (009)', () => {
       bloqueos: null,
       fallidosHoy: 0,
       fallidos7Dias: 0,
+      codigosHoy: { entregados: 0, conIngreso: 0, fallidos: 0 },
+      codigos7Dias: { entregados: 0, conIngreso: 0, fallidos: 0 },
       ultimosEventos: Array.from({ length: 12 }, (_, i) => ({
         id: String(i),
         ocurridoEn: T0,
@@ -40,6 +44,7 @@ describe('Panel del administrador: dominio (009)', () => {
         afectado: null,
         objeto: null,
         resultado: 'EXITO' as const,
+        codigoEnviado: null,
       })),
     });
 
@@ -53,6 +58,50 @@ describe('Panel del administrador: dominio (009)', () => {
     });
     expect(panel.ultimosEventos).toHaveLength(10);
     expect(panel.bloqueos).toBeNull();
+  });
+});
+
+describe('ObtenerPanel: códigos enviados (010)', () => {
+  it('cuenta los entregados de hoy y de 7 días, los que terminaron en ingreso y los fallidos', async () => {
+    const auditoria = new AuditoriaEnMemoria();
+    const codigo = (intentoId: string | null, iso: string, entrega: 'ENTREGADO' | 'FALLIDO') =>
+      eventoCodigoEnviado({
+        proposito: 'INGRESO_PERSONAL',
+        canal: 'BUZON',
+        destino: '9*****321',
+        entrega,
+        usuarioId: 'u-1',
+        intentoId,
+        origenHmac: null,
+        en: new Date(iso),
+      });
+    // RelojFalso: 2026-11-17T10:00Z (en Lima, 17 de noviembre a las 05:00).
+    await auditoria.registrar(codigo('i-1', '2026-11-17T06:00:00Z', 'ENTREGADO'));
+    await auditoria.registrar(
+      eventoPropio({
+        accion: 'INGRESO_CORRECTO',
+        usuarioId: 'u-1',
+        origenHmac: null,
+        en: new Date('2026-11-17T06:01:00Z'),
+        intentoId: 'i-1',
+      }),
+    );
+    await auditoria.registrar(codigo('i-2', '2026-11-17T07:00:00Z', 'ENTREGADO'));
+    await auditoria.registrar(codigo('i-3', '2026-11-17T08:00:00Z', 'FALLIDO'));
+    await auditoria.registrar(codigo('i-4', '2026-11-14T15:00:00Z', 'ENTREGADO'));
+    const casoDeUso = new ObtenerPanel({
+      consulta: new ConsultaPanelFalsa(),
+      bloqueos: new BloqueosFalsos(),
+      auditoria,
+      reloj: new RelojFalso(),
+    });
+
+    const { codigosEnviados } = await casoDeUso.ejecutar();
+
+    expect(codigosEnviados).toEqual({
+      hoy: { entregados: 2, conIngreso: 1, fallidos: 1 },
+      ultimos7Dias: { entregados: 3, conIngreso: 1, fallidos: 1 },
+    });
   });
 });
 
@@ -88,6 +137,10 @@ describe('ObtenerPanel (HU1 de la 009)', () => {
     expect(panel.porRol.EVALUADOR).toBe(0);
     expect(panel.sesionesAbiertas).toBe(3);
     expect(panel.ingresosFallidos).toEqual({ hoy: 1, ultimos7Dias: 2 });
+    expect(panel.codigosEnviados).toEqual({
+      hoy: { entregados: 0, conIngreso: 0, fallidos: 0 },
+      ultimos7Dias: { entregados: 0, conIngreso: 0, fallidos: 0 },
+    });
     expect(panel.ultimosEventos.map((e) => e.accion)).toEqual([
       'USUARIO_CREADO',
       'CLAVE_INCORRECTA',

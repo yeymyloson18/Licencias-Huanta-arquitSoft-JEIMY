@@ -331,21 +331,23 @@ describe('Auditoría de seguridad (009)', () => {
         total: number;
         datos: { id: string; accion: string; textoAccion: string; afectado: { nombre: string } }[];
       };
-      expect(cuerpo.total).toBe(4);
+      // Desde la 010, el ingreso también deja su "Código enviado".
+      expect(cuerpo.total).toBe(5);
       expect(cuerpo.datos.map((d) => d.accion)).toEqual([
         'INGRESO_CORRECTO',
+        'CODIGO_ENVIADO',
         'CLAVE_INCORRECTA',
         'CLAVE_INCORRECTA',
         'CLAVE_INCORRECTA',
       ]);
-      expect(cuerpo.datos[1]?.textoAccion).toBe('Clave incorrecta');
+      expect(cuerpo.datos[2]?.textoAccion).toBe('Clave incorrecta');
       expect(cuerpo.datos[0]?.afectado.nombre).toBe(persona.nombre);
       expect(respuesta.headers['cache-control']).toBe('no-store');
     });
 
     it('la paginación es estable: sin repetir ni saltar eventos', async () => {
       const ids: string[] = [];
-      for (let pagina = 1; pagina <= 4; pagina += 1) {
+      for (let pagina = 1; pagina <= 5; pagina += 1) {
         const respuesta = await admin
           .pedir(
             'get',
@@ -354,7 +356,7 @@ describe('Auditoría de seguridad (009)', () => {
           .expect(200);
         ids.push(...(respuesta.body as { datos: { id: string }[] }).datos.map((d) => d.id));
       }
-      expect(new Set(ids).size).toBe(4);
+      expect(new Set(ids).size).toBe(5);
       expect([...ids].sort((a, b) => Number(b) - Number(a))).toEqual(ids);
     });
 
@@ -371,7 +373,7 @@ describe('Auditoría de seguridad (009)', () => {
         /^attachment; filename="auditoria-seguridad-\d{4}-\d{2}-\d{2}\.csv"$/,
       );
       const lineas = csv.text.replace(/^﻿/, '').trim().split('\r\n');
-      expect(lineas[0]).toBe('fecha;accion;actor;afectado;objeto;resultado');
+      expect(lineas[0]).toBe('fecha;accion;actor;afectado;objeto;resultado;desenlace');
       expect(lineas).toHaveLength(4);
       expect(lineas.slice(1).every((l) => l.includes(';Clave incorrecta;Sin sesión;'))).toBe(true);
       expect(csv.text).not.toContain(persona.correo);

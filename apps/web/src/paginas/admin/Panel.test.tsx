@@ -17,6 +17,10 @@ const PANEL = {
   bloqueos: { cuentas: 1, origenes: 0 },
   sesionesAbiertas: 3,
   ingresosFallidos: { hoy: 4, ultimos7Dias: 9 },
+  codigosEnviados: {
+    hoy: { entregados: 3, conIngreso: 1, fallidos: 1 },
+    ultimos7Dias: { entregados: 12, conIngreso: 8, fallidos: 2 },
+  },
   ultimosEventos: [
     {
       id: '9',
@@ -84,6 +88,20 @@ describe('Panel del administrador (009)', () => {
     expect(accesos.getByRole('link', { name: 'Feriados' })).toHaveAttribute(
       'href',
       '/admin/feriados',
+    );
+  });
+
+  it('la tarjeta "Códigos enviados" muestra hoy, con ingreso, 7 días y fallidos, con su enlace (010)', async () => {
+    montar({ 'GET /admin/panel': () => json(PANEL) });
+
+    const tarjeta = within(await screen.findByRole('region', { name: 'Códigos enviados' }));
+    expect(tarjeta.getByText('3 hoy')).toBeInTheDocument();
+    expect(tarjeta.getByText('1 terminaron en ingreso correcto')).toBeInTheDocument();
+    expect(tarjeta.getByText('12 en los últimos 7 días')).toBeInTheDocument();
+    expect(tarjeta.getByText('1 envíos fallaron hoy')).toBeInTheDocument();
+    expect(tarjeta.getByRole('link', { name: 'Ver los códigos enviados' })).toHaveAttribute(
+      'href',
+      '/admin/auditoria?accion=CODIGO_ENVIADO',
     );
   });
 

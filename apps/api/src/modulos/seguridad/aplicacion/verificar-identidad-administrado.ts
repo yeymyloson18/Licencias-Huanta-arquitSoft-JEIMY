@@ -1,3 +1,11 @@
+import {
+  type EntregaCodigo,
+  eventoCodigoEnviado,
+  eventoLimiteCodigos,
+} from '../dominio/evento-auditoria';
+import type { RegistroEventosSeguridad } from '../dominio/puertos/registro-eventos-seguridad';
+import type { RepositorioAuditoria } from '../dominio/puertos/repositorio-auditoria';
+import { huellaOrigen, registrarSinFallar } from './auditoria-comun';
 import type { ProtectorDatos } from '../../../compartido/dominio/protector-datos';
 import type { DatosIdentidadAdministrado } from '../dominio/identidad-administrado';
 import { ErrorEnvioOtp, type EnviadorOTP } from '../dominio/puertos/enviador-otp';
@@ -22,6 +30,9 @@ export interface DependenciasVerificarIdentidad {
   readonly protector: ProtectorDatos;
   readonly enviador: EnviadorOTP;
   readonly reloj: Reloj;
+  /** Auditoría de los códigos enviados (010): sin documento, RUC ni celular completo. */
+  readonly auditoria: RepositorioAuditoria;
+  readonly eventos: RegistroEventosSeguridad;
 }
 
 export interface DesafioIdentidad {
@@ -79,6 +90,17 @@ export class VerificarIdentidadAdministrado {
     const celular = aHex(huellas.celularHmac);
     const envio = await this.d.limitador.reservarEnvioIdentidad(celular);
     if (!envio.permitido) {
+      await registrarSinFallar(
+        this.d.auditoria,
+        this.d.eventos,
+        eventoLimiteCodigos({
+          proposito: 'IDENTIDAD_ADMINISTRADO',
+          usuarioId: null,
+          segundos: envio.segundosRestantes,
+          origenHmac: huellaOrigen(this.d.protector, entrada.ip),
+          en: ahora,
+        }),
+      );
       throw new ErrorDemasiadosIntentos(envio.segundosRestantes);
     }
 
@@ -92,12 +114,29 @@ export class VerificarIdentidadAdministrado {
       creadaEn: ahora,
     });
     await this.d.verificaciones.crear(verificacion);
+    const auditarEnvio = (entrega: EntregaCodigo) =>
+      registrarSinFallar(
+        this.d.auditoria,
+        this.d.eventos,
+        eventoCodigoEnviado({
+          proposito: 'IDENTIDAD_ADMINISTRADO',
+          canal: this.d.enviador.canal,
+          destino: identidad.celular.enmascarado(),
+          entrega,
+          usuarioId: null,
+          intentoId: null,
+          origenHmac: huellaOrigen(this.d.protector, entrada.ip),
+          en: ahora,
+        }),
+      );
     try {
       await this.d.enviador.enviar(identidad.celular, codigoEnClaro, desafioId);
     } catch {
       await this.d.limitador.liberarEnvioIdentidad(celular);
+      await auditarEnvio('FALLIDO');
       throw new ErrorEnvioOtp();
     }
+    await auditarEnvio('ENTREGADO');
 
     return {
       desafioId,

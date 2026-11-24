@@ -1103,3 +1103,9 @@ video {
   max-height: calc(100vh - 2rem);
   overflow-y: auto;
 }
+
+/* 010: medio, destino enmascarado y desenlace de un código enviado. */
+.tabla__detalle {
+  color: var(--color-texto-suave);
+  font-size: 0.875rem;
+}

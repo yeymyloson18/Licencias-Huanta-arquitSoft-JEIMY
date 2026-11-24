@@ -81,6 +81,7 @@ describe('VerificarOtp: auditoría de seguridad (009)', () => {
       actorUsuarioId: 'usuario-1',
       afectadoUsuarioId: 'usuario-1',
       ocurridoEn: T0,
+      intentoId: 'desafio-1',
     });
     expect(auditoria.eventos).toHaveLength(0);
   });
@@ -92,9 +93,9 @@ describe('VerificarOtp: auditoría de seguridad (009)', () => {
       .ejecutar({ desafioId: 'desafio-1', codigo: '000000', ip: IP })
       .catch(() => undefined);
 
-    expect(auditoria.eventos.map((e) => [e.accion, e.actorUsuarioId, e.afectadoUsuarioId])).toEqual(
-      [['CODIGO_INCORRECTO', null, 'usuario-1']],
-    );
+    expect(
+      auditoria.eventos.map((e) => [e.accion, e.actorUsuarioId, e.afectadoUsuarioId, e.intentoId]),
+    ).toEqual([['CODIGO_INCORRECTO', null, 'usuario-1', 'desafio-1']]);
   });
 
   it('un desafío inexistente registra el intento sin afectado', async () => {

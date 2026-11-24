@@ -134,3 +134,7 @@ Después del cierre, la funcionalidad 009 amplió la HU15 a pedido de la usuaria
 
 Mejora la evidencia de EQ-04: nueva matriz de permisos (`matriz-permisos-009`) y prueba de
 privacidad (`privacidad-009`), además de una prueba con 10,000 eventos para el tiempo del panel.
+
+La funcionalidad 010 ([`specs/010-codigo-enviado/`](../../specs/010-codigo-enviado/)) suma a la
+auditoría cada **código enviado** (con el destino enmascarado y cómo terminó el intento) y el límite
+de códigos, y la tarjeta "Códigos enviados" del panel; el administrador nunca ve el código.
