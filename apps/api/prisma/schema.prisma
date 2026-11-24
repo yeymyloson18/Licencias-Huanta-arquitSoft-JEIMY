@@ -315,6 +315,7 @@ model AuditoriaSeguridad {
   origen_hmac         String?  @db.Char(64)
   detalle             Json     @default("{}")
   evento_origen_id    BigInt?  @unique(map: "ux_auditoria_seg_evento_origen")
+  intento_id          String?  @db.Uuid
 
   @@index([ocurrido_en(sort: Desc), id(sort: Desc)], map: "ix_auditoria_seg_ocurrido")
   @@index([accion, ocurrido_en(sort: Desc)], map: "ix_auditoria_seg_accion")

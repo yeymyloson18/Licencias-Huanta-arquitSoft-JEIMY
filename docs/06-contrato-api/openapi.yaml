@@ -522,7 +522,8 @@ paths:
         Sin fechas, los últimos 30 días; el rango no puede superar 366 días. Con `formato=csv` devuelve hasta
         10,000 filas (las más recientes; `X-Auditoria-Truncada: true` indica que hay más) en UTF-8 con BOM,
         separado por punto y coma, con fin de línea CRLF y las columnas
-        `fecha;accion;actor;afectado;objeto;resultado`; un valor que empieza con `=`, `+`, `-` o `@` lleva un
+        `fecha;accion;actor;afectado;objeto;resultado;desenlace` (`desenlace`, desde la 010, solo en
+        CODIGO_ENVIADO); un valor que empieza con `=`, `+`, `-` o `@` lleva un
         apóstrofo delante. La auditoría solo se agrega: no se puede editar ni borrar. `Cache-Control: no-store`.
       security: [{ bearerPersonal: [] }]
       parameters:
@@ -2156,6 +2157,8 @@ components:
         - RECETA_REACTIVADA
         - FERIADO_REGISTRADO
         - FERIADO_ELIMINADO
+        - CODIGO_ENVIADO
+        - CODIGO_LIMITE_ALCANZADO
     PersonaAuditoria:
       type: object
       required: [id, nombre]
@@ -2165,7 +2168,7 @@ components:
     EventoAuditoriaSeguridad:
       type: object
       description: Un evento de la auditoría de seguridad. Nunca trae correo, celular, documento, clave, código ni IP.
-      required: [id, ocurridoEn, accion, textoAccion, actor, afectado, objeto, resultado]
+      required: [id, ocurridoEn, accion, textoAccion, actor, afectado, objeto, resultado, codigoEnviado]
       properties:
         id: { type: string, pattern: '^[0-9]+$' }
         ocurridoEn: { type: string, format: date-time }
@@ -2181,6 +2184,24 @@ components:
           type: [string, 'null']
           description: Código de la receta o fecha del feriado.
         resultado: { type: string, enum: [EXITO, RECHAZADO] }
+        codigoEnviado:
+          description: Solo en CODIGO_ENVIADO (010); null en las demás acciones. Nunca trae el código.
+          oneOf: [{ $ref: '#/components/schemas/CodigoEnviado' }, { type: 'null' }]
+    CodigoEnviado:
+      type: object
+      description: >-
+        Envío de un código de 6 dígitos (010). Sin el código ni el identificador del intento. `desenlace`
+        es el resultado del intento en el ingreso del personal; null en la identidad del administrado.
+      required: [proposito, canal, destino, entrega, desenlace]
+      properties:
+        proposito: { type: string, enum: [INGRESO_PERSONAL, IDENTIDAD_ADMINISTRADO] }
+        canal: { type: string, enum: [SIMULADO, BUZON, SMS, CORREO] }
+        destino: { type: string, example: '9*****321' }
+        entrega: { type: string, enum: [ENTREGADO, FALLIDO] }
+        desenlace:
+          type: [string, 'null']
+          enum:
+            [INGRESO_CORRECTO, CODIGO_INCORRECTO, BLOQUEO, SIN_USAR, PENDIENTE, ENVIO_FALLIDO, null]
     PaginaAuditoriaSeguridad:
       allOf:
         - $ref: '#/components/schemas/Paginacion'
@@ -2190,6 +2211,13 @@ components:
             datos:
               type: array
               items: { $ref: '#/components/schemas/EventoAuditoriaSeguridad' }
+    ResumenCodigos:
+      type: object
+      required: [entregados, conIngreso, fallidos]
+      properties:
+        entregados: { type: integer, minimum: 0 }
+        conIngreso: { type: integer, minimum: 0, description: Entregados que terminaron en ingreso correcto. }
+        fallidos: { type: integer, minimum: 0 }
     BloqueosActuales:
       type: object
       required: [cuentas, origenes]
@@ -2198,7 +2226,8 @@ components:
         origenes: { type: integer, minimum: 0 }
     PanelAdministrador:
       type: object
-      required: [usuarios, porRol, bloqueos, sesionesAbiertas, ingresosFallidos, ultimosEventos]
+      required:
+        [usuarios, porRol, bloqueos, sesionesAbiertas, ingresosFallidos, codigosEnviados, ultimosEventos]
       properties:
         usuarios:
           type: object
@@ -2228,6 +2257,13 @@ components:
           properties:
             hoy: { type: integer, minimum: 0 }
             ultimos7Dias: { type: integer, minimum: 0 }
+        codigosEnviados:
+          description: Códigos de 6 dígitos enviados (010), hoy y en los últimos 7 días (hora de Lima).
+          type: object
+          required: [hoy, ultimos7Dias]
+          properties:
+            hoy: { $ref: '#/components/schemas/ResumenCodigos' }
+            ultimos7Dias: { $ref: '#/components/schemas/ResumenCodigos' }
         ultimosEventos:
           type: array
           maxItems: 10

@@ -112,6 +112,7 @@ erDiagram
         varchar resultado "EXITO o RECHAZADO"
         char origen_hmac "HMAC de la IP"
         bigint evento_origen_id UK "idempotencia"
+        uuid intento_id "vincula el código con su resultado (010)"
     }
     CODIGO_OTP {
         uuid id PK
@@ -286,7 +287,7 @@ No se dibujan las tablas sin relaciones: `comun.evento_pendiente`, `comun.ejecuc
 | `usuario_rol`            | Un usuario puede tener varios roles; historial de asignaciones (FR-019).     | Historial: `id` propio, `retirado_por`/`retirado_en`; un rol vigente por usuario con índice único parcial (`ux_usuario_rol_vigente`); guarda quién asignó y cuándo.                                                                                                 |
 | `sesion`                 | Refresh tokens del personal.                                                 | `refresh_hash` (nunca el token en claro); `vence_maximo_en` (8 h), `ultima_actividad_en` (30 min), rotación con `refresh_anterior_hash`/`rotada_en`; `revocada_en` para cerrar sesión.                                                                              |
 | `codigo_otp`             | Códigos de un solo uso (RF06, RF16).                                         | Vence a los 5 min; `intentos` ≤ 5; `codigo_hash`, nunca el código en claro.                                                                                                                                                                                         |
-| `auditoria`              | Auditoría de seguridad: ingresos, gestión de usuarios y configuración (009). | Solo de agregar (disparadores impiden `UPDATE`, `DELETE` y `TRUNCATE`); `accion` con `CHECK` de 21 valores; actor y afectado por id (sin FK, el historial no se pierde); `origen_hmac` en lugar de la IP; `evento_origen_id` único para consumir los eventos de catálogo y feriados una sola vez. |
+| `auditoria`              | Auditoría de seguridad: ingresos, gestión de usuarios y configuración (009). | Solo de agregar (disparadores impiden `UPDATE`, `DELETE` y `TRUNCATE`); `accion` con `CHECK` de 21 valores; actor y afectado por id (sin FK, el historial no se pierde); `origen_hmac` en lugar de la IP; `evento_origen_id` único para consumir los eventos de catálogo y feriados una sola vez. `intento_id` (010) vincula cada código enviado con el resultado de ese ingreso. |
 | `verificacion_identidad` | Resultado de validar DNI/RUC con el servicio externo + OTP del administrado. | `resultado_servicio`: `VALIDO`, `NO_VALIDO`, `NO_DISPONIBLE`; `confirmada_en` se llena al verificar el OTP; solo huellas HMAC (documento, RUC y, si actúa, el del representante, 004). El uso único del permiso lo garantiza `tramites.expediente.verificacion_id`. |
 
 ### Esquema `catalogo` (Catálogo y Asistente de ruta)

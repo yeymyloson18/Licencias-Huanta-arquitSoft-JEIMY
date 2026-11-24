@@ -9,6 +9,8 @@ import { ErrorEnvioOtp, type EnviadorOTP } from '../dominio/puertos/enviador-otp
  * falla cualquiera de los dos, lanza `ErrorEnvioOtp` (se devuelve el cupo de envíos, como hoy).
  */
 export class EnviadorOtpBuzon implements EnviadorOTP {
+  readonly canal = 'BUZON' as const;
+
   constructor(
     private readonly simulado: EnviadorOTP,
     private readonly buzon: Pick<BuzonPruebas, 'enviar'>,

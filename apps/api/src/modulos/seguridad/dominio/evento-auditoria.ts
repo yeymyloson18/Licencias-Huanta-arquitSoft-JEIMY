@@ -16,6 +16,19 @@ const MOTIVOS: readonly MotivoRechazo[] = [
 ];
 
 export type CampoEditable = 'nombreCompleto' | 'celular';
+
+/** Para qué se envió un código de 6 dígitos (010). */
+export type PropositoCodigo = 'INGRESO_PERSONAL' | 'IDENTIDAD_ADMINISTRADO';
+const PROPOSITOS: readonly PropositoCodigo[] = ['INGRESO_PERSONAL', 'IDENTIDAD_ADMINISTRADO'];
+/** Medio del envío; lo informa el adaptador del puerto `EnviadorOTP` (research §R-04 de la 010). */
+export type CanalCodigo = 'SIMULADO' | 'BUZON' | 'SMS' | 'CORREO';
+const CANALES: readonly CanalCodigo[] = ['SIMULADO', 'BUZON', 'SMS', 'CORREO'];
+export type EntregaCodigo = 'ENTREGADO' | 'FALLIDO';
+const ENTREGAS: readonly EntregaCodigo[] = ['ENTREGADO', 'FALLIDO'];
+/** Objeto de los eventos de la identidad del administrado: no hay cuenta (010). */
+export const OBJETO_IDENTIDAD_ADMINISTRADO = 'IDENTIDAD_ADMINISTRADO';
+/** Celular `9*****321` o correo `ju***@dominio`: nunca el destino completo (aclaración 4, 010). */
+const DESTINO_ENMASCARADO = /^(?:[0-9]\*{5}[0-9]{3}|[^@\s*]{1,2}\*{3}@[^\s@]+)$/;
 const CAMPOS: readonly CampoEditable[] = ['nombreCompleto', 'celular'];
 
 /**
@@ -29,6 +42,10 @@ export interface DetalleAuditoria {
   readonly campos?: readonly CampoEditable[];
   readonly sesiones?: number;
   readonly segundos?: number;
+  readonly proposito?: PropositoCodigo;
+  readonly canal?: CanalCodigo;
+  readonly destino?: string;
+  readonly entrega?: EntregaCodigo;
 }
 
 type ClaveDetalle = keyof DetalleAuditoria;
@@ -44,7 +61,18 @@ const DETALLE_POR_ACCION: Partial<Record<AccionAuditoria, readonly ClaveDetalle[
   ROL_ASIGNADO: ['rol'],
   ROL_QUITADO: ['rol'],
   SESIONES_CERRADAS: ['sesiones'],
+  CODIGO_ENVIADO: ['proposito', 'canal', 'destino', 'entrega'],
+  CODIGO_LIMITE_ALCANZADO: ['proposito', 'segundos'],
 };
+
+/** Acciones que pueden llevar el identificador del intento de ingreso (research §R-02 de la 010). */
+const ACCIONES_CON_INTENTO: readonly AccionAuditoria[] = [
+  'CODIGO_ENVIADO',
+  'INGRESO_CORRECTO',
+  'CODIGO_INCORRECTO',
+  'CUENTA_BLOQUEADA',
+  'ORIGEN_BLOQUEADO',
+];
 
 export interface DatosEventoAuditoria {
   readonly accion: AccionAuditoria;
@@ -56,6 +84,8 @@ export interface DatosEventoAuditoria {
   readonly origenHmac?: string | null;
   readonly detalle?: DetalleAuditoria;
   readonly eventoOrigenId?: bigint | null;
+  /** Id del desafío del ingreso del personal (010); vincula el código con su resultado. */
+  readonly intentoId?: string | null;
 }
 
 /** Código de receta (`LIC-01`) o fecha `AAAA-MM-DD`: identificadores de negocio, nunca personales. */
@@ -84,7 +114,11 @@ const validarDetalle = (accion: AccionAuditoria, detalle: DetalleAuditoria): voi
         Array.isArray(valor) &&
         valor.length > 0 &&
         valor.every((campo) => CAMPOS.includes(campo as CampoEditable))) ||
-      ((clave === 'sesiones' || clave === 'segundos') && esEnteroNoNegativo(valor));
+      ((clave === 'sesiones' || clave === 'segundos') && esEnteroNoNegativo(valor)) ||
+      (clave === 'proposito' && PROPOSITOS.includes(valor as PropositoCodigo)) ||
+      (clave === 'canal' && CANALES.includes(valor as CanalCodigo)) ||
+      (clave === 'entrega' && ENTREGAS.includes(valor as EntregaCodigo)) ||
+      (clave === 'destino' && typeof valor === 'string' && DESTINO_ENMASCARADO.test(valor));
     if (!valido) {
       throw new ErrorDominio(`El detalle ${clave} no es válido`);
     }
@@ -111,6 +145,7 @@ export class EventoAuditoria {
   readonly origenHmac: string | null;
   readonly detalle: DetalleAuditoria;
   readonly eventoOrigenId: bigint | null;
+  readonly intentoId: string | null;
 
   private constructor(datos: DatosEventoAuditoria) {
     this.accion = datos.accion;
@@ -122,6 +157,7 @@ export class EventoAuditoria {
     this.origenHmac = datos.origenHmac ?? null;
     this.detalle = datos.detalle ?? {};
     this.eventoOrigenId = datos.eventoOrigenId ?? null;
+    this.intentoId = datos.intentoId ?? null;
   }
 
   static crear(datos: DatosEventoAuditoria): EventoAuditoria {
@@ -147,6 +183,10 @@ export class EventoAuditoria {
     if (evento.eventoOrigenId !== null && evento.eventoOrigenId <= 0n) {
       throw new ErrorDominio('El evento de origen debe ser positivo');
     }
+    validarId(evento.intentoId, 'intento');
+    if (evento.intentoId !== null && !ACCIONES_CON_INTENTO.includes(evento.accion)) {
+      throw new ErrorDominio(`La acción ${evento.accion} no lleva intento`);
+    }
     validarDetalle(evento.accion, evento.detalle);
     return evento;
   }
@@ -164,6 +204,7 @@ export const eventoIngreso = (datos: {
   readonly origenHmac: string | null;
   readonly en: Date;
   readonly detalle?: DetalleAuditoria;
+  readonly intentoId?: string | null;
 }): EventoAuditoria =>
   EventoAuditoria.crear({
     accion: datos.accion,
@@ -172,6 +213,7 @@ export const eventoIngreso = (datos: {
     actorUsuarioId: null,
     afectadoUsuarioId: datos.afectadoUsuarioId,
     origenHmac: datos.origenHmac,
+    intentoId: datos.intentoId ?? null,
     ...(datos.detalle === undefined ? {} : { detalle: datos.detalle }),
   });
 
@@ -184,6 +226,7 @@ export const eventoPropio = (datos: {
   readonly usuarioId: string;
   readonly origenHmac: string | null;
   readonly en: Date;
+  readonly intentoId?: string | null;
 }): EventoAuditoria =>
   EventoAuditoria.crear({
     accion: datos.accion,
@@ -192,6 +235,57 @@ export const eventoPropio = (datos: {
     actorUsuarioId: datos.usuarioId,
     afectadoUsuarioId: datos.usuarioId,
     origenHmac: datos.origenHmac,
+    intentoId: datos.intentoId ?? null,
+  });
+
+/**
+ * Un código de 6 dígitos enviado (010): en el ingreso del personal, sobre la cuenta y con el intento;
+ * en la identidad del administrado, sin cuenta (objeto `IDENTIDAD_ADMINISTRADO`). Nunca el código.
+ */
+export const eventoCodigoEnviado = (datos: {
+  readonly proposito: PropositoCodigo;
+  readonly canal: CanalCodigo;
+  readonly destino: string;
+  readonly entrega: EntregaCodigo;
+  readonly usuarioId: string | null;
+  readonly intentoId: string | null;
+  readonly origenHmac: string | null;
+  readonly en: Date;
+}): EventoAuditoria =>
+  EventoAuditoria.crear({
+    accion: 'CODIGO_ENVIADO',
+    ocurridoEn: datos.en,
+    resultado: datos.entrega === 'ENTREGADO' ? 'EXITO' : 'RECHAZADO',
+    actorUsuarioId: null,
+    afectadoUsuarioId: datos.usuarioId,
+    objeto: datos.proposito === 'IDENTIDAD_ADMINISTRADO' ? OBJETO_IDENTIDAD_ADMINISTRADO : null,
+    origenHmac: datos.origenHmac,
+    intentoId: datos.intentoId,
+    detalle: {
+      proposito: datos.proposito,
+      canal: datos.canal,
+      destino: datos.destino,
+      entrega: datos.entrega,
+    },
+  });
+
+/** Se alcanzó el cupo de 3 códigos en 15 minutos (010): la regla no cambia, solo queda a la vista. */
+export const eventoLimiteCodigos = (datos: {
+  readonly proposito: PropositoCodigo;
+  readonly usuarioId: string | null;
+  readonly segundos: number;
+  readonly origenHmac: string | null;
+  readonly en: Date;
+}): EventoAuditoria =>
+  EventoAuditoria.crear({
+    accion: 'CODIGO_LIMITE_ALCANZADO',
+    ocurridoEn: datos.en,
+    resultado: 'RECHAZADO',
+    actorUsuarioId: null,
+    afectadoUsuarioId: datos.usuarioId,
+    objeto: datos.proposito === 'IDENTIDAD_ADMINISTRADO' ? OBJETO_IDENTIDAD_ADMINISTRADO : null,
+    origenHmac: datos.origenHmac,
+    detalle: { proposito: datos.proposito, segundos: datos.segundos },
   });
 
 /** El administrador actúa sobre un usuario. */

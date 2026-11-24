@@ -1,7 +1,13 @@
 import { CodigoOtp } from '../dominio/codigo-otp';
 import { Correo } from '../dominio/correo';
 import { ErrorDominio } from '../dominio/error-dominio';
-import { eventoIngreso, type MotivoRechazo } from '../dominio/evento-auditoria';
+import {
+  type EntregaCodigo,
+  eventoCodigoEnviado,
+  eventoIngreso,
+  eventoLimiteCodigos,
+  type MotivoRechazo,
+} from '../dominio/evento-auditoria';
 import { ErrorEnvioOtp, type EnviadorOTP } from '../dominio/puertos/enviador-otp';
 import type { GeneradorSecretos } from '../dominio/puertos/generador-secretos';
 import type { HasherClaves } from '../dominio/puertos/hasher-claves';
@@ -87,6 +93,18 @@ export class IniciarSesion {
     const envio = await this.d.limitador.reservarEnvio(usuario.id);
     if (!envio.permitido) {
       this.d.eventos.registrar('bloqueo-temporal', { usuarioId: usuario.id });
+      // Pedido insistente de códigos: queda a la vista del administrador (FR-010 de la 010).
+      await registrarSinFallar(
+        this.d.auditoria,
+        this.d.eventos,
+        eventoLimiteCodigos({
+          proposito: 'INGRESO_PERSONAL',
+          usuarioId: usuario.id,
+          segundos: envio.segundosRestantes,
+          origenHmac: huellaOrigen(this.d.protector, entrada.ip),
+          en: this.d.reloj.ahora(),
+        }),
+      );
       throw new ErrorDemasiadosIntentos(envio.segundosRestantes);
     }
 
@@ -103,14 +121,33 @@ export class IniciarSesion {
       creadoEn: ahora,
     });
     await this.d.codigos.crear(codigo);
+    // El código enviado queda en la auditoría con el destino enmascarado y el id del desafío, para
+    // vincularlo con el resultado del paso 2 (010). Nunca el código.
+    const auditarEnvio = (entrega: EntregaCodigo) =>
+      registrarSinFallar(
+        this.d.auditoria,
+        this.d.eventos,
+        eventoCodigoEnviado({
+          proposito: 'INGRESO_PERSONAL',
+          canal: this.d.enviador.canal,
+          destino: usuario.celular.enmascarado(),
+          entrega,
+          usuarioId: usuario.id,
+          intentoId: desafioId,
+          origenHmac: huellaOrigen(this.d.protector, entrada.ip),
+          en: ahora,
+        }),
+      );
     try {
       await this.d.enviador.enviar(usuario.celular, codigoEnClaro, usuario.id);
     } catch {
       // Cualquier fallo del proveedor: el usuario puede pedir otro código (caso límite de la spec),
       // y el envío reservado se devuelve (un fallo del proveedor no castiga al usuario).
       await this.d.limitador.liberarEnvio(usuario.id);
+      await auditarEnvio('FALLIDO');
       throw new ErrorEnvioOtp();
     }
+    await auditarEnvio('ENTREGADO');
 
     return {
       desafioId,

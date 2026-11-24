@@ -164,9 +164,11 @@ CREATE TABLE seguridad.auditoria (
     origen_hmac         char(64)     NULL,                  -- HMAC-SHA256 de la IP (hexadecimal)
     detalle             jsonb        NOT NULL DEFAULT '{}'::jsonb,
     evento_origen_id    bigint       NULL,                  -- id de comun.evento_pendiente (idempotencia)
+    intento_id          uuid         NULL,                  -- id del desafío del ingreso (010)
     CONSTRAINT ck_auditoria_seg_accion CHECK (accion IN (
         'INGRESO_CORRECTO', 'CLAVE_INCORRECTA', 'CODIGO_INCORRECTO', 'CUENTA_BLOQUEADA',
-        'ORIGEN_BLOQUEADO', 'CIERRE_SESION', 'CLAVE_CAMBIADA',
+        'ORIGEN_BLOQUEADO', 'CIERRE_SESION', 'CLAVE_CAMBIADA', 'CODIGO_ENVIADO',
+        'CODIGO_LIMITE_ALCANZADO',
         'USUARIO_CREADO', 'USUARIO_EDITADO', 'USUARIO_DESACTIVADO', 'USUARIO_REACTIVADO',
         'ROL_ASIGNADO', 'ROL_QUITADO', 'CLAVE_TEMPORAL_ASIGNADA', 'SESIONES_CERRADAS',
         'CUENTA_DESBLOQUEADA',
@@ -182,6 +184,8 @@ CREATE INDEX ix_auditoria_seg_afectado ON seguridad.auditoria (afectado_usuario_
     WHERE afectado_usuario_id IS NOT NULL;
 CREATE INDEX ix_auditoria_seg_actor ON seguridad.auditoria (actor_usuario_id, ocurrido_en DESC)
     WHERE actor_usuario_id IS NOT NULL;
+CREATE INDEX ix_auditoria_seg_intento ON seguridad.auditoria (intento_id)
+    WHERE intento_id IS NOT NULL;
 
 -- Solo de agregar: el usuario de la aplicación es dueño de la tabla y REVOKE no lo limitaría.
 CREATE FUNCTION seguridad.auditoria_solo_agregar() RETURNS trigger

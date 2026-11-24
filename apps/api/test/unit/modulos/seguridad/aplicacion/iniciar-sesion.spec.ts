@@ -165,23 +165,47 @@ describe('IniciarSesion (paso 1)', () => {
     },
   );
 
-  it('con credenciales correctas no registra nada todavía (el ingreso se registra en el paso 2)', async () => {
-    const { usuarios, auditoria, casoDeUso } = preparar();
+  it('con credenciales correctas registra solo el código enviado, sin el código (010)', async () => {
+    const { usuarios, auditoria, enviador, casoDeUso } = preparar();
     await usuarios.crear(usuarioFicticio());
 
-    await casoDeUso.ejecutar({ ip: IP, correo: 'persona@ejemplo.pe', clave: 'ClaveActual2026' });
+    const desafio = await casoDeUso.ejecutar({
+      ip: IP,
+      correo: 'persona@ejemplo.pe',
+      clave: 'ClaveActual2026',
+    });
 
-    expect(auditoria.eventos).toHaveLength(0);
+    expect(auditoria.eventos).toHaveLength(1);
+    expect(auditoria.eventos[0]).toMatchObject({
+      accion: 'CODIGO_ENVIADO',
+      resultado: 'EXITO',
+      actorUsuarioId: null,
+      afectadoUsuarioId: 'usuario-1',
+      intentoId: desafio.desafioId,
+      detalle: {
+        proposito: 'INGRESO_PERSONAL',
+        canal: 'SIMULADO',
+        destino: '9*****321',
+        entrega: 'ENTREGADO',
+      },
+    });
+    const codigo = enviador.enviados[0]?.codigo ?? '';
+    expect(codigo).toMatch(/^\d{6}$/);
+    expect(JSON.stringify(auditoria.eventos)).not.toContain(codigo);
+    expect(JSON.stringify(auditoria.eventos)).not.toContain('987654321');
   });
 
-  it('si el envío falla lanza ErrorEnvioOtp', async () => {
-    const { usuarios, enviador, casoDeUso } = preparar();
+  it('si el envío falla lanza ErrorEnvioOtp y registra el código enviado como fallido (010)', async () => {
+    const { usuarios, enviador, auditoria, casoDeUso } = preparar();
     await usuarios.crear(usuarioFicticio());
     enviador.falla = true;
 
     await expect(
       casoDeUso.ejecutar({ ip: IP, correo: 'persona@ejemplo.pe', clave: 'ClaveActual2026' }),
     ).rejects.toBeInstanceOf(ErrorEnvioOtp);
+    expect(auditoria.eventos.map((e) => [e.accion, e.resultado, e.detalle.entrega])).toEqual([
+      ['CODIGO_ENVIADO', 'RECHAZADO', 'FALLIDO'],
+    ]);
   });
 });
 
@@ -273,6 +297,27 @@ describe('IniciarSesion: límites de intentos (historia 4, contracts/autenticaci
 
     await expect(casoDeUso.ejecutar(credenciales)).rejects.toBeInstanceOf(ErrorDemasiadosIntentos);
     expect(enviador.enviados).toHaveLength(3);
+  });
+
+  it('el 4.º código registra el límite de códigos alcanzado sobre la cuenta (010)', async () => {
+    const { usuarios, auditoria, casoDeUso } = preparar();
+    await usuarios.crear(usuarioFicticio());
+    for (let i = 0; i < 3; i += 1) {
+      await casoDeUso.ejecutar(credenciales);
+    }
+
+    await casoDeUso.ejecutar(credenciales).catch(() => undefined);
+
+    expect(auditoria.acciones()).toEqual([
+      'CODIGO_ENVIADO',
+      'CODIGO_ENVIADO',
+      'CODIGO_ENVIADO',
+      'CODIGO_LIMITE_ALCANZADO',
+    ]);
+    expect(auditoria.eventos.at(-1)).toMatchObject({
+      afectadoUsuarioId: 'usuario-1',
+      detalle: { proposito: 'INGRESO_PERSONAL', segundos: 300 },
+    });
   });
 
   it('si los límites no están disponibles falla cerrado (FR-009)', async () => {

@@ -51,6 +51,8 @@ export const aEventoRespuesta = (evento: EventoAuditoriaVista) => ({
   afectado: evento.afectado,
   objeto: evento.objeto,
   resultado: evento.resultado,
+  // 010: medio, destino enmascarado, entrega y desenlace; nunca el código ni el intento.
+  codigoEnviado: evento.codigoEnviado,
 });
 
 /**

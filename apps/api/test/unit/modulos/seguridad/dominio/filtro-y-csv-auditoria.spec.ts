@@ -81,16 +81,18 @@ describe('resolverFiltroAuditoria (research §R-08 de la 009)', () => {
   });
 });
 
-const fila = (extra: Partial<FilaAuditoria> = {}): FilaAuditoria => ({
-  id: '1',
-  ocurridoEn: new Date('2026-11-23T20:05:09Z'),
-  accion: 'ROL_ASIGNADO',
-  actor: { id: 'a', nombre: 'Ana Admin' },
-  afectado: { id: 'b', nombre: 'Beto; "Caja"' },
-  objeto: null,
-  resultado: 'EXITO',
-  ...extra,
-});
+const fila = (extra: Partial<FilaAuditoria> = {}): FilaAuditoria =>
+  ({
+    id: '1',
+    ocurridoEn: new Date('2026-11-23T20:05:09Z'),
+    accion: 'ROL_ASIGNADO',
+    actor: { id: 'a', nombre: 'Ana Admin' },
+    afectado: { id: 'b', nombre: 'Beto; "Caja"' },
+    objeto: null,
+    resultado: 'EXITO',
+    codigoEnviado: null,
+    ...extra,
+  }) as FilaAuditoria;
 
 describe('CSV de la auditoría (formato de la 007)', () => {
   it('fecha y hora en Lima', () => {
@@ -104,7 +106,7 @@ describe('CSV de la auditoría (formato de la 007)', () => {
     expect(csv.endsWith('\r\n')).toBe(true);
     const [cabecera, linea] = csv.slice(1).split('\r\n');
     expect(cabecera).toBe(COLUMNAS_CSV_AUDITORIA.join(';'));
-    expect(linea).toBe('2026-11-23 15:05:09;Rol asignado;Ana Admin;"Beto; ""Caja""";;Éxito');
+    expect(linea).toBe('2026-11-23 15:05:09;Rol asignado;Ana Admin;"Beto; ""Caja""";;Éxito;');
   });
 
   it('sin actor: "Sin sesión" en los ingresos y "Sistema" en el resto; con objeto y rechazo', () => {
@@ -114,8 +116,41 @@ describe('CSV de la auditoría (formato de la 007)', () => {
     ]);
     const lineas = csv.slice(1).split('\r\n');
 
-    expect(lineas[1]).toBe('2026-11-23 15:05:09;Clave incorrecta;Sin sesión;;;Rechazado');
-    expect(lineas[2]).toBe('2026-11-23 15:05:09;Receta actualizada;Sistema;;LIC-01;Éxito');
+    expect(lineas[1]).toBe('2026-11-23 15:05:09;Clave incorrecta;Sin sesión;;;Rechazado;');
+    expect(lineas[2]).toBe('2026-11-23 15:05:09;Receta actualizada;Sistema;;LIC-01;Éxito;');
+  });
+
+  it('un código enviado lleva su desenlace; la identidad del administrado, su objeto en texto (010)', () => {
+    const codigo = {
+      proposito: 'INGRESO_PERSONAL' as const,
+      canal: 'BUZON' as const,
+      destino: '9*****321',
+      entrega: 'ENTREGADO' as const,
+    };
+    const csv = aCsvAuditoria([
+      fila({
+        accion: 'CODIGO_ENVIADO',
+        actor: null,
+        afectado: { id: 'b', nombre: 'Beto Caja' },
+        codigoEnviado: { ...codigo, desenlace: 'SIN_USAR' },
+      }),
+      fila({
+        accion: 'CODIGO_ENVIADO',
+        actor: null,
+        afectado: null,
+        objeto: 'IDENTIDAD_ADMINISTRADO',
+        codigoEnviado: { ...codigo, proposito: 'IDENTIDAD_ADMINISTRADO', desenlace: null },
+      }),
+    ]);
+    const lineas = csv.slice(1).split('\r\n');
+
+    expect(lineas[0]?.endsWith(';resultado;desenlace')).toBe(true);
+    expect(lineas[1]).toBe(
+      '2026-11-23 15:05:09;Código enviado;Sin sesión;Beto Caja;;Éxito;Sin usar',
+    );
+    expect(lineas[2]).toBe(
+      '2026-11-23 15:05:09;Código enviado;Sin sesión;;Identidad del administrado;Éxito;',
+    );
   });
 
   it('un nombre que empieza como fórmula lleva apóstrofo', () => {
