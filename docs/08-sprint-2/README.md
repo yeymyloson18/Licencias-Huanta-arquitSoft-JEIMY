@@ -86,7 +86,7 @@ GitHub Actions y dejan sus resultados como archivos descargables (artefactos).
 | Portal (Jest + Testing Library) | 303 | Job `pruebas` del CI y en local |
 | Extremo a extremo (Playwright, celular y escritorio) | 2 recorridos × 2 tamaños | Flujo `E2E` |
 | Humo de la API (Postman y Newman) | 13 peticiones | Flujo `Postman` |
-| Carga (k6) | hasta 2,000 usuarios | Flujo `Carga Sprint 2` |
+| Carga (k6) | 387,235 peticiones hasta 2,000 usuarios: p95 6 ms, 0 % de errores | Flujo `Carga Sprint 2`, [`evidencias/carga-2000-despues.txt`](evidencias/carga-2000-despues.txt) |
 
 **Cobertura** (pruebas unitarias; el reporte navegable está en el artefacto `cobertura` de cada
 ejecución del CI):
@@ -104,9 +104,9 @@ las pruebas de integración, contra PostgreSQL y Redis reales, que no cuentan en
 
 ## 6. Limitaciones conocidas
 
-- **Mediciones del flujo de carga**: las cifras de 2,000 usuarios, de la caché con y sin Redis y de los
-  planes con 10,000 expedientes se completan al ejecutar `carga-sprint2.yml`. En los documentos figuran
-  como "pendiente" con la instrucción exacta.
+- **Mediciones del flujo de carga**: ya ejecutadas (corrida 45106710381). La primera corrida mostró 13 %
+  de errores con 2,000 usuarios por el proxy nginx; se diagnosticó y corrigió (ver
+  [atributos-de-calidad.md](atributos-de-calidad.md), EQ-01 y EQ-02).
 - **Entorno de la carga**: k6 y el sistema comparten la máquina del ejecutor. Los resultados son un piso,
   no el rendimiento del servidor. La medición definitiva es del Sprint 3, con k6 en otra máquina.
 - **Producción**: el despliegue, el TLS en internet, la disponibilidad mensual y el SUS con personas son

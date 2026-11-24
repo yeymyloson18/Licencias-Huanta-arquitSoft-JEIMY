@@ -103,19 +103,25 @@ cosas:
   (50 usuarios, 1 minuto, solo catálogo) corre dos veces, con Redis y con Redis detenido. Se comparan
   el p50 y el p95.
 
-> **Pendiente de la ejecución del flujo**: copie aquí la tabla "Catálogo con y sin Redis" del resumen
-> del job (o de `etapas.md` del artefacto `carga-sprint2`) y la tasa de aciertos.
+Resultado de la corrida 45106710381 (evidencia en
+[`evidencias/carga-2000-despues.txt`](evidencias/carga-2000-despues.txt)):
 
 | Caché | Peticiones | p50 (ms) | p95 (ms) | Errores |
 | --- | --- | --- | --- | --- |
-| Con Redis | pendiente | pendiente | pendiente | pendiente |
-| Sin Redis (PostgreSQL directo) | pendiente | pendiente | pendiente | pendiente |
+| Con Redis | 3,006 | 1 | 1 | 0.00 % |
+| Sin Redis (PostgreSQL directo) | 3,008 | 2 | 3 | 0.00 % |
 
 | Medida | Resultado |
 | --- | --- |
-| Tasa de aciertos de Redis durante la carga | pendiente |
+| Tasa de aciertos de Redis durante la carga | **99.99 %** (602,479 aciertos y 36 fallos; antes de la carga: 0 y 3) |
 
 Lo esperado:
 
 - Con Redis, el catálogo responde sin tocar la base después del primer acierto.
 - Sin Redis, responde igual (cero errores), pero con más latencia y más carga en PostgreSQL.
+
+Lo obtenido confirma lo esperado: con Redis el p95 del catálogo es **3 veces menor** (1 ms frente a
+3 ms) y, al detener Redis, el sistema siguió respondiendo sin errores leyendo de PostgreSQL (la caché
+"falla abierta" en lecturas). Con 50 usuarios la diferencia es pequeña porque los datos de PostgreSQL
+también están en memoria; su valor real se ve con 2,000 usuarios: PostgreSQL no pasó de 2 conexiones
+activas porque Redis atendió el 99.99 % de las lecturas.

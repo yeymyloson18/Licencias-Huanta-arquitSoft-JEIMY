@@ -15,6 +15,7 @@
 import http from 'k6/http';
 import exec from 'k6/execution';
 import { check, sleep } from 'k6';
+import { Counter } from 'k6/metrics';
 
 const BASE = __ENV.BASE || 'http://localhost:8080/api/v1';
 const MAXIMO = Number(__ENV.USUARIOS_MAX || 2000);
@@ -85,7 +86,25 @@ const opciones = (nombre, extra = {}) => ({
   tags: { nombre, etapa: etapaActual() },
 });
 
-const ok = (respuesta, nombre) => check(respuesta, { [`${nombre}: 200`]: (r) => r.status === 200 });
+// Respuestas fallidas por código (0 = sin respuesta: conexión rechazada, cortada o tiempo agotado).
+// Aparecen en el resumen de k6 y explican en qué capa se degrada el sistema.
+const fallas = {
+  0: new Counter('fallas_sin_respuesta'),
+  429: new Counter('fallas_429'),
+  500: new Counter('fallas_500'),
+  502: new Counter('fallas_502'),
+  503: new Counter('fallas_503'),
+  504: new Counter('fallas_504'),
+};
+const otrasFallas = new Counter('fallas_otras');
+
+const ok = (respuesta, nombre) => {
+  const correcto = check(respuesta, { [`${nombre}: 200`]: (r) => r.status === 200 });
+  if (!correcto) {
+    (fallas[respuesta.status] ?? otrasFallas).add(1, { etapa: etapaActual() });
+  }
+  return correcto;
+};
 
 export default function () {
   const sorteo = Math.random();

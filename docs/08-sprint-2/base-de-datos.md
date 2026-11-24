@@ -72,27 +72,35 @@ Después actualiza las estadísticas y ejecuta
 [`tests/analisis/planes-consultas.sql`](../../tests/analisis/planes-consultas.sql) con
 `EXPLAIN (ANALYZE, BUFFERS)`. Cada consulta es la misma del código: el archivo se cita en el script.
 
-> **Pendiente de la ejecución del flujo**: en el GitHub del repositorio, *Actions → Carga Sprint 2 →
-> Run workflow*. Descargue el artefacto `planes-bd` (`planes.txt`) y pegue cada plan en su bloque.
-> Lo que se espera ver está en la columna "Plan esperado".
+Resultado de la corrida 45106710381 (job `planes-bd`). Salida completa en
+[`evidencias/planes-consultas-10000.txt`](evidencias/planes-consultas-10000.txt).
 
 | N.° | Consulta | Archivo del código | Plan esperado | Tiempo medido |
 | --- | --- | --- | --- | --- |
-| 1a | Página de la bandeja por estado, de la más nueva a la más antigua | `tramites/infraestructura/repositorio-expedientes-postgres.ts` (`listar`) | `Index Scan` de `ix_expediente_estado` (o `Bitmap`) y `Sort` de unas cientos de filas con `LIMIT 20` | pendiente |
-| 1b | Total de la bandeja por estado | mismo | `Index Only Scan` o `Bitmap` sobre `ix_expediente_estado` | pendiente |
-| 2 | Consulta pública por número + HMAC | `repositorio-expedientes-postgres.ts` (`buscarParaConsulta`) | `Index Scan` por la clave única de `numero` (o `ix_expediente_consulta`); 1 fila, menos de 1 ms | pendiente |
-| 3a | Presentados en el mes, por estado | `tramites/infraestructura/lector-para-reportes-postgres.ts` (`conteoPorEstado`) | `Bitmap/Index Scan` de `ix_expediente_presentado` + `HashAggregate` | pendiente |
-| 3b | Primera decisión final en el mes | `lector-para-reportes-postgres.ts` (`terminados`) | `Index Scan` de `ix_historial_decision` para el rango y `ix_historial_expediente` para el `MIN` | pendiente |
-| 3c | Pagos del mes | `pagos/infraestructura/repositorio-esquelas-postgres.ts` (`pagadasEntre`) | `Index Scan` de `ix_esquela_pagada_en` | pendiente |
-| 4 | Esquela por código en caja | `repositorio-esquelas-postgres.ts` (`obtener`) | `Index Scan` por la clave primaria `codigo`; 1 fila | pendiente |
-| 5 | Toma de eventos con `FOR UPDATE SKIP LOCKED` | `compartido/infraestructura/despachador-eventos.ts` | `LockRows` sobre `Index Scan` (clave primaria por `id` o `ix_evento_pendiente_sin_procesar`) con `LIMIT 50` | pendiente |
-| 6 | Reloj de plazos: plazo corriendo | `tramites/infraestructura/repositorio-vencimientos-postgres.ts` (`conPlazo`) | `Bitmap Index Scan` de `ix_expediente_estado` con varios estados | pendiente |
+| 1a | Página de la bandeja por estado, de la más nueva a la más antigua | `tramites/infraestructura/repositorio-expedientes-postgres.ts` (`listar`) | `Index Scan` de `ix_expediente_estado` (o `Bitmap`) y `Sort` de unas cientos de filas con `LIMIT 20` | **0.24 ms**: `Index Scan Backward` de `ix_expediente_presentado` + `Incremental Sort`, 296 bloques en caché |
+| 1b | Total de la bandeja por estado | mismo | `Index Only Scan` o `Bitmap` sobre `ix_expediente_estado` | **0.32 ms**: `Bitmap Index Scan` de `ix_expediente_estado` (800 filas) |
+| 2 | Consulta pública por número + HMAC | `repositorio-expedientes-postgres.ts` (`buscarParaConsulta`) | `Index Scan` por la clave única de `numero` (o `ix_expediente_consulta`); 1 fila, menos de 1 ms | **0.05 ms**: `Index Scan` de `ix_expediente_consulta`, 1 fila |
+| 3a | Presentados en el mes, por estado | `tramites/infraestructura/lector-para-reportes-postgres.ts` (`conteoPorEstado`) | `Bitmap/Index Scan` de `ix_expediente_presentado` + `HashAggregate` | **0.23 ms**: `Bitmap Index Scan` de `ix_expediente_presentado` (620 filas) |
+| 3b | Primera decisión final en el mes | `lector-para-reportes-postgres.ts` (`terminados`) | `Index Scan` de `ix_historial_decision` para el rango y `ix_historial_expediente` para el `MIN` | **2.06 ms**: `Bitmap Index Scan` de `ix_historial_decision` (6,800 y 415 filas) + `Index Scan` de la clave primaria |
+| 3c | Pagos del mes | `pagos/infraestructura/repositorio-esquelas-postgres.ts` (`pagadasEntre`) | `Index Scan` de `ix_esquela_pagada_en` | **0.10 ms**: `Bitmap Index Scan` de `ix_esquela_pagada_en` (245 filas) |
+| 4 | Esquela por código en caja | `repositorio-esquelas-postgres.ts` (`obtener`) | `Index Scan` por la clave primaria `codigo`; 1 fila | **0.02 ms**: `Index Scan` de `esquela_pkey`, 1 fila |
+| 5 | Toma de eventos con `FOR UPDATE SKIP LOCKED` | `compartido/infraestructura/despachador-eventos.ts` | `LockRows` sobre `Index Scan` (clave primaria por `id` o `ix_evento_pendiente_sin_procesar`) con `LIMIT 50` | **0.07 ms**: `LockRows` sobre `Index Scan` de la clave primaria, 50 filas |
+| 6 | Reloj de plazos: plazo corriendo | `tramites/infraestructura/repositorio-vencimientos-postgres.ts` (`conPlazo`) | `Bitmap Index Scan` de `ix_expediente_estado` con varios estados | **0.84 ms**: `Bitmap Index Scan` de `ix_expediente_estado` (2,200 filas) |
 
-Salida del flujo, para pegar:
+**Lectura de los planes**:
 
-```text
-(pegar aquí el contenido de planes.txt del artefacto planes-bd)
-```
+- Las 9 consultas críticas usan un índice y **ninguna recorre la tabla completa** (`Seq Scan`); la más
+  lenta, el tablero (3b), tarda 2 ms con 10,000 expedientes.
+- La caché de PostgreSQL atendió el **99.88 %** de las lecturas (499,694 bloques en memoria y 623 desde
+  disco).
+- En la bandeja (1a) el planificador prefirió `ix_expediente_presentado` y filtrar el estado (descartó
+  271 filas) en lugar de `ix_expediente_bandeja`: con 10,000 expedientes es más barato. Si la bandeja
+  crece a cientos de miles, conviene revisar ese plan.
+- Los contadores de uso de índices (`pg_stat_user_indexes`) al final del archivo salen en 0 para varios
+  índices que sí se usaron: PostgreSQL los actualiza con retraso, así que el plan es la evidencia válida.
+- Durante la carga de 2,000 usuarios PostgreSQL tuvo **2 conexiones activas como máximo** y 99.93 % de
+  aciertos de caché: Redis absorbió casi todas las lecturas del catálogo (ver
+  [cache.md](cache.md)).
 
 ## 4. Transacciones y bloqueos
 
@@ -128,12 +136,10 @@ Durante la carga, el job `carga` toma cada 10 s:
 
 Todo queda en el artefacto `carga-sprint2` (`recursos.jsonl`).
 
-> **Pendiente de la ejecución del flujo**: anote aquí el máximo de conexiones activas y el porcentaje de
-> aciertos (`blks_hit / (blks_hit + blks_read)`). Se espera más del 99 %, porque los datos caben en
-> memoria.
+Resultado de la corrida 45106710381, durante la carga progresiva hasta 2,000 usuarios:
 
 | Medida | Resultado |
 | --- | --- |
-| Conexiones activas (máximo) | pendiente |
-| Conexiones totales (máximo) | pendiente |
-| Aciertos de la caché de PostgreSQL | pendiente |
+| Conexiones activas (máximo) | **2** (cada réplica tiene su propio pool; casi todas las lecturas las atendió Redis) |
+| Conexiones totales (máximo) | No se resumió en esta corrida; queda en `recursos.jsonl` del artefacto |
+| Aciertos de la caché de PostgreSQL | **99.93 %** durante la carga (99.88 % en el job `planes-bd` con 10,000 expedientes) |

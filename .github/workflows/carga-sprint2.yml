@@ -92,10 +92,44 @@ jobs:
           fi
           { echo; echo '### Redis (keyspace) antes y después de la carga progresiva'; echo '```';
             cat resultados/redis-antes.txt resultados/redis-despues.txt 2>/dev/null; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          # Copia en el registro del flujo (los artefactos no siempre se pueden descargar).
+          echo '--- etapas'; cat resultados/etapas.md 2>/dev/null || true
+          echo '--- redis antes y después'; cat resultados/redis-antes.txt resultados/redis-despues.txt 2>/dev/null || true
+          echo '--- recursos: máximo de CPU y memoria por contenedor'
+          node -e '
+            const fs = require("fs");
+            const lineas = fs.existsSync("resultados/recursos.jsonl") ? fs.readFileSync("resultados/recursos.jsonl", "utf8").trim().split("\n") : [];
+            const max = {}; let pg = { maxActivas: 0, aciertos: null };
+            for (const l of lineas) {
+              let o; try { o = JSON.parse(l); } catch { continue; }
+              if (o.tipo === "contenedor") {
+                const n = o.datos.Name, cpu = parseFloat(o.datos.CPUPerc), mem = o.datos.MemUsage.split(" / ")[0];
+                if (!max[n] || cpu > max[n].cpu) max[n] = { cpu, mem };
+              }
+              if (o.tipo === "postgres") {
+                const c = o.conexiones || {}; const act = c.active || 0;
+                if (act > pg.maxActivas) pg.maxActivas = act;
+                if (o.bloques) pg.aciertos = (100 * o.bloques.blks_hit / Math.max(1, o.bloques.blks_hit + o.bloques.blks_read)).toFixed(2) + "%";
+              }
+            }
+            for (const [n, v] of Object.entries(max)) console.log(n, "CPU máx", v.cpu + "%", "memoria", v.mem);
+            console.log("postgres", JSON.stringify(pg));
+          ' || true
 
       - name: Registros del sistema
         if: always()
-        run: $COMPOSE logs --no-color --tail 300 api web > resultados/registros.txt 2>&1 || true
+        run: |
+          $COMPOSE logs --no-color --tail 300 api web > resultados/registros.txt 2>&1 || true
+          # Resumen en el registro del flujo (los artefactos no siempre se pueden descargar): errores
+          # del proxy y de la API, sin datos personales (la API no los registra, principio VII).
+          echo '--- nginx: errores por tipo'
+          $COMPOSE logs --no-color web 2>&1 | grep -E '\[(error|crit|alert)\]' \
+            | sed -E 's/.*\[(error|crit|alert)\] [0-9#]+: \*?[0-9]* ?//; s/, client:.*//' \
+            | sort | uniq -c | sort -rn | head -15 || true
+          echo '--- nginx: respuestas 5xx'
+          $COMPOSE logs --no-color web 2>&1 | grep -oE '" (5[0-9]{2}) ' | sort | uniq -c || true
+          echo '--- API: niveles de registro'
+          $COMPOSE logs --no-color api 2>&1 | grep -oE '"level":"?[a-z0-9]+' | sort | uniq -c || true
 
       - name: Guardar resultados
         if: always()
@@ -148,6 +182,7 @@ jobs:
           psql -h localhost -U licencias -d licencias -f tests/analisis/planes-consultas.sql > planes/planes.txt
           mv siembra.txt planes/
           { echo '### Planes de consulta con 10,000 expedientes'; echo '```'; head -c 60000 planes/planes.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          cat planes/planes.txt
       - name: Guardar los planes
         if: always()
         uses: actions/upload-artifact@v4
