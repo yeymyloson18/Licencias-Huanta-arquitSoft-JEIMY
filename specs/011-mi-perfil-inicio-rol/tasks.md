@@ -83,7 +83,7 @@ E2E ingresa con CAJA y llega a `/personal/caja`.
 
 ### Pruebas de US1 (escribirlas primero; deben fallar)
 
-- [ ] T005 [P] [US1] Crear `apps/web/src/sesion/inicio.test.ts` con tablas de casos.
+- [X] T005 [P] [US1] Crear `apps/web/src/sesion/inicio.test.ts` con tablas de casos.
 
   `inicioDe` (`ADMINISTRADOR`, `MESA_PARTES`, `EVALUADOR`, `CAJA`, `INSPECTOR` y `JEFATURA` son
   códigos de rol):
@@ -122,15 +122,15 @@ E2E ingresa con CAJA y llega a `/personal/caja`.
 
   Prueba de sincronía: cada `path` protegido declarado en `apps/web/src/Aplicacion.tsx` (lista fija
   copiada en la prueba) tiene una entrada que lo cubre en `PERMISOS_PANTALLA`.
-- [ ] T006 [P] [US1] Ampliar `apps/web/src/paginas/Ingresar.test.tsx`:
+- [X] T006 [P] [US1] Ampliar `apps/web/src/paginas/Ingresar.test.tsx`:
   - con sesión de rol CAJA y sin `volverA`, termina en `/personal/caja`;
   - con `state.volverA = '//evil.example'`, termina en `/personal/caja` (nunca fuera del portal);
   - con `state.volverA = '/personal/caja'`, se respeta;
   - con `state.volverA = '/admin'` y rol CAJA, termina en `/personal/caja`.
-- [ ] T007 [P] [US1] Ajustar `apps/web/src/paginas/CambiarClave.test.tsx`: con clave temporal y rol
+- [X] T007 [P] [US1] Ajustar `apps/web/src/paginas/CambiarClave.test.tsx`: con clave temporal y rol
       INSPECTOR, al terminar bien navega a `/personal/inspecciones` con el aviso "Su clave se cambió"
       (antes esperaba `/`)
-- [ ] T008 [P] [US1] Crear `apps/web/src/componentes/AvisoNavegacion.test.tsx` (escenario 5 de US1,
+- [X] T008 [P] [US1] Crear `apps/web/src/componentes/AvisoNavegacion.test.tsx` (escenario 5 de US1,
       FR-012): montar `AvisoNavegacion` dentro de un `MemoryRouter` con varias entradas iniciales y
       comprobar:
   - con `state.aviso = 'Su clave se cambió'` muestra ese texto en un `role="status"`, en cualquier
@@ -144,7 +144,7 @@ E2E ingresa con CAJA y llega a `/personal/caja`.
 
 ### Implementación de US1
 
-- [ ] T009 [US1] Reescribir `apps/web/src/sesion/inicio.ts`:
+- [X] T009 [US1] Reescribir `apps/web/src/sesion/inicio.ts`:
   - **`PRIORIDAD_INICIO`**: lista ordenada `[ADMINISTRADOR → '/admin', MESA_PARTES →
     '/personal/expedientes', EVALUADOR → '/personal/expedientes', CAJA → '/personal/caja',
     INSPECTOR → '/personal/inspecciones', JEFATURA → '/personal/tablero']`.
@@ -156,12 +156,12 @@ E2E ingresa con CAJA y llega a `/personal/caja`.
     `^\/(perfil|cambiar-clave|admin|personal)(\/[A-Za-z0-9_-]+)*$` **y** que está permitida para
     alguno de los roles; en cualquier otro caso, `inicioDe(roles)`.
   - Un comentario explica que es la defensa contra redirecciones abiertas (research §R-07).
-- [ ] T010 [US1] En `apps/web/src/paginas/Ingresar.tsx`, borrar el `destinoSeguro` local y usar
+- [X] T010 [US1] En `apps/web/src/paginas/Ingresar.tsx`, borrar el `destinoSeguro` local y usar
       `destinoDespuesDeIngresar((ubicacion.state as { volverA?: unknown } | null)?.volverA,
       sesion.usuario.roles)`. Sin roles, pasar `state: { sinRol: true }` al navegar a `/perfil`.
-- [ ] T011 [US1] Revisar que `apps/web/src/paginas/CambiarClave.tsx` siga usando `inicioDe` con la
+- [X] T011 [US1] Revisar que `apps/web/src/paginas/CambiarClave.tsx` siga usando `inicioDe` con la
       clave temporal (el destino nuevo sale de T009). Correr T005 a T007 en verde.
-- [ ] T012 [US1] Crear `apps/web/src/componentes/AvisoNavegacion.tsx` y montarlo en
+- [X] T012 [US1] Crear `apps/web/src/componentes/AvisoNavegacion.tsx` y montarlo en
       `apps/web/src/Aplicacion.tsx` justo debajo de `<Menu />`, dentro del router, para que lo vean
       todas las pantallas:
   - lee `ubicacion.state?.aviso`; solo si es una cadena no vacía, la guarda en un estado local y la

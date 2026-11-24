@@ -39,9 +39,13 @@ export function CambiarClave() {
         setClaveNueva('');
         setRepetir('');
         entrar(resultado.datos);
+        // La pantalla principal de sus roles (011); sin roles, su perfil con el aviso de FR-014.
         void navegar(inicioDe(resultado.datos.usuario.roles), {
           replace: true,
-          state: { aviso: 'Su clave se cambió' },
+          state: {
+            aviso: 'Su clave se cambió',
+            ...(resultado.datos.usuario.roles.length === 0 ? { sinRol: true } : {}),
+          },
         });
         return;
       case 'invalido': {

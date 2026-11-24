@@ -62,7 +62,7 @@ describe('Página CambiarClave', () => {
     expect(screen.getByLabelText('Clave nueva')).toHaveAttribute('aria-invalid', 'true');
   });
 
-  it('envía el token y, al terminar, va a / con "Su clave se cambió"', async () => {
+  it('envía el token y, al terminar, CAJA va a su pantalla con "Su clave se cambió" (011)', async () => {
     const llamadas = simularApi({
       'POST /auth/renovar': conClaveTemporal,
       'POST /auth/cambiar-clave': () => json(sesionDePrueba({}, 'token-2')),
@@ -72,7 +72,8 @@ describe('Página CambiarClave', () => {
 
     await completar('ClaveTemporal2026', 'ClaveDefinitiva2026', 'ClaveDefinitiva2026');
 
-    expect(await screen.findByText('Su clave se cambió')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Caja' })).toBeInTheDocument();
+    expect(screen.getByText('Su clave se cambió')).toBeInTheDocument();
     const cambio = llamadas.find((l) => l.clave === 'POST /auth/cambiar-clave');
     expect(cambio?.autorizacion).toBe('Bearer token-1');
     expect(cambio?.cuerpo).toEqual({
@@ -95,6 +96,22 @@ describe('Página CambiarClave', () => {
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Panel del administrador' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Su clave se cambió')).toBeInTheDocument();
+  });
+
+  it('con clave temporal, el INSPECTOR termina en Inspecciones con el aviso (011)', async () => {
+    simularApi({
+      'POST /auth/renovar': () =>
+        json(sesionDePrueba({ debeCambiarClave: true, roles: ['INSPECTOR'] })),
+      'POST /auth/cambiar-clave': () => json(sesionDePrueba({ roles: ['INSPECTOR'] }, 'token-2')),
+    });
+    montarEn('/cambiar-clave');
+
+    await completar('ClaveTemporal2026', 'ClaveDefinitiva2026', 'ClaveDefinitiva2026');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Inspecciones ITSE' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Su clave se cambió')).toBeInTheDocument();
   });

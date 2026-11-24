@@ -113,19 +113,45 @@ describe('Página Ingresar', () => {
     });
   });
 
-  it('con el código correcto entra y va al inicio', async () => {
+  const ingresarCon = async (
+    roles: readonly string[],
+    ruta: Parameters<typeof montarEn>[0] = '/ingresar',
+  ) => {
     simularApi({
       ...base,
       'POST /auth/iniciar-sesion': () => json(desafio),
-      'POST /auth/verificar-otp': () => json(sesionDePrueba()),
+      'POST /auth/verificar-otp': () => json(sesionDePrueba({ roles })),
     });
-    montarEn('/ingresar');
+    montarEn(ruta);
     const usuario = await completarPaso1();
-
     await usuario.type(await screen.findByLabelText('Código'), '123456');
     await usuario.click(screen.getByRole('button', { name: 'Ingresar' }));
+  };
 
-    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(/licencia/i);
+  it('con el código correcto, CAJA llega a su pantalla de trabajo (011)', async () => {
+    await ingresarCon(['CAJA']);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Caja' })).toBeInTheDocument();
+  });
+
+  it('nunca sale del portal: volverA "//evil.example" lleva a la pantalla del rol (011)', async () => {
+    await ingresarCon(['CAJA'], { pathname: '/ingresar', state: { volverA: '//evil.example' } });
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Caja' })).toBeInTheDocument();
+  });
+
+  it('una ruta de otro rol en volverA lleva a la pantalla del rol (011)', async () => {
+    await ingresarCon(['CAJA'], { pathname: '/ingresar', state: { volverA: '/admin' } });
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Caja' })).toBeInTheDocument();
+    expect(screen.queryByText('No tiene permiso para ver esta página')).not.toBeInTheDocument();
+  });
+
+  it('vuelve a la pantalla protegida que pidió antes de ingresar, si su rol la permite', async () => {
+    // Sin volverA iría a /admin (ADMINISTRADOR va primero).
+    await ingresarCon(['ADMINISTRADOR', 'CAJA'], '/personal/caja');
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Caja' })).toBeInTheDocument();
   });
 
   it('el administrador entra directo a su panel (009)', async () => {

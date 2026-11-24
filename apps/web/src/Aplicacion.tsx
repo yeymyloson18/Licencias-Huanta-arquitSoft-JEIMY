@@ -1,4 +1,5 @@
-import { Outlet, Route, Routes, useLocation } from 'react-router';
+import { Outlet, Route, Routes } from 'react-router';
+import { AvisoNavegacion } from './componentes/AvisoNavegacion';
 import { Menu } from './componentes/Menu';
 import { RutaProtegida } from './componentes/RutaProtegida';
 import { AuditoriaSeguridad } from './paginas/admin/AuditoriaSeguridad';
@@ -32,25 +33,14 @@ import { useSesion } from './sesion/ProveedorSesion';
 import { ProveedorMesaPartes } from './tramite/ContextoMesaPartes';
 import { ProveedorTramite } from './tramite/ContextoTramite';
 
-interface EstadoNavegacion {
-  readonly aviso?: string;
-}
-
 /** Diseño común: menú del personal y aviso pendiente (cierre por inactividad, clave cambiada…). */
 function Diseno() {
   const { aviso } = useSesion();
-  const ubicacion = useLocation();
-  const avisoNavegacion = (ubicacion.state as EstadoNavegacion | null)?.aviso;
-  const mensaje = avisoNavegacion ?? aviso;
 
   return (
     <>
       <Menu />
-      {mensaje && (
-        <p className="aviso aviso--info" role="status">
-          {mensaje}
-        </p>
-      )}
+      <AvisoNavegacion respaldo={aviso} />
       <Outlet />
     </>
   );
