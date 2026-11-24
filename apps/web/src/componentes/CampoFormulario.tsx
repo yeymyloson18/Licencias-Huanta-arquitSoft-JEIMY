@@ -1,4 +1,4 @@
-import { type InputHTMLAttributes, useId } from 'react';
+import { type InputHTMLAttributes, useId, useState } from 'react';
 
 interface Propiedades extends Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> {
   readonly etiqueta: string;
@@ -8,25 +8,78 @@ interface Propiedades extends Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> 
   readonly ayuda?: string;
 }
 
-/** Campo con `label`, ayuda y error accesibles (contracts/portal-seguridad.md). */
-export function CampoFormulario({ etiqueta, error, ayuda, ...entrada }: Propiedades) {
+/** Ojo abierto (mostrar) u ojo tachado (ocultar); decorativo, el botón lleva su propio nombre. */
+function IconoOjo({ tachado }: { readonly tachado: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+      {tachado && <line x1="3" y1="3" x2="21" y2="21" />}
+    </svg>
+  );
+}
+
+/**
+ * Campo con `label`, ayuda y error accesibles (contracts/portal-seguridad.md). Un campo de clave
+ * (`type="password"`) trae el botón del ojo para mostrar u ocultar lo escrito (011): la clave
+ * sigue oculta por defecto y nunca se guarda en el navegador.
+ */
+export function CampoFormulario({ etiqueta, error, ayuda, type, ...entrada }: Propiedades) {
   const id = useId();
   const idAyuda = `${id}-ayuda`;
   const idError = `${id}-error`;
   const descripciones = [ayuda ? idAyuda : null, error ? idError : null].filter(Boolean).join(' ');
+  const esClave = type === 'password';
+  const [visible, setVisible] = useState(false);
+
+  const campo = (
+    <input
+      {...entrada}
+      type={esClave && visible ? 'text' : type}
+      id={id}
+      className="campo__entrada"
+      aria-invalid={error ? true : undefined}
+      aria-describedby={descripciones === '' ? undefined : descripciones}
+    />
+  );
 
   return (
     <div className="campo">
       <label className="campo__etiqueta" htmlFor={id}>
         {etiqueta}
       </label>
-      <input
-        {...entrada}
-        id={id}
-        className="campo__entrada"
-        aria-invalid={error ? true : undefined}
-        aria-describedby={descripciones === '' ? undefined : descripciones}
-      />
+      {esClave ? (
+        <div className="campo__clave">
+          {campo}
+          <button
+            type="button"
+            className="campo__ojo"
+            aria-controls={id}
+            aria-pressed={visible}
+            aria-label={
+              visible ? `Ocultar ${etiqueta.toLowerCase()}` : `Mostrar ${etiqueta.toLowerCase()}`
+            }
+            onClick={() => {
+              setVisible((antes) => !antes);
+            }}
+          >
+            <IconoOjo tachado={visible} />
+          </button>
+        </div>
+      ) : (
+        campo
+      )}
       {ayuda && (
         <p className="campo__ayuda" id={idAyuda}>
           {ayuda}
