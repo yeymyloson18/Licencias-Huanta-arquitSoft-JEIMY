@@ -68,6 +68,17 @@ describe('CambiarClave', () => {
     expect(guardado?.versionSeguridad).toBe(versionAntes + 1);
   });
 
+  it('guarda CLAVE_CAMBIADA con el cambio, sin la clave (009)', async () => {
+    const { usuarios, casoDeUso } = await preparar();
+
+    await casoDeUso.ejecutar(entrada('ClaveTemporal2026', 'ClaveDefinitiva2026'));
+
+    expect(
+      usuarios.auditoria.map((e) => [e.accion, e.actorUsuarioId, e.afectadoUsuarioId]),
+    ).toEqual([['CLAVE_CAMBIADA', 'usuario-1', 'usuario-1']]);
+    expect(JSON.stringify(usuarios.auditoria)).not.toContain('ClaveDefinitiva2026');
+  });
+
   it('revoca las demás sesiones, rota la actual y devuelve un token sin clave temporal', async () => {
     const { sesiones, almacen, emisor, eventos, casoDeUso } = await preparar();
 

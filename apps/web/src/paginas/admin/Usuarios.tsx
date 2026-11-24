@@ -1,4 +1,5 @@
 import { type SyntheticEvent, useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import {
   buscarUsuarios,
   listarUsuarios,
@@ -194,6 +195,13 @@ export function Usuarios() {
                       >
                         Editar
                       </button>
+                      <Link
+                        className="boton boton--claro"
+                        to={`/admin/usuarios/${usuario.id}`}
+                        aria-label={`Ver ficha de ${usuario.nombreCompleto}`}
+                      >
+                        Ver ficha
+                      </Link>
                     </li>
                   ))}
                 </ul>

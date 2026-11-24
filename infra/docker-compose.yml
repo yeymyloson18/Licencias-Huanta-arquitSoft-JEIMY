@@ -33,6 +33,15 @@ services:
       timeout: 3s
       retries: 10
 
+  # Buzón de pruebas (009, research §R-07): recibe por SMTP cada código de 6 dígitos y cada aviso y
+  # los muestra en una página web. Solo desarrollo: no está en infra/produccion/.
+  mailpit:
+    image: axllent/mailpit:v1.33.0
+    environment:
+      MP_MAX_MESSAGES: 500
+    ports:
+      - '${PUERTO_BUZON:-8025}:8025'
+
   api:
     build:
       context: ..
@@ -49,7 +58,11 @@ services:
       JWT_SECRETO: ${JWT_SECRETO:-desarrollo-jwt-solo-no-usar-en-produccion}
       CLAVE_CIFRADO_DATOS: ${CLAVE_CIFRADO_DATOS:-ZGVzYXJyb2xsby1jaWZyYWRvLW5vLXVzYXItcHJvZCE=}
       CLAVE_HMAC_DATOS: ${CLAVE_HMAC_DATOS:-ZGVzYXJyb2xsby1obWFjLXNvbG8tbm8tdXNhci1lbi1wcm9kdWNjaW9u}
-      ENVIO_OTP: ${ENVIO_OTP:-simulado}
+      # 009: el código y los avisos llegan al buzón de pruebas (http://localhost:8025) y también quedan
+      # en Redis como el simulado. Prohibido en producción (la configuración no arranca con "buzon").
+      ENVIO_OTP: ${ENVIO_OTP:-buzon}
+      ENVIO_AVISOS: ${ENVIO_AVISOS:-buzon}
+      SMTP_BUZON_URL: smtp://mailpit:1025
       URL_PUBLICA_PORTAL: ${URL_PUBLICA_PORTAL:-http://localhost:8080}
       RELOJ_PLAZOS_INTERVALO_MS: ${RELOJ_PLAZOS_INTERVALO_MS:-3600000}
       AVISOS_INTERVALO_MS: ${AVISOS_INTERVALO_MS:-5000}
@@ -64,6 +77,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     ports:
       - '${PUERTO_API:-3000}:3000'
     healthcheck:

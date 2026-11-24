@@ -56,7 +56,13 @@ const esquemaConfiguracion = z.object({
   JWT_SECRETO: z.string().refine((texto) => Buffer.byteLength(texto) >= 32),
   CLAVE_CIFRADO_DATOS: claveBase64(32, 32),
   CLAVE_HMAC_DATOS: claveBase64(32),
-  ENVIO_OTP: z.enum(['simulado', 'sms']).default('simulado'),
+  ENVIO_OTP: z.enum(['simulado', 'buzon', 'sms']).default('simulado'),
+  // 009: avisos al administrado (simulado en Redis o buzón de pruebas) y SMTP del buzón (Mailpit).
+  ENVIO_AVISOS: z.enum(['simulado', 'buzon']).default('simulado'),
+  SMTP_BUZON_URL: z
+    .url()
+    .refine((url) => url.startsWith('smtp://'))
+    .default('smtp://localhost:1025'),
   TRUST_PROXY_SALTOS: z.coerce.number().int().min(0).default(1),
   ALMACEN_ARCHIVOS_RUTA: z
     .string()
@@ -81,7 +87,8 @@ const VALORES_DE_EJEMPLO: Readonly<Record<string, string>> = {
 };
 
 export type Entorno = 'development' | 'test' | 'production';
-export type ModoEnvioOtp = 'simulado' | 'sms';
+export type ModoEnvioOtp = 'simulado' | 'buzon' | 'sms';
+export type ModoEnvioAvisos = 'simulado' | 'buzon';
 
 export interface Configuracion {
   readonly urlBaseDeDatos: string;
@@ -95,6 +102,10 @@ export interface Configuracion {
   readonly claveCifradoDatos: Buffer;
   readonly claveHmacDatos: Buffer;
   readonly envioOtp: ModoEnvioOtp;
+  /** Avisos al administrado (009): `buzon` también los deja en Redis como el simulado. */
+  readonly envioAvisos: ModoEnvioAvisos;
+  /** Servidor SMTP del buzón de pruebas (solo desarrollo). */
+  readonly smtpBuzonUrl: string;
   readonly trustProxySaltos: number;
   readonly almacenArchivosRuta: string;
   /** 0 = sin temporizador (los eventos se procesan a mano, en las pruebas). */
@@ -165,6 +176,15 @@ export const cargarConfiguracion = (
       variables.push('ENVIO_OTP');
       avisos.push('El envío simulado del código no se permite en producción');
     }
+    // 009: el buzón de pruebas guarda códigos y avisos en claro; es solo para desarrollo.
+    if (datos.ENVIO_OTP === 'buzon') {
+      variables.push('ENVIO_OTP');
+      avisos.push('El buzón de pruebas no se permite en producción');
+    }
+    if (datos.ENVIO_AVISOS === 'buzon') {
+      variables.push('ENVIO_AVISOS');
+      avisos.push('El buzón de pruebas no se permite en producción');
+    }
     for (const [variable, valorEjemplo] of Object.entries(VALORES_DE_EJEMPLO)) {
       if (datos[variable as keyof typeof datos] === valorEjemplo) {
         variables.push(variable);
@@ -189,6 +209,8 @@ export const cargarConfiguracion = (
     claveCifradoDatos: Buffer.from(datos.CLAVE_CIFRADO_DATOS, 'base64'),
     claveHmacDatos: Buffer.from(datos.CLAVE_HMAC_DATOS, 'base64'),
     envioOtp: datos.ENVIO_OTP,
+    envioAvisos: datos.ENVIO_AVISOS,
+    smtpBuzonUrl: datos.SMTP_BUZON_URL,
     trustProxySaltos: datos.TRUST_PROXY_SALTOS,
     almacenArchivosRuta: datos.ALMACEN_ARCHIVOS_RUTA,
     despachadorIntervaloMs: datos.DESPACHADOR_INTERVALO_MS,

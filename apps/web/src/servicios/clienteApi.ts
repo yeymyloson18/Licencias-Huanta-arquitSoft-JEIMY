@@ -266,11 +266,15 @@ const ejecutarOperacion = async <T>(
 };
 
 /** Lista el personal (los filtros no llevan datos personales, por eso van en la URL). */
-export const listarUsuarios = (filtro: { activo?: boolean; pagina?: number }) =>
+export const listarUsuarios = (filtro: { activo?: boolean; pagina?: number; porPagina?: number }) =>
   ejecutarOperacion<PaginaUsuarios>(() =>
     cliente.GET('/usuarios', {
       params: {
-        query: { pagina: filtro.pagina ?? 1, porPagina: 20, activo: filtro.activo },
+        query: {
+          pagina: filtro.pagina ?? 1,
+          porPagina: filtro.porPagina ?? 20,
+          activo: filtro.activo,
+        },
       },
     }),
   );
@@ -1528,6 +1532,178 @@ export const descargarReporteCsv = async (
       };
     }
     return fallaReporte(response.status);
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+// ------------------------------------------------- administrador: panel, auditoría y ficha (009)
+
+export type AccionAuditoriaSeguridad = components['schemas']['AccionAuditoriaSeguridad'];
+export type EventoAuditoriaSeguridad = components['schemas']['EventoAuditoriaSeguridad'];
+export type PanelAdministrador = components['schemas']['PanelAdministrador'];
+export type FichaUsuario = components['schemas']['FichaUsuario'];
+
+/** Filtros de la auditoría: solo fechas, acción e identificadores internos (sin datos personales). */
+export interface FiltroAuditoriaSeguridad {
+  readonly desde?: string;
+  readonly hasta?: string;
+  readonly accion?: AccionAuditoriaSeguridad;
+  readonly actorId?: string;
+  readonly afectadoId?: string;
+}
+
+export interface PaginaAuditoriaSeguridad {
+  readonly pagina: number;
+  readonly porPagina: number;
+  readonly total: number;
+  readonly datos: readonly EventoAuditoriaSeguridad[];
+}
+
+type FallaAdministrador =
+  | { readonly tipo: 'sin-permiso' }
+  | { readonly tipo: 'no-encontrado' }
+  | { readonly tipo: 'no-disponible' };
+
+type ResultadoAdministrador<T> =
+  | ({ readonly tipo: 'ok' } & T)
+  | { readonly tipo: 'invalido'; readonly errores: readonly ErrorCampo[] }
+  | { readonly tipo: 'sobre-si-mismo' }
+  | FallaAdministrador;
+
+const fallaAdministrador = (status: number, error?: unknown): ResultadoAdministrador<never> => {
+  switch (status) {
+    case 401:
+    case 403:
+      return { tipo: 'sin-permiso' };
+    case 404:
+      return { tipo: 'no-encontrado' };
+    case 409:
+      return tipoDeProblema(error) === 'accion-sobre-si-mismo'
+        ? { tipo: 'sobre-si-mismo' }
+        : { tipo: 'no-disponible' };
+    case 422:
+      return {
+        tipo: 'invalido',
+        errores: (error as { errores?: ErrorCampo[] } | undefined)?.errores ?? [],
+      };
+    default:
+      return { tipo: 'no-disponible' };
+  }
+};
+
+const consultaAuditoria = (filtro: FiltroAuditoriaSeguridad) =>
+  Object.fromEntries(
+    Object.entries(filtro).filter(([, valor]) => typeof valor === 'string' && valor !== ''),
+  ) as FiltroAuditoriaSeguridad;
+
+/** Página de la auditoría de seguridad (rol ADMINISTRADOR). */
+export const obtenerAuditoriaSeguridad = async (
+  filtro: FiltroAuditoriaSeguridad,
+  pagina: number,
+  porPagina = 20,
+): Promise<ResultadoAdministrador<{ readonly pagina: PaginaAuditoriaSeguridad }>> => {
+  try {
+    const { data, error, response } = await cliente.GET('/admin/auditoria', {
+      params: { query: { ...consultaAuditoria(filtro), pagina, porPagina } },
+    });
+    if (response.ok && data !== undefined && typeof data === 'object') {
+      return { tipo: 'ok', pagina: data };
+    }
+    return fallaAdministrador(response.status, error);
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** La misma auditoría en CSV (hasta 10,000 filas), con el nombre que manda el servidor. */
+export const descargarAuditoriaSeguridad = async (
+  filtro: FiltroAuditoriaSeguridad,
+): Promise<
+  ResultadoAdministrador<{
+    readonly csv: Blob;
+    readonly nombre: string;
+    readonly truncado: boolean;
+  }>
+> => {
+  try {
+    const { data, error, response } = await cliente.GET('/admin/auditoria', {
+      params: { query: { ...consultaAuditoria(filtro), formato: 'csv' } },
+      parseAs: 'blob',
+    });
+    if (response.ok && data !== undefined) {
+      const disposicion = response.headers.get('Content-Disposition') ?? '';
+      return {
+        tipo: 'ok',
+        csv: data,
+        nombre: /filename="([^"]+)"/.exec(disposicion)?.[1] ?? 'auditoria-seguridad.csv',
+        truncado: response.headers.get('X-Auditoria-Truncada') === 'true',
+      };
+    }
+    return fallaAdministrador(response.status, error);
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** Cifras del panel del administrador. */
+export const obtenerPanel = async (): Promise<
+  ResultadoAdministrador<{ readonly panel: PanelAdministrador }>
+> => {
+  try {
+    const { data, error, response } = await cliente.GET('/admin/panel');
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', panel: data };
+    }
+    return fallaAdministrador(response.status, error);
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** Ficha de un usuario con su estado de seguridad. */
+export const obtenerFichaUsuario = async (
+  usuarioId: string,
+): Promise<ResultadoAdministrador<{ readonly ficha: FichaUsuario }>> => {
+  try {
+    const { data, error, response } = await cliente.GET('/usuarios/{usuarioId}', {
+      params: { path: { usuarioId } },
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', ficha: data };
+    }
+    return fallaAdministrador(response.status, error);
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** Cierra todas las sesiones de un usuario sin desactivarlo. */
+export const cerrarSesionesDeUsuario = async (
+  usuarioId: string,
+): Promise<ResultadoAdministrador<{ readonly sesionesCerradas: number }>> => {
+  try {
+    const { data, error, response } = await cliente.POST('/usuarios/{usuarioId}/cerrar-sesiones', {
+      params: { path: { usuarioId } },
+    });
+    if (response.ok && data !== undefined) {
+      return { tipo: 'ok', sesionesCerradas: data.sesionesCerradas };
+    }
+    return fallaAdministrador(response.status, error);
+  } catch {
+    return { tipo: 'no-disponible' };
+  }
+};
+
+/** Borra el bloqueo por intentos fallidos de la cuenta. */
+export const desbloquearUsuario = async (
+  usuarioId: string,
+): Promise<ResultadoAdministrador<object>> => {
+  try {
+    const { error, response } = await cliente.POST('/usuarios/{usuarioId}/desbloquear', {
+      params: { path: { usuarioId } },
+    });
+    return response.ok ? { tipo: 'ok' } : fallaAdministrador(response.status, error);
   } catch {
     return { tipo: 'no-disponible' };
   }

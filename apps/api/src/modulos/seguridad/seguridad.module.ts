@@ -1,4 +1,22 @@
-import { Global, Module } from '@nestjs/common';
+import { BuzonPruebas } from '../../compartido/infraestructura/buzon-pruebas';
+import { EnviadorOtpBuzon } from './infraestructura/enviador-otp-buzon';
+import { CerrarSesionesDeUsuario } from './aplicacion/cerrar-sesiones-de-usuario';
+import { DesbloquearCuenta } from './aplicacion/desbloquear-cuenta';
+import { ObtenerFichaUsuario } from './aplicacion/obtener-ficha-usuario';
+import { ObtenerPanel } from './aplicacion/obtener-panel';
+import type { BloqueosCuentas } from './dominio/puertos/bloqueos-cuentas';
+import type { ConsultaPanel } from './dominio/puertos/consulta-panel';
+import { BloqueosCuentasRedis } from './infraestructura/bloqueos-cuentas-redis';
+import { ConsultaPanelPostgres } from './infraestructura/consulta-panel-postgres';
+import { ConsultarAuditoria } from './aplicacion/consultar-auditoria';
+import { AdministradorController } from './presentacion/administrador.controller';
+import { DespachadorEventos } from '../../compartido/infraestructura/despachador-eventos';
+import { RegistrarEventoConfiguracion } from './aplicacion/registrar-evento-configuracion';
+import {
+  EVENTOS_CONFIGURACION,
+  manejadorConfiguracion,
+} from './infraestructura/manejadores-configuracion';
+import { Global, Module, type OnModuleInit } from '@nestjs/common';
 import type Redis from 'ioredis';
 import { CONFIGURACION, type Configuracion } from '../../compartido/infraestructura/configuracion';
 import { PrismaServicio } from '../../compartido/infraestructura/prisma.servicio';
@@ -24,6 +42,7 @@ import type { LimitadorIntentos } from './dominio/puertos/limitador-intentos';
 import type { RegistroEventosSeguridad } from './dominio/puertos/registro-eventos-seguridad';
 import type { Reloj } from './dominio/puertos/reloj';
 import type { RepositorioCodigosOtp } from './dominio/puertos/repositorio-codigos-otp';
+import type { RepositorioAuditoria } from './dominio/puertos/repositorio-auditoria';
 import type { RepositorioSesiones } from './dominio/puertos/repositorio-sesiones';
 import type { RepositorioUsuarios } from './dominio/puertos/repositorio-usuarios';
 import type { ProtectorDatos } from '../../compartido/dominio/protector-datos';
@@ -55,6 +74,7 @@ import { RegistroEventosSeguridadLogger } from './infraestructura/registro-event
 import { RelojSistema } from './infraestructura/reloj-sistema';
 import { RepositorioCodigosOtpPostgres } from './infraestructura/repositorio-codigos-otp-postgres';
 import { RepositorioSesionesPostgres } from './infraestructura/repositorio-sesiones-postgres';
+import { RepositorioAuditoriaPostgres } from './infraestructura/repositorio-auditoria-postgres';
 import { RepositorioUsuariosPostgres } from './infraestructura/repositorio-usuarios-postgres';
 import { AuthController } from './presentacion/auth.controller';
 import { JwtAuthGuard } from './presentacion/jwt-auth.guard';
@@ -73,7 +93,10 @@ import {
   REPOSITORIO_SESIONES,
   REPOSITORIO_USUARIOS,
   REPOSITORIO_VERIFICACIONES,
+  REPOSITORIO_AUDITORIA,
   SERVICIO_IDENTIFICACION,
+  BLOQUEOS_CUENTAS,
+  CONSULTA_PANEL,
 } from './tokens';
 
 // Raíz de composición del módulo Seguridad: conecta los puertos del dominio con sus adaptadores.
@@ -81,7 +104,7 @@ import {
 // módulo sin que este importe el interior de `seguridad` (contracts/control-permisos.md).
 @Global()
 @Module({
-  controllers: [AuthController, UsuariosController, IdentidadController],
+  controllers: [AuthController, UsuariosController, IdentidadController, AdministradorController],
   providers: [
     // ---------------------------------------------------------------- adaptadores
     { provide: HASHER_CLAVES, useFactory: (): HasherClaves => new HasherClavesArgon2() },
@@ -110,6 +133,13 @@ import {
         new RepositorioUsuariosPostgres(prisma, protector),
     },
     {
+      // Auditoría de seguridad, solo de agregar (009, research §R-01).
+      provide: REPOSITORIO_AUDITORIA,
+      inject: [PrismaServicio],
+      useFactory: (prisma: PrismaServicio): RepositorioAuditoria =>
+        new RepositorioAuditoriaPostgres(prisma),
+    },
+    {
       provide: REPOSITORIO_CODIGOS_OTP,
       inject: [PrismaServicio],
       useFactory: (prisma: PrismaServicio): RepositorioCodigosOtp =>
@@ -122,10 +152,16 @@ import {
         new RepositorioSesionesPostgres(prisma),
     },
     {
-      // La configuración solo admite 'simulado' mientras no haya proveedor de SMS (FR-031).
+      // Simulado (Redis) o buzón de pruebas (Redis + Mailpit, 009). Ninguno se admite en producción
+      // y 'sms' todavía no tiene proveedor (FR-031); la configuración lo rechaza al arrancar.
       provide: ENVIADOR_OTP,
-      inject: [REDIS_CLIENTE],
-      useFactory: (redis: Redis): EnviadorOTP => new EnviadorOtpSimulado(redis),
+      inject: [REDIS_CLIENTE, CONFIGURACION],
+      useFactory: (redis: Redis, configuracion: Configuracion): EnviadorOTP => {
+        const simulado = new EnviadorOtpSimulado(redis);
+        return configuracion.envioOtp === 'buzon'
+          ? new EnviadorOtpBuzon(simulado, new BuzonPruebas(configuracion.smtpBuzonUrl))
+          : simulado;
+      },
     },
     {
       // Versión de seguridad y sesiones revocadas compartidas por todas las instancias (§R-07).
@@ -161,6 +197,76 @@ import {
 
     // ---------------------------------------------------------------- casos de uso
     {
+      // Bloqueos del ingreso para el panel y la ficha (009, research §R-05).
+      provide: BLOQUEOS_CUENTAS,
+      inject: [REDIS_CLIENTE, PROTECTOR_DATOS],
+      useFactory: (redis: Redis, protector: ProtectorDatos): BloqueosCuentas =>
+        new BloqueosCuentasRedis(redis, protector),
+    },
+    {
+      provide: CONSULTA_PANEL,
+      inject: [PrismaServicio],
+      useFactory: (prisma: PrismaServicio): ConsultaPanel => new ConsultaPanelPostgres(prisma),
+    },
+    {
+      provide: ObtenerPanel,
+      inject: [CONSULTA_PANEL, BLOQUEOS_CUENTAS, REPOSITORIO_AUDITORIA, RELOJ],
+      useFactory: (
+        consulta: ConsultaPanel,
+        bloqueos: BloqueosCuentas,
+        auditoria: RepositorioAuditoria,
+        reloj: Reloj,
+      ) => new ObtenerPanel({ consulta, bloqueos, auditoria, reloj }),
+    },
+    {
+      provide: ObtenerFichaUsuario,
+      inject: [
+        REPOSITORIO_USUARIOS,
+        CONSULTA_PANEL,
+        BLOQUEOS_CUENTAS,
+        REPOSITORIO_AUDITORIA,
+        RELOJ,
+      ],
+      useFactory: (
+        usuarios: RepositorioUsuarios,
+        consulta: ConsultaPanel,
+        bloqueos: BloqueosCuentas,
+        auditoria: RepositorioAuditoria,
+        reloj: Reloj,
+      ) => new ObtenerFichaUsuario({ usuarios, consulta, bloqueos, auditoria, reloj }),
+    },
+    {
+      provide: CerrarSesionesDeUsuario,
+      inject: [REPOSITORIO_USUARIOS, REPOSITORIO_SESIONES, ALMACEN_VERSION_SEGURIDAD, RELOJ],
+      useFactory: (
+        usuarios: RepositorioUsuarios,
+        sesiones: RepositorioSesiones,
+        almacen: AlmacenVersionSeguridad,
+        reloj: Reloj,
+      ) => new CerrarSesionesDeUsuario({ usuarios, sesiones, almacen, reloj }),
+    },
+    {
+      provide: DesbloquearCuenta,
+      inject: [REPOSITORIO_USUARIOS, BLOQUEOS_CUENTAS, REPOSITORIO_AUDITORIA, RELOJ],
+      useFactory: (
+        usuarios: RepositorioUsuarios,
+        bloqueos: BloqueosCuentas,
+        auditoria: RepositorioAuditoria,
+        reloj: Reloj,
+      ) => new DesbloquearCuenta({ usuarios, bloqueos, auditoria, reloj }),
+    },
+    {
+      provide: ConsultarAuditoria,
+      inject: [REPOSITORIO_AUDITORIA, RELOJ],
+      useFactory: (auditoria: RepositorioAuditoria, reloj: Reloj) =>
+        new ConsultarAuditoria({ auditoria, reloj }),
+    },
+    {
+      provide: RegistrarEventoConfiguracion,
+      inject: [REPOSITORIO_AUDITORIA],
+      useFactory: (auditoria: RepositorioAuditoria) => new RegistrarEventoConfiguracion(auditoria),
+    },
+    {
       provide: IniciarSesion,
       inject: [
         REPOSITORIO_USUARIOS,
@@ -172,6 +278,7 @@ import {
         RELOJ,
         REGISTRO_EVENTOS_SEGURIDAD,
         LIMITADOR_INTENTOS,
+        REPOSITORIO_AUDITORIA,
       ],
       useFactory: (
         usuarios: RepositorioUsuarios,
@@ -183,6 +290,7 @@ import {
         reloj: Reloj,
         eventos: RegistroEventosSeguridad,
         limitador: LimitadorIntentos,
+        auditoria: RepositorioAuditoria,
       ) =>
         new IniciarSesion({
           usuarios,
@@ -194,6 +302,7 @@ import {
           reloj,
           eventos,
           limitador,
+          auditoria,
         }),
     },
     {
@@ -207,6 +316,8 @@ import {
         RELOJ,
         REGISTRO_EVENTOS_SEGURIDAD,
         LIMITADOR_INTENTOS,
+        REPOSITORIO_AUDITORIA,
+        PROTECTOR_DATOS,
       ],
       useFactory: (
         codigos: RepositorioCodigosOtp,
@@ -217,6 +328,8 @@ import {
         reloj: Reloj,
         eventos: RegistroEventosSeguridad,
         limitador: LimitadorIntentos,
+        auditoria: RepositorioAuditoria,
+        protector: ProtectorDatos,
       ) =>
         new VerificarOtp({
           codigos,
@@ -227,6 +340,8 @@ import {
           reloj,
           eventos,
           limitador,
+          auditoria,
+          protector,
         }),
     },
     {
@@ -464,4 +579,19 @@ import {
     FachadaSeguridad,
   ],
 })
-export class SeguridadModule {}
+export class SeguridadModule implements OnModuleInit {
+  constructor(
+    private readonly despachador: DespachadorEventos,
+    private readonly registrarConfiguracion: RegistrarEventoConfiguracion,
+  ) {}
+
+  /** Cambios de catálogo y feriados que llegan por la cola a la auditoría (research §R-02, 009). */
+  onModuleInit(): void {
+    for (const { tipo, accion } of EVENTOS_CONFIGURACION) {
+      this.despachador.registrar(
+        tipo,
+        manejadorConfiguracion(this.registrarConfiguracion, tipo, accion),
+      );
+    }
+  }
+}

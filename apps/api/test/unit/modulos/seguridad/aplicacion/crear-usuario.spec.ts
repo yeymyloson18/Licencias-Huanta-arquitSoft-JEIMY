@@ -50,6 +50,23 @@ describe('CrearUsuario (FR-017, FR-019, FR-022)', () => {
     expect(await usuarios.obtenerPorId(usuario.id)).toBe(usuario);
   });
 
+  it('registra USUARIO_CREADO con los roles y sin datos personales (009)', async () => {
+    const { usuarios, casoDeUso } = preparar();
+
+    const usuario = await casoDeUso.ejecutar({ ...DATOS, roles: [...DATOS.roles] }, 'admin-1');
+
+    expect(usuarios.auditoria).toHaveLength(1);
+    expect(usuarios.auditoria[0]).toMatchObject({
+      accion: 'USUARIO_CREADO',
+      actorUsuarioId: 'admin-1',
+      afectadoUsuarioId: usuario.id,
+      detalle: { roles: ['EVALUADOR', 'INSPECTOR'] },
+    });
+    const texto = JSON.stringify(usuarios.auditoria);
+    expect(texto).not.toContain('nueva.persona');
+    expect(texto).not.toContain('ClaveTemporal2026');
+  });
+
   it('rechaza un correo ya usado por otro usuario', async () => {
     const { usuarios, casoDeUso } = preparar();
     await usuarios.crear(usuarioFicticio({ correo: 'nueva.persona@ejemplo.pe' }));

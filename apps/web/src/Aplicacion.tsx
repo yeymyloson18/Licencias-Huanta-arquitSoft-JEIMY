@@ -2,7 +2,10 @@ import { Outlet, Route, Routes, useLocation } from 'react-router';
 import { Menu } from './componentes/Menu';
 import { PiePagina } from './componentes/PiePagina';
 import { RutaProtegida } from './componentes/RutaProtegida';
+import { AuditoriaSeguridad } from './paginas/admin/AuditoriaSeguridad';
 import { Catalogo } from './paginas/admin/Catalogo';
+import { FichaUsuario } from './paginas/admin/FichaUsuario';
+import { Panel } from './paginas/admin/Panel';
 import { EditarReceta } from './paginas/admin/EditarReceta';
 import { Usuarios } from './paginas/admin/Usuarios';
 import { Asistente } from './paginas/Asistente';
@@ -84,6 +87,14 @@ export function RutasAplicacion() {
               }
             />
             <Route
+              path="/admin/usuarios/:id"
+              element={
+                <RutaProtegida roles={['ADMINISTRADOR']}>
+                  <FichaUsuario />
+                </RutaProtegida>
+              }
+            />
+            <Route
               path="/admin/catalogo"
               element={
                 <RutaProtegida roles={['ADMINISTRADOR']}>
@@ -96,6 +107,22 @@ export function RutasAplicacion() {
               element={
                 <RutaProtegida roles={['ADMINISTRADOR']}>
                   <EditarReceta />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <RutaProtegida roles={['ADMINISTRADOR']}>
+                  <Panel />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/admin/auditoria"
+              element={
+                <RutaProtegida roles={['ADMINISTRADOR']}>
+                  <AuditoriaSeguridad />
                 </RutaProtegida>
               }
             />

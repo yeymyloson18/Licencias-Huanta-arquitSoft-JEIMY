@@ -1,6 +1,7 @@
 import { CodigoOtp } from '../dominio/codigo-otp';
 import { Correo } from '../dominio/correo';
 import { ErrorDominio } from '../dominio/error-dominio';
+import { eventoIngreso, type MotivoRechazo } from '../dominio/evento-auditoria';
 import { ErrorEnvioOtp, type EnviadorOTP } from '../dominio/puertos/enviador-otp';
 import type { GeneradorSecretos } from '../dominio/puertos/generador-secretos';
 import type { HasherClaves } from '../dominio/puertos/hasher-claves';
@@ -8,8 +9,10 @@ import type { LimitadorIntentos } from '../dominio/puertos/limitador-intentos';
 import type { ProtectorDatos } from '../../../compartido/dominio/protector-datos';
 import type { RegistroEventosSeguridad } from '../dominio/puertos/registro-eventos-seguridad';
 import type { Reloj } from '../dominio/puertos/reloj';
+import type { RepositorioAuditoria } from '../dominio/puertos/repositorio-auditoria';
 import type { RepositorioCodigosOtp } from '../dominio/puertos/repositorio-codigos-otp';
 import type { RepositorioUsuarios } from '../dominio/puertos/repositorio-usuarios';
+import { huellaOrigen, registrarSinFallar } from './auditoria-comun';
 import { ErrorAutenticacion, ErrorDemasiadosIntentos } from './errores';
 
 export interface DependenciasIniciarSesion {
@@ -22,6 +25,7 @@ export interface DependenciasIniciarSesion {
   readonly reloj: Reloj;
   readonly eventos: RegistroEventosSeguridad;
   readonly limitador: LimitadorIntentos;
+  readonly auditoria: RepositorioAuditoria;
 }
 
 export interface DesafioInicioSesion {
@@ -50,6 +54,13 @@ export class IniciarSesion {
     const reserva = await this.d.limitador.reservarIntento(correo, entrada.ip);
     if (!reserva.permitido) {
       this.d.eventos.registrar('bloqueo-temporal');
+      const bloqueada = correo === null ? null : await this.d.usuarios.obtenerPorCorreo(correo);
+      await this.auditar(
+        reserva.bloqueo === 'CUENTA' ? 'CUENTA_BLOQUEADA' : 'ORIGEN_BLOQUEADO',
+        bloqueada?.id ?? null,
+        entrada.ip,
+        { segundos: reserva.segundosRestantes },
+      );
       throw new ErrorDemasiadosIntentos(reserva.segundosRestantes);
     }
 
@@ -58,6 +69,8 @@ export class IniciarSesion {
     if (usuario === null) {
       await this.d.hasher.verificarContraFicticia(entrada.clave);
       this.d.eventos.registrar('inicio-sesion-fallido');
+      // Sin identificar a nadie: ni el correo, que es un dato personal (FR-014 de la 009).
+      await this.auditarClave(null, 'CORREO_NO_REGISTRADO', entrada.ip);
       throw new ErrorAutenticacion();
     }
 
@@ -65,6 +78,7 @@ export class IniciarSesion {
     if (!claveCorrecta || !usuario.activo) {
       // El intento reservado queda contado como fallo.
       this.d.eventos.registrar('inicio-sesion-fallido', { usuarioId: usuario.id });
+      await this.auditarClave(usuario.id, usuario.activo ? 'CLAVE' : 'CUENTA_INACTIVA', entrada.ip);
       throw new ErrorAutenticacion();
     }
     // Credenciales correctas: se devuelve el intento; solo los fallos quedan contados.
@@ -103,6 +117,33 @@ export class IniciarSesion {
       venceEn: codigo.venceEn,
       celularEnmascarado: usuario.celular.enmascarado(),
     };
+  }
+
+  private auditarClave(
+    afectadoUsuarioId: string | null,
+    motivo: MotivoRechazo,
+    ip: string,
+  ): Promise<void> {
+    return this.auditar('CLAVE_INCORRECTA', afectadoUsuarioId, ip, { motivo });
+  }
+
+  private auditar(
+    accion: 'CLAVE_INCORRECTA' | 'CUENTA_BLOQUEADA' | 'ORIGEN_BLOQUEADO',
+    afectadoUsuarioId: string | null,
+    ip: string,
+    detalle: { readonly motivo?: MotivoRechazo; readonly segundos?: number },
+  ): Promise<void> {
+    return registrarSinFallar(
+      this.d.auditoria,
+      this.d.eventos,
+      eventoIngreso({
+        accion,
+        afectadoUsuarioId,
+        origenHmac: huellaOrigen(this.d.protector, ip),
+        en: this.d.reloj.ahora(),
+        detalle,
+      }),
+    );
   }
 
   private leerCorreo(texto: string): Correo | null {

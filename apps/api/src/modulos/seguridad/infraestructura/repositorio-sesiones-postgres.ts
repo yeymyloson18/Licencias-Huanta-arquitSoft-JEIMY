@@ -1,21 +1,29 @@
 import type { PrismaServicio } from '../../../compartido/infraestructura/prisma.servicio';
-import type { RepositorioSesiones } from '../dominio/puertos/repositorio-sesiones';
+import type { EventoAuditoria } from '../dominio/evento-auditoria';
+import type {
+  AuditoriaDeRevocacion,
+  RepositorioSesiones,
+} from '../dominio/puertos/repositorio-sesiones';
 import { Sesion } from '../dominio/sesion';
+import { insertarEventosAuditoria } from './repositorio-auditoria-postgres';
 import { esUuid } from './uuid';
 
 /** Adaptador de `seguridad.sesion` (refresh tokens del personal, solo sus huellas). */
 export class RepositorioSesionesPostgres implements RepositorioSesiones {
   constructor(private readonly prisma: PrismaServicio) {}
 
-  async crear(sesion: Sesion): Promise<void> {
-    await this.prisma.sesion.create({
-      data: {
-        id: sesion.id,
-        usuario_id: sesion.usuarioId,
-        creada_en: sesion.creadaEn,
-        vence_maximo_en: sesion.venceMaximoEn,
-        ...this.estado(sesion),
-      },
+  async crear(sesion: Sesion, auditoria: readonly EventoAuditoria[] = []): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.sesion.create({
+        data: {
+          id: sesion.id,
+          usuario_id: sesion.usuarioId,
+          creada_en: sesion.creadaEn,
+          vence_maximo_en: sesion.venceMaximoEn,
+          ...this.estado(sesion),
+        },
+      });
+      await insertarEventosAuditoria(tx, auditoria);
     });
   }
 
@@ -40,12 +48,19 @@ export class RepositorioSesionesPostgres implements RepositorioSesiones {
     });
   }
 
-  async guardar(sesion: Sesion): Promise<void> {
-    await this.prisma.sesion.update({ where: { id: sesion.id }, data: this.estado(sesion) });
+  async guardar(sesion: Sesion, auditoria: readonly EventoAuditoria[] = []): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.sesion.update({ where: { id: sesion.id }, data: this.estado(sesion) });
+      await insertarEventosAuditoria(tx, auditoria);
+    });
   }
 
-  revocarTodasDelUsuario(usuarioId: string, ahora: Date): Promise<string[]> {
-    return this.revocar({ usuario_id: usuarioId }, ahora);
+  revocarTodasDelUsuario(
+    usuarioId: string,
+    ahora: Date,
+    auditoria?: AuditoriaDeRevocacion,
+  ): Promise<string[]> {
+    return this.revocar({ usuario_id: usuarioId }, ahora, auditoria);
   }
 
   revocarTodasMenos(usuarioId: string, sesionId: string, ahora: Date): Promise<string[]> {
@@ -55,6 +70,7 @@ export class RepositorioSesionesPostgres implements RepositorioSesiones {
   private async revocar(
     filtro: { usuario_id: string; id?: { not: string } },
     ahora: Date,
+    auditoria?: AuditoriaDeRevocacion,
   ): Promise<string[]> {
     return this.prisma.$transaction(async (tx) => {
       const vigentes = await tx.sesion.findMany({
@@ -67,6 +83,9 @@ export class RepositorioSesionesPostgres implements RepositorioSesiones {
           where: { id: { in: ids }, revocada_en: null },
           data: { revocada_en: ahora },
         });
+      }
+      if (auditoria !== undefined) {
+        await insertarEventosAuditoria(tx, auditoria(ids));
       }
       return ids;
     });

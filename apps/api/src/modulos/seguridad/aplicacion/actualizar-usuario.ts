@@ -1,3 +1,4 @@
+import { eventoGestion, type CampoEditable } from '../dominio/evento-auditoria';
 import { Celular } from '../dominio/celular';
 import { NombreCompleto } from '../dominio/nombre-completo';
 import type { AlmacenVersionSeguridad } from '../dominio/puertos/almacen-version-seguridad';
@@ -32,7 +33,11 @@ export interface CambiosUsuario {
 export class ActualizarUsuario {
   constructor(private readonly d: DependenciasActualizarUsuario) {}
 
-  async ejecutar(usuarioId: string, cambios: CambiosUsuario): Promise<Usuario> {
+  async ejecutar(
+    usuarioId: string,
+    cambios: CambiosUsuario,
+    administradorId: string,
+  ): Promise<Usuario> {
     const invalidos: string[] = [];
     const nombre =
       cambios.nombreCompleto === undefined
@@ -50,12 +55,17 @@ export class ActualizarUsuario {
 
     // Objeto (no `let`): el callback lo modifica dentro de la transacción.
     const efecto = { seDesactivo: false };
+    const ahora = this.d.reloj.ahora();
     const usuario = await this.d.usuarios.modificar(usuarioId, (actual, administradores) => {
+      const estabaActivo = actual.activo;
+      const campos: CampoEditable[] = [];
       if (nombre) {
         actual.cambiarNombre(nombre);
+        campos.push('nombreCompleto');
       }
       if (celular) {
         actual.cambiarCelular(celular);
+        campos.push('celular');
       }
       if (cambios.activo === false && actual.activo) {
         actual.desactivar();
@@ -64,6 +74,24 @@ export class ActualizarUsuario {
         actual.reactivar();
       }
       ReglaUltimoAdministrador.verificar(administradores, actual);
+
+      // Auditoría en la misma transacción (009): solo los nombres de los campos, nunca sus valores.
+      const evento = (
+        accion: 'USUARIO_EDITADO' | 'USUARIO_DESACTIVADO' | 'USUARIO_REACTIVADO',
+        detalle?: { readonly campos: readonly CampoEditable[] },
+      ) =>
+        eventoGestion({
+          accion,
+          administradorId,
+          usuarioId: actual.id,
+          en: ahora,
+          ...(detalle === undefined ? {} : { detalle }),
+        });
+      return [
+        ...(campos.length > 0 ? [evento('USUARIO_EDITADO', { campos })] : []),
+        ...(efecto.seDesactivo ? [evento('USUARIO_DESACTIVADO')] : []),
+        ...(!estabaActivo && cambios.activo === true ? [evento('USUARIO_REACTIVADO')] : []),
+      ];
     });
     if (usuario === null) {
       throw new ErrorUsuarioNoEncontrado();

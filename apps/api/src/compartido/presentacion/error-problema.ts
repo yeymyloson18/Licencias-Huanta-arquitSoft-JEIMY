@@ -57,6 +57,24 @@ export class ErrorProblema extends Error {
     return new ErrorProblema('correo-en-uso', 409, 'El correo ya está en uso');
   }
 
+  /** El administrador no puede cerrar sus propias sesiones ni desbloquearse (009). */
+  static accionSobreSiMismo(): ErrorProblema {
+    return new ErrorProblema(
+      'accion-sobre-si-mismo',
+      409,
+      'Esta acción no se puede hacer sobre su propia cuenta',
+    );
+  }
+
+  /** El servicio de bloqueos no responde: no se puede desbloquear ahora (009). */
+  static bloqueosNoDisponibles(): ErrorProblema {
+    return new ErrorProblema(
+      'servicio-no-disponible',
+      503,
+      'Los bloqueos no se pueden consultar en este momento',
+    );
+  }
+
   static noEncontrado(): ErrorProblema {
     return new ErrorProblema('no-encontrado', 404, 'Recurso no encontrado');
   }

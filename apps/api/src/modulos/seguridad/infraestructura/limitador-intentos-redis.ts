@@ -9,6 +9,9 @@ import {
 import type { ProtectorDatos } from '../../../compartido/dominio/protector-datos';
 
 const VENTANA_SEGUNDOS = 15 * 60;
+/** Contador de fallos de una cuenta: lo leen y borran también los bloqueos del panel (009). */
+export const PREFIJO_CORREO = 'lim:fallos:correo:';
+export const PREFIJO_ORIGEN = 'lim:fallos:ip:';
 const MAXIMO_FALLOS = 5;
 const MAXIMO_ENVIOS = 3;
 
@@ -39,8 +42,16 @@ export class LimitadorIntentosRedis implements LimitadorIntentos, LimitadorInten
     private readonly protector: ProtectorDatos,
   ) {}
 
-  reservarIntento(correo: Correo | null, ip: string): Promise<ResultadoReserva> {
-    return this.reservar(this.clavesIntento(correo, ip), MAXIMO_FALLOS);
+  async reservarIntento(correo: Correo | null, ip: string): Promise<ResultadoReserva> {
+    const { excedidas, ...resultado } = await this.reservarConDetalle(
+      this.clavesIntento(correo, ip),
+      MAXIMO_FALLOS,
+    );
+    if (resultado.permitido) {
+      return resultado;
+    }
+    const cuenta = excedidas.some((clave) => clave.startsWith(PREFIJO_CORREO));
+    return { ...resultado, bloqueo: cuenta ? 'CUENTA' : 'ORIGEN' };
   }
 
   liberarIntento(correo: Correo | null, ip: string): Promise<void> {
@@ -74,15 +85,23 @@ export class LimitadorIntentosRedis implements LimitadorIntentos, LimitadorInten
   }
 
   private clavesIntento(correo: Correo | null, ip: string): string[] {
-    const claves = [`lim:fallos:ip:${ip}`];
+    const claves = [`${PREFIJO_ORIGEN}${ip}`];
     if (correo !== null) {
       const hmac = Buffer.from(this.protector.hmac(correo.valor)).toString('hex');
-      claves.unshift(`lim:fallos:correo:${hmac}`);
+      claves.unshift(`${PREFIJO_CORREO}${hmac}`);
     }
     return claves;
   }
 
   private async reservar(claves: readonly string[], maximo: number): Promise<ResultadoReserva> {
+    const { permitido, segundosRestantes } = await this.reservarConDetalle(claves, maximo);
+    return { permitido, segundosRestantes };
+  }
+
+  private async reservarConDetalle(
+    claves: readonly string[],
+    maximo: number,
+  ): Promise<ResultadoReserva & { readonly excedidas: readonly string[] }> {
     let resultados: [Error | null, unknown][];
     try {
       const lote = this.redis.multi();
@@ -96,18 +115,20 @@ export class LimitadorIntentosRedis implements LimitadorIntentos, LimitadorInten
 
     let permitido = true;
     let segundos = 0;
+    const excedidas: string[] = [];
     for (let i = 0; i < claves.length; i += 1) {
       const cuenta = Number(resultados[i * 3]?.[1] ?? 0);
       if (cuenta > maximo) {
         permitido = false;
+        excedidas.push(claves[i] ?? '');
         const ttl = Number(resultados[i * 3 + 2]?.[1] ?? -1);
         // Sin TTL (no debería pasar) se asume la ventana completa.
         segundos = Math.max(segundos, ttl > 0 ? Math.ceil(ttl) : VENTANA_SEGUNDOS);
       }
     }
     return permitido
-      ? { permitido, segundosRestantes: 0 }
-      : { permitido, segundosRestantes: segundos };
+      ? { permitido, segundosRestantes: 0, excedidas }
+      : { permitido, segundosRestantes: segundos, excedidas };
   }
 
   private async liberar(claves: readonly string[]): Promise<void> {

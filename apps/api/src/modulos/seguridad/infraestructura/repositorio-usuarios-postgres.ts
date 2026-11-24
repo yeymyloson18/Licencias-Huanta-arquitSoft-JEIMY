@@ -3,6 +3,7 @@ import type { PrismaServicio } from '../../../compartido/infraestructura/prisma.
 import { AsignacionRol } from '../dominio/asignacion-rol';
 import { Celular } from '../dominio/celular';
 import { Correo } from '../dominio/correo';
+import type { EventoAuditoria } from '../dominio/evento-auditoria';
 import { NombreCompleto } from '../dominio/nombre-completo';
 import type { ProtectorDatos } from '../../../compartido/dominio/protector-datos';
 import type {
@@ -14,6 +15,7 @@ import type {
 } from '../dominio/puertos/repositorio-usuarios';
 import { esRol } from '../dominio/rol';
 import { Usuario } from '../dominio/usuario';
+import { insertarEventosAuditoria } from './repositorio-auditoria-postgres';
 import { aBytes, esUuid } from './uuid';
 
 const conRolesVigentes = {
@@ -46,9 +48,10 @@ export class RepositorioUsuariosPostgres implements RepositorioUsuarios {
     private readonly protector: ProtectorDatos,
   ) {}
 
-  async crear(usuario: Usuario): Promise<void> {
+  async crear(usuario: Usuario, auditoria: readonly EventoAuditoria[] = []): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       await this.insertar(tx, usuario);
+      await insertarEventosAuditoria(tx, auditoria);
     });
   }
 
@@ -101,9 +104,10 @@ export class RepositorioUsuariosPostgres implements RepositorioUsuarios {
     return fila === null ? null : this.aUsuario(fila);
   }
 
-  async guardar(usuario: Usuario): Promise<void> {
+  async guardar(usuario: Usuario, auditoria: readonly EventoAuditoria[] = []): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       await this.guardarEn(tx, usuario);
+      await insertarEventosAuditoria(tx, auditoria);
     });
   }
 
@@ -153,11 +157,13 @@ export class RepositorioUsuariosPostgres implements RepositorioUsuarios {
       }
       const usuario = this.aUsuario(fila);
       // Si el cambio lanza un error (p. ej. la regla del último administrador), no se guarda nada.
-      cambio(
-        usuario,
-        administradores.map((administrador) => administrador.id),
-      );
+      const auditoria =
+        cambio(
+          usuario,
+          administradores.map((administrador) => administrador.id),
+        ) ?? [];
       await this.guardarEn(tx, usuario);
+      await insertarEventosAuditoria(tx, auditoria);
       return usuario;
     });
   }

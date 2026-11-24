@@ -38,11 +38,11 @@ export class GestionarFeriados {
     return feriado;
   }
 
-  async eliminar(fecha: string): Promise<void> {
+  async eliminar(fecha: string, usuarioId: string): Promise<void> {
     if (!esFechaValida(fecha)) {
       throw new ErrorDatoFeriado('fecha', 'Debe ser una fecha AAAA-MM-DD');
     }
-    if (!(await this.feriados.eliminar(fecha))) {
+    if (!(await this.feriados.eliminar(fecha, usuarioId))) {
       throw new ErrorFeriadoNoEncontrado();
     }
   }

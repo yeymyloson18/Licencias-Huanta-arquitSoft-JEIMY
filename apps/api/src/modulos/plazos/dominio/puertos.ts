@@ -11,8 +11,10 @@ export interface RepositorioFeriados {
   listar(anio: number): Promise<Feriado[]>;
   /** Las fechas de los feriados entre dos fechas (ambas incluidas). */
   fechasEntre(desde: Fecha, hasta: Fecha): Promise<ReadonlySet<Fecha>>;
+  /** Registra el feriado y, en la misma operación, publica `FeriadoRegistrado` (009). */
   registrar(feriado: Feriado, usuarioId: string): Promise<'REGISTRADO' | 'REPETIDO'>;
-  eliminar(fecha: Fecha): Promise<boolean>;
+  /** Elimina el feriado y, en la misma operación, publica `FeriadoEliminado` (009). */
+  eliminar(fecha: Fecha, usuarioId: string): Promise<boolean>;
 }
 
 /** Una alerta guardada (`plazos.alerta`). */

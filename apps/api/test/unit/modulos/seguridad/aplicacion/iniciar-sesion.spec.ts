@@ -6,6 +6,7 @@ import { ErrorLimitadorNoDisponible } from '../../../../../src/modulos/seguridad
 import { IniciarSesion } from '../../../../../src/modulos/seguridad/aplicacion/iniciar-sesion';
 import { ErrorEnvioOtp } from '../../../../../src/modulos/seguridad/dominio/puertos/enviador-otp';
 import {
+  AuditoriaEnMemoria,
   EnviadorFalso,
   EventosFalsos,
   GeneradorFalso,
@@ -29,6 +30,7 @@ const preparar = () => {
   const eventos = new EventosFalsos();
   const reloj = new RelojFalso();
   const limitador = new LimitadorFalso();
+  const auditoria = new AuditoriaEnMemoria();
   const casoDeUso = new IniciarSesion({
     usuarios,
     codigos,
@@ -39,8 +41,9 @@ const preparar = () => {
     reloj,
     eventos,
     limitador,
+    auditoria,
   });
-  return { usuarios, codigos, hasher, enviador, eventos, reloj, limitador, casoDeUso };
+  return { usuarios, codigos, hasher, enviador, eventos, reloj, limitador, auditoria, casoDeUso };
 };
 
 describe('IniciarSesion (paso 1)', () => {
@@ -90,6 +93,34 @@ describe('IniciarSesion (paso 1)', () => {
     expect(eventos.registrados).toEqual([{ evento: 'inicio-sesion-fallido', ids: {} }]);
   });
 
+  it('registra el intento con un correo inexistente sin identificar a nadie (FR-014 de la 009)', async () => {
+    const { auditoria, casoDeUso } = preparar();
+
+    await expect(
+      casoDeUso.ejecutar({ ip: IP, correo: 'nadie@ejemplo.pe', clave: 'ClaveActual2026' }),
+    ).rejects.toBeInstanceOf(ErrorAutenticacion);
+
+    expect(auditoria.eventos).toHaveLength(1);
+    expect(auditoria.eventos[0]).toMatchObject({
+      accion: 'CLAVE_INCORRECTA',
+      resultado: 'RECHAZADO',
+      actorUsuarioId: null,
+      afectadoUsuarioId: null,
+      detalle: { motivo: 'CORREO_NO_REGISTRADO' },
+    });
+    expect(JSON.stringify(auditoria.eventos[0])).not.toContain('nadie');
+  });
+
+  it('si la auditoría falla, el intento responde igual y se avisa sin datos', async () => {
+    const { auditoria, eventos, casoDeUso } = preparar();
+    auditoria.falla = true;
+
+    await expect(
+      casoDeUso.ejecutar({ ip: IP, correo: 'nadie@ejemplo.pe', clave: 'x' }),
+    ).rejects.toBeInstanceOf(ErrorAutenticacion);
+    expect(eventos.nombres()).toContain('fallo-auditoria');
+  });
+
   it('con un correo mal formado responde igual que con uno inexistente', async () => {
     const { hasher, casoDeUso } = preparar();
 
@@ -113,6 +144,34 @@ describe('IniciarSesion (paso 1)', () => {
     expect(eventos.registrados).toEqual([
       { evento: 'inicio-sesion-fallido', ids: { usuarioId: 'usuario-1' } },
     ]);
+  });
+
+  it.each([
+    ['clave incorrecta', { clave: 'ClaveActual2026' }, 'OtraClave2026', 'CLAVE'],
+    ['usuario inactivo', { activo: false }, 'ClaveActual2026', 'CUENTA_INACTIVA'],
+  ])(
+    'con %s registra CLAVE_INCORRECTA sobre la cuenta, sin actor',
+    async (_, opciones, clave, motivo) => {
+      const { usuarios, auditoria, casoDeUso } = preparar();
+      await usuarios.crear(usuarioFicticio(opciones));
+
+      await casoDeUso
+        .ejecutar({ ip: IP, correo: 'persona@ejemplo.pe', clave })
+        .catch(() => undefined);
+
+      expect(
+        auditoria.eventos.map((e) => [e.accion, e.actorUsuarioId, e.afectadoUsuarioId, e.detalle]),
+      ).toEqual([['CLAVE_INCORRECTA', null, 'usuario-1', { motivo }]]);
+    },
+  );
+
+  it('con credenciales correctas no registra nada todavía (el ingreso se registra en el paso 2)', async () => {
+    const { usuarios, auditoria, casoDeUso } = preparar();
+    await usuarios.crear(usuarioFicticio());
+
+    await casoDeUso.ejecutar({ ip: IP, correo: 'persona@ejemplo.pe', clave: 'ClaveActual2026' });
+
+    expect(auditoria.eventos).toHaveLength(0);
   });
 
   it('si el envío falla lanza ErrorEnvioOtp', async () => {
@@ -145,6 +204,40 @@ describe('IniciarSesion: límites de intentos (historia 4, contracts/autenticaci
     expect((error as ErrorDemasiadosIntentos).segundos).toBe(600);
     expect(enviador.enviados).toHaveLength(0);
     expect(eventos.nombres()).toContain('bloqueo-temporal');
+  });
+
+  it('el bloqueo de la cuenta queda como CUENTA_BLOQUEADA con los segundos (009)', async () => {
+    const { usuarios, auditoria, casoDeUso } = preparar();
+    await usuarios.crear(usuarioFicticio());
+    for (let i = 0; i < 5; i += 1) {
+      await casoDeUso.ejecutar({ ...credenciales, clave: 'Incorrecta2026' }).catch(() => undefined);
+    }
+
+    await casoDeUso.ejecutar(credenciales).catch(() => undefined);
+
+    expect(auditoria.eventos.at(-1)).toMatchObject({
+      accion: 'CUENTA_BLOQUEADA',
+      afectadoUsuarioId: 'usuario-1',
+      detalle: { segundos: 600 },
+    });
+  });
+
+  it('el bloqueo solo del origen queda como ORIGEN_BLOQUEADO (009)', async () => {
+    const { auditoria, casoDeUso } = preparar();
+    for (let i = 0; i < 5; i += 1) {
+      await casoDeUso
+        .ejecutar({ ...credenciales, correo: `otro${String(i)}@ejemplo.pe` })
+        .catch(() => undefined);
+    }
+
+    await casoDeUso
+      .ejecutar({ ...credenciales, correo: 'nuevo@ejemplo.pe' })
+      .catch(() => undefined);
+
+    expect(auditoria.eventos.at(-1)).toMatchObject({
+      accion: 'ORIGEN_BLOQUEADO',
+      afectadoUsuarioId: null,
+    });
   });
 
   it('un intento con credenciales correctas se devuelve: solo los fallos quedan contados', async () => {

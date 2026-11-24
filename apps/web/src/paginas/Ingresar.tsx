@@ -7,6 +7,7 @@ import {
   type ResultadoAuth,
   verificarOtp,
 } from '../servicios/clienteApi';
+import { inicioDe } from '../sesion/inicio';
 import { useSesion } from '../sesion/ProveedorSesion';
 
 const MENSAJE_CREDENCIALES = 'Correo, clave o código incorrectos.';
@@ -15,13 +16,16 @@ const MENSAJE_NO_DISPONIBLE =
 
 const dosDigitos = (numero: number) => String(numero).padStart(2, '0');
 
-/** Solo rutas internas del personal: nunca una URL externa ni `//otro-sitio`. */
-const destinoSeguro = (estado: unknown): string => {
+/**
+ * Solo rutas internas del personal: nunca una URL externa ni `//otro-sitio`. Sin destino guardado,
+ * el inicio de sus roles: el administrador va a su panel (009).
+ */
+const destinoSeguro = (estado: unknown, roles: readonly string[]): string => {
   const volverA = (estado as { volverA?: unknown } | null)?.volverA;
   return typeof volverA === 'string' &&
     /^\/(admin|personal|cambiar-clave)(\/[\w-]+)*$/.test(volverA)
     ? volverA
-    : '/';
+    : inicioDe(roles);
 };
 
 /** Mensaje para la persona; nunca dice qué dato falló ni repite el correo (FR-005). */
@@ -53,7 +57,11 @@ export function Ingresar() {
   if (sesion !== null) {
     return (
       <Navigate
-        to={sesion.debeCambiarClave ? '/cambiar-clave' : destinoSeguro(ubicacion.state)}
+        to={
+          sesion.debeCambiarClave
+            ? '/cambiar-clave'
+            : destinoSeguro(ubicacion.state, sesion.usuario.roles)
+        }
         replace
       />
     );

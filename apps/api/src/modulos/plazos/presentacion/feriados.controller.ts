@@ -84,9 +84,12 @@ export class FeriadosController {
   @Delete(':fecha')
   @HttpCode(204)
   @RequiereRoles('ADMINISTRADOR')
-  async eliminar(@Param('fecha') fecha: string): Promise<void> {
+  async eliminar(
+    @Param('fecha') fecha: string,
+    @UsuarioActual() usuario: UsuarioAutenticado,
+  ): Promise<void> {
     try {
-      await this.feriados.eliminar(fecha);
+      await this.feriados.eliminar(fecha, usuario.usuarioId);
     } catch (error) {
       throw traducir(error);
     }

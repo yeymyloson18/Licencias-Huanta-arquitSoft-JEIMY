@@ -161,6 +161,7 @@ describe('RepositorioUsuariosPostgres', () => {
       const modificado = await repositorio.modificar(caja?.id ?? '', (usuario, administradores) => {
         administradoresVistos = administradores;
         usuario.reemplazarRoles(['JEFATURA'], ADMIN, new Date('2026-11-18T09:00:00.000Z'));
+        return [];
       });
 
       expect(administradoresVistos).toEqual([admin?.id]);

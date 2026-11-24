@@ -44,7 +44,35 @@ describe('cargarConfiguracion', () => {
       saludTimeoutMs: 2000,
       entorno: 'development',
       envioOtp: 'simulado',
+      envioAvisos: 'simulado',
+      smtpBuzonUrl: 'smtp://localhost:1025',
       trustProxySaltos: 1,
+    });
+  });
+
+  describe('buzón de pruebas (009)', () => {
+    it('acepta el buzón para los códigos y los avisos en desarrollo', () => {
+      expect(
+        cargarConfiguracion({
+          ...base,
+          ENVIO_OTP: 'buzon',
+          ENVIO_AVISOS: 'buzon',
+          SMTP_BUZON_URL: 'smtp://mailpit:1025',
+        }),
+      ).toMatchObject({
+        envioOtp: 'buzon',
+        envioAvisos: 'buzon',
+        smtpBuzonUrl: 'smtp://mailpit:1025',
+      });
+    });
+
+    it('rechaza un medio de avisos desconocido y una URL que no es SMTP', () => {
+      expect(mensajeDe(() => cargarConfiguracion({ ...base, ENVIO_AVISOS: 'sms' }))).toContain(
+        'ENVIO_AVISOS',
+      );
+      expect(
+        mensajeDe(() => cargarConfiguracion({ ...base, SMTP_BUZON_URL: 'http://mailpit:8025' })),
+      ).toContain('SMTP_BUZON_URL');
     });
   });
 
@@ -169,6 +197,15 @@ describe('cargarConfiguracion', () => {
       );
 
       expect(mensaje).toContain('ENVIO_OTP');
+    });
+
+    it('rechaza el buzón de pruebas para los códigos y para los avisos (009)', () => {
+      expect(mensajeDe(() => cargarConfiguracion({ ...produccion, ENVIO_OTP: 'buzon' }))).toContain(
+        'El buzón de pruebas no se permite en producción',
+      );
+      expect(
+        mensajeDe(() => cargarConfiguracion({ ...produccion, ENVIO_AVISOS: 'buzon' })),
+      ).toContain('ENVIO_AVISOS');
     });
 
     it.each([

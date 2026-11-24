@@ -1,5 +1,6 @@
 import { type SyntheticEvent, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { inicioDe } from '../sesion/inicio';
 import { CampoFormulario } from '../componentes/CampoFormulario';
 import { cambiarClave } from '../servicios/clienteApi';
 import { useSesion } from '../sesion/ProveedorSesion';
@@ -38,7 +39,10 @@ export function CambiarClave() {
         setClaveNueva('');
         setRepetir('');
         entrar(resultado.datos);
-        void navegar('/', { replace: true, state: { aviso: 'Su clave se cambió' } });
+        void navegar(inicioDe(resultado.datos.usuario.roles), {
+          replace: true,
+          state: { aviso: 'Su clave se cambió' },
+        });
         return;
       case 'invalido': {
         const porCampo: Errores = {};

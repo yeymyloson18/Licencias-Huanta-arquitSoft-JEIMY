@@ -13,9 +13,12 @@ interface Opcion {
 
 // Las opciones de los demás módulos se agregan aquí a medida que existan (FR-026).
 const OPCIONES: readonly Opcion[] = [
+  { etiqueta: 'Panel', ruta: '/admin', roles: ['ADMINISTRADOR'] },
   { etiqueta: 'Usuarios', ruta: '/admin/usuarios', roles: ['ADMINISTRADOR'] },
   { etiqueta: 'Catálogo', ruta: '/admin/catalogo', roles: ['ADMINISTRADOR'] },
   { etiqueta: 'Feriados', ruta: '/admin/feriados', roles: ['ADMINISTRADOR'] },
+  // 009: auditoría de seguridad (accesos y configuración); la de JEFATURA sigue aparte.
+  { etiqueta: 'Auditoría', ruta: '/admin/auditoria', roles: ['ADMINISTRADOR'] },
   {
     etiqueta: 'Expedientes',
     ruta: '/personal/expedientes',

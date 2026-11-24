@@ -33,6 +33,21 @@ describe('CerrarSesion', () => {
     expect(almacen.revocadas).toEqual(['s-1']);
   });
 
+  it('guarda CIERRE_SESION junto con la sesión revocada, sin origen (009)', async () => {
+    const { sesiones, casoDeUso } = await preparar();
+
+    await casoDeUso.ejecutar({ refreshToken: 's-1.secreto' });
+
+    expect(sesiones.auditoria).toHaveLength(1);
+    expect(sesiones.auditoria[0]).toMatchObject({
+      accion: 'CIERRE_SESION',
+      actorUsuarioId: 'u-1',
+      afectadoUsuarioId: 'u-1',
+      origenHmac: null,
+      ocurridoEn: T0,
+    });
+  });
+
   it.each([undefined, '', 'basura', 'no-existe.secreto'])(
     'sin una sesión válida (%p) no falla ni revoca nada',
     async (token) => {

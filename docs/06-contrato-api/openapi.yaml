@@ -17,6 +17,10 @@ info:
     - Errores en formato `application/problem+json` (RFC 9457) sin datos personales (EQ-04).
     - Límite de intentos: 5 intentos fallidos en 15 minutos bloquean temporalmente (respuesta 429, ADR-007).
     - Listados paginados con `pagina` y `porPagina` (máximo 100).
+    - Auditoría de seguridad (009): los ingresos (`/auth/*`), la gestión de usuarios (`/usuarios/*`), la
+      edición de recetas (`/admin/catalogo/*`) y de feriados (`/feriados*`) quedan registrados en
+      `GET /admin/auditoria` sin datos personales. Ingresos y usuarios se registran en la misma transacción
+      que su cambio; catálogo y feriados, por la cola de eventos (pueden tardar unos segundos en verse).
   contact:
     name: Jeimy Gregori Sulca Ccorimanya
   license:
@@ -32,6 +36,8 @@ servers:
 tags:
   - name: Seguridad
     description: Inicio de sesión del personal, OTP y verificación de identidad del administrado
+  - name: Administración
+    description: Panel del administrador y auditoría de seguridad (009). Solo rol ADMINISTRADOR.
   - name: Usuarios
     description: Gestión del personal y sus roles (administrador)
   - name: Catálogo
@@ -312,11 +318,32 @@ paths:
         in: path
         required: true
         schema: { type: string, format: uuid }
+    get:
+      tags: [Usuarios]
+      operationId: obtenerFichaUsuario
+      summary: Ficha del usuario con su estado de seguridad (009, rol ADMINISTRADOR).
+      description: >-
+        Datos del usuario (celular enmascarado), último ingreso correcto, sesiones abiertas, bloqueo por
+        intentos fallidos, historial de roles con nombres y sus últimos 10 eventos de la auditoría de
+        seguridad. `bloqueo` es null si el servicio de bloqueos no responde. `Cache-Control: no-store`.
+      security: [{ bearerPersonal: [] }]
+      responses:
+        '200':
+          description: Ficha del usuario.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FichaUsuario' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
     patch:
       tags: [Usuarios]
       operationId: actualizarUsuario
       summary: Cambia el nombre, el celular o activa/desactiva un usuario (RF22). El correo no se puede cambiar.
-      description: Desactivar a un usuario cierra al instante todas sus sesiones (FR-011).
+      description: >-
+        Desactivar a un usuario cierra al instante todas sus sesiones (FR-011). Registra en la auditoría de
+        seguridad USUARIO_EDITADO (solo los nombres de los campos), USUARIO_DESACTIVADO o USUARIO_REACTIVADO
+        (009).
       security: [{ bearerPersonal: [] }]
       requestBody:
         required: true
@@ -413,6 +440,124 @@ paths:
         '422': { $ref: '#/components/responses/NoProcesable' }
 
   # ===================================================================== CATÁLOGO
+  /usuarios/{usuarioId}/cerrar-sesiones:
+    parameters:
+      - name: usuarioId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [Usuarios]
+      operationId: cerrarSesionesDeUsuario
+      summary: Cierra todas las sesiones abiertas de un usuario sin desactivarlo (009, rol ADMINISTRADOR).
+      description: >-
+        Sus sesiones dejan de servir desde la siguiente petición, con el mismo mecanismo que la desactivación.
+        Registra SESIONES_CERRADAS en la auditoría de seguridad. El administrador no puede cerrar sus propias
+        sesiones desde aquí (409 `accion-sobre-si-mismo`).
+      security: [{ bearerPersonal: [] }]
+      responses:
+        '200':
+          description: Sesiones cerradas.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sesionesCerradas]
+                properties:
+                  sesionesCerradas: { type: integer, minimum: 0 }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/AccionSobreSiMismo' }
+
+  /usuarios/{usuarioId}/desbloquear:
+    parameters:
+      - name: usuarioId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [Usuarios]
+      operationId: desbloquearUsuario
+      summary: Borra el bloqueo por intentos fallidos de la cuenta (009, rol ADMINISTRADOR).
+      description: >-
+        Borra solo el contador de intentos fallidos de la cuenta, no el del origen. Registra
+        CUENTA_DESBLOQUEADA aunque la cuenta no estuviera bloqueada. El administrador no puede desbloquearse a
+        sí mismo (409 `accion-sobre-si-mismo`). 503 si el servicio de bloqueos no responde.
+      security: [{ bearerPersonal: [] }]
+      responses:
+        '204': { description: Cuenta desbloqueada. }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/AccionSobreSiMismo' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
+
+  /admin/panel:
+    get:
+      tags: [Administración]
+      operationId: obtenerPanelAdministrador
+      summary: Cifras de usuarios y de seguridad para el panel del administrador (009).
+      description: >-
+        Usuarios activos e inactivos, usuarios activos por rol, cuentas y orígenes bloqueados ahora (null si el
+        servicio de bloqueos no responde), sesiones abiertas, ingresos fallidos de hoy y de los últimos 7 días
+        (hora de Lima) y los últimos 10 eventos de la auditoría de seguridad. `Cache-Control: no-store`.
+      security: [{ bearerPersonal: [] }]
+      responses:
+        '200':
+          description: Panel.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PanelAdministrador' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /admin/auditoria:
+    get:
+      tags: [Administración]
+      operationId: consultarAuditoriaSeguridad
+      summary: Auditoría de seguridad paginada o en CSV (009).
+      description: >-
+        De la más reciente a la más antigua. Los filtros usan identificadores internos, nunca datos personales.
+        Sin fechas, los últimos 30 días; el rango no puede superar 366 días. Con `formato=csv` devuelve hasta
+        10,000 filas (las más recientes; `X-Auditoria-Truncada: true` indica que hay más) en UTF-8 con BOM,
+        separado por punto y coma, con fin de línea CRLF y las columnas
+        `fecha;accion;actor;afectado;objeto;resultado`; un valor que empieza con `=`, `+`, `-` o `@` lleva un
+        apóstrofo delante. La auditoría solo se agrega: no se puede editar ni borrar. `Cache-Control: no-store`.
+      security: [{ bearerPersonal: [] }]
+      parameters:
+        - { name: desde, in: query, schema: { type: string, format: date } }
+        - { name: hasta, in: query, schema: { type: string, format: date } }
+        - name: accion
+          in: query
+          schema: { $ref: '#/components/schemas/AccionAuditoriaSeguridad' }
+        - { name: actorId, in: query, schema: { type: string, format: uuid } }
+        - { name: afectadoId, in: query, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/PorPagina'
+        - name: formato
+          in: query
+          schema: { type: string, enum: [json, csv], default: json }
+      responses:
+        '200':
+          description: Página de eventos o archivo CSV.
+          headers:
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
+            X-Auditoria-Truncada:
+              schema: { type: string, enum: ['true', 'false'] }
+              description: 'Solo en CSV: hay más de 10,000 filas.'
+            Content-Disposition:
+              schema: { type: string }
+              description: 'Solo en CSV: attachment; filename="auditoria-seguridad-<AAAA-MM-DD>.csv"'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaAuditoriaSeguridad' }
+            text/csv:
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
+
   /catalogo/recetas:
     get:
       tags: [Catálogo]
@@ -1774,8 +1919,13 @@ components:
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problema' }
+    AccionSobreSiMismo:
+      description: El administrador no puede cerrar sus propias sesiones ni desbloquearse a sí mismo (`type` termina en `accion-sobre-si-mismo`, 009).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
     ServicioNoDisponible:
-      description: El inicio de sesión no puede comprobar los límites de intentos o enviar el código en este momento.
+      description: El inicio de sesión no puede comprobar los límites de intentos o enviar el código en este momento (en el desbloqueo, el servicio de bloqueos no responde).
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problema' }
@@ -1979,6 +2129,143 @@ components:
         activo: { type: boolean }
         pagina: { type: integer, minimum: 1, default: 1 }
         porPagina: { type: integer, minimum: 1, maximum: 100, default: 20 }
+
+    # ------------------------------------------------------------- administración (009)
+    AccionAuditoriaSeguridad:
+      type: string
+      description: Acciones de la auditoría de seguridad (lista cerrada).
+      enum:
+        - INGRESO_CORRECTO
+        - CLAVE_INCORRECTA
+        - CODIGO_INCORRECTO
+        - CUENTA_BLOQUEADA
+        - ORIGEN_BLOQUEADO
+        - CIERRE_SESION
+        - CLAVE_CAMBIADA
+        - USUARIO_CREADO
+        - USUARIO_EDITADO
+        - USUARIO_DESACTIVADO
+        - USUARIO_REACTIVADO
+        - ROL_ASIGNADO
+        - ROL_QUITADO
+        - CLAVE_TEMPORAL_ASIGNADA
+        - SESIONES_CERRADAS
+        - CUENTA_DESBLOQUEADA
+        - RECETA_ACTUALIZADA
+        - RECETA_DESACTIVADA
+        - RECETA_REACTIVADA
+        - FERIADO_REGISTRADO
+        - FERIADO_ELIMINADO
+    PersonaAuditoria:
+      type: object
+      required: [id, nombre]
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+    EventoAuditoriaSeguridad:
+      type: object
+      description: Un evento de la auditoría de seguridad. Nunca trae correo, celular, documento, clave, código ni IP.
+      required: [id, ocurridoEn, accion, textoAccion, actor, afectado, objeto, resultado]
+      properties:
+        id: { type: string, pattern: '^[0-9]+$' }
+        ocurridoEn: { type: string, format: date-time }
+        accion: { $ref: '#/components/schemas/AccionAuditoriaSeguridad' }
+        textoAccion: { type: string, example: Clave incorrecta }
+        actor:
+          description: Quién actuó; null si fue el sistema o un intento sin sesión.
+          oneOf: [{ $ref: '#/components/schemas/PersonaAuditoria' }, { type: 'null' }]
+        afectado:
+          description: Usuario afectado; null si no aplica o si el correo del intento no existe.
+          oneOf: [{ $ref: '#/components/schemas/PersonaAuditoria' }, { type: 'null' }]
+        objeto:
+          type: [string, 'null']
+          description: Código de la receta o fecha del feriado.
+        resultado: { type: string, enum: [EXITO, RECHAZADO] }
+    PaginaAuditoriaSeguridad:
+      allOf:
+        - $ref: '#/components/schemas/Paginacion'
+        - type: object
+          required: [datos]
+          properties:
+            datos:
+              type: array
+              items: { $ref: '#/components/schemas/EventoAuditoriaSeguridad' }
+    BloqueosActuales:
+      type: object
+      required: [cuentas, origenes]
+      properties:
+        cuentas: { type: integer, minimum: 0 }
+        origenes: { type: integer, minimum: 0 }
+    PanelAdministrador:
+      type: object
+      required: [usuarios, porRol, bloqueos, sesionesAbiertas, ingresosFallidos, ultimosEventos]
+      properties:
+        usuarios:
+          type: object
+          required: [activos, inactivos]
+          properties:
+            activos: { type: integer, minimum: 0 }
+            inactivos: { type: integer, minimum: 0 }
+        porRol:
+          type: object
+          description: Usuarios activos con cada rol vigente.
+          required: [MESA_PARTES, EVALUADOR, INSPECTOR, CAJA, JEFATURA, ADMINISTRADOR]
+          additionalProperties: false
+          properties:
+            MESA_PARTES: { type: integer, minimum: 0 }
+            EVALUADOR: { type: integer, minimum: 0 }
+            INSPECTOR: { type: integer, minimum: 0 }
+            CAJA: { type: integer, minimum: 0 }
+            JEFATURA: { type: integer, minimum: 0 }
+            ADMINISTRADOR: { type: integer, minimum: 0 }
+        bloqueos:
+          description: null si el servicio de bloqueos no responde (no se inventan cifras).
+          oneOf: [{ $ref: '#/components/schemas/BloqueosActuales' }, { type: 'null' }]
+        sesionesAbiertas: { type: integer, minimum: 0 }
+        ingresosFallidos:
+          type: object
+          required: [hoy, ultimos7Dias]
+          properties:
+            hoy: { type: integer, minimum: 0 }
+            ultimos7Dias: { type: integer, minimum: 0 }
+        ultimosEventos:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/EventoAuditoriaSeguridad' }
+    AsignacionRolHistorial:
+      type: object
+      required: [rol, asignadoPor, asignadoEn, retiradoPor, retiradoEn]
+      properties:
+        rol: { $ref: '#/components/schemas/Rol' }
+        asignadoPor: { $ref: '#/components/schemas/PersonaAuditoria' }
+        asignadoEn: { type: string, format: date-time }
+        retiradoPor:
+          oneOf: [{ $ref: '#/components/schemas/PersonaAuditoria' }, { type: 'null' }]
+        retiradoEn: { type: [string, 'null'], format: date-time }
+    BloqueoCuenta:
+      type: object
+      required: [bloqueada, hasta]
+      properties:
+        bloqueada: { type: boolean }
+        hasta: { type: [string, 'null'], format: date-time }
+    FichaUsuario:
+      allOf:
+        - $ref: '#/components/schemas/Usuario'
+        - type: object
+          required: [ultimoIngreso, sesionesAbiertas, bloqueo, historialRoles, ultimosEventos]
+          properties:
+            ultimoIngreso: { type: [string, 'null'], format: date-time }
+            sesionesAbiertas: { type: integer, minimum: 0 }
+            bloqueo:
+              description: null si el servicio de bloqueos no responde.
+              oneOf: [{ $ref: '#/components/schemas/BloqueoCuenta' }, { type: 'null' }]
+            historialRoles:
+              type: array
+              items: { $ref: '#/components/schemas/AsignacionRolHistorial' }
+            ultimosEventos:
+              type: array
+              maxItems: 10
+              items: { $ref: '#/components/schemas/EventoAuditoriaSeguridad' }
 
     # ------------------------------------------------------------- catálogo
     RecetaResumen:

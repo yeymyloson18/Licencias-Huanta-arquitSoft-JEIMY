@@ -41,6 +41,18 @@ describe('Menú del personal', () => {
     expect(within(menu).getByText('Persona de Prueba')).toBeInTheDocument();
   });
 
+  it('el administrador ve "Auditoría" de seguridad (009)', async () => {
+    simularApi(conSesion(['ADMINISTRADOR']));
+    montarEn('/');
+
+    const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+
+    expect(within(menu).getByRole('link', { name: 'Auditoría' })).toHaveAttribute(
+      'href',
+      '/admin/auditoria',
+    );
+  });
+
   it('caja no ve "Usuarios"', async () => {
     simularApi(conSesion(['CAJA']));
     montarEn('/');

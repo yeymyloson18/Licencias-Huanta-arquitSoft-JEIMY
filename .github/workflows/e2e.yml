@@ -23,6 +23,10 @@ jobs:
     env:
       # Valores FICTICIOS de .env.example: el compose de desarrollo ya los trae por defecto.
       RELOJ_PLAZOS_INTERVALO_MS: '0'
+      # El E2E lee el código de Redis con el envío simulado (aclaración del 2026-11-23 de la 009); el
+      # buzón de pruebas es para las personas que prueban por el enlace.
+      ENVIO_OTP: simulado
+      ENVIO_AVISOS: simulado
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

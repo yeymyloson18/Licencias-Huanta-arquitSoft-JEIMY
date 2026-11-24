@@ -1,3 +1,4 @@
+import { eventoGestion } from '../dominio/evento-auditoria';
 import type { AlmacenVersionSeguridad } from '../dominio/puertos/almacen-version-seguridad';
 import type { RegistroEventosSeguridad } from '../dominio/puertos/registro-eventos-seguridad';
 import type { Reloj } from '../dominio/puertos/reloj';
@@ -30,6 +31,19 @@ export class ReemplazarRoles {
       const cambios = actual.reemplazarRoles(roles, porUsuarioId, ahora);
       efecto.huboCambios = cambios.retirados.length > 0 || cambios.creados.length > 0;
       ReglaUltimoAdministrador.verificar(administradores, actual);
+      // Un evento por rol quitado o asignado, en la misma transacción (009).
+      const evento = (accion: 'ROL_ASIGNADO' | 'ROL_QUITADO', rol: Rol) =>
+        eventoGestion({
+          accion,
+          administradorId: porUsuarioId,
+          usuarioId: actual.id,
+          en: ahora,
+          detalle: { rol },
+        });
+      return [
+        ...cambios.retirados.map((rol) => evento('ROL_QUITADO', rol)),
+        ...cambios.creados.map((rol) => evento('ROL_ASIGNADO', rol)),
+      ];
     });
     if (usuario === null) {
       throw new ErrorUsuarioNoEncontrado();

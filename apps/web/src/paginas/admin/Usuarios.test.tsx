@@ -60,6 +60,15 @@ describe('Página de gestión de usuarios (historia 5)', () => {
     expect(screen.getByText('Inactivo')).toBeInTheDocument();
   });
 
+  it('cada tarjeta enlaza a la ficha del usuario (009)', async () => {
+    await abrir(base());
+
+    expect(await screen.findByRole('link', { name: 'Ver ficha de Ana Quispe' })).toHaveAttribute(
+      'href',
+      `/admin/usuarios/${ana.id}`,
+    );
+  });
+
   it('busca con POST /usuarios/busqueda (el texto no va en la URL)', async () => {
     const { llamadas, usuario } = await abrir(
       base({ 'POST /usuarios/busqueda': () => pagina([ana]) }),

@@ -51,6 +51,20 @@ describe('ReemplazarRoles (FR-018, FR-019, FR-015, FR-020)', () => {
 
     expect(usuario.versionSeguridad).toBe(antes);
     expect(eventos.nombres()).not.toContain('roles-cambiados');
+    expect(usuarios.auditoria).toEqual([]);
+  });
+
+  it('registra un ROL_QUITADO y un ROL_ASIGNADO por rol, con el administrador (009)', async () => {
+    const { usuarios, casoDeUso } = await preparar();
+
+    await casoDeUso.ejecutar('u-1', ['JEFATURA', 'EVALUADOR'], 'admin-1');
+
+    expect(
+      usuarios.auditoria.map((e) => [e.accion, e.actorUsuarioId, e.afectadoUsuarioId, e.detalle]),
+    ).toEqual([
+      ['ROL_QUITADO', 'admin-1', 'u-1', { rol: 'CAJA' }],
+      ['ROL_ASIGNADO', 'admin-1', 'u-1', { rol: 'EVALUADOR' }],
+    ]);
   });
 
   it('no permite quitarle ADMINISTRADOR al último administrador (aunque sea él mismo)', async () => {
