@@ -1,5 +1,8 @@
 # Contrato de la API: administrador (009)
 
+Los `nullable: true` de este resumen se escriben en el contrato como `type: [<tipo>, 'null']`
+(OpenAPI 3.1).
+
 Resumen de lo que se agrega a `docs/06-contrato-api/openapi.yaml`. Todas las operaciones exigen
 `bearerPersonal` con el rol **ADMINISTRADOR**: sin token 401 `no-autenticado`, otro rol 403
 `sin-permiso`. Todas responden `Cache-Control: no-store`.

@@ -28,7 +28,7 @@ terminar cada fase.
       `FichaUsuario`, problema `accion-sobre-si-mismo` (409) y las operaciones `GET /admin/panel`,
       `GET /admin/auditoria` (json y csv, `X-Auditoria-Truncada`), `GET /usuarios/{usuarioId}`,
       `POST /usuarios/{usuarioId}/cerrar-sesiones` y `POST /usuarios/{usuarioId}/desbloquear`, según
-      `contracts/api-administrador.md`; anotar en las operaciones de auth, usuarios, catálogo y
+      `contracts/api-administrador.md` (nulos con `type: [<tipo>, 'null']` de OpenAPI 3.1); anotar en las operaciones de auth, usuarios, catálogo y
       feriados que registran o publican su evento
 - [ ] T003 Actualizar la matriz de permisos y la sección del administrador en
       `docs/06-contrato-api/README.md`; correr `npm run contrato` (sin errores nuevos) y
@@ -131,7 +131,9 @@ CSV.
       cada una de las 21 acciones aparece al ocurrir (incluido el intento con correo inexistente sin
       actor ni afectado ni correo), filtros, paginación estable, CSV con los mismos filtros, la tabla
       rechaza `UPDATE` y `DELETE`, el mismo evento de catálogo o feriado consumido dos veces deja una
-      fila
+      fila. Cada respuesta se valida con `test/apoyo/validarContrato.ts`. Como la auditoría no se
+      puede borrar, cada prueba filtra por los ids que crea y compara diferencias, nunca totales
+      globales
 - [ ] T023 [P] [US2] Portal: `apps/web/src/paginas/admin/Auditoria.tsx` (filtros, tabla apilable a 360
       px, paginación, vacío, 422, descarga CSV con aviso de truncado) y su prueba
       `Auditoria.test.tsx`; funciones `obtenerAuditoriaSeguridad` y `descargarAuditoriaSeguridad` en
@@ -160,7 +162,10 @@ CSV.
 - [ ] T027 [US1] Caso de uso `aplicacion/obtener-panel.ts` (prueba unitaria con Redis caído) y
       `GET /admin/panel` en `presentacion/administrador.controller.ts`
 - [ ] T028 [US1] Pruebas de integración `apps/api/test/integracion/administrador.e2e-spec.ts` (panel):
-      cifras con datos sembrados, una cuenta bloqueada cuenta 1 y un correo inexistente bloqueado no
+      cifras con datos sembrados, diferencias antes/después (la auditoría no se borra), una cuenta bloqueada cuenta 1 y un correo
+      inexistente bloqueado no; con 10,000 eventos sembrados en una sentencia (`generate_series`), el
+      panel y la primera página de la auditoría responden en < 2 s (SC-001); respuestas validadas con
+      `validarContrato`
 - [ ] T029 [P] [US1] Portal: `apps/web/src/paginas/admin/Panel.tsx` (tarjetas, "No disponible",
       últimos eventos, accesos directos, "Actualizar") y `Panel.test.tsx`; `obtenerPanel` en
       `clienteApi.ts`; ruta `/admin`, "Panel" en el menú; `Ingresar.tsx` y `CambiarClave.tsx` envían al
@@ -191,7 +196,7 @@ CSV.
       (204), con la traducción de errores 404/409/503
 - [ ] T034 [US3] Integración en `administrador.e2e-spec.ts`: la sesión cerrada deja de servir en la
       siguiente petición y el usuario sigue activo; el desbloqueado puede volver a intentar; "no a sí
-      mismo" → 409; ficha con historial de roles
+      mismo" → 409; ficha con historial de roles; respuestas validadas con `validarContrato`
 - [ ] T035 [P] [US3] Integración `apps/api/test/integracion/matriz-permisos-009.e2e-spec.ts`: las 5
       operaciones nuevas, sin sesión 401 y con cada uno de los otros 5 roles 403, sin cambiar datos
 - [ ] T036 [P] [US3] Integración `apps/api/test/integracion/privacidad-009.e2e-spec.ts`: ni correo,
