@@ -7,7 +7,7 @@ import {
   type Usuario,
 } from '../../servicios/clienteApi';
 import { FormularioUsuario } from './FormularioUsuario';
-import { nombreDelRol } from './roles';
+import { nombreDelRol } from '../../componentes/roles';
 
 type FiltroEstado = 'todos' | 'activos' | 'inactivos';
 

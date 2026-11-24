@@ -12,7 +12,7 @@ import {
   obtenerFichaUsuario,
 } from '../../servicios/clienteApi';
 import { useSesion } from '../../sesion/ProveedorSesion';
-import { nombreDelRol } from './roles';
+import { nombreDelRol } from '../../componentes/roles';
 
 // Ficha del usuario (HU3 de la 009, contracts/portal-administrador.md): datos con el celular
 // enmascarado, estado de seguridad, historial de roles y acciones rápidas con confirmación.

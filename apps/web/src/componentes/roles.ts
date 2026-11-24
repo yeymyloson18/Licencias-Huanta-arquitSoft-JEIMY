@@ -1,4 +1,4 @@
-import type { Rol } from '../../servicios/clienteApi';
+import type { Rol } from '../servicios/clienteApi';
 
 /** Los 6 roles del personal con su nombre para la pantalla (RF17). */
 export const ROLES: readonly { readonly codigo: Rol; readonly nombre: string }[] = [

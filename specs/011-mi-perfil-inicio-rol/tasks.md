@@ -63,7 +63,7 @@ Un commit convencional al terminar cada fase, en la rama `011-mi-perfil-inicio-r
 
 ## Fase 2: Base (bloquea US1 a US4)
 
-- [ ] T004 Mover `apps/web/src/paginas/admin/roles.ts` a `apps/web/src/componentes/roles.ts`
+- [X] T004 Mover `apps/web/src/paginas/admin/roles.ts` a `apps/web/src/componentes/roles.ts`
       (`ROLES`, `nombreDelRol`). Actualizar las importaciones de `Usuarios.tsx`,
       `FormularioUsuario.tsx`, `FichaUsuario.tsx` y de cualquier otro archivo de
       `apps/web/src/paginas/admin/` que lo use. Correr `npm test -w apps/web` en verde.
