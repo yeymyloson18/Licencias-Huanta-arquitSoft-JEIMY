@@ -27,6 +27,31 @@ desarrollo todo debe poder probarse por el enlace, sin leer códigos desde la te
 Los 6 roles son fijos: el administrador **asigna** roles, no crea roles nuevos. A un usuario no se le
 elimina: se le desactiva, para no perder la trazabilidad.
 
+## Aclaraciones
+
+### Sesión 2026-11-23
+
+Por indicación de la usuaria, cada pregunta se respondió con la opción recomendada.
+
+- P: En un intento de ingreso fallido de una cuenta que sí existe, ¿quién figura como "quién actuó" y
+  quién como "afectado"? → R: "Quién actuó" queda vacío (se muestra "sin sesión") porque la persona aún
+  no se identificó; el **afectado** es la cuenta del correo. Si el correo no existe, ambos quedan
+  vacíos. Un ingreso correcto registra a la persona como quien actuó y como afectada.
+- P: ¿"Desbloquear cuenta" borra también el bloqueo del origen (la red desde donde se intentó)? → R:
+  No. Solo borra los intentos fallidos de esa cuenta. El bloqueo por origen no pertenece a una persona,
+  puede venir de un ataque a varias cuentas y vence solo a los 15 minutos.
+- P: ¿Cuántas filas como máximo trae la descarga en CSV de la auditoría? → R: 10,000 filas, las más
+  recientes del filtro. Si el filtro trae más, la descarga lo avisa en una cabecera y la pantalla
+  sugiere acotar las fechas. La lista paginada no tiene ese límite.
+- P: ¿La aplicación borra sola los eventos con más de 1 año? → R: No. La aplicación nunca borra ni
+  edita eventos; se conservan sin límite. Una depuración futura sería una tarea de la base de datos
+  fuera de la aplicación, documentada aparte.
+- P: ¿Qué medios de envío admite cada canal y cuáles se prohíben en producción? → R: Códigos:
+  `simulado`, `buzon` y `sms` (este sigue sin proveedor). Avisos: `simulado` y `buzon`. En producción
+  se rechaza el `buzon` en ambos canales y el `simulado` de los códigos (como hoy). El `simulado` de los
+  avisos sigue permitido hasta el Sprint 3 para no agregar un bloqueo nuevo al despliegue. El entorno de
+  desarrollo usa `buzon` en los dos; las pruebas automáticas y el E2E siguen con `simulado`.
+
 ## Escenarios de usuario y pruebas *(obligatorio)*
 
 ### Historia de usuario 1 - Panel del administrador (Prioridad: P1)
@@ -167,7 +192,8 @@ buzón; después usarlo para entrar.
 - **El servicio de bloqueos no responde**: el panel y la ficha lo dicen y el botón "Desbloquear" queda
   deshabilitado; la operación responde "servicio no disponible". No se inventan cifras.
 - **Rango de fechas invertido o mayor que 1 año** en la auditoría: se rechaza con un mensaje claro.
-- **CSV muy grande**: se limita a un máximo de filas y se avisa si el filtro trae más.
+- **CSV muy grande**: se limita a 10,000 filas y se avisa si el filtro trae más.
+- **Bloqueo por origen**: "Desbloquear cuenta" no lo borra; vence solo a los 15 minutos.
 - **Un evento de catálogo o feriado que llega dos veces**: aparece una sola vez en la auditoría.
 - **El buzón está apagado en desarrollo**: el envío del código falla como cuando falla el proveedor
   (se devuelve el cupo de envíos) y el sistema no se cae.
@@ -198,7 +224,9 @@ buzón; después usarlo para entrar.
   - Configuración: receta actualizada, receta desactivada, receta reactivada, feriado registrado,
     feriado eliminado.
 - **FR-007**: Cada evento MUST guardar fecha y hora, acción, quién actuó (o "sistema"/nadie), a quién
-  afectó, sobre qué objeto (código de receta o fecha de feriado) y el resultado.
+  afectó, sobre qué objeto (código de receta o fecha de feriado) y el resultado. En un intento de
+  ingreso, quien actuó queda vacío y el afectado es la cuenta del correo si existe; en un ingreso
+  correcto, la persona es quien actuó y la afectada.
 - **FR-008**: El registro de cada acción de gestión de usuarios e ingreso MUST quedar guardado junto
   con el cambio que describe: si el cambio no se guarda, el evento tampoco, y viceversa.
 - **FR-009**: Los eventos de catálogo y de feriados MUST llegar a la auditoría aunque esos módulos no
@@ -206,9 +234,10 @@ buzón; después usarlo para entrar.
 - **FR-010**: La auditoría MUST mostrarse paginada, de la más reciente a la más antigua, con los
   filtros rango de fechas, acción, usuario que actuó y usuario afectado.
 - **FR-011**: El administrador MUST poder descargar la auditoría en CSV con los mismos filtros que la
-  lista.
+  lista, con un máximo de 10,000 filas (las más recientes); si el filtro trae más, la descarga MUST
+  avisarlo.
 - **FR-012**: La auditoría MUST NOT poder editarse ni borrarse desde la aplicación: solo se agregan
-  eventos. Se conserva al menos 1 año.
+  eventos. La aplicación no borra eventos por antigüedad: se conservan al menos 1 año, sin límite.
 - **FR-013**: La auditoría y su CSV MUST NOT contener correo, celular, documento, clave, código ni la
   dirección de origen en claro. Si se guarda el origen, solo su huella irreversible. Los registros de
   la aplicación siguen sin datos personales.
@@ -223,7 +252,7 @@ buzón; después usarlo para entrar.
 - **FR-016**: "Cerrar todas sus sesiones" MUST dejar sin efecto al instante todas las sesiones del
   usuario sin desactivarlo, con el mismo mecanismo que la desactivación.
 - **FR-017**: "Desbloquear cuenta" MUST borrar el bloqueo por intentos fallidos de esa cuenta antes de
-  que venza.
+  que venza. MUST NOT borrar bloqueos por origen.
 - **FR-018**: El administrador MUST NOT poder cerrar sus propias sesiones ni desbloquearse a sí mismo
   desde la ficha. Se mantiene la regla de no quedar sin administrador activo.
 - **FR-019**: Cada botón de la ficha MUST pedir confirmación antes de actuar, y cada acción MUST quedar
@@ -241,9 +270,12 @@ buzón; después usarlo para entrar.
 - **FR-023**: En el entorno de desarrollo MUST existir un buzón de pruebas con página web que reciba
   cada código de 6 dígitos y cada aviso al administrado como un mensaje, con el destino enmascarado en
   el asunto, el propósito, y el código o el aviso en el cuerpo.
-- **FR-024**: El buzón MUST ser un medio de envío elegible por configuración y MUST estar prohibido en
-  producción, igual que el envío simulado.
-- **FR-025**: El entorno de desarrollo MUST usar el buzón por defecto.
+- **FR-024**: El buzón MUST ser un medio de envío elegible por configuración para los códigos
+  (`simulado`, `buzon`, `sms`) y para los avisos (`simulado`, `buzon`). En producción MUST rechazarse el
+  `buzon` en ambos canales y el `simulado` de los códigos; el `simulado` de los avisos sigue permitido
+  hasta el Sprint 3.
+- **FR-025**: El entorno de desarrollo MUST usar el buzón por defecto en los dos canales; las pruebas
+  automáticas y el E2E siguen con `simulado`.
 - **FR-026**: Las pruebas automáticas, los recorridos de extremo a extremo y la carga MUST seguir
   pudiendo leer el código como hoy.
 - **FR-027**: El primer administrador MUST seguir creándose por la terminal; la documentación MUST
