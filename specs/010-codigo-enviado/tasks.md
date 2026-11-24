@@ -12,7 +12,7 @@
 
 ## Fase 1: Preparación (contrato primero)
 
-- [ ] T001 Editar `docs/06-contrato-api/openapi.yaml` según `contracts/api-codigos.md`: enum
+- [X] T001 Editar `docs/06-contrato-api/openapi.yaml` según `contracts/api-codigos.md`: enum
       `AccionAuditoriaSeguridad` (+`CODIGO_ENVIADO`, `CODIGO_LIMITE_ALCANZADO`), esquema
       `CodigoEnviado` y propiedad requerida `codigoEnviado` (nula) en `EventoAuditoriaSeguridad`,
       `ResumenCodigos` y `codigosEnviados` en `PanelAdministrador`, columnas del CSV con `desenlace`;
