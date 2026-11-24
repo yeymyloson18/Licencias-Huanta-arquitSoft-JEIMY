@@ -373,7 +373,7 @@ describe('Auditoría de seguridad (009)', () => {
         /^attachment; filename="auditoria-seguridad-\d{4}-\d{2}-\d{2}\.csv"$/,
       );
       const lineas = csv.text.replace(/^﻿/, '').trim().split('\r\n');
-      expect(lineas[0]).toBe('fecha;accion;actor;afectado;objeto;resultado');
+      expect(lineas[0]).toBe('fecha;accion;actor;afectado;objeto;resultado;desenlace');
       expect(lineas).toHaveLength(4);
       expect(lineas.slice(1).every((l) => l.includes(';Clave incorrecta;Sin sesión;'))).toBe(true);
       expect(csv.text).not.toContain(persona.correo);
