@@ -83,9 +83,9 @@
 
 ## Fase 5: Pulido
 
-- [ ] T015 [P] README (panel y auditoría) y una línea en `docs/08-sprint-2/README.md`;
+- [X] T015 [P] README (panel y auditoría) y una línea en `docs/08-sprint-2/README.md`;
       `node tests/analisis/verificar-citas.mjs`
-- [ ] T016 Verificaciones finales: lint, typecheck, formato, contrato, regla de dependencia,
+- [X] T016 Verificaciones finales: lint, typecheck, formato, contrato, regla de dependencia,
       cobertura, portal y build
 
 ## Dependencias

@@ -144,10 +144,17 @@ Al ingresar, el administrador llega directo a **su panel** (<http://localhost:80
   servicio de bloqueos no responde, la tarjeta dice "No disponible" en vez de un 0.
 - **Auditoría** (<http://localhost:8080/admin/auditoria>): quién hizo qué y cuándo, de la más reciente
   a la más antigua, con filtros por fechas, acción, usuario que actuó y usuario afectado, y descarga
-  en CSV (hasta 10,000 filas). Registra 21 acciones: ingresos (correctos, clave o código incorrecto,
-  bloqueos, cierre de sesión, cambio de clave), gestión de usuarios y cambios de recetas y feriados.
-  Solo se agregan filas: la base impide editarla o borrarla. Nunca guarda correo, celular, clave,
-  código ni la IP (del origen solo una huella).
+  en CSV (hasta 10,000 filas). Registra 23 acciones: ingresos (correctos, clave o código incorrecto,
+  bloqueos, cierre de sesión, cambio de clave, código enviado y límite de códigos), gestión de
+  usuarios y cambios de recetas y feriados. Solo se agregan filas: la base impide editarla o
+  borrarla. Nunca guarda correo, celular, clave, código ni la IP (del origen solo una huella).
+- **Códigos enviados** (010): cada vez que el sistema envía un código de 6 dígitos (para entrar como
+  personal o para confirmar la identidad de un administrado), la auditoría muestra "Código enviado"
+  con el medio, el destino enmascarado (`9*****321`) y si se entregó o falló. En el ingreso del
+  personal dice además cómo terminó: ingreso correcto, código incorrecto, bloqueo, sin usar o
+  pendiente. El cuarto código en 15 minutos queda como "Límite de códigos alcanzado". El panel tiene
+  la tarjeta **Códigos enviados** (hoy, 7 días, con ingreso correcto y fallidos). El administrador
+  **nunca** ve el código: es la segunda llave de cada persona.
 - **Ficha del usuario** (botón "Ver ficha" en Usuarios): datos con el celular enmascarado, último
   ingreso, sesiones abiertas, bloqueo, historial de roles y sus últimos eventos. Con confirmación:
   **Cerrar todas sus sesiones** (dejan de servir al instante, sin desactivarlo), **Desbloquear
