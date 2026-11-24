@@ -151,23 +151,23 @@ CSV.
 
 **Prueba independiente**: ingresar como administrador y ver las cifras de los datos sembrados.
 
-- [ ] T024 [P] [US1] Puerto `dominio/puertos/bloqueos-cuentas.ts` y adaptador
+- [X] T024 [P] [US1] Puerto `dominio/puertos/bloqueos-cuentas.ts` y adaptador
       `infraestructura/bloqueos-cuentas-redis.ts` (`SCAN` + `MGET` de `lim:fallos:correo:*` y
       `lim:fallos:ip:*`, umbral ≥ 5, `estadoDeCuenta` con el TTL, `desbloquear` con `DEL` solo de la
       clave del correo; `null` o `ErrorLimitadorNoDisponible` si Redis no responde)
-- [ ] T025 [P] [US1] Puerto `dominio/puertos/consulta-panel.ts` y adaptador
+- [X] T025 [P] [US1] Puerto `dominio/puertos/consulta-panel.ts` y adaptador
       `infraestructura/consulta-panel-postgres.ts` (usuarios por estado, por rol vigente, sesiones
       abiertas, cuentas existentes entre los HMAC bloqueados)
-- [ ] T026 [US1] Dominio `dominio/panel-administrador.ts`: inicio de "hoy" y de "7 días" en hora de
+- [X] T026 [US1] Dominio `dominio/panel-administrador.ts`: inicio de "hoy" y de "7 días" en hora de
       Lima y armado de las cifras (con `bloqueos: null` si no hay dato); prueba unitaria
-- [ ] T027 [US1] Caso de uso `aplicacion/obtener-panel.ts` (prueba unitaria con Redis caído) y
+- [X] T027 [US1] Caso de uso `aplicacion/obtener-panel.ts` (prueba unitaria con Redis caído) y
       `GET /admin/panel` en `presentacion/administrador.controller.ts`
-- [ ] T028 [US1] Pruebas de integración `apps/api/test/integracion/administrador.e2e-spec.ts` (panel):
+- [X] T028 [US1] Pruebas de integración `apps/api/test/integracion/administrador.e2e-spec.ts` (panel):
       cifras con datos sembrados, diferencias antes/después (la auditoría no se borra), una cuenta bloqueada cuenta 1 y un correo
       inexistente bloqueado no; con 10,000 eventos sembrados en una sentencia (`generate_series`), el
       panel y la primera página de la auditoría responden en < 2 s (SC-001); respuestas validadas con
       `validarContrato`
-- [ ] T029 [P] [US1] Portal: `apps/web/src/paginas/admin/Panel.tsx` (tarjetas, "No disponible",
+- [X] T029 [P] [US1] Portal: `apps/web/src/paginas/admin/Panel.tsx` (tarjetas, "No disponible",
       últimos eventos, accesos directos, "Actualizar") y `Panel.test.tsx`; `obtenerPanel` en
       `clienteApi.ts`; ruta `/admin`, "Panel" en el menú; `Ingresar.tsx` y `CambiarClave.tsx` envían al
       administrador a `/admin` sin destino guardado (pruebas en `Ingresar.test.tsx` y

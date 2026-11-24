@@ -81,6 +81,24 @@ describe('Página CambiarClave', () => {
     });
   });
 
+  it('el administrador, al terminar, va a su panel (009)', async () => {
+    simularApi({
+      'POST /auth/renovar': conClaveTemporal,
+      'POST /auth/cambiar-clave': () =>
+        json(sesionDePrueba({ roles: ['ADMINISTRADOR'] }, 'token-2')),
+      'GET /catalogo/recetas': () => json([]),
+      'GET /admin/panel': () => json({}, 503),
+    });
+    montarEn('/cambiar-clave');
+
+    await completar('ClaveTemporal2026', 'ClaveDefinitiva2026', 'ClaveDefinitiva2026');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Panel del administrador' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Su clave se cambió')).toBeInTheDocument();
+  });
+
   it('sin sesión lleva a /ingresar', async () => {
     simularApi({ 'POST /auth/renovar': () => new Response(null, { status: 401 }) });
     montarEn('/cambiar-clave');

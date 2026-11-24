@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   json,
@@ -104,7 +104,9 @@ describe('Auditoría de seguridad (009)', () => {
     await usuario.selectOptions(screen.getByLabelText('Usuario afectado'), BETO.id);
     await usuario.click(screen.getByRole('button', { name: 'Filtrar' }));
 
-    await screen.findByRole('region', { name: 'Eventos de la auditoría' });
+    await waitFor(() => {
+      expect(consultas.at(-1)).toMatchObject({ accion: 'CLAVE_INCORRECTA' });
+    });
     expect(consultas.at(-1)).toEqual({
       desde: '2026-11-01',
       hasta: '2026-11-23',

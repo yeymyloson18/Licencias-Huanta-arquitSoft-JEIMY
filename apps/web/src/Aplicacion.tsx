@@ -4,6 +4,7 @@ import { PiePagina } from './componentes/PiePagina';
 import { RutaProtegida } from './componentes/RutaProtegida';
 import { AuditoriaSeguridad } from './paginas/admin/AuditoriaSeguridad';
 import { Catalogo } from './paginas/admin/Catalogo';
+import { Panel } from './paginas/admin/Panel';
 import { EditarReceta } from './paginas/admin/EditarReceta';
 import { Usuarios } from './paginas/admin/Usuarios';
 import { Asistente } from './paginas/Asistente';
@@ -97,6 +98,14 @@ export function RutasAplicacion() {
               element={
                 <RutaProtegida roles={['ADMINISTRADOR']}>
                   <EditarReceta />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <RutaProtegida roles={['ADMINISTRADOR']}>
+                  <Panel />
                 </RutaProtegida>
               }
             />

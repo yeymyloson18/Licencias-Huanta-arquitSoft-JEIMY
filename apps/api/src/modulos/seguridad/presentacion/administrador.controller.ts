@@ -1,7 +1,12 @@
 import { Controller, Get, Query, Res } from '@nestjs/common';
 import { z } from 'zod';
 import { ErrorValidacion } from '../../../compartido/presentacion/filtro-problema';
-import { ConsultarAuditoria, type EventoAuditoriaVista } from '../aplicacion/consultar-auditoria';
+import {
+  aVista,
+  ConsultarAuditoria,
+  type EventoAuditoriaVista,
+} from '../aplicacion/consultar-auditoria';
+import { ObtenerPanel } from '../aplicacion/obtener-panel';
 import { ACCIONES_AUDITORIA } from '../dominio/accion-auditoria';
 import { ErrorFiltroAuditoria } from '../dominio/filtro-auditoria';
 import { RequiereRoles } from './control-permisos';
@@ -55,7 +60,20 @@ export const aEventoRespuesta = (evento: EventoAuditoriaVista) => ({
 @Controller('admin')
 @RequiereRoles('ADMINISTRADOR')
 export class AdministradorController {
-  constructor(private readonly consultarAuditoria: ConsultarAuditoria) {}
+  constructor(
+    private readonly consultarAuditoria: ConsultarAuditoria,
+    private readonly obtenerPanel: ObtenerPanel,
+  ) {}
+
+  @Get('panel')
+  async panel(@Res({ passthrough: true }) respuesta: RespuestaHttp) {
+    respuesta.setHeader('Cache-Control', 'no-store');
+    const panel = await this.obtenerPanel.ejecutar();
+    return {
+      ...panel,
+      ultimosEventos: panel.ultimosEventos.map((fila) => aEventoRespuesta(aVista(fila))),
+    };
+  }
 
   @Get('auditoria')
   async auditoria(

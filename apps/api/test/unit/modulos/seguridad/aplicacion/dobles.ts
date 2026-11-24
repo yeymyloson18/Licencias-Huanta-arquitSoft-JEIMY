@@ -41,6 +41,15 @@ import type {
 import { ACCIONES_INGRESO_FALLIDO } from '../../../../../src/modulos/seguridad/dominio/accion-auditoria';
 import type { EventoAuditoria } from '../../../../../src/modulos/seguridad/dominio/evento-auditoria';
 import type {
+  BloqueosActuales,
+  BloqueosCuentas,
+  EstadoBloqueo,
+} from '../../../../../src/modulos/seguridad/dominio/puertos/bloqueos-cuentas';
+import type {
+  CifrasUsuarios,
+  ConsultaPanel,
+} from '../../../../../src/modulos/seguridad/dominio/puertos/consulta-panel';
+import type {
   CambioUsuario,
   CriterioBusquedaUsuarios,
   EstadoSeguridadUsuario,
@@ -515,3 +524,56 @@ export const copiarUsuario = (usuario: Usuario): Usuario =>
       }),
     ),
   });
+
+/** Cifras fijas del panel (009); `sesionesPorUsuario` alimenta la ficha. */
+export class ConsultaPanelFalsa implements ConsultaPanel {
+  cifras: CifrasUsuarios = {
+    activos: 5,
+    inactivos: 2,
+    porRol: { CAJA: 2, ADMINISTRADOR: 1 },
+    sesionesAbiertas: 3,
+  };
+  readonly sesionesPorUsuario = new Map<string, number>();
+  readonly cuentasExistentes = new Set<string>();
+  cifrasUsuarios(): Promise<CifrasUsuarios> {
+    return Promise.resolve(this.cifras);
+  }
+  contarCuentasExistentes(correosHmac: readonly string[]): Promise<number> {
+    return Promise.resolve(correosHmac.filter((h) => this.cuentasExistentes.has(h)).length);
+  }
+  sesionesAbiertasDe(usuarioId: string): Promise<number> {
+    return Promise.resolve(this.sesionesPorUsuario.get(usuarioId) ?? 0);
+  }
+}
+
+/** Bloqueos en memoria por correo (009). `noDisponible` simula Redis caído. */
+export class BloqueosFalsos implements BloqueosCuentas {
+  readonly bloqueadas = new Map<string, Date>();
+  origenes = 0;
+  noDisponible = false;
+  readonly desbloqueadas: string[] = [];
+  bloqueosActuales(): Promise<BloqueosActuales | null> {
+    return Promise.resolve(
+      this.noDisponible
+        ? null
+        : { correosHmac: [...this.bloqueadas.keys()], origenes: this.origenes },
+    );
+  }
+  estadoDeCuenta(correo: Correo): Promise<EstadoBloqueo | null> {
+    if (this.noDisponible) {
+      return Promise.resolve(null);
+    }
+    const hasta = this.bloqueadas.get(correo.valor);
+    return Promise.resolve(
+      hasta === undefined ? { bloqueada: false, hasta: null } : { bloqueada: true, hasta },
+    );
+  }
+  desbloquear(correo: Correo): Promise<void> {
+    if (this.noDisponible) {
+      return Promise.reject(new ErrorLimitadorNoDisponible());
+    }
+    this.bloqueadas.delete(correo.valor);
+    this.desbloqueadas.push(correo.valor);
+    return Promise.resolve();
+  }
+}

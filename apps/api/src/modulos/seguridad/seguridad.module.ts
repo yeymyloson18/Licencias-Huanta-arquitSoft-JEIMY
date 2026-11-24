@@ -1,3 +1,8 @@
+import { ObtenerPanel } from './aplicacion/obtener-panel';
+import type { BloqueosCuentas } from './dominio/puertos/bloqueos-cuentas';
+import type { ConsultaPanel } from './dominio/puertos/consulta-panel';
+import { BloqueosCuentasRedis } from './infraestructura/bloqueos-cuentas-redis';
+import { ConsultaPanelPostgres } from './infraestructura/consulta-panel-postgres';
 import { ConsultarAuditoria } from './aplicacion/consultar-auditoria';
 import { AdministradorController } from './presentacion/administrador.controller';
 import { DespachadorEventos } from '../../compartido/infraestructura/despachador-eventos';
@@ -85,6 +90,8 @@ import {
   REPOSITORIO_VERIFICACIONES,
   REPOSITORIO_AUDITORIA,
   SERVICIO_IDENTIFICACION,
+  BLOQUEOS_CUENTAS,
+  CONSULTA_PANEL,
 } from './tokens';
 
 // Raíz de composición del módulo Seguridad: conecta los puertos del dominio con sus adaptadores.
@@ -178,6 +185,28 @@ import {
     },
 
     // ---------------------------------------------------------------- casos de uso
+    {
+      // Bloqueos del ingreso para el panel y la ficha (009, research §R-05).
+      provide: BLOQUEOS_CUENTAS,
+      inject: [REDIS_CLIENTE, PROTECTOR_DATOS],
+      useFactory: (redis: Redis, protector: ProtectorDatos): BloqueosCuentas =>
+        new BloqueosCuentasRedis(redis, protector),
+    },
+    {
+      provide: CONSULTA_PANEL,
+      inject: [PrismaServicio],
+      useFactory: (prisma: PrismaServicio): ConsultaPanel => new ConsultaPanelPostgres(prisma),
+    },
+    {
+      provide: ObtenerPanel,
+      inject: [CONSULTA_PANEL, BLOQUEOS_CUENTAS, REPOSITORIO_AUDITORIA, RELOJ],
+      useFactory: (
+        consulta: ConsultaPanel,
+        bloqueos: BloqueosCuentas,
+        auditoria: RepositorioAuditoria,
+        reloj: Reloj,
+      ) => new ObtenerPanel({ consulta, bloqueos, auditoria, reloj }),
+    },
     {
       provide: ConsultarAuditoria,
       inject: [REPOSITORIO_AUDITORIA, RELOJ],

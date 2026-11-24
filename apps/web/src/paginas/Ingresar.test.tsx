@@ -128,6 +128,24 @@ describe('Página Ingresar', () => {
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(/licencia/i);
   });
 
+  it('el administrador entra directo a su panel (009)', async () => {
+    simularApi({
+      ...base,
+      'POST /auth/iniciar-sesion': () => json(desafio),
+      'POST /auth/verificar-otp': () => json(sesionDePrueba({ roles: ['ADMINISTRADOR'] })),
+      'GET /admin/panel': () => problema(503, 'servicio-no-disponible'),
+    });
+    montarEn('/ingresar');
+    const usuario = await completarPaso1();
+
+    await usuario.type(await screen.findByLabelText('Código'), '123456');
+    await usuario.click(screen.getByRole('button', { name: 'Ingresar' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Panel del administrador' }),
+    ).toBeInTheDocument();
+  });
+
   it('con clave temporal navega a /cambiar-clave', async () => {
     simularApi({
       ...base,

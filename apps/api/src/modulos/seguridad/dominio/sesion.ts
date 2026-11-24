@@ -5,7 +5,8 @@ export type ResultadoRenovacion =
 export type ComparadorHuellas = (a: string, b: string) => boolean;
 
 const OCHO_HORAS_MS = 8 * 60 * 60 * 1000;
-const TREINTA_MINUTOS_MS = 30 * 60 * 1000;
+/** Una sesión sin renovar en 30 minutos ya no sirve (FR-003a); el panel la deja de contar (009). */
+export const TREINTA_MINUTOS_MS = 30 * 60 * 1000;
 const MARGEN_CARRERA_MS = 10 * 1000;
 
 export interface DatosNuevaSesion {
