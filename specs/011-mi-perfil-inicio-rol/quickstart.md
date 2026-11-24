@@ -49,7 +49,11 @@ Resultado esperado: todo en verde, incluidas las pruebas unitarias nuevas:
   clave" → vuelve al perfil con el aviso. Se ajustan las pruebas que esperaban `/` después de
   ingresar.
 - `Postman`: suma `GET /perfil` sin token → 401.
-- Lighthouse (accesibilidad ≥ 90) en `/perfil` y `/cambiar-clave` a 360 px.
+- Flujo `E2E`:
+  - `tests/e2e/perfil.spec.ts` comprueba que no hay desplazamiento horizontal a 360 px;
+  - Lighthouse móvil (`@lhci/cli@0.14.0`, 360×740) con sesión en `/perfil` y `/cambiar-clave` da
+    accesibilidad ≥ 0.9;
+  - el resultado se anota en `docs/08-sprint-2/README.md`.
 
 ## Recorrido manual (cuando se levante el sistema)
 

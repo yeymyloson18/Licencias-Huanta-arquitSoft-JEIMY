@@ -108,10 +108,15 @@ tomó revisando el código de la 002 y la 009.
 
 ## R-09. Privacidad y registros
 
-- Ni la ruta ni las consultas llevan datos personales. El registro de peticiones de la aplicación
-  (pino) ya oculta los cuerpos y la cabecera `authorization`. La prueba de privacidad comprueba que
-  los registros capturados al pedir `/perfil` y al cambiar la clave no contienen el correo, el nombre,
-  el celular ni la clave.
+- Ni la ruta ni las consultas llevan datos personales.
+- El proyecto **no usa pino**. Los registros de la API se escriben con el `Logger` de NestJS. La
+  prueba de privacidad (`apps/api/test/integracion/datos-personales.e2e-spec.ts`) crea la aplicación
+  de prueba con `crearAplicacionDePrueba` y el `LoggerCapturador`
+  (`apps/api/test/apoyo/aplicacion-prueba.ts`). Con él comprueba que los registros capturados al
+  pedir `/perfil` y al cambiar la clave no contienen el correo, el nombre, el celular completo, la
+  clave actual ni la nueva.
+- El código nuevo (`ObtenerMiPerfil` y `PerfilController`) no escribe registros con datos de la
+  persona. Si escribe alguno, lo identifica solo con el `usuarioId` interno.
 - La respuesta del perfil lleva `Cache-Control: no-store` para que ningún proxy ni el navegador la
   guarden (pedido del usuario; mismo patrón que la ficha de la 009).
 - Ver el perfil no se registra en la auditoría (supuesto de la especificación).

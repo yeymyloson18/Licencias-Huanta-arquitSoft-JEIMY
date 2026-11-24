@@ -130,10 +130,21 @@ E2E ingresa con CAJA y llega a `/personal/caja`.
 - [ ] T007 [P] [US1] Ajustar `apps/web/src/paginas/CambiarClave.test.tsx`: con clave temporal y rol
       INSPECTOR, al terminar bien navega a `/personal/inspecciones` con el aviso "Su clave se cambió"
       (antes esperaba `/`)
+- [ ] T008 [P] [US1] Crear `apps/web/src/componentes/AvisoNavegacion.test.tsx` (escenario 5 de US1,
+      FR-012): montar `AvisoNavegacion` dentro de un `MemoryRouter` con varias entradas iniciales y
+      comprobar:
+  - con `state.aviso = 'Su clave se cambió'` muestra ese texto en un `role="status"`, en cualquier
+    ruta del personal (`/admin`, `/personal/expedientes`, `/personal/caja`,
+    `/personal/inspecciones`, `/personal/tablero`, `/perfil`);
+  - sin `state.aviso` no muestra nada;
+  - después de mostrarlo, el historial queda con el mismo `pathname`, sin `aviso` y conservando el
+    resto del estado (por ejemplo, `sinRol: true`); al volver a montar en esa entrada, el aviso no
+    aparece otra vez;
+  - un `aviso` que no es una cadena (número u objeto) no se muestra.
 
 ### Implementación de US1
 
-- [ ] T008 [US1] Reescribir `apps/web/src/sesion/inicio.ts`:
+- [ ] T009 [US1] Reescribir `apps/web/src/sesion/inicio.ts`:
   - **`PRIORIDAD_INICIO`**: lista ordenada `[ADMINISTRADOR → '/admin', MESA_PARTES →
     '/personal/expedientes', EVALUADOR → '/personal/expedientes', CAJA → '/personal/caja',
     INSPECTOR → '/personal/inspecciones', JEFATURA → '/personal/tablero']`.
@@ -145,11 +156,20 @@ E2E ingresa con CAJA y llega a `/personal/caja`.
     `^\/(perfil|cambiar-clave|admin|personal)(\/[A-Za-z0-9_-]+)*$` **y** que está permitida para
     alguno de los roles; en cualquier otro caso, `inicioDe(roles)`.
   - Un comentario explica que es la defensa contra redirecciones abiertas (research §R-07).
-- [ ] T009 [US1] En `apps/web/src/paginas/Ingresar.tsx`, borrar el `destinoSeguro` local y usar
+- [ ] T010 [US1] En `apps/web/src/paginas/Ingresar.tsx`, borrar el `destinoSeguro` local y usar
       `destinoDespuesDeIngresar((ubicacion.state as { volverA?: unknown } | null)?.volverA,
       sesion.usuario.roles)`. Sin roles, pasar `state: { sinRol: true }` al navegar a `/perfil`.
-- [ ] T010 [US1] Revisar que `apps/web/src/paginas/CambiarClave.tsx` siga usando `inicioDe` con la
-      clave temporal (el destino nuevo sale de T008). Correr T005 a T007 en verde.
+- [ ] T011 [US1] Revisar que `apps/web/src/paginas/CambiarClave.tsx` siga usando `inicioDe` con la
+      clave temporal (el destino nuevo sale de T009). Correr T005 a T007 en verde.
+- [ ] T012 [US1] Crear `apps/web/src/componentes/AvisoNavegacion.tsx` y montarlo en
+      `apps/web/src/Aplicacion.tsx` justo debajo de `<Menu />`, dentro del router, para que lo vean
+      todas las pantallas:
+  - lee `ubicacion.state?.aviso`; solo si es una cadena no vacía, la guarda en un estado local y la
+    muestra en `<p className="aviso" role="status">`;
+  - después llama una vez a `navegar(ubicacion.pathname, { replace: true, state: restoSinAviso })`,
+    para que recargar la página no repita el aviso.
+  Hoy ninguna pantalla de llegada lee ese aviso, así que se perdía. `CambiarClave` (T011 y la tarea
+  de US3) sigue enviando `state: { aviso: 'Su clave se cambió' }`. Correr T008 en verde.
 
 **Punto de control**: US1 completa. Commit `feat(web): cada rol llega a su pantalla al ingresar`.
 
@@ -165,7 +185,7 @@ los datos propios.
 
 ### Pruebas de US2 (escribirlas primero; deben fallar)
 
-- [ ] T011 [P] [US2] Crear `apps/api/test/unit/modulos/seguridad/aplicacion/obtener-mi-perfil.spec.ts`,
+- [ ] T013 [P] [US2] Crear `apps/api/test/unit/modulos/seguridad/aplicacion/obtener-mi-perfil.spec.ts`,
       con los dobles de `apps/api/test/unit/modulos/seguridad/aplicacion/dobles.ts` (los mismos de
       `ficha-usuario.spec.ts`):
   - devuelve `nombreCompleto`, `correo`, `celular` (objeto de valor, para enmascarar en
@@ -175,7 +195,7 @@ los datos propios.
   - con un usuario inexistente lanza `ErrorAutenticacion` (nunca `ErrorUsuarioNoEncontrado`);
   - con un usuario inactivo también lanza `ErrorAutenticacion`;
   - consulta los puertos solo con el `usuarioId` recibido.
-- [ ] T012 [P] [US2] Crear `apps/api/test/integracion/perfil.e2e-spec.ts`, con el apoyo de
+- [ ] T014 [P] [US2] Crear `apps/api/test/integracion/perfil.e2e-spec.ts`, con el apoyo de
       `apps/api/test/integracion/` que usa `control-permisos.e2e-spec.ts` para crear usuarios e
       ingresar:
   - `GET /api/v1/perfil` con sesión responde 200;
@@ -184,31 +204,32 @@ los datos propios.
   - la cabecera es `Cache-Control: no-store`;
   - dos ingresos del mismo usuario → `sesionesAbiertas = 2`;
   - `ultimoIngreso` no es `null` después de ingresar.
-- [ ] T013 [P] [US2] Ampliar `apps/web/src/componentes/Menu.test.tsx`:
+- [ ] T015 [P] [US2] Ampliar `apps/web/src/componentes/Menu.test.tsx`:
   - el enlace "Mi perfil" (`role="link"`, `href="/perfil"`) aparece junto al nombre para cada uno de
     los 6 roles y para una sesión sin roles;
   - lleva `aria-current="page"` cuando la ruta es `/perfil`;
   - sin sesión no hay menú.
-- [ ] T014 [P] [US2] Crear `apps/web/src/paginas/personal/MiPerfil.test.tsx`:
+- [ ] T016 [P] [US2] Crear `apps/web/src/paginas/personal/MiPerfil.test.tsx`:
   - muestra el nombre, el correo, `9*****321`, los roles con su nombre ("Mesa de partes, Caja"), el
     último ingreso con fecha y hora, "1 sesión abierta" y "3 sesiones abiertas";
   - con `ultimoIngreso` `null` muestra "Sin registro"; con `roles` `[]`, "Sin roles";
-  - con `state.aviso` muestra "Su clave se cambió" (`role="status"`); con `state.sinRol`, "Todavía no
-    tiene un rol asignado. Consulte con el administrador.";
+  - con `state.sinRol` muestra "Todavía no tiene un rol asignado. Consulte con el administrador."
+    (`role="status"`); el aviso "Su clave se cambió" **no** lo muestra esta página, sino
+    `AvisoNavegacion` (T012), para que no aparezca dos veces;
   - ante un error muestra `role="alert"` "No se pudo cargar su perfil. Inténtelo de nuevo." y el
     botón "Reintentar" vuelve a pedir el perfil;
   - el enlace "Cambiar mi clave" apunta a `/cambiar-clave`.
 
 ### Implementación de US2
 
-- [ ] T015 [US2] Crear `apps/api/src/modulos/seguridad/aplicacion/obtener-mi-perfil.ts`:
+- [ ] T017 [US2] Crear `apps/api/src/modulos/seguridad/aplicacion/obtener-mi-perfil.ts`:
   - clase `ObtenerMiPerfil` con `DependenciasObtenerMiPerfil { usuarios: RepositorioUsuarios;
     consulta: ConsultaPanel; auditoria: RepositorioAuditoria; reloj: Reloj }`;
   - interfaz `MiPerfil { usuario: Usuario; ultimoIngreso: Date | null; sesionesAbiertas: number }`;
   - `ejecutar(usuarioId)`: si el usuario es `null` o `activo !== true`, lanza `ErrorAutenticacion`;
     luego consulta en paralelo `auditoria.ultimoIngreso` y `consulta.sesionesAbiertasDe`, igual que
     `obtener-ficha-usuario.ts`.
-- [ ] T016 [US2] En `apps/api/src/modulos/seguridad/presentacion/respuestas.ts`, agregar
+- [ ] T018 [US2] En `apps/api/src/modulos/seguridad/presentacion/respuestas.ts`, agregar
       `aPerfilRespuesta(perfil): components['schemas']['PerfilPropio']`:
   - `nombreCompleto` y `correo` del usuario;
   - `celularEnmascarado: usuario.celular.enmascarado()`;
@@ -216,37 +237,37 @@ los datos propios.
   - `ultimoIngreso` en ISO o `null`;
   - `sesionesAbiertas`;
   - **sin** `id`, `activo` ni `debeCambiarClave`.
-- [ ] T017 [US2] Crear `apps/api/src/modulos/seguridad/presentacion/perfil.controller.ts`:
+- [ ] T019 [US2] Crear `apps/api/src/modulos/seguridad/presentacion/perfil.controller.ts`:
   - `@Controller('perfil')` con `@UseGuards(JwtAuthGuard)` (sin `RolesGuard` ni
     `@PermitirConClaveTemporal`);
   - `@Get() @Header('Cache-Control', 'no-store')`;
   - lee `usuarioId` **solo** de `peticion.sesionAutenticada`; no declara `@Param`, `@Query` ni
     `@Body`;
   - traduce `ErrorAutenticacion` a `ErrorProblema.noAutenticado()`.
-- [ ] T018 [US2] En `apps/api/src/modulos/seguridad/seguridad.module.ts`, registrar `ObtenerMiPerfil`
+- [ ] T020 [US2] En `apps/api/src/modulos/seguridad/seguridad.module.ts`, registrar `ObtenerMiPerfil`
       con una fábrica que inyecta los mismos tokens de `ObtenerFichaUsuario` (repositorio de
       usuarios, consulta del panel, auditoría y reloj) y agregar `PerfilController` a `controllers`.
       Correr `npm run regla-dependencia`.
-- [ ] T019 [P] [US2] En `apps/web/src/servicios/clienteApi.ts`, agregar `obtenerMiPerfil()` con el
+- [ ] T021 [P] [US2] En `apps/web/src/servicios/clienteApi.ts`, agregar `obtenerMiPerfil()` con el
       mismo patrón de `obtenerFichaUsuario`: `GET /perfil` con el token y renovación ante 401.
       Devuelve `{ tipo: 'ok', datos: PerfilPropio } | { tipo: 'error' }`.
-- [ ] T020 [US2] En `apps/web/src/componentes/Menu.tsx`, agregar
+- [ ] T022 [US2] En `apps/web/src/componentes/Menu.tsx`, agregar
       `<Link to="/perfil" className="menu__perfil">Mi perfil</Link>` justo después de
       `menu__usuario`, visible para cualquier sesión, con
       `aria-current={ubicacion.pathname === '/perfil' ? 'page' : undefined}`
-- [ ] T021 [US2] Crear `apps/web/src/paginas/personal/MiPerfil.tsx` según
+- [ ] T023 [US2] Crear `apps/web/src/paginas/personal/MiPerfil.tsx` según
       `contracts/portal-perfil.md`:
   - `<h1>Mi perfil</h1>` y una lista `<dl>` con los 6 datos;
   - roles con `nombreDelRol` de `componentes/roles.ts`;
   - fecha con el formateador de `componentes/formato.ts`;
   - plural "sesión abierta" / "sesiones abiertas";
-  - avisos de `state.aviso` y `state.sinRol`;
+  - aviso de `state.sinRol` (el de `state.aviso` lo muestra `AvisoNavegacion`);
   - estados de carga, error y reintento;
   - enlace "Cambiar mi clave" a `/cambiar-clave`;
   - sin `console.*`.
-- [ ] T022 [US2] En `apps/web/src/Aplicacion.tsx`, agregar la ruta `/perfil` con
+- [ ] T024 [US2] En `apps/web/src/Aplicacion.tsx`, agregar la ruta `/perfil` con
       `<RutaProtegida><MiPerfil /></RutaProtegida>` (sin `roles`)
-- [ ] T023 [P] [US2] En `apps/web/src/estilos/global.css`, en `.menu` y `.menu__perfil`: `flex-wrap`,
+- [ ] T025 [P] [US2] En `apps/web/src/estilos/global.css`, en `.menu` y `.menu__perfil`: `flex-wrap`,
       foco visible, tamaño táctil de 44 px como mínimo y nada de desplazamiento horizontal a 360 px;
       el `<dl>` del perfil en una sola columna a 360 px
 
@@ -262,7 +283,7 @@ FR-016).
 **Prueba independiente**: en CI, `matriz-permisos-011.e2e-spec.ts` y los casos nuevos de
 `datos-personales.e2e-spec.ts` en verde.
 
-- [ ] T024 [P] [US4] Crear `apps/api/test/integracion/matriz-permisos-011.e2e-spec.ts`:
+- [ ] T026 [P] [US4] Crear `apps/api/test/integracion/matriz-permisos-011.e2e-spec.ts`:
   - `GET /perfil` sin token → 401 `no-autenticado`;
   - con un token inválido → 401;
   - con clave temporal → 403 `debe-cambiar-clave`;
@@ -270,16 +291,27 @@ FR-016).
   - el usuario A con `GET /perfil?usuarioId=<id de B>` → 200 con el perfil de **A**;
   - `GET /perfil/<id de B>` → 404 sin `correo` ni `nombreCompleto` de B en el cuerpo;
   - después de `POST /auth/cerrar-sesion` → 401;
-  - después de que el administrador desactiva al usuario → 401.
-- [ ] T025 [P] [US4] Ampliar `apps/api/test/integracion/datos-personales.e2e-spec.ts`:
+  - después de que el administrador desactiva al usuario → 401;
+  - **sin roles** (FR-006): la API no permite dejar a un usuario sin roles (`minItems: 1`), así que
+    la prueba lo prepara directamente en la base, después de ingresar. Para eso ejecuta
+    `UPDATE seguridad.usuario_rol SET retirado_en = now(), retirado_por = <id del administrador>
+    WHERE usuario_id = <id> AND retirado_en IS NULL` con el cliente Prisma de la aplicación de
+    prueba. Luego `GET /perfil` → 200 con `roles: []`. Si el guard rechaza al usuario sin roles,
+    esta prueba lo detecta y se corrige.
+- [ ] T027 [P] [US4] Ampliar `apps/api/test/integracion/datos-personales.e2e-spec.ts`:
   - la respuesta de `GET /perfil` no tiene las claves `id`, `claveHash` ni `celular`, ni ningún
     valor con 9 dígitos seguidos;
   - con el registro de la aplicación capturado (el mismo método que ya usa el archivo), al pedir el
     perfil y al cambiar la clave no aparecen el correo, el nombre, el celular completo, la clave
     actual ni la nueva.
-- [ ] T026 [US4] En `apps/api/test/integracion/perfil.e2e-spec.ts`, agregar un caso de cuerpo
-      ignorado: una petición `GET /perfil` con un id ajeno en la cabecera o en el cuerpo devuelve el
-      perfil propio. Agregar a `tests/postman/humo.postman_collection.json` la petición
+- [ ] T028 [US4] En `apps/api/test/integracion/perfil.e2e-spec.ts`, agregar los casos de
+      identificador ignorado. El usuario A pide su perfil con el id del usuario B de tres formas, y
+      en todas recibe 200 con **su** correo, sin el correo ni el nombre de B en el cuerpo:
+  - `GET /perfil?usuarioId=<id de B>`;
+  - `GET /perfil?id=<id de B>`;
+  - `GET /perfil` con la cabecera `X-Usuario-Id: <id de B>`.
+
+  (No se envía un cuerpo en un `GET`.) Agregar a `tests/postman/humo.postman_collection.json` la petición
       `GET {{base}}/perfil` sin token, que espera 401.
 
 **Punto de control**: US4 completa. Commit `test(011): permisos y privacidad del perfil`.
@@ -296,14 +328,14 @@ voluntario de `perfil.e2e-spec.ts` en verde.
 
 ### Pruebas de US3 (escribirlas primero; deben fallar)
 
-- [ ] T027 [P] [US3] Ampliar `apps/web/src/paginas/CambiarClave.test.tsx`:
+- [ ] T029 [P] [US3] Ampliar `apps/web/src/paginas/CambiarClave.test.tsx`:
   - con una sesión **sin** clave temporal se ve el enlace "Volver a mi perfil";
   - un cambio correcto navega a `/perfil` con `state.aviso = 'Su clave se cambió'`;
   - claves nuevas distintas → "Las claves nuevas no coinciden" sin llamar a la API;
   - un 401 de la clave actual → "La clave actual no es correcta";
   - un 429 → "Demasiados intentos. Vuelva a intentarlo más tarde.";
   - un 422 → mensaje de la regla junto al campo.
-- [ ] T028 [P] [US3] Ampliar `apps/api/test/integracion/perfil.e2e-spec.ts` con el cambio voluntario
+- [ ] T030 [P] [US3] Ampliar `apps/api/test/integracion/perfil.e2e-spec.ts` con el cambio voluntario
       (usuario con clave definitiva y 2 sesiones):
   - `POST /auth/cambiar-clave` → 200;
   - la sesión anterior responde 401 en `GET /perfil`;
@@ -319,13 +351,13 @@ voluntario de `perfil.e2e-spec.ts` en verde.
 
 ### Implementación de US3
 
-- [ ] T029 [US3] En `apps/web/src/paginas/CambiarClave.tsx`:
+- [ ] T031 [US3] En `apps/web/src/paginas/CambiarClave.tsx`:
   - al montar, guardar `const voluntario = sesion?.debeCambiarClave !== true`;
   - si `voluntario`, mostrar el enlace "Volver a mi perfil" (`<Link to="/perfil">`);
   - en `'ok'`, navegar a `voluntario ? '/perfil' : inicioDe(resultado.datos.usuario.roles)` con
     `replace: true` y `state: { aviso: 'Su clave se cambió' }`;
   - no cambiar mensajes, campos ni validaciones de la 002.
-- [ ] T030 [US3] Verificar que `CambiarClave` (API) no necesita cambios. Si `cambiar-clave.spec.ts`
+- [ ] T032 [US3] Verificar que `CambiarClave` (API) no necesita cambios. Si `cambiar-clave.spec.ts`
       no cubre "clave definitiva → registra `CLAVE_CAMBIADA` con actor = afectado", agregar ese caso
       en `apps/api/test/unit/modulos/seguridad/aplicacion/cambiar-clave.spec.ts`.
 
@@ -335,20 +367,52 @@ voluntario de `perfil.e2e-spec.ts` en verde.
 
 ## Fase 7: Pulido y temas transversales
 
-- [ ] T031 [P] Ajustar el E2E en `tests/e2e/ruta-a.spec.ts` o `tests/e2e/ruta-b.spec.ts` (y en
-      `tests/e2e/apoyo/` si hace falta):
-  - después de `ingresar(pagina, 'CAJA')`, esperar `toHaveURL(/\/personal\/caja$/)`;
-  - recorrido "Mi perfil" → "Cambiar mi clave" → vuelve a `/perfil` con "Su clave se cambió";
-  - quitar cualquier espera de llegar a `/` después de ingresar.
-- [ ] T032 [P] Documentación:
+- [ ] T033 [P] Crear `tests/e2e/perfil.spec.ts` (Playwright; corre en los proyectos de
+      `tests/e2e/playwright.config.ts`, incluido `celular` de 360×740), con los ayudantes de
+      `tests/e2e/apoyo/sistema.ts`:
+  - después de `ingresar(pagina, 'CAJA')`, `toHaveURL(/\/personal\/caja$/)`;
+  - "Mi perfil" → `/perfil` muestra el nombre, `9*****321` y "1 sesión abierta";
+  - "Cambiar mi clave" → vuelve a `/perfil` con "Su clave se cambió";
+  - **sin desplazamiento horizontal a 360 px** (FR-018): en el proyecto `celular`, en `/perfil` y en
+    `/cambiar-clave`, `await pagina.evaluate(() => document.documentElement.scrollWidth <=
+    document.documentElement.clientWidth)` es `true`, con el menú abierto y con un error de
+    validación visible en el formulario.
+
+  Revisar `tests/e2e/ruta-a.spec.ts` y `tests/e2e/ruta-b.spec.ts`: si alguna espera llegar a `/`
+  después de ingresar, cambiarla por la pantalla del rol (hoy `ingresar` en `apoyo/sistema.ts` solo
+  espera el menú, así que se prevé que no haga falta cambiar nada).
+- [ ] T034 [P] Documentación:
   - `README.md`: pantalla de llegada por rol, "Mi perfil" y cambio de clave voluntario;
   - `docs/03-diseno-de-software/diagrama-casos-de-uso.md`: caso "Ver mi perfil" y "Cambiar mi clave"
     para todo el personal;
   - `docs/08-sprint-2/README.md`, si ahí se listan las funcionalidades.
-- [ ] T033 [P] Revisión de accesibilidad: comprobar a 360 px (prueba manual o Lighthouse en CI, si
-      existe la tarea) que el menú, `/perfil` y `/cambiar-clave` no tienen desplazamiento horizontal
-      y obtienen ≥ 90 en accesibilidad; corregir en `apps/web/src/estilos/global.css`
-- [ ] T034 Puertas locales de `quickstart.md`: `npm run lint && npm run typecheck && npm run
+- [ ] T035 Lighthouse móvil en pantallas con sesión (FR-018, SC-007, EQ-05). Usa la misma medida
+      de las funcionalidades anteriores (`.github/workflows/calidad-produccion.yml`): `formFactor:
+      mobile`, `screenEmulation` 360×740 y `deviceScaleFactor: 2`, con la aserción
+      `categories:accessibility` ≥ 0.9. Ese flujo solo mide pantallas públicas y en producción el
+      código llega por un SMS real, así que esta medida corre en `.github/workflows/e2e.yml`, donde
+      el sistema ya está levantado con `ENVIO_OTP=simulado`:
+  - `tests/e2e/apoyo/lighthouse-ingreso.cjs`: `puppeteerScript` de Lighthouse CI que ingresa como
+    usuario de prueba de rol CAJA (correo y clave, y lee el código de `dev:otp:<id>` en Redis con
+    `docker compose exec -T redis redis-cli`, igual que `sistema.ts`);
+  - `tests/e2e/lighthouserc.json`:
+    - `collect.url`: `<base>/perfil` y `<base>/cambiar-clave`;
+    - `puppeteerScript` y `disableStorageReset: true`, para que la cookie de renovación mantenga
+      la sesión;
+    - `numberOfRuns: 1`;
+    - las mismas opciones móviles de 360 px;
+    - `assert.assertions["categories:accessibility"] = ["error", {"minScore": 0.9}]`;
+  - paso nuevo en `.github/workflows/e2e.yml`, después de Playwright, con `npx --yes @lhci/cli@0.14.0`
+    (la misma versión de `calidad-produccion.yml`), que sube los informes
+    como artefacto;
+  - si el puntaje es menor que 0.9, corregir en `apps/web/src/estilos/global.css` o en los
+    componentes y volver a medir;
+  - anotar el resultado (puntaje de cada pantalla y enlace a la corrida) en la tabla de evidencias
+    de `docs/08-sprint-2/README.md`.
+
+  Es una dependencia de CI que se usa con `npx` y una versión fija; no se agrega al
+  `package.json`.
+- [ ] T036 Puertas locales de `quickstart.md`: `npm run lint && npm run typecheck && npm run
       formato`, `npm run contrato`, `npm run regla-dependencia`, `npm run cobertura` (≥ 80 % en
       `dominio/` y `aplicacion/`) y `npm test -w apps/web`, todo en verde. Marcar las tareas con
       `[X]` y hacer el commit `chore(011): cierre`.
@@ -377,12 +441,12 @@ voluntario de `perfil.e2e-spec.ts` en verde.
 
 ### Oportunidades de paralelo
 
-- US1: T005, T006 y T007 en paralelo.
-- US2: T011, T012, T013 y T014 en paralelo. Además, T019 y T023 en paralelo con la API
-  (T015 a T018).
-- US4: T024 y T025 en paralelo.
-- US3: T027 y T028 en paralelo.
-- Pulido: T031, T032 y T033 en paralelo.
+- US1: T005, T006, T007 y T008 en paralelo.
+- US2: T013, T014, T015 y T016 en paralelo. Además, T021 y T025 en paralelo con la API
+  (T017 a T020).
+- US4: T026 y T027 en paralelo.
+- US3: T029 y T030 en paralelo.
+- Pulido: T033 y T034 en paralelo; T035 después de T033 (usa el mismo sistema levantado del E2E).
 
 ---
 
@@ -425,6 +489,6 @@ Tarea: "obtenerMiPerfil en clienteApi.ts + estilos del menú"
 ## Notas
 
 - [P] = archivos distintos, sin dependencias pendientes.
-- La integración, el E2E y Postman corren en GitHub Actions; en local solo las puertas de T034.
+- La integración, el E2E y Postman corren en GitHub Actions; en local solo las puertas de T036.
 - No se crean migraciones: si una tarea parece necesitar una, revisar `data-model.md` antes.
 - Nunca poner datos personales en la URL, en `console.*` ni en los registros.

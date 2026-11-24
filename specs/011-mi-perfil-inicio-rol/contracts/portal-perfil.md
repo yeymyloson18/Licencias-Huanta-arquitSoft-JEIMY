@@ -19,9 +19,8 @@
   - Último ingreso (fecha y hora local; "Sin registro" si es `null`)
   - Sesiones abiertas ("1 sesión abierta" / "N sesiones abiertas")
 - Botón o enlace "Cambiar mi clave" que lleva a `/cambiar-clave`.
-- Avisos (`role="status"`):
-  - `state.aviso` → "Su clave se cambió".
-  - `state.sinRol` → "Todavía no tiene un rol asignado. Consulte con el administrador."
+- Aviso propio (`role="status"`): `state.sinRol` → "Todavía no tiene un rol asignado. Consulte con
+  el administrador." El aviso "Su clave se cambió" lo muestra `AvisoNavegacion` (ver más abajo).
 - Estados:
   - mientras carga, "Cargando…";
   - si la API responde 401, el cliente ya intenta renovar la sesión y, si falla, lleva a `/ingresar`;
@@ -63,8 +62,22 @@
 `'/personal/expedientes/EXP-2026-000123'` con `EVALUADOR` y `'/admin/usuarios'` con
 `ADMINISTRADOR`.
 
+## Aviso al llegar (`componentes/AvisoNavegacion.tsx`)
+
+- Va montado en `Aplicacion.tsx` debajo del menú, así que lo ven todas las pantallas.
+- Si `location.state.aviso` es una cadena, la muestra en `role="status"` y quita `aviso` del
+  historial (`replace`), conservando el resto del estado.
+- Con esto, "Su clave se cambió" se ve en la pantalla del rol (escenario 5 de US1) y en `/perfil`
+  (FR-011), una sola vez y sin repetirse al recargar.
+
 ## Accesibilidad (EQ-05)
 
-Menú, `/perfil` y `/cambiar-clave` a 360 px: sin desplazamiento horizontal, foco visible, orden de
-tabulación lógico, etiquetas asociadas y avisos con `role="status"` o `role="alert"`. Lighthouse
-≥ 90 en accesibilidad.
+Menú, `/perfil` y `/cambiar-clave` a 360 px: foco visible, orden de tabulación lógico, etiquetas
+asociadas y avisos con `role="status"` o `role="alert"`.
+
+**Medida** (la misma de las funcionalidades anteriores):
+
+- **Lighthouse móvil**: 360×740, accesibilidad ≥ 0.9 en `/perfil` y `/cambiar-clave` con sesión.
+  Corre en `e2e.yml` con un `puppeteerScript` que ingresa con el código simulado.
+- **Sin desplazamiento horizontal**: Playwright, proyecto `celular`, comprueba
+  `scrollWidth <= clientWidth`.
