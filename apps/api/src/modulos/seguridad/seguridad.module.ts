@@ -24,6 +24,7 @@ import type { LimitadorIntentos } from './dominio/puertos/limitador-intentos';
 import type { RegistroEventosSeguridad } from './dominio/puertos/registro-eventos-seguridad';
 import type { Reloj } from './dominio/puertos/reloj';
 import type { RepositorioCodigosOtp } from './dominio/puertos/repositorio-codigos-otp';
+import type { RepositorioAuditoria } from './dominio/puertos/repositorio-auditoria';
 import type { RepositorioSesiones } from './dominio/puertos/repositorio-sesiones';
 import type { RepositorioUsuarios } from './dominio/puertos/repositorio-usuarios';
 import type { ProtectorDatos } from '../../compartido/dominio/protector-datos';
@@ -55,6 +56,7 @@ import { RegistroEventosSeguridadLogger } from './infraestructura/registro-event
 import { RelojSistema } from './infraestructura/reloj-sistema';
 import { RepositorioCodigosOtpPostgres } from './infraestructura/repositorio-codigos-otp-postgres';
 import { RepositorioSesionesPostgres } from './infraestructura/repositorio-sesiones-postgres';
+import { RepositorioAuditoriaPostgres } from './infraestructura/repositorio-auditoria-postgres';
 import { RepositorioUsuariosPostgres } from './infraestructura/repositorio-usuarios-postgres';
 import { AuthController } from './presentacion/auth.controller';
 import { JwtAuthGuard } from './presentacion/jwt-auth.guard';
@@ -73,6 +75,7 @@ import {
   REPOSITORIO_SESIONES,
   REPOSITORIO_USUARIOS,
   REPOSITORIO_VERIFICACIONES,
+  REPOSITORIO_AUDITORIA,
   SERVICIO_IDENTIFICACION,
 } from './tokens';
 
@@ -108,6 +111,13 @@ import {
       inject: [PrismaServicio, PROTECTOR_DATOS],
       useFactory: (prisma: PrismaServicio, protector: ProtectorDatos): RepositorioUsuarios =>
         new RepositorioUsuariosPostgres(prisma, protector),
+    },
+    {
+      // Auditoría de seguridad, solo de agregar (009, research §R-01).
+      provide: REPOSITORIO_AUDITORIA,
+      inject: [PrismaServicio],
+      useFactory: (prisma: PrismaServicio): RepositorioAuditoria =>
+        new RepositorioAuditoriaPostgres(prisma),
     },
     {
       provide: REPOSITORIO_CODIGOS_OTP,

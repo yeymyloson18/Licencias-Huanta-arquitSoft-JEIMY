@@ -1,4 +1,5 @@
 import type { Correo } from '../correo';
+import type { EventoAuditoria } from '../evento-auditoria';
 import type { Rol } from '../rol';
 import type { Usuario } from '../usuario';
 
@@ -30,19 +31,23 @@ export interface PaginaUsuarios {
 /**
  * Cambio sobre un usuario que se aplica dentro de la transacción de `modificar`. Recibe los ids de
  * los administradores activos leídos en esa misma transacción; puede lanzar un error del dominio
- * para cancelar el cambio (nada se guarda).
+ * para cancelar el cambio (nada se guarda). Devuelve los eventos de auditoría que describen el
+ * cambio, que se guardan en la misma transacción (research §R-03 de la 009).
  */
-export type CambioUsuario = (usuario: Usuario, administradoresActivos: readonly string[]) => void;
+export type CambioUsuario = (
+  usuario: Usuario,
+  administradoresActivos: readonly string[],
+) => readonly EventoAuditoria[] | void;
 
 /** Persistencia de usuarios y de su historial de roles (esquema `seguridad`). */
 export interface RepositorioUsuarios {
   /** Guarda un usuario nuevo con sus asignaciones de rol. */
-  crear(usuario: Usuario): Promise<void>;
+  crear(usuario: Usuario, auditoria?: readonly EventoAuditoria[]): Promise<void>;
   obtenerPorId(id: string): Promise<Usuario | null>;
   /** Busca por igualdad exacta del correo normalizado (el adaptador usa su HMAC, MD3). */
   obtenerPorCorreo(correo: Correo): Promise<Usuario | null>;
   /** Guarda los cambios del usuario: datos, asignaciones retiradas y nuevas, y la versión. */
-  guardar(usuario: Usuario): Promise<void>;
+  guardar(usuario: Usuario, auditoria?: readonly EventoAuditoria[]): Promise<void>;
   /** Página de usuarios ordenada por nombre (FR-016). */
   buscar(criterio: CriterioBusquedaUsuarios): Promise<PaginaUsuarios>;
   /**

@@ -40,40 +40,40 @@ terminar cada fase.
 
 ## Fase 2: Base (bloquea todas las historias)
 
-- [ ] T004 Migración `apps/api/prisma/migrations/0012_auditoria_seguridad/migration.sql`: tabla
+- [X] T004 Migración `apps/api/prisma/migrations/0012_auditoria_seguridad/migration.sql`: tabla
       `seguridad.auditoria` (columnas, CHECK de `accion` con las 21 acciones y de `resultado`
       `EXITO|RECHAZADO`, `origen_hmac char(64)`, `detalle jsonb NOT NULL DEFAULT '{}'`,
       `evento_origen_id bigint UNIQUE`), los 4 índices y la función/disparadores "solo agregar"
       (`BEFORE UPDATE OR DELETE` y `BEFORE TRUNCATE`), según `data-model.md` §1
-- [ ] T005 Reflejar la tabla en `docs/05-modelo-de-datos/esquema.sql` y
+- [X] T005 Reflejar la tabla en `docs/05-modelo-de-datos/esquema.sql` y
       `docs/05-modelo-de-datos/modelo-entidad-relacion.md`, y el modelo `AuditoriaSeguridad` en
       `apps/api/prisma/schema.prisma` (mismo commit que T004)
-- [ ] T006 [P] Dominio `apps/api/src/modulos/seguridad/dominio/accion-auditoria.ts`: lista cerrada de
+- [X] T006 [P] Dominio `apps/api/src/modulos/seguridad/dominio/accion-auditoria.ts`: lista cerrada de
       21 acciones, grupo de cada una, texto en español, `ACCIONES_INGRESO_FALLIDO` y `esAccion()`;
       prueba `apps/api/test/unit/modulos/seguridad/dominio/accion-auditoria.spec.ts`
-- [ ] T007 [P] Dominio `apps/api/src/modulos/seguridad/dominio/evento-auditoria.ts`:
+- [X] T007 [P] Dominio `apps/api/src/modulos/seguridad/dominio/evento-auditoria.ts`:
       `EventoAuditoria.crear()` valida acción, resultado, `objeto` (≤ 40, `[A-Z0-9_-]` o fecha
       `AAAA-MM-DD`), `origenHmac` (64 hex) y el `detalle` permitido por acción (`motivo`, `rol`,
       `roles`, `campos`, `sesiones`, `segundos`; cualquier otra clave → `ErrorDominio`); fábricas por
       acción; prueba `apps/api/test/unit/modulos/seguridad/dominio/evento-auditoria.spec.ts`
-- [ ] T008 [P] Puerto `apps/api/src/modulos/seguridad/dominio/puertos/repositorio-auditoria.ts`
+- [X] T008 [P] Puerto `apps/api/src/modulos/seguridad/dominio/puertos/repositorio-auditoria.ts`
       (`registrar`, `registrarDeOrigen` idempotente, `buscar(filtro, pagina)`, `ultimoIngreso`,
       `contarIngresosFallidos(desde)`) y tipos de filtro y fila
-- [ ] T009 Adaptador `apps/api/src/modulos/seguridad/infraestructura/repositorio-auditoria-postgres.ts`
+- [X] T009 Adaptador `apps/api/src/modulos/seguridad/infraestructura/repositorio-auditoria-postgres.ts`
       (inserción con `ON CONFLICT (evento_origen_id) DO NOTHING`, consulta con filtros, orden
       `ocurrido_en DESC, id DESC` y nombres por una sola consulta) y función `insertarEventos(tx, …)`
       reutilizable dentro de otras transacciones
-- [ ] T010 Ampliar los puertos y adaptadores con la auditoría en la misma transacción (research
+- [X] T010 Ampliar los puertos y adaptadores con la auditoría en la misma transacción (research
       §R-03): `RepositorioUsuarios.crear/guardar(…, auditoria?)` y `CambioUsuario` que puede devolver
       eventos en `dominio/puertos/repositorio-usuarios.ts` y `infraestructura/repositorio-usuarios-postgres.ts`;
       `RepositorioSesiones.crear/guardar/revocarTodasDelUsuario(…, auditoria?)` en
       `dominio/puertos/repositorio-sesiones.ts` y `infraestructura/repositorio-sesiones-postgres.ts`
-- [ ] T011 Configuración en `apps/api/src/compartido/infraestructura/configuracion.ts`:
+- [X] T011 Configuración en `apps/api/src/compartido/infraestructura/configuracion.ts`:
       `ENVIO_OTP` = `simulado|buzon|sms`, `ENVIO_AVISOS` = `simulado|buzon` (por defecto `simulado`),
       `SMTP_BUZON_URL` (por defecto `smtp://localhost:1025`); en producción rechazar `ENVIO_OTP=buzon`,
       `ENVIO_AVISOS=buzon` y `ENVIO_OTP=simulado`; pruebas en
       `apps/api/test/unit/compartido/infraestructura/configuracion.spec.ts`; `.env.example`
-- [ ] T012 Registrar el repositorio de auditoría en `apps/api/src/modulos/seguridad/seguridad.module.ts`
+- [X] T012 Registrar el repositorio de auditoría en `apps/api/src/modulos/seguridad/seguridad.module.ts`
       y ajustar las pruebas unitarias existentes de los casos de uso a las firmas nuevas
 
 **Punto de control**: compila, pruebas unitarias en verde, regla de dependencia sin violaciones.

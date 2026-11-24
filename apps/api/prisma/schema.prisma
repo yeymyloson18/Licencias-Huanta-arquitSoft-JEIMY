@@ -301,6 +301,27 @@ model rol {
   @@schema("seguridad")
 }
 
+/// Auditoría de seguridad (009, migración 0012). Solo de agregar: los disparadores impiden UPDATE,
+/// DELETE y TRUNCATE. Ver specs/009-panel-administrador/data-model.md §1.
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model AuditoriaSeguridad {
+  id                  BigInt   @id @default(autoincrement())
+  ocurrido_en         DateTime @default(now()) @db.Timestamptz(6)
+  accion              String   @db.VarChar(30)
+  actor_usuario_id    String?  @db.Uuid
+  afectado_usuario_id String?  @db.Uuid
+  objeto              String?  @db.VarChar(40)
+  resultado           String   @db.VarChar(10)
+  origen_hmac         String?  @db.Char(64)
+  detalle             Json     @default("{}")
+  evento_origen_id    BigInt?  @unique(map: "ux_auditoria_seg_evento_origen")
+
+  @@index([ocurrido_en(sort: Desc), id(sort: Desc)], map: "ix_auditoria_seg_ocurrido")
+  @@index([accion, ocurrido_en(sort: Desc)], map: "ix_auditoria_seg_accion")
+  @@map("auditoria")
+  @@schema("seguridad")
+}
+
 model sesion {
   id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   usuario_id            String    @db.Uuid
