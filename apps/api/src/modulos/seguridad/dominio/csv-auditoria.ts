@@ -1,3 +1,5 @@
+import { textoDesenlace } from './desenlace-codigo';
+import { OBJETO_IDENTIDAD_ADMINISTRADO } from './evento-auditoria';
 import { textoAccion, textoSinActor } from './accion-auditoria';
 import type { FilaAuditoria } from './puertos/repositorio-auditoria';
 
@@ -15,6 +17,8 @@ export const COLUMNAS_CSV_AUDITORIA = [
   'afectado',
   'objeto',
   'resultado',
+  // 010: cómo terminó cada código enviado del personal; vacía en las demás acciones.
+  'desenlace',
 ] as const;
 
 const BOM = '﻿';
@@ -50,8 +54,11 @@ const valores = (fila: FilaAuditoria): readonly string[] => [
   textoAccion(fila.accion),
   fila.actor?.nombre ?? textoSinActor(fila.accion),
   fila.afectado?.nombre ?? '',
-  fila.objeto ?? '',
+  fila.objeto === OBJETO_IDENTIDAD_ADMINISTRADO
+    ? 'Identidad del administrado'
+    : (fila.objeto ?? ''),
   RESULTADOS[fila.resultado],
+  fila.codigoEnviado?.desenlace ? textoDesenlace(fila.codigoEnviado.desenlace) : '',
 ];
 
 /** El archivo completo: BOM, cabecera y una línea por fila. */

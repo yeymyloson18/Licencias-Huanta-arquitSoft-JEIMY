@@ -13,6 +13,7 @@ import {
   RepositorioVerificacionesEnMemoria,
   ServicioIdentificacionFalso,
 } from './dobles-identidad';
+import { AuditoriaEnMemoria, EventosFalsos } from './dobles';
 import { EnviadorFalso, GeneradorFalso, ProtectorFalso, RelojFalso } from './dobles';
 
 const TITULAR = {
@@ -42,6 +43,8 @@ const preparar = () => {
     protector,
     enviador: new EnviadorFalso(),
     reloj,
+    auditoria: new AuditoriaEnMemoria(),
+    eventos: new EventosFalsos(),
   });
   const verificarOtp = new VerificarOtpAdministrado({
     verificaciones,

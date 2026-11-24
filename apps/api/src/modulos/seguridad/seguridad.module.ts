@@ -504,6 +504,8 @@ import {
         PROTECTOR_DATOS,
         ENVIADOR_OTP,
         RELOJ,
+        REPOSITORIO_AUDITORIA,
+        REGISTRO_EVENTOS_SEGURIDAD,
       ],
       useFactory: (
         servicio: ServicioIdentificacion,
@@ -513,6 +515,8 @@ import {
         protector: ProtectorDatos,
         enviador: EnviadorOTP,
         reloj: Reloj,
+        auditoria: RepositorioAuditoria,
+        eventos: RegistroEventosSeguridad,
       ) =>
         new VerificarIdentidadAdministrado({
           servicio,
@@ -522,6 +526,8 @@ import {
           protector,
           enviador,
           reloj,
+          auditoria,
+          eventos,
         }),
     },
     {

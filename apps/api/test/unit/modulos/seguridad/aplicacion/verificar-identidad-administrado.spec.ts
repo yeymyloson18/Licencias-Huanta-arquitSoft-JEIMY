@@ -12,6 +12,7 @@ import {
   RepositorioVerificacionesEnMemoria,
   ServicioIdentificacionFalso,
 } from './dobles-identidad';
+import { AuditoriaEnMemoria, EventosFalsos } from './dobles';
 import { EnviadorFalso, GeneradorFalso, ProtectorFalso, RelojFalso, T0 } from './dobles';
 
 // Datos FICTICIOS (quickstart.md de la 004).
@@ -29,6 +30,8 @@ const preparar = () => {
   const limitador = new LimitadorIdentidadFalso();
   const enviador = new EnviadorFalso();
   const reloj = new RelojFalso();
+  const auditoria = new AuditoriaEnMemoria();
+  const eventos = new EventosFalsos();
   const casoDeUso = new VerificarIdentidadAdministrado({
     servicio,
     verificaciones,
@@ -37,8 +40,10 @@ const preparar = () => {
     protector: new ProtectorFalso(),
     enviador,
     reloj,
+    auditoria,
+    eventos,
   });
-  return { casoDeUso, servicio, verificaciones, limitador, enviador, reloj };
+  return { casoDeUso, servicio, verificaciones, limitador, enviador, reloj, auditoria, eventos };
 };
 
 const errorDe = async (promesa: Promise<unknown>): Promise<unknown> => {
@@ -156,6 +161,65 @@ describe('VerificarIdentidadAdministrado (CU03, FR-001 a FR-007 de la 004)', () 
     await expect(casoDeUso.ejecutar({ ...TITULAR, ip: '10.0.0.1' })).rejects.toBeInstanceOf(
       ErrorDemasiadosIntentos,
     );
+  });
+
+  it('registra el código enviado sin cuenta, sin documento, RUC ni código (010)', async () => {
+    const { casoDeUso, auditoria } = preparar();
+
+    await casoDeUso.ejecutar({ ...TITULAR, ip: '10.0.0.1' });
+
+    expect(auditoria.eventos).toHaveLength(1);
+    expect(auditoria.eventos[0]).toMatchObject({
+      accion: 'CODIGO_ENVIADO',
+      resultado: 'EXITO',
+      actorUsuarioId: null,
+      afectadoUsuarioId: null,
+      objeto: 'IDENTIDAD_ADMINISTRADO',
+      intentoId: null,
+      detalle: {
+        proposito: 'IDENTIDAD_ADMINISTRADO',
+        canal: 'SIMULADO',
+        destino: '9*****001',
+        entrega: 'ENTREGADO',
+      },
+    });
+    const texto = JSON.stringify(auditoria.eventos);
+    for (const dato of ['40000001', '10400000011', '987000001', '123456']) {
+      expect(texto).not.toContain(dato);
+    }
+  });
+
+  it('el 4.º código del mismo celular registra el límite de códigos alcanzado (010)', async () => {
+    const { casoDeUso, auditoria } = preparar();
+    for (let envio = 1; envio <= 3; envio += 1) {
+      await casoDeUso.ejecutar({ ...TITULAR, ip: '10.0.0.1' });
+    }
+
+    await casoDeUso.ejecutar({ ...TITULAR, ip: '10.0.0.1' }).catch(() => undefined);
+
+    expect(auditoria.eventos.at(-1)).toMatchObject({
+      accion: 'CODIGO_LIMITE_ALCANZADO',
+      afectadoUsuarioId: null,
+      objeto: 'IDENTIDAD_ADMINISTRADO',
+      detalle: { proposito: 'IDENTIDAD_ADMINISTRADO' },
+    });
+  });
+
+  it('un envío fallido queda como código enviado fallido; si la auditoría falla, se avisa', async () => {
+    const { casoDeUso, enviador, auditoria, eventos } = preparar();
+    enviador.falla = true;
+
+    await casoDeUso.ejecutar({ ...TITULAR, ip: '10.0.0.1' }).catch(() => undefined);
+    expect(auditoria.eventos.map((e) => [e.accion, e.detalle.entrega])).toEqual([
+      ['CODIGO_ENVIADO', 'FALLIDO'],
+    ]);
+
+    enviador.falla = false;
+    auditoria.falla = true;
+    await expect(casoDeUso.ejecutar({ ...TITULAR, ip: '10.0.0.1' })).resolves.toMatchObject({
+      celularEnmascarado: '9*****001',
+    });
+    expect(eventos.nombres()).toContain('fallo-auditoria');
   });
 
   it('otro código vence el anterior del mismo documento', async () => {

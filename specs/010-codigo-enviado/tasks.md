@@ -47,22 +47,22 @@
 
 ## Fase 3: Historias 1 y 4 - Registro de los códigos enviados y del límite (P1)
 
-- [ ] T008 [US1] `aplicacion/iniciar-sesion.ts`: `CODIGO_ENVIADO` (entregado o fallido) con el
+- [X] T008 [US1] `aplicacion/iniciar-sesion.ts`: `CODIGO_ENVIADO` (entregado o fallido) con el
       `intento_id` del desafío y el celular enmascarado; `CODIGO_LIMITE_ALCANZADO` al llegar al cupo;
       con `registrarSinFallar`; pruebas unitarias
-- [ ] T009 [US1] `aplicacion/verificar-identidad-administrado.ts`: dependencias `auditoria` y
+- [X] T009 [US1] `aplicacion/verificar-identidad-administrado.ts`: dependencias `auditoria` y
       `eventos`; `CODIGO_ENVIADO` con objeto `IDENTIDAD_ADMINISTRADO` y `CODIGO_LIMITE_ALCANZADO`, con
       la huella del origen; módulo actualizado; pruebas unitarias
-- [ ] T010 [US2] `aplicacion/verificar-otp.ts`: `intento_id` en `INGRESO_CORRECTO`,
+- [X] T010 [US2] `aplicacion/verificar-otp.ts`: `intento_id` en `INGRESO_CORRECTO`,
       `CODIGO_INCORRECTO` y bloqueos con desafío conocido; pruebas unitarias
-- [ ] T011 [US2] CSV `dominio/csv-auditoria.ts` con la columna `desenlace` y la respuesta del
+- [X] T011 [US2] CSV `dominio/csv-auditoria.ts` con la columna `desenlace` y la respuesta del
       controlador con `codigoEnviado`; pruebas unitarias
-- [ ] T012 [US1] Integración `apps/api/test/integracion/codigos-enviados.e2e-spec.ts`: los dos
+- [X] T012 [US1] Integración `apps/api/test/integracion/codigos-enviados.e2e-spec.ts`: los dos
       propósitos, envío fallido (buzón sin servidor no aplica en el CI: se usa un enviador que falla
       vía `ajustar`), desenlaces, límite, privacidad del código (tabla, lista, CSV, panel, registros),
       respuestas validadas con `validarContrato`
 
-- [ ] T012b [US1] Actualizar las expectativas de las pruebas de integración de la 009 que cuentan o
+- [X] T012b [US1] Actualizar las expectativas de las pruebas de integración de la 009 que cuentan o
       listan los eventos de una cuenta que ingresa (`auditoria-seguridad.e2e-spec.ts`,
       `administrador.e2e-spec.ts`, `privacidad-009.e2e-spec.ts`): ahora cada código enviado agrega un
       `CODIGO_ENVIADO`

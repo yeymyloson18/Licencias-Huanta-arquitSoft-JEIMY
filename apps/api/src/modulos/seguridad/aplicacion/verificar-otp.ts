@@ -55,6 +55,7 @@ export class VerificarOtp {
         usuario?.id ?? null,
         entrada.ip,
         { segundos: reserva.segundosRestantes },
+        codigo?.id ?? null,
       );
       throw new ErrorDemasiadosIntentos(reserva.segundosRestantes);
     }
@@ -75,16 +76,20 @@ export class VerificarOtp {
 
     if (resultado !== 'CORRECTO') {
       this.d.eventos.registrar('inicio-sesion-fallido', { usuarioId: codigo.usuarioId });
-      await this.auditar('CODIGO_INCORRECTO', codigo.usuarioId, entrada.ip, {});
+      await this.auditar('CODIGO_INCORRECTO', codigo.usuarioId, entrada.ip, {}, codigo.id);
       throw new ErrorAutenticacion();
     }
     await this.d.limitador.liberarIntento(correo, entrada.ip);
 
     if (usuario?.activo !== true) {
       this.d.eventos.registrar('inicio-sesion-fallido', { usuarioId: codigo.usuarioId });
-      await this.auditar('CODIGO_INCORRECTO', codigo.usuarioId, entrada.ip, {
-        motivo: 'CUENTA_INACTIVA',
-      });
+      await this.auditar(
+        'CODIGO_INCORRECTO',
+        codigo.usuarioId,
+        entrada.ip,
+        { motivo: 'CUENTA_INACTIVA' },
+        codigo.id,
+      );
       throw new ErrorAutenticacion();
     }
 
@@ -103,6 +108,8 @@ export class VerificarOtp {
         usuarioId: usuario.id,
         origenHmac: huellaOrigen(this.d.protector, entrada.ip),
         en: ahora,
+        // Vincula el ingreso con su "Código enviado" (010).
+        intentoId: codigo.id,
       }),
     ]);
 
@@ -115,6 +122,7 @@ export class VerificarOtp {
     afectadoUsuarioId: string | null,
     ip: string,
     detalle: { readonly motivo?: MotivoRechazo; readonly segundos?: number },
+    intentoId: string | null = null,
   ): Promise<void> {
     return registrarSinFallar(
       this.d.auditoria,
@@ -125,6 +133,7 @@ export class VerificarOtp {
         origenHmac: huellaOrigen(this.d.protector, ip),
         en: this.d.reloj.ahora(),
         detalle,
+        intentoId,
       }),
     );
   }

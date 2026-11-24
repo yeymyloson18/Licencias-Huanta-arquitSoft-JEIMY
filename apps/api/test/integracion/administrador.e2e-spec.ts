@@ -215,6 +215,7 @@ describe('Panel del administrador (009)', () => {
       ]);
       expect(ficha.ultimosEventos.map((e) => e.accion)).toEqual([
         'INGRESO_CORRECTO',
+        'CODIGO_ENVIADO',
         'ROL_ASIGNADO',
         'ROL_QUITADO',
       ]);
