@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { TablaEventos } from '../../componentes/TablaEventos';
+import { HerramientasTecnicas } from './HerramientasTecnicas';
 import { obtenerPanel, type PanelAdministrador } from '../../servicios/clienteApi';
 
 // Panel del administrador (HU1 de la 009, contracts/portal-administrador.md): el estado de los
@@ -151,6 +152,7 @@ export function Panel() {
                 <Link to="/admin/auditoria">Ver toda la auditoría</Link>
               </p>
             </section>
+            <HerramientasTecnicas />
           </>
         )}
       </main>

@@ -977,13 +977,6 @@ video {
   font-size: 1.25rem;
 }
 
-/* Pie del portal (008): enlace a la documentación de la API. */
-.pie {
-  padding: 1rem;
-  text-align: center;
-  font-size: 0.9375rem;
-}
-
 /* Administrador (009): tabla de eventos apilable, tarjetas del panel, ficha y confirmación. */
 @media (max-width: 47.99rem) {
   .tabla--apilable thead {
