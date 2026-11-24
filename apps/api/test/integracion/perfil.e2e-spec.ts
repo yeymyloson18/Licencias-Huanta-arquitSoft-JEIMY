@@ -83,6 +83,28 @@ describe('GET /perfil (011, HU2)', () => {
     expect((respuesta.body as PerfilApi).sesionesAbiertas).toBe(2);
   });
 
+  it('ignora un id ajeno en la consulta o en una cabecera: siempre el perfil propio (HU4)', async () => {
+    const a = await crearUsuarioDePrueba(prisma, { roles: ['CAJA'] });
+    const b = await crearUsuarioDePrueba(prisma, { roles: ['ADMINISTRADOR'] });
+    const { accessToken } = await iniciarSesionDePrueba(app, redis, a);
+    const conToken = (ruta: string) =>
+      request(app.getHttpServer()).get(ruta).set('Authorization', `Bearer ${accessToken}`);
+
+    // Sin cuerpo: un GET no lleva cuerpo.
+    const respuestas = [
+      await conToken(`/api/v1/perfil?usuarioId=${b.id}`),
+      await conToken(`/api/v1/perfil?id=${b.id}`),
+      await conToken('/api/v1/perfil').set('X-Usuario-Id', b.id),
+    ];
+
+    for (const respuesta of respuestas) {
+      expect(respuesta.status).toBe(200);
+      expect((respuesta.body as PerfilApi).correo).toBe(a.correo);
+      expect(respuesta.text).not.toContain(b.correo);
+      expect(respuesta.text).not.toContain(b.nombre);
+    }
+  });
+
   it('nunca incluye el id, la huella de la clave ni el celular completo', async () => {
     const usuario = await crearUsuarioDePrueba(prisma, { roles: ['JEFATURA'] });
     const { accessToken } = await iniciarSesionDePrueba(app, redis, usuario);

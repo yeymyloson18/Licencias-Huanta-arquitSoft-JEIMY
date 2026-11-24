@@ -283,7 +283,7 @@ FR-016).
 **Prueba independiente**: en CI, `matriz-permisos-011.e2e-spec.ts` y los casos nuevos de
 `datos-personales.e2e-spec.ts` en verde.
 
-- [ ] T026 [P] [US4] Crear `apps/api/test/integracion/matriz-permisos-011.e2e-spec.ts`:
+- [X] T026 [P] [US4] Crear `apps/api/test/integracion/matriz-permisos-011.e2e-spec.ts`:
   - `GET /perfil` sin token → 401 `no-autenticado`;
   - con un token inválido → 401;
   - con clave temporal → 403 `debe-cambiar-clave`;
@@ -298,13 +298,13 @@ FR-016).
     WHERE usuario_id = <id> AND retirado_en IS NULL` con el cliente Prisma de la aplicación de
     prueba. Luego `GET /perfil` → 200 con `roles: []`. Si el guard rechaza al usuario sin roles,
     esta prueba lo detecta y se corrige.
-- [ ] T027 [P] [US4] Ampliar `apps/api/test/integracion/datos-personales.e2e-spec.ts`:
+- [X] T027 [P] [US4] Ampliar `apps/api/test/integracion/datos-personales.e2e-spec.ts`:
   - la respuesta de `GET /perfil` no tiene las claves `id`, `claveHash` ni `celular`, ni ningún
     valor con 9 dígitos seguidos;
   - con el registro de la aplicación capturado (el mismo método que ya usa el archivo), al pedir el
     perfil y al cambiar la clave no aparecen el correo, el nombre, el celular completo, la clave
     actual ni la nueva.
-- [ ] T028 [US4] En `apps/api/test/integracion/perfil.e2e-spec.ts`, agregar los casos de
+- [X] T028 [US4] En `apps/api/test/integracion/perfil.e2e-spec.ts`, agregar los casos de
       identificador ignorado. El usuario A pide su perfil con el id del usuario B de tres formas, y
       en todas recibe 200 con **su** correo, sin el correo ni el nombre de B en el cuerpo:
   - `GET /perfil?usuarioId=<id de B>`;
