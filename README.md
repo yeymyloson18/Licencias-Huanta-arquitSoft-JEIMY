@@ -620,7 +620,8 @@ actividades y los 5 entregables de la guía y el enlace a la evidencia de cada u
   `docs/06-contrato-api/openapi.yaml`. El contrato en JSON está en `/api/docs/openapi.json`.
   - Para los endpoints protegidos, pegue el token del personal en **Authorize**.
   - Está activa en desarrollo y apagada en producción (`DOCS_API`).
-  - El pie del portal tiene el enlace.
+  - El enlace está en el panel del administrador, en la tarjeta **Herramientas técnicas** (solo en
+    desarrollo), junto al buzón de pruebas. El portal público no lo muestra.
 - **Postman**: importe `tests/postman/licencias-huanta.postman_collection.json` (incluye los
   endpoints del administrador de la 009) y el entorno
   `tests/postman/desarrollo.postman_environment.json`, que tiene los tokens vacíos.
