@@ -139,6 +139,17 @@ export function Panel() {
                 <p className="panel__cifra">{carga.panel.ingresosFallidos.hoy} hoy</p>
                 <p>{carga.panel.ingresosFallidos.ultimos7Dias} en los últimos 7 días</p>
               </Tarjeta>
+              <Tarjeta titulo="Códigos enviados">
+                <p className="panel__cifra">{carga.panel.codigosEnviados.hoy.entregados} hoy</p>
+                <p>{carga.panel.codigosEnviados.hoy.conIngreso} terminaron en ingreso correcto</p>
+                <p>{carga.panel.codigosEnviados.ultimos7Dias.entregados} en los últimos 7 días</p>
+                {carga.panel.codigosEnviados.hoy.fallidos > 0 && (
+                  <p>{carga.panel.codigosEnviados.hoy.fallidos} envíos fallaron hoy</p>
+                )}
+                <p>
+                  <Link to="/admin/auditoria?accion=CODIGO_ENVIADO">Ver los códigos enviados</Link>
+                </p>
+              </Tarjeta>
             </div>
             <section className="tarjeta" aria-labelledby="ultimos-eventos">
               <h2 id="ultimos-eventos" className="ficha__nombre">

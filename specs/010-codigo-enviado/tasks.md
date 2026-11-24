@@ -71,10 +71,10 @@
 
 ## Fase 4: Historia 3 - Panel y portal (P2)
 
-- [ ] T013 [US3] Dominio `panel-administrador.ts` y `aplicacion/obtener-panel.ts`: `codigosEnviados`
+- [X] T013 [US3] Dominio `panel-administrador.ts` y `aplicacion/obtener-panel.ts`: `codigosEnviados`
       (hoy y 7 días); pruebas unitarias; panel en la integración de T012; la prueba de 10,000 eventos de
       `administrador.e2e-spec.ts` sigue midiendo SC-004
-- [ ] T014 [P] [US3] Portal: tarjeta "Códigos enviados" con enlace a
+- [X] T014 [P] [US3] Portal: tarjeta "Códigos enviados" con enlace a
       `/admin/auditoria?accion=CODIGO_ENVIADO` en `apps/web/src/paginas/admin/Panel.tsx`; las 2
       acciones en `componentes/TablaEventos.tsx` (grupos, medio, destino, desenlace e "Identidad del
       administrado"); pruebas en `Panel.test.tsx` y `TablaEventos.test.tsx`

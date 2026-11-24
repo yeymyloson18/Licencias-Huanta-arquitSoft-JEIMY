@@ -1,6 +1,6 @@
 import { fechaLima, inicioDiaLima, sumarDias } from '../../../compartido/dominio/fecha-lima';
 import type { CifrasUsuarios } from './puertos/consulta-panel';
-import type { FilaAuditoria } from './puertos/repositorio-auditoria';
+import type { FilaAuditoria, ResumenCodigos } from './puertos/repositorio-auditoria';
 import { ROLES, type Rol } from './rol';
 
 /** Desde cuándo se cuentan los ingresos fallidos de hoy y de los últimos 7 días (hora de Lima). */
@@ -22,6 +22,8 @@ export interface PanelAdministrador {
   readonly bloqueos: { readonly cuentas: number; readonly origenes: number } | null;
   readonly sesionesAbiertas: number;
   readonly ingresosFallidos: { readonly hoy: number; readonly ultimos7Dias: number };
+  /** Códigos de 6 dígitos enviados hoy y en 7 días (FR-008 de la 010). */
+  readonly codigosEnviados: { readonly hoy: ResumenCodigos; readonly ultimos7Dias: ResumenCodigos };
   readonly ultimosEventos: readonly FilaAuditoria[];
 }
 
@@ -31,6 +33,8 @@ export const armarPanel = (datos: {
   readonly bloqueos: { readonly cuentas: number; readonly origenes: number } | null;
   readonly fallidosHoy: number;
   readonly fallidos7Dias: number;
+  readonly codigosHoy: ResumenCodigos;
+  readonly codigos7Dias: ResumenCodigos;
   readonly ultimosEventos: readonly FilaAuditoria[];
 }): PanelAdministrador => ({
   usuarios: { activos: datos.cifras.activos, inactivos: datos.cifras.inactivos },
@@ -41,5 +45,6 @@ export const armarPanel = (datos: {
   bloqueos: datos.bloqueos,
   sesionesAbiertas: datos.cifras.sesionesAbiertas,
   ingresosFallidos: { hoy: datos.fallidosHoy, ultimos7Dias: datos.fallidos7Dias },
+  codigosEnviados: { hoy: datos.codigosHoy, ultimos7Dias: datos.codigos7Dias },
   ultimosEventos: datos.ultimosEventos.slice(0, 10),
 });

@@ -21,6 +21,8 @@ export const GRUPOS_ACCIONES: readonly {
       { valor: 'ORIGEN_BLOQUEADO', texto: 'Origen bloqueado por intentos' },
       { valor: 'CIERRE_SESION', texto: 'Cierre de sesión' },
       { valor: 'CLAVE_CAMBIADA', texto: 'Clave cambiada' },
+      { valor: 'CODIGO_ENVIADO', texto: 'Código enviado' },
+      { valor: 'CODIGO_LIMITE_ALCANZADO', texto: 'Límite de códigos alcanzado' },
     ],
   },
   {
@@ -64,8 +66,37 @@ export const formatearFechaHora = (iso: string): string => fechaHora.format(new 
 export const quienActuo = (evento: EventoAuditoriaSeguridad): string =>
   evento.actor?.nombre ?? (INGRESOS.has(evento.accion) ? 'Sin sesión' : 'Sistema');
 
+const OBJETOS: Readonly<Record<string, string>> = {
+  IDENTIDAD_ADMINISTRADO: 'Identidad del administrado',
+};
+
 const sobreQue = (evento: EventoAuditoriaSeguridad): string =>
-  evento.afectado?.nombre ?? evento.objeto ?? '—';
+  evento.afectado?.nombre ?? (evento.objeto ? (OBJETOS[evento.objeto] ?? evento.objeto) : '—');
+
+const CANALES: Readonly<Record<string, string>> = {
+  SIMULADO: 'simulado',
+  BUZON: 'buzón de pruebas',
+  SMS: 'SMS',
+  CORREO: 'correo',
+};
+
+const DESENLACES: Readonly<Record<string, string>> = {
+  INGRESO_CORRECTO: 'terminó en ingreso correcto',
+  CODIGO_INCORRECTO: 'terminó en código incorrecto',
+  BLOQUEO: 'terminó en bloqueo',
+  SIN_USAR: 'sin usar',
+  PENDIENTE: 'pendiente',
+  ENVIO_FALLIDO: 'el envío falló',
+};
+
+/** Medio, destino enmascarado y desenlace de un código enviado (010); nunca el código. */
+export const detalleCodigo = (codigo: NonNullable<EventoAuditoriaSeguridad['codigoEnviado']>) =>
+  [
+    `por ${CANALES[codigo.canal] ?? codigo.canal} a ${codigo.destino}`,
+    codigo.desenlace === null ? null : (DESENLACES[codigo.desenlace] ?? codigo.desenlace),
+  ]
+    .filter((parte) => parte !== null)
+    .join(' · ');
 
 interface Propiedades {
   readonly eventos: readonly EventoAuditoriaSeguridad[];
@@ -93,7 +124,12 @@ export function TablaEventos({ eventos, etiqueta }: Propiedades) {
           {eventos.map((evento) => (
             <tr key={evento.id}>
               <td data-etiqueta="Fecha y hora">{formatearFechaHora(evento.ocurridoEn)}</td>
-              <td data-etiqueta="Acción">{evento.textoAccion}</td>
+              <td data-etiqueta="Acción">
+                {evento.textoAccion}
+                {evento.codigoEnviado && (
+                  <span className="tabla__detalle"> ({detalleCodigo(evento.codigoEnviado)})</span>
+                )}
+              </td>
               <td data-etiqueta="Quién">{quienActuo(evento)}</td>
               <td data-etiqueta="Sobre quién o qué">{sobreQue(evento)}</td>
               <td data-etiqueta="Resultado">
