@@ -243,18 +243,18 @@ CSV.
 
 ## Fase 7: Pulido y documentación
 
-- [ ] T043 [P] Postman: 3 peticiones 401 (`/admin/panel`, `/admin/auditoria`, `/usuarios/{id}`) en
+- [X] T043 [P] Postman: 3 peticiones 401 (`/admin/panel`, `/admin/auditoria`, `/usuarios/{id}`) en
       `tests/postman/humo.postman_collection.json` y colección completa regenerada con
       `npm run postman:generar`
-- [ ] T044 [P] README principal: panel, auditoría, buzón (`http://localhost:8025`) y el recorrido por
+- [X] T044 [P] README principal: panel, auditoría, buzón (`http://localhost:8025`) y el recorrido por
       el enlace empezando por el administrador; `crear-administrador` como único paso de terminal
       además de encender el sistema
-- [ ] T045 [P] Diagrama de casos de uso en `docs/` (ver panel, consultar auditoría de seguridad,
+- [X] T045 [P] Diagrama de casos de uso en `docs/` (ver panel, consultar auditoría de seguridad,
       cerrar sesiones, desbloquear cuenta) y nota de la mejora en `docs/08-sprint-2/README.md`
       (`node tests/analisis/verificar-citas.mjs` en verde)
-- [ ] T046 Verificaciones finales en local: lint, typecheck, formato, contrato, regla de dependencia,
+- [X] T046 Verificaciones finales en local: lint, typecheck, formato, contrato, regla de dependencia,
       cobertura de la API (≥ 80 % por archivo en dominio y aplicación), pruebas del portal, build y
-      gitleaks
+      revisión de secretos (gitleaks no está instalado en el equipo; corre la revisión del CI)
 
 ---
 

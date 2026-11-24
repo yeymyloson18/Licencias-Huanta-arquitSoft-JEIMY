@@ -104,6 +104,10 @@ flowchart LR
         CU23(["CU23 Gestionar usuarios<br/>y roles"])
         CU24(["CU24 Actualizar recetas<br/>del catálogo"])
         CU25(["CU25 Registrar feriados"])
+        CU26(["CU26 Ver panel<br/>del administrador"])
+        CU27(["CU27 Consultar auditoría<br/>de seguridad"])
+        CU28(["CU28 Cerrar sesiones<br/>de un usuario"])
+        CU29(["CU29 Desbloquear cuenta"])
     end
 
     JE --- CU18
@@ -114,10 +118,19 @@ flowchart LR
     AD --- CU23
     AD --- CU24
     AD --- CU25
+    AD --- CU26
+    AD --- CU27
+    AD --- CU28
+    AD --- CU29
+    CU28 -.->|«extend»<br/>desde la ficha| CU23
+    CU29 -.->|«extend»<br/>desde la ficha| CU23
     CU19 --- SMS
 ```
 
 La jefatura y el administrador también entran con CU11 (vista 2), como todo el personal municipal.
+Desde la 009 el administrador entra directo a su panel (CU26). Su auditoría de seguridad (CU27:
+accesos, usuarios y configuración) está separada de la auditoría de la jefatura (CU22: pagos y
+decisiones), por separación de funciones.
 
 ## Trazabilidad
 
@@ -148,6 +161,10 @@ La jefatura y el administrador también entran con CU11 (vista 2), como todo el 
 | CU23 | Gestionar usuarios y roles | Administrador | HU15 | RF17, RF22 | 002 | ✅ Hecho |
 | CU24 | Actualizar recetas del catálogo | Administrador | HU14 | RF21 | 003 | ✅ Hecho |
 | CU25 | Registrar feriados | Administrador | HU16 | RF23 | 006 | ✅ Hecho |
+| CU26 | Ver panel del administrador | Administrador | HU15 | RF17, RF22 | 009 | ✅ Hecho |
+| CU27 | Consultar auditoría de seguridad | Administrador | HU15 | RF16, RF22 | 009 | ✅ Hecho |
+| CU28 | Cerrar sesiones de un usuario | Administrador | HU15 | RF16, RF22 | 009 | ✅ Hecho |
+| CU29 | Desbloquear cuenta | Administrador | HU15 | RF16, RF22 | 009 | ✅ Hecho |
 
 **Cobertura:** las 17 historias de usuario y los 25 requisitos funcionales tienen al menos un caso de
 uso, salvo **HU12 / RF15** (transferencia, cambio de giro y duplicado), que queda como trabajo futuro

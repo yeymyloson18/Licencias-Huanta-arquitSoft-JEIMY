@@ -76,6 +76,7 @@ GitHub Actions y dejan sus resultados como archivos descargables (artefactos).
 | 006 ITSE, licencia y plazos | HU08, HU06, HU16, HU09 y HU11 | Inspección con fotos, licencia con QR, feriados, días hábiles, alertas y avisos |
 | 007 Tablero y despliegue | HU10 | Tablero, reporte de licencias en CSV, E2E y producción preparada |
 | 008 Cierre del Sprint 2 | — (entregables de la guía) | Swagger, Postman, cobertura publicada, carga hasta 2,000 usuarios y estos documentos |
+| 009 Panel del administrador | HU15 ampliada | Panel, auditoría de seguridad con CSV, ficha con cerrar sesiones y desbloquear, y buzón de pruebas en desarrollo |
 
 ## 5. Pruebas y cobertura
 
@@ -85,7 +86,7 @@ GitHub Actions y dejan sus resultados como archivos descargables (artefactos).
 | Integración de la API (Jest + Supertest, PostgreSQL y Redis reales) | 580 en verde en la última ejecución local completa, más las nuevas de la 007 y la 008 que corren en el CI | Job `pruebas` del CI |
 | Portal (Jest + Testing Library) | 303 | Job `pruebas` del CI y en local |
 | Extremo a extremo (Playwright, celular y escritorio) | 2 recorridos × 2 tamaños | Flujo `E2E` |
-| Humo de la API (Postman y Newman) | 13 peticiones | Flujo `Postman` |
+| Humo de la API (Postman y Newman) | 16 peticiones (13 de la 008 y 3 de la 009) | Flujo `Postman` |
 | Carga (k6) | 387,235 peticiones hasta 2,000 usuarios: p95 6 ms, 0 % de errores | Flujo `Carga Sprint 2`, [`evidencias/carga-2000-despues.txt`](evidencias/carga-2000-despues.txt) |
 
 **Cobertura** (pruebas unitarias; el reporte navegable está en el artefacto `cobertura` de cada
@@ -118,3 +119,18 @@ las pruebas de integración, contra PostgreSQL y Redis reales, que no cuentan en
   contrate (ADR-003).
 - **Alta disponibilidad de la base**: un solo servidor por ahora. Patroni queda como siguiente paso
   (ADR-008).
+
+## 7. Mejora posterior al cierre: panel del administrador (009)
+
+Después del cierre, la funcionalidad 009 amplió la HU15 a pedido de la usuaria
+([`specs/009-panel-administrador/`](../../specs/009-panel-administrador/)):
+
+- **Panel** del administrador en `/admin`, que es su inicio al ingresar.
+- **Auditoría de seguridad** (21 acciones, solo de agregar, sin datos personales) con filtros y CSV.
+  Catálogo y feriados llegan por la cola de eventos, sin escribir en el esquema de seguridad.
+- **Ficha del usuario** con "Cerrar todas sus sesiones" y "Desbloquear cuenta".
+- **Buzón de pruebas** (Mailpit) en desarrollo: los códigos y avisos se ven en una página web, así
+  todo se prueba por el enlace. Está prohibido en producción, como el envío simulado.
+
+Mejora la evidencia de EQ-04: nueva matriz de permisos (`matriz-permisos-009`) y prueba de
+privacidad (`privacidad-009`), además de una prueba con 10,000 eventos para el tiempo del panel.

@@ -120,19 +120,59 @@ El administrador deberá cambiar la clave en su primer ingreso.
 ### Inicio de sesión del personal (desarrollo)
 
 El personal ingresa en <http://localhost:8080/ingresar> en dos pasos: correo y clave, y luego un
-código de 6 dígitos que vale 5 minutos. Mientras no haya proveedor de SMS (`ENVIO_OTP=simulado`),
-el código no se envía: se guarda en Redis y en desarrollo se lee con:
+código de 6 dígitos que vale 5 minutos. Mientras no haya proveedor de SMS, en desarrollo el código
+llega al **buzón de pruebas**: abra <http://localhost:8025> y verá un mensaje "Código de
+verificación para 9\*\*\*\*\*321" con el código en el cuerpo (009). Los avisos al administrado
+llegan al mismo buzón. No hace falta la terminal.
 
-```bash
-docker compose -f infra/docker-compose.yml exec redis redis-cli GET dev:otp:<usuarioId>
-```
-
-El `<usuarioId>` es el que imprime `crear-administrador` (o el que muestra la gestión de usuarios).
+El buzón (Mailpit) solo existe en el compose de desarrollo (`ENVIO_OTP=buzon` y
+`ENVIO_AVISOS=buzon`); en producción la configuración lo rechaza, igual que el envío simulado. El
+código también queda en Redis (`dev:otp:<id>`), donde lo leen las pruebas automáticas y el E2E.
 Con una clave temporal, el portal lleva a `/cambiar-clave` antes de cualquier otra pantalla. Tras 5
 intentos fallidos con el mismo correo o desde la misma IP, el ingreso se bloquea 15 minutos.
 
 El administrador gestiona al personal en <http://localhost:8080/admin/usuarios>: alta con clave
 temporal, edición, roles, desactivación y asignación de una clave temporal a quien olvidó la suya.
+
+## Panel del administrador, auditoría de seguridad y buzón (funcionalidad 009)
+
+Al ingresar, el administrador llega directo a **su panel** (<http://localhost:8080/admin>):
+
+- **Panel**: usuarios activos e inactivos, usuarios por rol, cuentas bloqueadas ahora por intentos
+  fallidos (y orígenes bloqueados), sesiones abiertas, ingresos fallidos de hoy y de los últimos 7
+  días y los últimos 10 eventos. Accesos directos a Usuarios, Auditoría, Catálogo y Feriados. Si el
+  servicio de bloqueos no responde, la tarjeta dice "No disponible" en vez de un 0.
+- **Auditoría** (<http://localhost:8080/admin/auditoria>): quién hizo qué y cuándo, de la más reciente
+  a la más antigua, con filtros por fechas, acción, usuario que actuó y usuario afectado, y descarga
+  en CSV (hasta 10,000 filas). Registra 21 acciones: ingresos (correctos, clave o código incorrecto,
+  bloqueos, cierre de sesión, cambio de clave), gestión de usuarios y cambios de recetas y feriados.
+  Solo se agregan filas: la base impide editarla o borrarla. Nunca guarda correo, celular, clave,
+  código ni la IP (del origen solo una huella).
+- **Ficha del usuario** (botón "Ver ficha" en Usuarios): datos con el celular enmascarado, último
+  ingreso, sesiones abiertas, bloqueo, historial de roles y sus últimos eventos. Con confirmación:
+  **Cerrar todas sus sesiones** (dejan de servir al instante, sin desactivarlo), **Desbloquear
+  cuenta** (antes de los 15 minutos), Desactivar o Reactivar y Asignar clave temporal. El
+  administrador no puede cerrar sus propias sesiones ni desbloquearse, y nunca puede quedar el
+  sistema sin administrador activo.
+- La auditoría de pagos y decisiones de la jefatura (`/personal/auditoria`) sigue aparte.
+
+### Recorrido por el enlace (desarrollo)
+
+Solo dos pasos usan la terminal: encender el sistema y crear el primer administrador (una página
+pública para crear administradores sería un riesgo).
+
+1. `docker compose -f infra/docker-compose.yml up -d --build`
+2. `docker compose -f infra/docker-compose.yml exec api npm run crear-administrador`
+3. Abra <http://localhost:8080/ingresar>, escriba correo y clave, y lea el código en
+   <http://localhost:8025>. Cambie la clave temporal: llega al **panel**.
+4. En **Usuarios**, cree al personal (un usuario por rol) y entréguele su clave temporal.
+5. Cada persona ingresa con su correo y su clave; el código llega al mismo buzón.
+6. Pruebe el control: equivóquese 5 veces con la clave de un usuario, vea "Cuentas bloqueadas: 1" en
+   el panel, abra su ficha y pulse **Desbloquear cuenta**. En **Auditoría** verá todo lo ocurrido.
+7. El administrado sigue el recorrido de la 004 y la 006 desde <http://localhost:8080>; sus códigos y
+   avisos también llegan al buzón.
+
+Especificación, plan y tareas: [`specs/009-panel-administrador/`](specs/009-panel-administrador/).
 
 ### Variables de entorno de seguridad
 
@@ -290,7 +330,8 @@ el navegador:
   | Titular extranjero      | CE 000123456 | —                | 15000123456 |
   | Servicio caído (503)    | DNI 49999999 | —                | —           |
 
-  En desarrollo el código no se envía por SMS: queda en Redis con la clave `dev:otp:<desafioId>`.
+  En desarrollo el código no se envía por SMS: llega al buzón de pruebas <http://localhost:8025>
+  (009) y también queda en Redis con la clave `dev:otp:<desafioId>`.
 
 ### Resultados de la funcionalidad 004
 
@@ -437,9 +478,8 @@ Con el sistema levantado y usuarios con los roles EVALUADOR, CAJA, JEFATURA e IN
 6. Titular: en la consulta (número de expediente y documento) aparece "Descargar licencia"; abra el
    PDF y escanee el QR (o abra `/verificar/<código>`): muestra la licencia vigente con el titular
    abreviado.
-7. El texto de cada aviso simulado se puede leer en Redis con
-   `docker compose -f infra/docker-compose.yml exec redis redis-cli --scan --pattern 'dev:aviso:*'` y
-   `GET` de la clave.
+7. Cada aviso llega al buzón de pruebas <http://localhost:8025> con el destino enmascarado (009);
+   también queda en Redis con la clave `dev:aviso:<id>`.
 
 ### Resultados de la funcionalidad 006
 
@@ -581,7 +621,8 @@ actividades y los 5 entregables de la guía y el enlace a la evidencia de cada u
   - Para los endpoints protegidos, pegue el token del personal en **Authorize**.
   - Está activa en desarrollo y apagada en producción (`DOCS_API`).
   - El pie del portal tiene el enlace.
-- **Postman**: importe `tests/postman/licencias-huanta.postman_collection.json` y el entorno
+- **Postman**: importe `tests/postman/licencias-huanta.postman_collection.json` (incluye los
+  endpoints del administrador de la 009) y el entorno
   `tests/postman/desarrollo.postman_environment.json`, que tiene los tokens vacíos.
 - **Artefactos de GitHub Actions** (_Actions_ → la ejecución → _Artifacts_):
 
