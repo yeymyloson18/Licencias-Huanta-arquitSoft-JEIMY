@@ -129,7 +129,7 @@ export const ingresar = async (pagina: Page, rol: Rol): Promise<void> => {
   aislarLimitesDePrueba();
   await pagina.goto('/ingresar');
   await pagina.getByLabel('Correo').fill(persona.correo);
-  await pagina.getByLabel('Clave').fill(persona.clave);
+  await pagina.getByLabel('Clave', { exact: true }).fill(persona.clave);
   await pagina.getByRole('button', { name: 'Continuar' }).click();
   await pagina.getByLabel('Código').fill(await leerOtp(persona.id));
   await pagina.getByRole('button', { name: 'Ingresar' }).click();
