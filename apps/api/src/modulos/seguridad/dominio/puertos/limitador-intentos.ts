@@ -5,6 +5,11 @@ export interface ResultadoReserva {
   readonly permitido: boolean;
   /** Segundos hasta que se pueda reintentar (0 si está permitido). */
   readonly segundosRestantes: number;
+  /**
+   * Solo en los intentos de ingreso rechazados (009): `CUENTA` si el contador del correo pasó el
+   * límite, `ORIGEN` si fue solo el de la IP. Sirve para la auditoría, nunca para la respuesta.
+   */
+  readonly bloqueo?: 'CUENTA' | 'ORIGEN';
 }
 
 /** No se pueden usar los contadores (Redis no responde): el inicio de sesión falla cerrado. */

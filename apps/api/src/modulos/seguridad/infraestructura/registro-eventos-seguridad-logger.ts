@@ -9,6 +9,7 @@ const ADVERTENCIAS: ReadonlySet<EventoSeguridad> = new Set([
   'bloqueo-temporal',
   'reutilizacion-refresh',
   'fallo-cache-seguridad',
+  'fallo-auditoria',
 ]);
 
 /**

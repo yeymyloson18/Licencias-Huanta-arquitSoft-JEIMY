@@ -149,10 +149,13 @@ export class UsuariosController {
   async actualizar(
     @Param('usuarioId') usuarioId: string,
     @Body() cuerpo: unknown,
+    @UsuarioActual() administrador: UsuarioAutenticado,
   ): Promise<UsuarioRespuesta> {
     const cambios = validarCuerpo(esquemaActualizacion, cuerpo, MENSAJES);
     try {
-      return aUsuarioRespuesta(await this.actualizarUsuario.ejecutar(usuarioId, cambios));
+      return aUsuarioRespuesta(
+        await this.actualizarUsuario.ejecutar(usuarioId, cambios, administrador.usuarioId),
+      );
     } catch (error) {
       throw traducirError(error);
     }
@@ -179,10 +182,11 @@ export class UsuariosController {
   async claveTemporal(
     @Param('usuarioId') usuarioId: string,
     @Body() cuerpo: unknown,
+    @UsuarioActual() administrador: UsuarioAutenticado,
   ): Promise<void> {
     const { claveTemporal } = validarCuerpo(esquemaClaveTemporal, cuerpo, MENSAJES);
     try {
-      await this.asignarClaveTemporal.ejecutar(usuarioId, claveTemporal);
+      await this.asignarClaveTemporal.ejecutar(usuarioId, claveTemporal, administrador.usuarioId);
     } catch (error) {
       throw traducirError(error, 'claveTemporal');
     }

@@ -18,6 +18,7 @@ import {
   usuarioFicticio,
   type OpcionesUsuario,
 } from './dobles';
+import { AuditoriaEnMemoria, ProtectorFalso } from './dobles';
 
 const IP = '10.0.0.1';
 
@@ -29,6 +30,7 @@ const preparar = async (opciones: OpcionesUsuario = {}) => {
   const eventos = new EventosFalsos();
   const reloj = new RelojFalso();
   const limitador = new LimitadorFalso();
+  const auditoria = new AuditoriaEnMemoria();
   const usuario = usuarioFicticio(opciones);
   await usuarios.crear(usuario);
   await codigos.crear(
@@ -49,9 +51,106 @@ const preparar = async (opciones: OpcionesUsuario = {}) => {
     reloj,
     eventos,
     limitador,
+    auditoria,
+    protector: new ProtectorFalso(),
   });
-  return { usuarios, usuario, codigos, sesiones, emisor, eventos, reloj, limitador, casoDeUso };
+  return {
+    usuarios,
+    usuario,
+    codigos,
+    sesiones,
+    emisor,
+    eventos,
+    reloj,
+    limitador,
+    auditoria,
+    casoDeUso,
+  };
 };
+
+describe('VerificarOtp: auditoría de seguridad (009)', () => {
+  it('el ingreso correcto se guarda con la sesión, con la persona como actor y afectada', async () => {
+    const { sesiones, auditoria, casoDeUso } = await preparar();
+
+    await casoDeUso.ejecutar({ desafioId: 'desafio-1', codigo: '654321', ip: IP });
+
+    expect(sesiones.auditoria).toHaveLength(1);
+    expect(sesiones.auditoria[0]).toMatchObject({
+      accion: 'INGRESO_CORRECTO',
+      resultado: 'EXITO',
+      actorUsuarioId: 'usuario-1',
+      afectadoUsuarioId: 'usuario-1',
+      ocurridoEn: T0,
+    });
+    expect(auditoria.eventos).toHaveLength(0);
+  });
+
+  it('un código incorrecto registra CODIGO_INCORRECTO sobre la cuenta', async () => {
+    const { auditoria, casoDeUso } = await preparar();
+
+    await casoDeUso
+      .ejecutar({ desafioId: 'desafio-1', codigo: '000000', ip: IP })
+      .catch(() => undefined);
+
+    expect(auditoria.eventos.map((e) => [e.accion, e.actorUsuarioId, e.afectadoUsuarioId])).toEqual(
+      [['CODIGO_INCORRECTO', null, 'usuario-1']],
+    );
+  });
+
+  it('un desafío inexistente registra el intento sin afectado', async () => {
+    const { auditoria, casoDeUso } = await preparar();
+
+    await casoDeUso
+      .ejecutar({ desafioId: 'no-existe', codigo: '654321', ip: IP })
+      .catch(() => undefined);
+
+    expect(auditoria.eventos[0]).toMatchObject({
+      accion: 'CODIGO_INCORRECTO',
+      afectadoUsuarioId: null,
+      detalle: { motivo: 'DESAFIO_NO_VALIDO' },
+    });
+  });
+
+  it('un usuario desactivado entre los dos pasos queda como CODIGO_INCORRECTO por cuenta inactiva', async () => {
+    const { usuarios, usuario, auditoria, casoDeUso } = await preparar();
+    usuario.desactivar();
+    await usuarios.guardar(usuario);
+
+    await casoDeUso
+      .ejecutar({ desafioId: 'desafio-1', codigo: '654321', ip: IP })
+      .catch(() => undefined);
+
+    expect(auditoria.eventos.at(-1)).toMatchObject({ detalle: { motivo: 'CUENTA_INACTIVA' } });
+  });
+
+  it('con la cuenta bloqueada registra CUENTA_BLOQUEADA', async () => {
+    const { limitador, auditoria, casoDeUso } = await preparar();
+    limitador.fallos.set('correo:persona@ejemplo.pe', 5);
+
+    await casoDeUso
+      .ejecutar({ desafioId: 'desafio-1', codigo: '654321', ip: IP })
+      .catch(() => undefined);
+
+    expect(auditoria.eventos.at(-1)).toMatchObject({
+      accion: 'CUENTA_BLOQUEADA',
+      afectadoUsuarioId: 'usuario-1',
+    });
+  });
+
+  it('con el origen bloqueado y un desafío inexistente registra ORIGEN_BLOQUEADO sin afectado', async () => {
+    const { limitador, auditoria, casoDeUso } = await preparar();
+    limitador.fallos.set(`ip:${IP}`, 5);
+
+    await casoDeUso
+      .ejecutar({ desafioId: 'no-existe', codigo: '654321', ip: IP })
+      .catch(() => undefined);
+
+    expect(auditoria.eventos.at(-1)).toMatchObject({
+      accion: 'ORIGEN_BLOQUEADO',
+      afectadoUsuarioId: null,
+    });
+  });
+});
 
 describe('VerificarOtp (paso 2)', () => {
   it('con el código correcto abre una sesión de 8 h y firma el token', async () => {

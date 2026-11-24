@@ -33,8 +33,13 @@ class FeriadosEnMemoria implements RepositorioFeriados {
     this.feriados.set(feriado.fecha, feriado);
     return Promise.resolve('REGISTRADO' as const);
   }
-  eliminar(fecha: string) {
-    return Promise.resolve(this.feriados.delete(fecha));
+  readonly eliminadoPor: string[] = [];
+  eliminar(fecha: string, usuarioId: string) {
+    const borrado = this.feriados.delete(fecha);
+    if (borrado) {
+      this.eliminadoPor.push(usuarioId);
+    }
+    return Promise.resolve(borrado);
   }
 }
 
@@ -57,7 +62,8 @@ describe('GestionarFeriados (FR-023 de la 006)', () => {
       '2026-06-24',
       '2026-12-08',
     ]);
-    await gestionar.eliminar('2026-06-24');
+    await gestionar.eliminar('2026-06-24', 'admin-1');
+    expect(repositorio.eliminadoPor).toEqual(['admin-1']);
     expect(await gestionar.listar(2026)).toHaveLength(1);
   });
 
@@ -65,8 +71,12 @@ describe('GestionarFeriados (FR-023 de la 006)', () => {
     await expect(
       gestionar.registrar({ fecha: '2026-12-08', descripcion: 'Otro', alcance: 'LOCAL' }, 'admin'),
     ).rejects.toBeInstanceOf(ErrorFeriadoRepetido);
-    await expect(gestionar.eliminar('2026-06-25')).rejects.toBeInstanceOf(ErrorFeriadoNoEncontrado);
-    await expect(gestionar.eliminar('25-06-2026')).rejects.toBeInstanceOf(ErrorDatoFeriado);
+    await expect(gestionar.eliminar('2026-06-25', 'admin-1')).rejects.toBeInstanceOf(
+      ErrorFeriadoNoEncontrado,
+    );
+    await expect(gestionar.eliminar('25-06-2026', 'admin-1')).rejects.toBeInstanceOf(
+      ErrorDatoFeriado,
+    );
   });
 });
 

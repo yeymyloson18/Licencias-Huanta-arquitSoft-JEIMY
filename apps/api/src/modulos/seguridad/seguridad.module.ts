@@ -1,4 +1,12 @@
-import { Global, Module } from '@nestjs/common';
+import { ConsultarAuditoria } from './aplicacion/consultar-auditoria';
+import { AdministradorController } from './presentacion/administrador.controller';
+import { DespachadorEventos } from '../../compartido/infraestructura/despachador-eventos';
+import { RegistrarEventoConfiguracion } from './aplicacion/registrar-evento-configuracion';
+import {
+  EVENTOS_CONFIGURACION,
+  manejadorConfiguracion,
+} from './infraestructura/manejadores-configuracion';
+import { Global, Module, type OnModuleInit } from '@nestjs/common';
 import type Redis from 'ioredis';
 import { CONFIGURACION, type Configuracion } from '../../compartido/infraestructura/configuracion';
 import { PrismaServicio } from '../../compartido/infraestructura/prisma.servicio';
@@ -84,7 +92,7 @@ import {
 // módulo sin que este importe el interior de `seguridad` (contracts/control-permisos.md).
 @Global()
 @Module({
-  controllers: [AuthController, UsuariosController, IdentidadController],
+  controllers: [AuthController, UsuariosController, IdentidadController, AdministradorController],
   providers: [
     // ---------------------------------------------------------------- adaptadores
     { provide: HASHER_CLAVES, useFactory: (): HasherClaves => new HasherClavesArgon2() },
@@ -171,6 +179,17 @@ import {
 
     // ---------------------------------------------------------------- casos de uso
     {
+      provide: ConsultarAuditoria,
+      inject: [REPOSITORIO_AUDITORIA, RELOJ],
+      useFactory: (auditoria: RepositorioAuditoria, reloj: Reloj) =>
+        new ConsultarAuditoria({ auditoria, reloj }),
+    },
+    {
+      provide: RegistrarEventoConfiguracion,
+      inject: [REPOSITORIO_AUDITORIA],
+      useFactory: (auditoria: RepositorioAuditoria) => new RegistrarEventoConfiguracion(auditoria),
+    },
+    {
       provide: IniciarSesion,
       inject: [
         REPOSITORIO_USUARIOS,
@@ -182,6 +201,7 @@ import {
         RELOJ,
         REGISTRO_EVENTOS_SEGURIDAD,
         LIMITADOR_INTENTOS,
+        REPOSITORIO_AUDITORIA,
       ],
       useFactory: (
         usuarios: RepositorioUsuarios,
@@ -193,6 +213,7 @@ import {
         reloj: Reloj,
         eventos: RegistroEventosSeguridad,
         limitador: LimitadorIntentos,
+        auditoria: RepositorioAuditoria,
       ) =>
         new IniciarSesion({
           usuarios,
@@ -204,6 +225,7 @@ import {
           reloj,
           eventos,
           limitador,
+          auditoria,
         }),
     },
     {
@@ -217,6 +239,8 @@ import {
         RELOJ,
         REGISTRO_EVENTOS_SEGURIDAD,
         LIMITADOR_INTENTOS,
+        REPOSITORIO_AUDITORIA,
+        PROTECTOR_DATOS,
       ],
       useFactory: (
         codigos: RepositorioCodigosOtp,
@@ -227,6 +251,8 @@ import {
         reloj: Reloj,
         eventos: RegistroEventosSeguridad,
         limitador: LimitadorIntentos,
+        auditoria: RepositorioAuditoria,
+        protector: ProtectorDatos,
       ) =>
         new VerificarOtp({
           codigos,
@@ -237,6 +263,8 @@ import {
           reloj,
           eventos,
           limitador,
+          auditoria,
+          protector,
         }),
     },
     {
@@ -474,4 +502,19 @@ import {
     FachadaSeguridad,
   ],
 })
-export class SeguridadModule {}
+export class SeguridadModule implements OnModuleInit {
+  constructor(
+    private readonly despachador: DespachadorEventos,
+    private readonly registrarConfiguracion: RegistrarEventoConfiguracion,
+  ) {}
+
+  /** Cambios de catálogo y feriados que llegan por la cola a la auditoría (research §R-02, 009). */
+  onModuleInit(): void {
+    for (const { tipo, accion } of EVENTOS_CONFIGURACION) {
+      this.despachador.registrar(
+        tipo,
+        manejadorConfiguracion(this.registrarConfiguracion, tipo, accion),
+      );
+    }
+  }
+}

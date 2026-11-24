@@ -40,7 +40,11 @@ describe('AsignarClaveTemporal (FR-022b)', () => {
     const { usuarios, sesiones, almacen, eventos, casoDeUso } = await preparar();
     const versionAntes = (await usuarios.obtenerPorId('u-1'))?.versionSeguridad ?? 0;
 
-    await casoDeUso.ejecutar('u-1', 'ClaveTemporalNueva2026');
+    await casoDeUso.ejecutar('u-1', 'ClaveTemporalNueva2026', 'admin-1');
+    expect(
+      usuarios.auditoria.map((e) => [e.accion, e.actorUsuarioId, e.afectadoUsuarioId]),
+    ).toEqual([['CLAVE_TEMPORAL_ASIGNADA', 'admin-1', 'u-1']]);
+    expect(JSON.stringify(usuarios.auditoria)).not.toContain('ClaveTemporalNueva2026');
 
     const usuario = await usuarios.obtenerPorId('u-1');
     expect(usuario?.claveHash).toBe('h:ClaveTemporalNueva2026');
@@ -58,15 +62,17 @@ describe('AsignarClaveTemporal (FR-022b)', () => {
   it('rechaza una clave que no cumple la política', async () => {
     const { usuarios, casoDeUso } = await preparar();
 
-    await expect(casoDeUso.ejecutar('u-1', 'corta')).rejects.toBeInstanceOf(ErrorClaveInvalida);
+    await expect(casoDeUso.ejecutar('u-1', 'corta', 'admin-1')).rejects.toBeInstanceOf(
+      ErrorClaveInvalida,
+    );
     expect((await usuarios.obtenerPorId('u-1'))?.claveHash).toBe('h:ClaveVieja2026');
   });
 
   it('responde no encontrado si el usuario no existe', async () => {
     const { casoDeUso } = await preparar();
 
-    await expect(casoDeUso.ejecutar('no-existe', 'ClaveTemporal2026')).rejects.toBeInstanceOf(
-      ErrorUsuarioNoEncontrado,
-    );
+    await expect(
+      casoDeUso.ejecutar('no-existe', 'ClaveTemporal2026', 'admin-1'),
+    ).rejects.toBeInstanceOf(ErrorUsuarioNoEncontrado);
   });
 });

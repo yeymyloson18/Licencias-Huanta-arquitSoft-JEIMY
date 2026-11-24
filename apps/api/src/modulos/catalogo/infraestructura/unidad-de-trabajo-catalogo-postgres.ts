@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import type { PrismaServicio } from '../../../compartido/infraestructura/prisma.servicio';
+import { datosEventoCambioReceta, tipoEventoCambioReceta } from '../dominio/evento-cambio-receta';
 import type { RecetaCompleta } from '../dominio/receta-completa';
 import type {
   GuardadoReceta,
@@ -88,6 +89,14 @@ const guardar = async (
       usuario_id: usuarioId,
       cambiado_en: en,
       cambios: diferencias as Prisma.InputJsonObject,
+    },
+  });
+
+  // 009: aviso a Seguridad para su auditoría, en la misma transacción (research §R-02).
+  await tx.evento_pendiente.create({
+    data: {
+      tipo: tipoEventoCambioReceta(diferencias),
+      datos: { ...datosEventoCambioReceta(codigo, usuarioId, en) },
     },
   });
 };

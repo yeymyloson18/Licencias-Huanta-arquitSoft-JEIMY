@@ -1,3 +1,4 @@
+import { eventoPropio } from '../dominio/evento-auditoria';
 import type { AlmacenVersionSeguridad } from '../dominio/puertos/almacen-version-seguridad';
 import type { GeneradorSecretos } from '../dominio/puertos/generador-secretos';
 import type { Reloj } from '../dominio/puertos/reloj';
@@ -31,8 +32,17 @@ export class CerrarSesion {
       return;
     }
 
-    sesion.revocar(this.d.reloj.ahora());
-    await this.d.sesiones.guardar(sesion);
+    const ahora = this.d.reloj.ahora();
+    sesion.revocar(ahora);
+    // El cierre queda en la auditoría en la misma transacción (009). Sin origen: no es un intento.
+    await this.d.sesiones.guardar(sesion, [
+      eventoPropio({
+        accion: 'CIERRE_SESION',
+        usuarioId: sesion.usuarioId,
+        origenHmac: null,
+        en: ahora,
+      }),
+    ]);
     await this.d.almacen.marcarSesionesRevocadas([sesion.id]);
   }
 }

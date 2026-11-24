@@ -154,6 +154,12 @@ export const limpiarTramites = async (prisma: PrismaClient): Promise<void> => {
             'ResultadoITSERegistrado',
             'CertificadoItseRegistrado',
             'ItsePorVencer',
+            // 009: cambios de configuración para la auditoría de seguridad
+            'RecetaActualizada',
+            'RecetaDesactivada',
+            'RecetaReactivada',
+            'FeriadoRegistrado',
+            'FeriadoEliminado',
           ],
         },
       },

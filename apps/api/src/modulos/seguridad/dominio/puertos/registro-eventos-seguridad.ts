@@ -8,7 +8,9 @@ export type EventoSeguridad =
   | 'roles-cambiados'
   | 'clave-temporal-asignada'
   | 'clave-cambiada'
-  | 'fallo-cache-seguridad';
+  | 'fallo-cache-seguridad'
+  /** No se pudo guardar un intento fallido en la auditoría de seguridad (009). */
+  | 'fallo-auditoria';
 
 /** Identificadores internos permitidos en el registro: nunca datos personales. */
 export interface IdsEvento {

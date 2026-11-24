@@ -1,3 +1,4 @@
+import { eventoPropio } from '../dominio/evento-auditoria';
 import { PoliticaClave } from '../dominio/politica-clave';
 import type { AlmacenVersionSeguridad } from '../dominio/puertos/almacen-version-seguridad';
 import type { EmisorTokens } from '../dominio/puertos/emisor-tokens';
@@ -81,7 +82,14 @@ export class CambiarClave {
 
     const ahora = this.d.reloj.ahora();
     usuario.cambiarClave(await this.d.hasher.huella(entrada.claveNueva));
-    await this.d.usuarios.guardar(usuario);
+    await this.d.usuarios.guardar(usuario, [
+      eventoPropio({
+        accion: 'CLAVE_CAMBIADA',
+        usuarioId: usuario.id,
+        origenHmac: null,
+        en: ahora,
+      }),
+    ]);
     // Después de guardar: los tokens con la versión anterior se vuelven a evaluar (§R-07).
     await this.d.almacen.publicarVersion(usuario.id, usuario.versionSeguridad);
 

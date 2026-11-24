@@ -37,7 +37,7 @@ export interface PaginaUsuarios {
 export type CambioUsuario = (
   usuario: Usuario,
   administradoresActivos: readonly string[],
-) => readonly EventoAuditoria[] | void;
+) => readonly EventoAuditoria[] | undefined;
 
 /** Persistencia de usuarios y de su historial de roles (esquema `seguridad`). */
 export interface RepositorioUsuarios {

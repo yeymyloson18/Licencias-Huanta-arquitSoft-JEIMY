@@ -32,18 +32,40 @@ export class RepositorioFeriadosPostgres implements RepositorioFeriados {
     return new Set(filas.map((fila) => deFechaBase(fila.fecha)));
   }
 
+  // 009: el cambio y el evento para la auditoría de Seguridad van en UNA sentencia (CTE), así que
+  // son atómicos sin abrir una transacción interactiva (research §R-02). Si no hubo cambio (fecha
+  // repetida o inexistente), no se publica nada.
+
   async registrar(feriado: Feriado, usuarioId: string): Promise<'REGISTRADO' | 'REPETIDO'> {
-    const insertados = await this.prisma.$executeRaw`
-      INSERT INTO plazos.feriado (fecha, descripcion, alcance, registrado_por)
-      VALUES (${feriado.fecha}::date, ${feriado.descripcion}, ${feriado.alcance}, ${usuarioId}::uuid)
-      ON CONFLICT (fecha) DO NOTHING`;
-    return insertados > 0 ? 'REGISTRADO' : 'REPETIDO';
+    const filas = await this.prisma.$queryRaw<{ fecha: Date }[]>`
+      WITH insertado AS (
+        INSERT INTO plazos.feriado (fecha, descripcion, alcance, registrado_por)
+        VALUES (${feriado.fecha}::date, ${feriado.descripcion}, ${feriado.alcance}, ${usuarioId}::uuid)
+        ON CONFLICT (fecha) DO NOTHING
+        RETURNING fecha
+      ), evento AS (
+        INSERT INTO comun.evento_pendiente (tipo, datos)
+        SELECT 'FeriadoRegistrado',
+               jsonb_build_object('fecha', to_char(fecha, 'YYYY-MM-DD'), 'usuarioId', ${usuarioId}::text,
+                                  'en', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
+          FROM insertado
+      )
+      SELECT fecha FROM insertado`;
+    return filas.length > 0 ? 'REGISTRADO' : 'REPETIDO';
   }
 
-  async eliminar(fecha: Fecha): Promise<boolean> {
-    const { count } = await this.prisma.feriado.deleteMany({
-      where: { fecha: comoFechaBase(fecha) },
-    });
-    return count > 0;
+  async eliminar(fecha: Fecha, usuarioId: string): Promise<boolean> {
+    const filas = await this.prisma.$queryRaw<{ fecha: Date }[]>`
+      WITH borrado AS (
+        DELETE FROM plazos.feriado WHERE fecha = ${fecha}::date RETURNING fecha
+      ), evento AS (
+        INSERT INTO comun.evento_pendiente (tipo, datos)
+        SELECT 'FeriadoEliminado',
+               jsonb_build_object('fecha', to_char(fecha, 'YYYY-MM-DD'), 'usuarioId', ${usuarioId}::text,
+                                  'en', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
+          FROM borrado
+      )
+      SELECT fecha FROM borrado`;
+    return filas.length > 0;
   }
 }

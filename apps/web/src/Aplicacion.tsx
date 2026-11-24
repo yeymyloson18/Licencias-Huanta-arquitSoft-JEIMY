@@ -2,6 +2,7 @@ import { Outlet, Route, Routes, useLocation } from 'react-router';
 import { Menu } from './componentes/Menu';
 import { PiePagina } from './componentes/PiePagina';
 import { RutaProtegida } from './componentes/RutaProtegida';
+import { AuditoriaSeguridad } from './paginas/admin/AuditoriaSeguridad';
 import { Catalogo } from './paginas/admin/Catalogo';
 import { EditarReceta } from './paginas/admin/EditarReceta';
 import { Usuarios } from './paginas/admin/Usuarios';
@@ -96,6 +97,14 @@ export function RutasAplicacion() {
               element={
                 <RutaProtegida roles={['ADMINISTRADOR']}>
                   <EditarReceta />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/admin/auditoria"
+              element={
+                <RutaProtegida roles={['ADMINISTRADOR']}>
+                  <AuditoriaSeguridad />
                 </RutaProtegida>
               }
             />

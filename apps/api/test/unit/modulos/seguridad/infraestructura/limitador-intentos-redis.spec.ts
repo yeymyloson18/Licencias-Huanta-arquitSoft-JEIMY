@@ -123,6 +123,7 @@ describe('LimitadorIntentosRedis (research.md §R-08)', () => {
     await expect(limitador.reservarIntento(correo, '10.0.0.7')).resolves.toEqual({
       permitido: false,
       segundosRestantes: 612,
+      bloqueo: 'CUENTA',
     });
   });
 
@@ -158,9 +159,27 @@ describe('LimitadorIntentosRedis (research.md §R-08)', () => {
 
     await expect(limitador.reservarIntento(correo, '10.0.0.7')).resolves.toMatchObject({
       permitido: false,
+      bloqueo: 'ORIGEN',
     });
     await expect(limitador.reservarIntento(correo, '10.0.0.8')).resolves.toMatchObject({
       permitido: true,
+    });
+  });
+
+  it('un intento sin correo bloqueado por el origen dice ORIGEN (009)', async () => {
+    const { redis } = redisFalso();
+    const limitador = new LimitadorIntentosRedis(redis, protector);
+    for (let i = 0; i < 5; i += 1) {
+      await limitador.reservarIntento(null, '10.0.0.9');
+    }
+
+    await expect(limitador.reservarIntento(null, '10.0.0.9')).resolves.toMatchObject({
+      permitido: false,
+      bloqueo: 'ORIGEN',
+    });
+    await expect(limitador.reservarEnvio('u-1')).resolves.toEqual({
+      permitido: true,
+      segundosRestantes: 0,
     });
   });
 

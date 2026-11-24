@@ -983,3 +983,99 @@ video {
   text-align: center;
   font-size: 0.9375rem;
 }
+
+/* Administrador (009): tabla de eventos apilable, tarjetas del panel, ficha y confirmación. */
+@media (max-width: 47.99rem) {
+  .tabla--apilable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .tabla--apilable tr {
+    display: block;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-borde);
+  }
+
+  .tabla--apilable td {
+    display: block;
+    border-bottom: none;
+    padding: 0.125rem 0.5rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .tabla--apilable td::before {
+    content: attr(data-etiqueta) ': ';
+    font-weight: 600;
+  }
+}
+
+.panel__tarjetas {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  margin: 1rem 0;
+}
+
+.panel__cifra {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0.25rem 0;
+}
+
+.panel__lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.panel__lista li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.panel__accesos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.ficha-usuario__datos {
+  display: grid;
+  gap: 0.25rem 1rem;
+  grid-template-columns: max-content 1fr;
+  overflow-wrap: anywhere;
+}
+
+.ficha-usuario__datos dt {
+  font-weight: 600;
+}
+
+.ficha-usuario__datos dd {
+  margin: 0;
+}
+
+.confirmacion {
+  max-width: min(32rem, calc(100vw - 2rem));
+  border: 1px solid var(--color-borde);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.confirmacion::backdrop {
+  background: rgb(0 0 0 / 40%);
+}
+
+.paginacion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}

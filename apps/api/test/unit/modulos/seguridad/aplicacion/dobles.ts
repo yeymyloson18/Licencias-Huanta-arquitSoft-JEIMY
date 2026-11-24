@@ -28,7 +28,18 @@ import type {
 } from '../../../../../src/modulos/seguridad/dominio/puertos/registro-eventos-seguridad';
 import type { Reloj } from '../../../../../src/modulos/seguridad/dominio/puertos/reloj';
 import type { RepositorioCodigosOtp } from '../../../../../src/modulos/seguridad/dominio/puertos/repositorio-codigos-otp';
-import type { RepositorioSesiones } from '../../../../../src/modulos/seguridad/dominio/puertos/repositorio-sesiones';
+import type {
+  AuditoriaDeRevocacion,
+  RepositorioSesiones,
+} from '../../../../../src/modulos/seguridad/dominio/puertos/repositorio-sesiones';
+import type {
+  FilaAuditoria,
+  FiltroAuditoria,
+  PaginaAuditoria,
+  RepositorioAuditoria,
+} from '../../../../../src/modulos/seguridad/dominio/puertos/repositorio-auditoria';
+import { ACCIONES_INGRESO_FALLIDO } from '../../../../../src/modulos/seguridad/dominio/accion-auditoria';
+import type { EventoAuditoria } from '../../../../../src/modulos/seguridad/dominio/evento-auditoria';
 import type {
   CambioUsuario,
   CriterioBusquedaUsuarios,
@@ -162,11 +173,88 @@ export class AlmacenFalso implements AlmacenVersionSeguridad {
   }
 }
 
+/**
+ * Auditoría de seguridad en memoria (009). Ignora un `eventoOrigenId` repetido, como el
+ * `ON CONFLICT` del adaptador. `falla` simula la base caída.
+ */
+export class AuditoriaEnMemoria implements RepositorioAuditoria {
+  readonly eventos: EventoAuditoria[] = [];
+  readonly nombres = new Map<string, string>();
+  falla = false;
+  registrar(evento: EventoAuditoria): Promise<boolean> {
+    if (this.falla) {
+      return Promise.reject(new Error('base caída'));
+    }
+    if (
+      evento.eventoOrigenId !== null &&
+      this.eventos.some((e) => e.eventoOrigenId === evento.eventoOrigenId)
+    ) {
+      return Promise.resolve(false);
+    }
+    this.eventos.push(evento);
+    return Promise.resolve(true);
+  }
+  buscar(
+    filtro: FiltroAuditoria,
+    desplazamiento: number,
+    cantidad: number,
+  ): Promise<PaginaAuditoria> {
+    const persona = (id: string | null) =>
+      id === null ? null : { id, nombre: this.nombres.get(id) ?? 'Usuario no encontrado' };
+    const filas = this.eventos
+      .map((evento, indice) => ({ evento, indice }))
+      .filter(
+        ({ evento }) =>
+          evento.ocurridoEn >= filtro.desde &&
+          evento.ocurridoEn < filtro.hasta &&
+          (filtro.accion === undefined || evento.accion === filtro.accion) &&
+          (filtro.actorId === undefined || evento.actorUsuarioId === filtro.actorId) &&
+          (filtro.afectadoId === undefined || evento.afectadoUsuarioId === filtro.afectadoId),
+      )
+      .sort(
+        (a, b) =>
+          b.evento.ocurridoEn.getTime() - a.evento.ocurridoEn.getTime() || b.indice - a.indice,
+      )
+      .map(({ evento, indice }): FilaAuditoria => ({
+        id: String(indice + 1),
+        ocurridoEn: evento.ocurridoEn,
+        accion: evento.accion,
+        actor: persona(evento.actorUsuarioId),
+        afectado: persona(evento.afectadoUsuarioId),
+        objeto: evento.objeto,
+        resultado: evento.resultado,
+      }));
+    return Promise.resolve({
+      filas: filas.slice(desplazamiento, desplazamiento + cantidad),
+      total: filas.length,
+    });
+  }
+  ultimoIngreso(usuarioId: string): Promise<Date | null> {
+    const ingresos = this.eventos.filter(
+      (e) => e.accion === 'INGRESO_CORRECTO' && e.afectadoUsuarioId === usuarioId,
+    );
+    return Promise.resolve(ingresos.at(-1)?.ocurridoEn ?? null);
+  }
+  contarIngresosFallidos(desde: Date): Promise<number> {
+    return Promise.resolve(
+      this.eventos.filter(
+        (e) => ACCIONES_INGRESO_FALLIDO.includes(e.accion) && e.ocurridoEn >= desde,
+      ).length,
+    );
+  }
+  acciones(): string[] {
+    return this.eventos.map((e) => e.accion);
+  }
+}
+
 export class RepositorioUsuariosEnMemoria implements RepositorioUsuarios {
   readonly usuarios = new Map<string, Usuario>();
+  /** Eventos de auditoría guardados con cada cambio (la "misma transacción"). */
+  readonly auditoria: EventoAuditoria[] = [];
   guardados = 0;
-  crear(usuario: Usuario): Promise<void> {
+  crear(usuario: Usuario, auditoria: readonly EventoAuditoria[] = []): Promise<void> {
     this.usuarios.set(usuario.id, usuario);
+    this.auditoria.push(...auditoria);
     return Promise.resolve();
   }
   obtenerPorId(id: string): Promise<Usuario | null> {
@@ -177,9 +265,10 @@ export class RepositorioUsuariosEnMemoria implements RepositorioUsuarios {
       [...this.usuarios.values()].find((u) => u.correo.esIgualA(correo)) ?? null,
     );
   }
-  guardar(usuario: Usuario): Promise<void> {
+  guardar(usuario: Usuario, auditoria: readonly EventoAuditoria[] = []): Promise<void> {
     this.guardados += 1;
     this.usuarios.set(usuario.id, usuario);
+    this.auditoria.push(...auditoria);
     return Promise.resolve();
   }
   buscar(criterio: CriterioBusquedaUsuarios): Promise<PaginaUsuarios> {
@@ -209,8 +298,9 @@ export class RepositorioUsuariosEnMemoria implements RepositorioUsuarios {
       .map((u) => u.id);
     // Como la transacción real: se trabaja sobre una copia y solo se guarda si el cambio no falla.
     const copia = copiarUsuario(usuario);
-    cambio(copia, administradores);
+    const auditoria = cambio(copia, administradores) ?? [];
     this.usuarios.set(usuarioId, copia);
+    this.auditoria.push(...auditoria);
     this.guardados += 1;
     return Promise.resolve(copia);
   }
@@ -266,19 +356,28 @@ export class RepositorioCodigosEnMemoria implements RepositorioCodigosOtp {
 
 export class RepositorioSesionesEnMemoria implements RepositorioSesiones {
   readonly sesiones = new Map<string, Sesion>();
-  crear(sesion: Sesion): Promise<void> {
+  readonly auditoria: EventoAuditoria[] = [];
+  crear(sesion: Sesion, auditoria: readonly EventoAuditoria[] = []): Promise<void> {
     this.sesiones.set(sesion.id, sesion);
+    this.auditoria.push(...auditoria);
     return Promise.resolve();
   }
   obtenerPorId(id: string): Promise<Sesion | null> {
     return Promise.resolve(this.sesiones.get(id) ?? null);
   }
-  guardar(sesion: Sesion): Promise<void> {
+  guardar(sesion: Sesion, auditoria: readonly EventoAuditoria[] = []): Promise<void> {
     this.sesiones.set(sesion.id, sesion);
+    this.auditoria.push(...auditoria);
     return Promise.resolve();
   }
-  revocarTodasDelUsuario(usuarioId: string, ahora: Date): Promise<string[]> {
-    return Promise.resolve(this.revocar((s) => s.usuarioId === usuarioId, ahora));
+  revocarTodasDelUsuario(
+    usuarioId: string,
+    ahora: Date,
+    auditoria?: AuditoriaDeRevocacion,
+  ): Promise<string[]> {
+    const ids = this.revocar((s) => s.usuarioId === usuarioId, ahora);
+    this.auditoria.push(...(auditoria?.(ids) ?? []));
+    return Promise.resolve(ids);
   }
   revocarTodasMenos(usuarioId: string, sesionId: string, ahora: Date): Promise<string[]> {
     return Promise.resolve(
@@ -352,12 +451,21 @@ export class LimitadorFalso implements LimitadorIntentos {
   ): Promise<ResultadoReserva> {
     this.comprobar();
     let permitido = true;
+    let cuentaExcedida = false;
     for (const clave of claves) {
       const cuenta = (mapa.get(clave) ?? 0) + 1;
       mapa.set(clave, cuenta);
       permitido &&= cuenta <= maximo;
+      cuentaExcedida ||= cuenta > maximo && clave.startsWith('correo:');
     }
-    return Promise.resolve({ permitido, segundosRestantes: permitido ? 0 : segundos });
+    if (permitido) {
+      return Promise.resolve({ permitido, segundosRestantes: 0 });
+    }
+    return Promise.resolve({
+      permitido,
+      segundosRestantes: segundos,
+      ...(mapa === this.fallos ? { bloqueo: cuentaExcedida ? 'CUENTA' : 'ORIGEN' } : {}),
+    } as ResultadoReserva);
   }
   private liberar(mapa: Map<string, number>, claves: readonly string[]): Promise<void> {
     this.comprobar();

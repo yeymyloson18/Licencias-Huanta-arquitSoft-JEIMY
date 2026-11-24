@@ -89,54 +89,55 @@ CSV.
 
 ### Registro de las acciones
 
-- [ ] T013 [US2] Limitador: `ResultadoReserva.bloqueo` (`CUENTA` | `ORIGEN`) cuando no está permitido,
+- [X] T013 [US2] Limitador: `ResultadoReserva.bloqueo` (`CUENTA` | `ORIGEN`) cuando no está permitido,
       en `dominio/puertos/limitador-intentos.ts` y `infraestructura/limitador-intentos-redis.ts`, con su
       prueba unitaria
-- [ ] T014 [US2] Ingresos en `aplicacion/iniciar-sesion.ts`, `aplicacion/verificar-otp.ts`,
+- [X] T014 [US2] Ingresos en `aplicacion/iniciar-sesion.ts`, `aplicacion/verificar-otp.ts`,
       `aplicacion/cerrar-sesion.ts` y `aplicacion/cambiar-clave.ts`: `INGRESO_CORRECTO` (con la sesión),
       `CLAVE_INCORRECTA` (motivo `CLAVE`, `CUENTA_INACTIVA`, `CORREO_NO_REGISTRADO`),
       `CODIGO_INCORRECTO`, `CUENTA_BLOQUEADA`/`ORIGEN_BLOQUEADO` (con `segundos`), `CIERRE_SESION` y
       `CLAVE_CAMBIADA`; `origen_hmac` = HMAC de la IP; si falla el registro de un intento fallido, se
-      avisa sin datos y la respuesta no cambia; el controlador pasa la IP a `cerrar-sesion`; pruebas
-      unitarias de cada caso
-- [ ] T015 [US2] Gestión de usuarios en `aplicacion/crear-usuario.ts`, `aplicacion/actualizar-usuario.ts`,
+      avisa sin datos y la respuesta no cambia; `CIERRE_SESION` y `CLAVE_CAMBIADA` no guardan origen (no son
+      intentos); pruebas unitarias de cada caso
+- [X] T015 [US2] Gestión de usuarios en `aplicacion/crear-usuario.ts`, `aplicacion/actualizar-usuario.ts`,
       `aplicacion/reemplazar-roles.ts` y `aplicacion/asignar-clave-temporal.ts`: `USUARIO_CREADO`
       (`roles`), `USUARIO_EDITADO` (`campos`, sin valores), `USUARIO_DESACTIVADO`,
       `USUARIO_REACTIVADO`, `ROL_ASIGNADO`/`ROL_QUITADO` (uno por rol) y `CLAVE_TEMPORAL_ASIGNADA`, con
       el id del administrador (el controlador `presentacion/usuarios.controller.ts` lo pasa a actualizar
       y clave temporal); pruebas unitarias
-- [ ] T016 [P] [US2] Catálogo publica `RecetaActualizada` / `RecetaDesactivada` / `RecetaReactivada`
+- [X] T016 [P] [US2] Catálogo publica `RecetaActualizada` / `RecetaDesactivada` / `RecetaReactivada`
       (`{ codigoReceta, usuarioId, en }`) en la transacción de
       `apps/api/src/modulos/catalogo/infraestructura/unidad-de-trabajo-catalogo-postgres.ts`
-- [ ] T017 [P] [US2] Plazos publica `FeriadoRegistrado` / `FeriadoEliminado` (`{ fecha, usuarioId, en }`)
+- [X] T017 [P] [US2] Plazos publica `FeriadoRegistrado` / `FeriadoEliminado` (`{ fecha, usuarioId, en }`)
       en la misma sentencia (CTE) en
       `apps/api/src/modulos/plazos/infraestructura/repositorio-feriados-postgres.ts`; `eliminar` recibe
       el id de quien elimina (puerto, caso de uso `aplicacion/feriados.ts`, controlador y pruebas)
-- [ ] T018 [US2] Consumo en seguridad: `aplicacion/registrar-evento-configuracion.ts` (caso de uso con
+- [X] T018 [US2] Consumo en seguridad: `aplicacion/registrar-evento-configuracion.ts` (caso de uso con
       prueba unitaria) e `infraestructura/manejadores-configuracion.ts` (esquemas zod de los 5 eventos,
       error con nombre propio si no tiene la forma), registrados en el `DespachadorEventos` desde
       `seguridad.module.ts`
 
 ### Consulta
 
-- [ ] T019 [P] [US2] Dominio `dominio/csv-auditoria.ts` (columnas, BOM, `;`, CRLF, apóstrofo ante
+- [X] T019 [P] [US2] Dominio `dominio/csv-auditoria.ts` (columnas, BOM, `;`, CRLF, apóstrofo ante
       fórmulas, máximo 10,000) y `dominio/filtro-auditoria.ts` (fechas de Lima, por defecto 30 días,
       rango ≤ 366, `desde ≤ hasta`); pruebas unitarias
-- [ ] T020 [US2] Caso de uso `aplicacion/consultar-auditoria.ts` (página y CSV con truncado, texto de la
+- [X] T020 [US2] Caso de uso `aplicacion/consultar-auditoria.ts` (página y CSV con truncado, texto de la
       acción, "Sin sesión" o "Sistema") con prueba unitaria
-- [ ] T021 [US2] Controlador `presentacion/administrador.controller.ts`: `GET /admin/auditoria` (zod,
+- [X] T021 [US2] Controlador `presentacion/administrador.controller.ts`: `GET /admin/auditoria` (zod,
       422 con mensajes, `formato=csv` con `Content-Disposition`, `X-Auditoria-Truncada` y
       `Cache-Control: no-store`), solo ADMINISTRADOR
-- [ ] T022 [US2] Pruebas de integración `apps/api/test/integracion/auditoria-seguridad.e2e-spec.ts`:
+- [X] T022 [US2] Pruebas de integración `apps/api/test/integracion/auditoria-seguridad.e2e-spec.ts`:
       cada una de las 21 acciones aparece al ocurrir (incluido el intento con correo inexistente sin
       actor ni afectado ni correo), filtros, paginación estable, CSV con los mismos filtros, la tabla
       rechaza `UPDATE` y `DELETE`, el mismo evento de catálogo o feriado consumido dos veces deja una
       fila. Cada respuesta se valida con `test/apoyo/validarContrato.ts`. Como la auditoría no se
       puede borrar, cada prueba filtra por los ids que crea y compara diferencias, nunca totales
       globales
-- [ ] T023 [P] [US2] Portal: `apps/web/src/paginas/admin/Auditoria.tsx` (filtros, tabla apilable a 360
+- [X] T023 [P] [US2] Portal: `apps/web/src/paginas/admin/AuditoriaSeguridad.tsx` (con
+      `componentes/TablaEventos.tsx`) (filtros, tabla apilable a 360
       px, paginación, vacío, 422, descarga CSV con aviso de truncado) y su prueba
-      `Auditoria.test.tsx`; funciones `obtenerAuditoriaSeguridad` y `descargarAuditoriaSeguridad` en
+      `AuditoriaSeguridad.test.tsx`; funciones `obtenerAuditoriaSeguridad` y `descargarAuditoriaSeguridad` en
       `apps/web/src/servicios/clienteApi.ts`; ruta en `apps/web/src/Aplicacion.tsx` y "Auditoría" en
       `apps/web/src/componentes/Menu.tsx` (con su prueba)
 

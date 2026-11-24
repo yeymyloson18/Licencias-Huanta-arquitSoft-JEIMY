@@ -128,7 +128,8 @@ export class EventoAuditoria {
     if (!esAccionAuditoria(datos.accion)) {
       throw new ErrorDominio('La acción de auditoría no existe');
     }
-    if (datos.resultado !== 'EXITO' && datos.resultado !== 'RECHAZADO') {
+    const resultado: string = datos.resultado;
+    if (resultado !== 'EXITO' && resultado !== 'RECHAZADO') {
       throw new ErrorDominio('El resultado debe ser EXITO o RECHAZADO');
     }
     if (Number.isNaN(datos.ocurridoEn.getTime())) {

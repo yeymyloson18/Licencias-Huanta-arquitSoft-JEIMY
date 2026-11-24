@@ -1,3 +1,4 @@
+import { eventoGestion } from '../dominio/evento-auditoria';
 import { Celular } from '../dominio/celular';
 import { Correo } from '../dominio/correo';
 import { NombreCompleto } from '../dominio/nombre-completo';
@@ -56,6 +57,7 @@ export class CrearUsuario {
       throw new ErrorCorreoEnUso();
     }
 
+    const ahora = this.d.reloj.ahora();
     const usuario = Usuario.crear({
       id: this.d.generador.generarId(),
       correo,
@@ -64,9 +66,18 @@ export class CrearUsuario {
       claveHash: await this.d.hasher.huella(datos.claveTemporal),
       roles: datos.roles,
       asignadoPor: porUsuarioId,
-      en: this.d.reloj.ahora(),
+      en: ahora,
     });
-    await this.d.usuarios.crear(usuario);
+    // El alta y su auditoría van en la misma transacción (009).
+    await this.d.usuarios.crear(usuario, [
+      eventoGestion({
+        accion: 'USUARIO_CREADO',
+        administradorId: porUsuarioId,
+        usuarioId: usuario.id,
+        en: ahora,
+        detalle: { roles: datos.roles },
+      }),
+    ]);
     return usuario;
   }
 }
