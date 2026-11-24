@@ -24,6 +24,7 @@ import { ResultadoInspeccion } from './paginas/personal/ResultadoInspeccion';
 import { DetalleExpediente } from './paginas/personal/DetalleExpediente';
 import { Expedientes } from './paginas/personal/Expedientes';
 import { MesaPartes } from './paginas/personal/MesaPartes';
+import { MiPerfil } from './paginas/personal/MiPerfil';
 import { Comprobante } from './paginas/tramite/Comprobante';
 import { Identidad } from './paginas/tramite/Identidad';
 import { Solicitud } from './paginas/tramite/Solicitud';
@@ -191,6 +192,15 @@ export function RutasAplicacion() {
               element={
                 <RutaProtegida roles={['MESA_PARTES']}>
                   <MesaPartes />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/perfil"
+              element={
+                // Cualquier usuario del personal con sesión, también sin roles (011).
+                <RutaProtegida>
+                  <MiPerfil />
                 </RutaProtegida>
               }
             />

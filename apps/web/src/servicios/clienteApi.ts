@@ -1543,6 +1543,7 @@ export type AccionAuditoriaSeguridad = components['schemas']['AccionAuditoriaSeg
 export type EventoAuditoriaSeguridad = components['schemas']['EventoAuditoriaSeguridad'];
 export type PanelAdministrador = components['schemas']['PanelAdministrador'];
 export type FichaUsuario = components['schemas']['FichaUsuario'];
+export type PerfilPropio = components['schemas']['PerfilPropio'];
 
 /** Filtros de la auditoría: solo fechas, acción e identificadores internos (sin datos personales). */
 export interface FiltroAuditoriaSeguridad {
@@ -1675,6 +1676,21 @@ export const obtenerFichaUsuario = async (
     return fallaAdministrador(response.status, error);
   } catch {
     return { tipo: 'no-disponible' };
+  }
+};
+
+/**
+ * Perfil de quien tiene la sesión (011). Sin parámetros: la API lo toma del token. Ante un 401 el
+ * middleware de sesión renueva y repite; si no puede, la ruta protegida lleva a /ingresar.
+ */
+export const obtenerMiPerfil = async (): Promise<
+  { readonly tipo: 'ok'; readonly datos: PerfilPropio } | { readonly tipo: 'error' }
+> => {
+  try {
+    const { data, response } = await cliente.GET('/perfil');
+    return response.ok && data !== undefined ? { tipo: 'ok', datos: data } : { tipo: 'error' };
+  } catch {
+    return { tipo: 'error' };
   }
 };
 

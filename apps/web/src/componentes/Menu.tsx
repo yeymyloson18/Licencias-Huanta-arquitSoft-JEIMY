@@ -1,5 +1,5 @@
 import type { components } from '@licencias/contracts';
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { useSesion } from '../sesion/ProveedorSesion';
 
 type Rol = components['schemas']['Rol'];
@@ -32,10 +32,14 @@ const OPCIONES: readonly Opcion[] = [
   { etiqueta: 'Tablero', ruta: '/personal/tablero', roles: ['JEFATURA'] },
 ];
 
-/** Menú del personal: solo las opciones de sus roles y "Cerrar sesión" (FR-026). */
+/**
+ * Menú del personal: el nombre con "Mi perfil" (011, cualquier rol), las opciones de sus roles y
+ * "Cerrar sesión" (FR-026).
+ */
 export function Menu() {
   const { sesion, salir } = useSesion();
   const navegar = useNavigate();
+  const ubicacion = useLocation();
 
   if (sesion === null) {
     return null;
@@ -53,6 +57,13 @@ export function Menu() {
   return (
     <nav className="menu" aria-label="Menú del personal">
       <span className="menu__usuario">{sesion.usuario.nombreCompleto}</span>
+      <Link
+        to="/perfil"
+        className="menu__perfil"
+        aria-current={ubicacion.pathname === '/perfil' ? 'page' : undefined}
+      >
+        Mi perfil
+      </Link>
       <ul className="menu__opciones">
         <li>
           <Link to="/">Inicio</Link>

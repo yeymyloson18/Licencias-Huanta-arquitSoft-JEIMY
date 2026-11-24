@@ -185,7 +185,7 @@ los datos propios.
 
 ### Pruebas de US2 (escribirlas primero; deben fallar)
 
-- [ ] T013 [P] [US2] Crear `apps/api/test/unit/modulos/seguridad/aplicacion/obtener-mi-perfil.spec.ts`,
+- [X] T013 [P] [US2] Crear `apps/api/test/unit/modulos/seguridad/aplicacion/obtener-mi-perfil.spec.ts`,
       con los dobles de `apps/api/test/unit/modulos/seguridad/aplicacion/dobles.ts` (los mismos de
       `ficha-usuario.spec.ts`):
   - devuelve `nombreCompleto`, `correo`, `celular` (objeto de valor, para enmascarar en
@@ -195,7 +195,7 @@ los datos propios.
   - con un usuario inexistente lanza `ErrorAutenticacion` (nunca `ErrorUsuarioNoEncontrado`);
   - con un usuario inactivo también lanza `ErrorAutenticacion`;
   - consulta los puertos solo con el `usuarioId` recibido.
-- [ ] T014 [P] [US2] Crear `apps/api/test/integracion/perfil.e2e-spec.ts`, con el apoyo de
+- [X] T014 [P] [US2] Crear `apps/api/test/integracion/perfil.e2e-spec.ts`, con el apoyo de
       `apps/api/test/integracion/` que usa `control-permisos.e2e-spec.ts` para crear usuarios e
       ingresar:
   - `GET /api/v1/perfil` con sesión responde 200;
@@ -204,12 +204,12 @@ los datos propios.
   - la cabecera es `Cache-Control: no-store`;
   - dos ingresos del mismo usuario → `sesionesAbiertas = 2`;
   - `ultimoIngreso` no es `null` después de ingresar.
-- [ ] T015 [P] [US2] Ampliar `apps/web/src/componentes/Menu.test.tsx`:
+- [X] T015 [P] [US2] Ampliar `apps/web/src/componentes/Menu.test.tsx`:
   - el enlace "Mi perfil" (`role="link"`, `href="/perfil"`) aparece junto al nombre para cada uno de
     los 6 roles y para una sesión sin roles;
   - lleva `aria-current="page"` cuando la ruta es `/perfil`;
   - sin sesión no hay menú.
-- [ ] T016 [P] [US2] Crear `apps/web/src/paginas/personal/MiPerfil.test.tsx`:
+- [X] T016 [P] [US2] Crear `apps/web/src/paginas/personal/MiPerfil.test.tsx`:
   - muestra el nombre, el correo, `9*****321`, los roles con su nombre ("Mesa de partes, Caja"), el
     último ingreso con fecha y hora, "1 sesión abierta" y "3 sesiones abiertas";
   - con `ultimoIngreso` `null` muestra "Sin registro"; con `roles` `[]`, "Sin roles";
@@ -222,14 +222,14 @@ los datos propios.
 
 ### Implementación de US2
 
-- [ ] T017 [US2] Crear `apps/api/src/modulos/seguridad/aplicacion/obtener-mi-perfil.ts`:
+- [X] T017 [US2] Crear `apps/api/src/modulos/seguridad/aplicacion/obtener-mi-perfil.ts`:
   - clase `ObtenerMiPerfil` con `DependenciasObtenerMiPerfil { usuarios: RepositorioUsuarios;
     consulta: ConsultaPanel; auditoria: RepositorioAuditoria; reloj: Reloj }`;
   - interfaz `MiPerfil { usuario: Usuario; ultimoIngreso: Date | null; sesionesAbiertas: number }`;
   - `ejecutar(usuarioId)`: si el usuario es `null` o `activo !== true`, lanza `ErrorAutenticacion`;
     luego consulta en paralelo `auditoria.ultimoIngreso` y `consulta.sesionesAbiertasDe`, igual que
     `obtener-ficha-usuario.ts`.
-- [ ] T018 [US2] En `apps/api/src/modulos/seguridad/presentacion/respuestas.ts`, agregar
+- [X] T018 [US2] En `apps/api/src/modulos/seguridad/presentacion/respuestas.ts`, agregar
       `aPerfilRespuesta(perfil): components['schemas']['PerfilPropio']`:
   - `nombreCompleto` y `correo` del usuario;
   - `celularEnmascarado: usuario.celular.enmascarado()`;
@@ -237,25 +237,25 @@ los datos propios.
   - `ultimoIngreso` en ISO o `null`;
   - `sesionesAbiertas`;
   - **sin** `id`, `activo` ni `debeCambiarClave`.
-- [ ] T019 [US2] Crear `apps/api/src/modulos/seguridad/presentacion/perfil.controller.ts`:
+- [X] T019 [US2] Crear `apps/api/src/modulos/seguridad/presentacion/perfil.controller.ts`:
   - `@Controller('perfil')` con `@UseGuards(JwtAuthGuard)` (sin `RolesGuard` ni
     `@PermitirConClaveTemporal`);
   - `@Get() @Header('Cache-Control', 'no-store')`;
   - lee `usuarioId` **solo** de `peticion.sesionAutenticada`; no declara `@Param`, `@Query` ni
     `@Body`;
   - traduce `ErrorAutenticacion` a `ErrorProblema.noAutenticado()`.
-- [ ] T020 [US2] En `apps/api/src/modulos/seguridad/seguridad.module.ts`, registrar `ObtenerMiPerfil`
+- [X] T020 [US2] En `apps/api/src/modulos/seguridad/seguridad.module.ts`, registrar `ObtenerMiPerfil`
       con una fábrica que inyecta los mismos tokens de `ObtenerFichaUsuario` (repositorio de
       usuarios, consulta del panel, auditoría y reloj) y agregar `PerfilController` a `controllers`.
       Correr `npm run regla-dependencia`.
-- [ ] T021 [P] [US2] En `apps/web/src/servicios/clienteApi.ts`, agregar `obtenerMiPerfil()` con el
+- [X] T021 [P] [US2] En `apps/web/src/servicios/clienteApi.ts`, agregar `obtenerMiPerfil()` con el
       mismo patrón de `obtenerFichaUsuario`: `GET /perfil` con el token y renovación ante 401.
       Devuelve `{ tipo: 'ok', datos: PerfilPropio } | { tipo: 'error' }`.
-- [ ] T022 [US2] En `apps/web/src/componentes/Menu.tsx`, agregar
+- [X] T022 [US2] En `apps/web/src/componentes/Menu.tsx`, agregar
       `<Link to="/perfil" className="menu__perfil">Mi perfil</Link>` justo después de
       `menu__usuario`, visible para cualquier sesión, con
       `aria-current={ubicacion.pathname === '/perfil' ? 'page' : undefined}`
-- [ ] T023 [US2] Crear `apps/web/src/paginas/personal/MiPerfil.tsx` según
+- [X] T023 [US2] Crear `apps/web/src/paginas/personal/MiPerfil.tsx` según
       `contracts/portal-perfil.md`:
   - `<h1>Mi perfil</h1>` y una lista `<dl>` con los 6 datos;
   - roles con `nombreDelRol` de `componentes/roles.ts`;
@@ -265,9 +265,9 @@ los datos propios.
   - estados de carga, error y reintento;
   - enlace "Cambiar mi clave" a `/cambiar-clave`;
   - sin `console.*`.
-- [ ] T024 [US2] En `apps/web/src/Aplicacion.tsx`, agregar la ruta `/perfil` con
+- [X] T024 [US2] En `apps/web/src/Aplicacion.tsx`, agregar la ruta `/perfil` con
       `<RutaProtegida><MiPerfil /></RutaProtegida>` (sin `roles`)
-- [ ] T025 [P] [US2] En `apps/web/src/estilos/global.css`, en `.menu` y `.menu__perfil`: `flex-wrap`,
+- [X] T025 [P] [US2] En `apps/web/src/estilos/global.css`, en `.menu` y `.menu__perfil`: `flex-wrap`,
       foco visible, tamaño táctil de 44 px como mínimo y nada de desplazamiento horizontal a 360 px;
       el `<dl>` del perfil en una sola columna a 360 px
 

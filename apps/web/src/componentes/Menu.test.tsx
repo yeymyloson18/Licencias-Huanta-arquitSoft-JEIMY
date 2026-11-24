@@ -221,4 +221,58 @@ describe('Menú del personal', () => {
     expect(llamadas.some((l) => l.clave === 'POST /auth/cerrar-sesion')).toBe(true);
     expect(obtenerSesion()).toBeNull();
   });
+
+  const PERFIL = {
+    nombreCompleto: 'Persona de Prueba',
+    correo: 'persona@ejemplo.pe',
+    celularEnmascarado: '9*****321',
+    roles: ['CAJA'],
+    ultimoIngreso: null,
+    sesionesAbiertas: 1,
+  };
+
+  it.each([
+    [['ADMINISTRADOR']],
+    [['MESA_PARTES']],
+    [['EVALUADOR']],
+    [['INSPECTOR']],
+    [['CAJA']],
+    [['JEFATURA']],
+    [[]],
+  ])('con roles %j muestra "Mi perfil" junto al nombre (011)', async (roles) => {
+    simularApi(conSesion(roles));
+    montarEn('/');
+
+    const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+    const nombre = within(menu).getByText('Persona de Prueba');
+    const perfil = within(menu).getByRole('link', { name: 'Mi perfil' });
+
+    expect(perfil).toHaveAttribute('href', '/perfil');
+    expect(perfil).not.toHaveAttribute('aria-current');
+    // Junto al nombre: es lo siguiente después de él en el menú.
+    expect(nombre.nextElementSibling).toBe(perfil);
+  });
+
+  it('en /perfil, "Mi perfil" lleva aria-current="page" (011)', async () => {
+    simularApi({ ...conSesion(['CAJA']), 'GET /perfil': () => json(PERFIL) });
+    montarEn('/perfil');
+
+    const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+
+    expect(within(menu).getByRole('link', { name: 'Mi perfil' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
+  it('sin sesión no hay "Mi perfil" (el administrado no tiene cuenta, 011)', async () => {
+    simularApi({
+      'POST /auth/renovar': () => problema(401, 'no-autenticado'),
+      'GET /catalogo/recetas': () => json([]),
+    });
+    montarEn('/');
+
+    await screen.findByRole('heading', { level: 1 });
+    expect(screen.queryByRole('link', { name: 'Mi perfil' })).not.toBeInTheDocument();
+  });
 });
