@@ -1,3 +1,5 @@
+import { BuzonPruebas } from '../../compartido/infraestructura/buzon-pruebas';
+import { EnviadorOtpBuzon } from './infraestructura/enviador-otp-buzon';
 import { CerrarSesionesDeUsuario } from './aplicacion/cerrar-sesiones-de-usuario';
 import { DesbloquearCuenta } from './aplicacion/desbloquear-cuenta';
 import { ObtenerFichaUsuario } from './aplicacion/obtener-ficha-usuario';
@@ -150,10 +152,16 @@ import {
         new RepositorioSesionesPostgres(prisma),
     },
     {
-      // La configuración solo admite 'simulado' mientras no haya proveedor de SMS (FR-031).
+      // Simulado (Redis) o buzón de pruebas (Redis + Mailpit, 009). Ninguno se admite en producción
+      // y 'sms' todavía no tiene proveedor (FR-031); la configuración lo rechaza al arrancar.
       provide: ENVIADOR_OTP,
-      inject: [REDIS_CLIENTE],
-      useFactory: (redis: Redis): EnviadorOTP => new EnviadorOtpSimulado(redis),
+      inject: [REDIS_CLIENTE, CONFIGURACION],
+      useFactory: (redis: Redis, configuracion: Configuracion): EnviadorOTP => {
+        const simulado = new EnviadorOtpSimulado(redis);
+        return configuracion.envioOtp === 'buzon'
+          ? new EnviadorOtpBuzon(simulado, new BuzonPruebas(configuracion.smtpBuzonUrl))
+          : simulado;
+      },
     },
     {
       // Versión de seguridad y sesiones revocadas compartidas por todas las instancias (§R-07).

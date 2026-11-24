@@ -104,7 +104,7 @@
 
 ## R-07. Buzón de pruebas y dependencia SMTP
 
-- **Decisión**: Mailpit (`axllent/mailpit:v1.21.8`) en `infra/docker-compose.yml`, SMTP en 1025 e
+- **Decisión**: Mailpit (`axllent/mailpit:v1.33.0`) en `infra/docker-compose.yml`, SMTP en 1025 e
   interfaz web en 8025 (`PUERTO_BUZON`). Adaptadores con `nodemailer` 10.4.0.
 - **Por qué `nodemailer`**: es la biblioteca SMTP de referencia en Node.js, sin dependencias de
   ejecución, con tipos mantenidos y licencia MIT-0. Servirá para el correo real del Sprint 3 cambiando

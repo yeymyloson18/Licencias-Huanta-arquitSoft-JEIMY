@@ -54,7 +54,7 @@ corren en GitHub Actions.
 **Dependencias nuevas**:
 
 - API: `nodemailer` 10.4.0 (producción) y `@types/nodemailer` 8.0.2 (desarrollo). Ver research §R-07.
-- Imagen `axllent/mailpit:v1.21.8` solo en el compose de desarrollo.
+- Imagen `axllent/mailpit:v1.33.0` solo en el compose de desarrollo.
 
 **Almacenamiento**: PostgreSQL 16 (tabla nueva `seguridad.auditoria`), Redis 7 (se leen y borran las
 claves `lim:fallos:correo:*` por un puerto).

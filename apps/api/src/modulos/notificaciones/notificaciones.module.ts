@@ -1,3 +1,5 @@
+import { BuzonPruebas } from '../../compartido/infraestructura/buzon-pruebas';
+import { EnviadorBuzon } from './infraestructura/enviador-buzon';
 import { Module, type OnModuleInit } from '@nestjs/common';
 import type Redis from 'ioredis';
 import type { ProtectorDatos } from '../../compartido/dominio/protector-datos';
@@ -40,9 +42,16 @@ const REPOSITORIO_AVISOS = Symbol('REPOSITORIO_AVISOS');
     },
     {
       provide: EnviarAvisosPendientes,
-      inject: [REPOSITORIO_AVISOS, REDIS_CLIENTE],
-      useFactory: (avisos: RepositorioAvisos, redis: Redis) =>
-        new EnviarAvisosPendientes({ avisos, enviador: new EnviadorSimuladoRedis(redis), reloj }),
+      inject: [REPOSITORIO_AVISOS, REDIS_CLIENTE, CONFIGURACION],
+      useFactory: (avisos: RepositorioAvisos, redis: Redis, configuracion: Configuracion) => {
+        // Simulado (Redis) o buzón de pruebas (Redis + Mailpit, 009; prohibido en producción).
+        const simulado = new EnviadorSimuladoRedis(redis);
+        const enviador =
+          configuracion.envioAvisos === 'buzon'
+            ? new EnviadorBuzon(simulado, new BuzonPruebas(configuracion.smtpBuzonUrl))
+            : simulado;
+        return new EnviarAvisosPendientes({ avisos, enviador, reloj });
+      },
     },
     {
       provide: TareaEnvioAvisos,

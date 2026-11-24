@@ -220,19 +220,19 @@ CSV.
 
 **Prueba independiente**: pedir un código y verlo en el buzón.
 
-- [ ] T038 [P] [US4] Dominio compartido `apps/api/src/compartido/dominio/destino-enmascarado.ts`
+- [X] T038 [P] [US4] Dominio compartido `apps/api/src/compartido/dominio/destino-enmascarado.ts`
       (celular `9•••••123`, correo `ju•••@dominio`) con prueba unitaria
-- [ ] T039 [US4] `apps/api/src/modulos/seguridad/infraestructura/enviador-otp-buzon.ts`: decora a
+- [X] T039 [US4] `apps/api/src/modulos/seguridad/infraestructura/enviador-otp-buzon.ts`: decora a
       `EnviadorOtpSimulado` (misma clave `dev:otp:*` y caducidad) y envía por SMTP con `nodemailer`
       (asunto con destino enmascarado y propósito; remitente y destinatario fijos); `ErrorEnvioOtp` si
       falla; elección del adaptador según `ENVIO_OTP` en `seguridad.module.ts`
-- [ ] T040 [US4] `apps/api/src/modulos/notificaciones/infraestructura/enviador-buzon.ts`: decora a
+- [X] T040 [US4] `apps/api/src/modulos/notificaciones/infraestructura/enviador-buzon.ts`: decora a
       `EnviadorSimuladoRedis` y envía el aviso; elección según `ENVIO_AVISOS` en
       `notificaciones.module.ts`
-- [ ] T041 [US4] Prueba de integración `apps/api/test/integracion/buzon.e2e-spec.ts` con un servidor
+- [X] T041 [US4] Prueba de integración `apps/api/test/integracion/buzon.e2e-spec.ts` con un servidor
       SMTP mínimo en proceso (`node:net`): el adaptador entrega el mensaje con el destino enmascarado,
       deja el código en Redis y lanza `ErrorEnvioOtp` si el SMTP no responde
-- [ ] T042 [US4] `infra/docker-compose.yml`: servicio `mailpit` (`axllent/mailpit:v1.21.8`, puerto
+- [X] T042 [US4] `infra/docker-compose.yml`: servicio `mailpit` (`axllent/mailpit:v1.33.0`, puerto
       `${PUERTO_BUZON:-8025}`), `ENVIO_OTP`/`ENVIO_AVISOS` por defecto `buzon` y `SMTP_BUZON_URL` en la
       API; `.github/workflows/e2e.yml` fija `ENVIO_OTP=simulado` y `ENVIO_AVISOS=simulado`; verificar que
       `infra/produccion/` no incluye Mailpit; `.env.example` con `PUERTO_BUZON`
