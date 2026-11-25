@@ -1,0 +1,28 @@
+// Configuración de CoreUI con los colores de la Municipalidad (013). La comparten tema.scss y
+// tema-personal.scss: cada entrada se compila por separado y necesita la misma configuración.
+@use 'sass:color';
+@use 'variables-municipalidad' as m;
+
+@forward '@coreui/coreui/scss/variables' with (
+  $primary: m.$primario,
+  $primary-text-emphasis: m.$primario-texto-enfasis,
+  $primary-bg-subtle: m.$primario-fondo-suave,
+  $primary-border-subtle: m.$primario-borde-suave,
+  $link-color: m.$primario,
+  $link-hover-color: m.$primario-oscuro,
+  $focus-ring-color: color.change(m.$foco, $alpha: 0.75),
+  $font-family-sans-serif: m.$tipografia,
+  $enable-dark-mode: true,
+  $color-mode-type: data,
+  $enable-deprecation-messages: false,
+  // FR-006 (análisis I1): el menú lateral pasa a ser desplegable por debajo de 768 px (md), no de
+  // 992 px (lg), que es lo que trae CoreUI.
+  $mobile-breakpoint: md
+);
+@forward '@coreui/coreui/scss/variables-dark' with (
+  // Contrato del tema: el primario sigue siendo #0b5394 en oscuro (botones con texto blanco, 7.8:1).
+  $primary-dark: m.$primario,
+  $primary-text-emphasis-dark: m.$primario-claro-en-oscuro,
+  $link-color-dark: m.$primario-claro-en-oscuro,
+  $link-hover-color-dark: color.mix(#fff, m.$primario, 75%)
+);

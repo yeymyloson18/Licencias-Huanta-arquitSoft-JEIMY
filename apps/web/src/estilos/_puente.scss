@@ -1,0 +1,156 @@
+// Puente (013, US5; research R-02): las clases propias de las pantallas toman el aspecto de CoreUI con
+// @extend, sin tocar el marcado (FR-016). Se carga después de global.css.
+@use 'configuracion';
+@use '@coreui/coreui/scss/buttons';
+@use '@coreui/coreui/scss/alert';
+@use '@coreui/coreui/scss/card';
+@use '@coreui/coreui/scss/tables';
+@use '@coreui/coreui/scss/forms/labels';
+@use '@coreui/coreui/scss/forms/form-text';
+@use '@coreui/coreui/scss/forms/form-control';
+@use '@coreui/coreui/scss/forms/form-select';
+@use '@coreui/coreui/scss/forms/validation';
+// El bloque oscuro del sistema: así las clases propias también toman sus variantes oscuras.
+@use 'modo-oscuro';
+
+// ---- Botones ----
+.boton {
+  @extend .btn;
+  @extend .btn-primary;
+}
+
+.boton--secundario {
+  @extend .btn-outline-primary;
+}
+
+// Las pantallas lo usan junto con .boton (botón primario), y la variante de contorno de CoreUI no
+// vuelve a fijar el fondo: sin esto, el fondo primario quedaba con el texto del mismo color. Con
+// :root delante, también le gana a las reglas del modo oscuro.
+:root .boton.boton--secundario {
+  --#{configuracion.$prefix}btn-bg: transparent;
+}
+
+.boton--claro {
+  @extend .btn-light;
+
+  // Como hoy: también se usa en enlaces y sobre la cabecera azul.
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.boton--peligro {
+  @extend .btn-danger;
+}
+
+// Área táctil de 44 px (EQ-05), también en los botones de CoreUI y en la paginación.
+.boton,
+.btn,
+.page-link {
+  min-height: 2.75rem;
+}
+
+.btn,
+.page-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Como antes: botones y etiquetas en negrita (CoreUI los trae con peso normal).
+.btn,
+.form-label {
+  font-weight: 600;
+}
+
+// Borde de los controles con contraste de 3:1 sobre el fondo (WCAG 1.4.11). El de CoreUI (#dbdfe6)
+// da 1.3:1 sobre blanco. Con error o con foco, CoreUI pone su propio color (más específico).
+.form-control,
+.form-select {
+  border-color: var(--cui-secondary-color);
+}
+
+// ---- Avisos ----
+.aviso {
+  @extend .alert;
+  @extend .alert-info;
+}
+
+.aviso--info {
+  margin: var(--espacio);
+}
+
+.aviso--error {
+  @extend .alert-danger;
+}
+
+.aviso--exito {
+  @extend .alert-success;
+}
+
+// ---- Tarjetas y tablas ----
+.tarjeta {
+  @extend .card;
+  @extend .card-body;
+}
+
+.tabla {
+  @extend .table;
+}
+
+// ---- Campos escritos a mano en las pantallas (CampoFormulario ya trae las clases de CoreUI) ----
+.campo__etiqueta {
+  @extend .form-label;
+}
+
+input.campo__entrada,
+textarea.campo__entrada {
+  @extend .form-control;
+}
+
+select.campo__entrada {
+  @extend .form-select;
+}
+
+.campo__entrada {
+  min-height: 2.75rem;
+}
+
+.campo__entrada[aria-invalid='true'] {
+  @extend .is-invalid;
+}
+
+.campo__ayuda {
+  @extend .form-text;
+
+  margin: 0;
+}
+
+.campo__error {
+  @extend .invalid-feedback;
+
+  display: block;
+  margin: 0;
+  font-weight: 600;
+}
+
+// ---- Paginación ----
+.paginacion {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--espacio);
+
+  .pagination {
+    flex-wrap: wrap;
+  }
+}
+
+// ---- Foco (FR-024, contracts/tema.md) ----
+// En modo claro, anillo doble: el #f2a900 solo, sobre blanco, da 2.0:1. Un anillo interior #083d6d
+// (11.1:1 sobre blanco) con el contorno #f2a900 encima (5.5:1 sobre ese anillo) cumple 3:1 en todo
+// fondo. paleta.ts y contraste.test.ts lo comprueban. En oscuro (_modo-oscuro.scss) basta el #f2a900.
+:root :focus-visible {
+  outline: 3px solid var(--color-foco);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px var(--foco-anillo-interior, #083d6d);
+}

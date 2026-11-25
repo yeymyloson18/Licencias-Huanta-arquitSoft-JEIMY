@@ -1,0 +1,179 @@
+// Modo oscuro (013, US6; research R-05 y R-07, contracts/tema.md).
+//
+// CoreUI emite su modo oscuro solo bajo [data-coreui-theme=dark] ($color-mode-type: data), que pone
+// main.tsx cuando la persona eligió "Oscuro". Sin elección guardada ("Como el sistema") no hay
+// atributo: este parcial emite las MISMAS reglas oscuras bajo
+// @media (prefers-color-scheme: dark) { :root:not([data-coreui-theme]) … }. Como el CSS carga antes
+// que el JavaScript, el primer pintado ya sigue al sistema, sin scripts en línea (CSP).
+//
+// Las reglas se arman con los mapas $*-dark de CoreUI, igual que su _root.scss y sus componentes,
+// así no se copian valores a mano. tema.test.ts comprueba que los dos bloques coinciden.
+@use 'sass:map';
+@use 'configuracion';
+@use '@coreui/coreui/scss/functions/color' as *;
+@use '@coreui/coreui/scss/functions/color-contrast' as *;
+@use '@coreui/coreui/scss/functions/color-translucent' as *;
+@use '@coreui/coreui/scss/functions/escape-svg' as *;
+@use '@coreui/coreui/scss/functions/to-rgb' as *;
+@use '@coreui/coreui/scss/mixins/buttons' as *;
+@use '@coreui/coreui/scss/maps' as *;
+@use '@coreui/coreui/scss/variables' as *;
+@use '@coreui/coreui/scss/variables-dark' as *;
+
+/**
+ * Bajo el modo oscuro elegido y bajo el del sistema sin elección. Con `:root` delante, para ganarle
+ * al `:root` de global.css, que define las mismas variables y se carga después.
+ */
+@mixin en-modo-oscuro {
+  :root[data-coreui-theme='dark'] {
+    @content;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-coreui-theme]) {
+      @content;
+    }
+  }
+}
+
+/** Solo bajo el del sistema (CoreUI ya emite estas reglas bajo [data-coreui-theme=dark]). */
+@mixin en-sistema-oscuro {
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-coreui-theme]) {
+      @content;
+    }
+  }
+}
+
+// ---- Variables de CoreUI (las de root-dark-mode-vars de su _root.scss) ----
+@include en-sistema-oscuro {
+  color-scheme: dark;
+
+  --#{$prefix}body-color: #{$body-color-dark};
+  --#{$prefix}body-color-rgb: #{to-rgb($body-color-dark)};
+  --#{$prefix}body-bg: #{$body-bg-dark};
+  --#{$prefix}body-bg-rgb: #{to-rgb($body-bg-dark)};
+
+  --#{$prefix}emphasis-color: #{$body-emphasis-color-dark};
+  --#{$prefix}emphasis-color-rgb: #{to-rgb($body-emphasis-color-dark)};
+
+  --#{$prefix}secondary-color: #{$body-secondary-color-dark};
+  --#{$prefix}secondary-color-rgb: #{to-rgb($body-secondary-color-dark)};
+  --#{$prefix}secondary-bg: #{$body-secondary-bg-dark};
+  --#{$prefix}secondary-bg-rgb: #{to-rgb($body-secondary-bg-dark)};
+
+  --#{$prefix}tertiary-color: #{$body-tertiary-color-dark};
+  --#{$prefix}tertiary-color-rgb: #{to-rgb($body-tertiary-color-dark)};
+  --#{$prefix}tertiary-bg: #{$body-tertiary-bg-dark};
+  --#{$prefix}tertiary-bg-rgb: #{to-rgb($body-tertiary-bg-dark)};
+  --#{$prefix}tertiary-bg-translucent: #{color-translucent(
+      $body-tertiary-bg-dark,
+      0.1,
+      $body-bg-dark
+    )};
+
+  --#{$prefix}high-emphasis: #{$high-emphasis-dark};
+  --#{$prefix}medium-emphasis: #{$medium-emphasis-dark};
+  --#{$prefix}disabled: #{$disabled-dark};
+
+  @each $color, $value in $theme-colors-dark {
+    --#{$prefix}#{$color}: #{$value};
+  }
+
+  @each $color, $value in $grays-dark {
+    --#{$prefix}gray-#{$color}: #{$value};
+  }
+
+  @each $color, $value in $theme-colors-rgb-dark {
+    --#{$prefix}#{$color}-rgb: #{$value};
+  }
+
+  @each $color, $value in $theme-colors-text-dark {
+    --#{$prefix}#{$color}-text-emphasis: #{$value};
+  }
+
+  @each $color, $value in $theme-colors-bg-subtle-dark {
+    --#{$prefix}#{$color}-bg-subtle: #{$value};
+  }
+
+  @each $color, $value in $theme-colors-border-subtle-dark {
+    --#{$prefix}#{$color}-border-subtle: #{$value};
+  }
+
+  --#{$prefix}heading-color: #{$headings-color-dark};
+
+  --#{$prefix}link-color: #{$link-color-dark};
+  --#{$prefix}link-hover-color: #{$link-hover-color-dark};
+  --#{$prefix}link-color-rgb: #{to-rgb($link-color-dark)};
+  --#{$prefix}link-hover-color-rgb: #{to-rgb($link-hover-color-dark)};
+
+  --#{$prefix}code-color: #{$code-color-dark};
+  --#{$prefix}highlight-color: #{$mark-color-dark};
+  --#{$prefix}highlight-bg: #{$mark-bg-dark};
+
+  --#{$prefix}border-color: #{$border-color-dark};
+  --#{$prefix}border-color-translucent: #{$border-color-translucent-dark};
+
+  --#{$prefix}form-valid-color: #{$form-valid-color-dark};
+  --#{$prefix}form-valid-border-color: #{$form-valid-border-color-dark};
+  --#{$prefix}form-invalid-color: #{$form-invalid-color-dark};
+  --#{$prefix}form-invalid-border-color: #{$form-invalid-border-color-dark};
+
+  // Botón de cerrar en blanco (_close.scss).
+  --#{$prefix}btn-close-filter: #{$btn-close-filter-dark};
+}
+
+// ---- Componentes que usa el portal (los bloques color-mode(dark) de CoreUI) ----
+@include en-sistema-oscuro {
+  // Botones (_buttons.scss): solo las variantes que usa el portal (las del puente y las de los
+  // diseños), para no sumar peso al CSS que bloquea el primer pintado (T045).
+  @each $color in (primary, secondary, light, danger) {
+    .btn-#{$color} {
+      @include button-variant(
+        map.get($theme-colors-dark, $color),
+        map.get($theme-colors-dark, $color)
+      );
+    }
+  }
+
+  .btn-outline-primary {
+    @include button-outline-variant(map.get($theme-colors-dark, 'primary'));
+  }
+
+  .btn-ghost-secondary {
+    @include button-ghost-variant(map.get($theme-colors-dark, 'secondary'));
+  }
+
+  // Insignias de estado (helpers/_color-bg.scss).
+  @each $color, $value in $theme-colors-dark {
+    .text-bg-#{$color} {
+      color: color-contrast($value) !important;
+      background-color: rgba(to-rgb($value), var(--#{$prefix}bg-opacity, 1)) !important;
+    }
+  }
+
+  // Flecha del select (forms/_form-select.scss).
+  .form-select {
+    --#{$prefix}form-select-bg-img: #{escape-svg($form-select-indicator-dark)};
+  }
+}
+
+// ---- Variables propias (global.css y el foco) en los dos casos ----
+// El primario como texto o borde usa su tinte claro (R-07; el #0b5394 da 1.9:1 sobre el fondo
+// oscuro). Donde es fondo con texto blanco (la cabecera) se usa --cui-primary, que no cambia.
+@include en-modo-oscuro {
+  --color-primario: var(--#{$prefix}link-color);
+  --color-primario-oscuro: var(--#{$prefix}link-color);
+  --color-error-fondo: var(--#{$prefix}danger-bg-subtle);
+  --color-error-borde: var(--#{$prefix}form-invalid-color);
+  // El #f2a900 contrasta solo con el fondo oscuro (7.5:1): no hace falta el anillo interior.
+  --foco-anillo-interior: transparent;
+
+  // Botón de contorno primario: el texto y el borde en el tinte claro (el #0b5394 da 1.9:1).
+  .btn-outline-primary {
+    --#{$prefix}btn-color: var(--#{$prefix}link-color);
+    --#{$prefix}btn-border-color: var(--#{$prefix}link-color);
+    --#{$prefix}btn-disabled-color: var(--#{$prefix}link-color);
+    --#{$prefix}btn-disabled-border-color: var(--#{$prefix}link-color);
+  }
+}

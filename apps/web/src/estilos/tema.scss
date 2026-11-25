@@ -1,0 +1,39 @@
+// Entrada de estilos del portal (013, contracts/tema.md). Importa SOLO las partes de CoreUI que se
+// usan, con los colores de la Municipalidad, y después los estilos propios (global.css). Los estilos
+// que usa solo el área del personal (menú lateral, nav y migas) van en tema-personal.scss. No se
+// importan type ni grid: el reboot da los títulos y los indicadores usan una grilla CSS propia.
+@use 'configuracion';
+@use 'utilidades';
+@use '@coreui/coreui/scss/root';
+@use '@coreui/coreui/scss/reboot';
+@use '@coreui/coreui/scss/containers';
+@use '@coreui/coreui/scss/tables';
+// Formularios: solo etiquetas, texto de ayuda, controles, selects, casillas y validación.
+@use '@coreui/coreui/scss/forms/labels';
+@use '@coreui/coreui/scss/forms/form-text';
+@use '@coreui/coreui/scss/forms/form-control';
+@use '@coreui/coreui/scss/forms/form-select';
+@use '@coreui/coreui/scss/forms/form-check';
+@use '@coreui/coreui/scss/forms/validation';
+@use '@coreui/coreui/scss/buttons';
+@use '@coreui/coreui/scss/transitions';
+@use '@coreui/coreui/scss/card';
+@use '@coreui/coreui/scss/pagination';
+@use '@coreui/coreui/scss/badge';
+@use '@coreui/coreui/scss/alert';
+@use '@coreui/coreui/scss/close';
+@use '@coreui/coreui/scss/header';
+@use '@coreui/coreui/scss/footer';
+// Ayudantes: solo texto para lectores de pantalla, recorte de texto y colores de las insignias.
+@use '@coreui/coreui/scss/helpers/visually-hidden';
+@use '@coreui/coreui/scss/helpers/text-truncation';
+@use '@coreui/coreui/scss/helpers/color-bg';
+@use '@coreui/coreui/scss/utilities/api';
+// Estilos propios (los que CoreUI no reemplaza; se recortan en T035).
+// Modo oscuro también para el sistema sin elección guardada (013, US6).
+@use 'modo-oscuro';
+@use 'global';
+// Clases propias con el aspecto de CoreUI (013, US5).
+@use 'puente';
+// Diseño del portal ligero (013, US2).
+@use 'disenos';

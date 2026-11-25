@@ -1,0 +1,27 @@
+// Colores de la Municipalidad Provincial de Huanta (013, FR-018; contracts/tema.md). No se usan los
+// de la plantilla de CoreUI. MANTENER IGUALES a src/estilos/paleta.ts (la prueba de contraste
+// compara ambos con el CSS compilado).
+@use 'sass:color';
+
+$primario: #0b5394;
+$primario-oscuro: #083d6d;
+$foco: #f2a900;
+
+// Variantes del primario para fondos y bordes suaves y para el texto con énfasis.
+$primario-texto-enfasis: color.mix(#000, $primario, 40%);
+$primario-fondo-suave: color.mix(#fff, $primario, 85%);
+$primario-borde-suave: color.mix(#fff, $primario, 60%);
+
+// En modo oscuro, el texto y los enlaces con el color primario usan un tinte claro (research R-07):
+// el #0b5394 sobre el fondo oscuro no llega a 4.5:1.
+$primario-claro-en-oscuro: color.mix(#fff, $primario, 60%);
+
+// Pila tipográfica del sistema: sin fuentes externas (FR-003).
+$tipografia:
+  system-ui,
+  -apple-system,
+  'Segoe UI',
+  Roboto,
+  'Helvetica Neue',
+  Arial,
+  sans-serif;

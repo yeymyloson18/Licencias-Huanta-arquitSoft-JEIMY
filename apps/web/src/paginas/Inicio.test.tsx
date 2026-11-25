@@ -231,14 +231,19 @@ describe('Acceso del personal en las páginas públicas (011, FR-021)', () => {
     );
   });
 
-  it('con sesión no aparece: el menú ya lleva a su pantalla', async () => {
+  it('con sesión no aparece: "Ir a mi trabajo" ya lleva a su pantalla', async () => {
     simularApi({
       'POST /auth/renovar': () => json(sesionDePrueba({ roles: ['CAJA'] })),
       'GET /catalogo/recetas': () => json([]),
     });
     montarEn('/');
 
-    await screen.findByRole('navigation', { name: 'Menú del personal' });
+    // 013 (R-11): con sesión, la barra pública muestra "Ir a mi trabajo" en lugar del menú del
+    // personal; se espera ese enlace para saber que la sesión ya cargó.
+    expect(await screen.findByRole('link', { name: 'Ir a mi trabajo' })).toHaveAttribute(
+      'href',
+      '/personal/caja',
+    );
     expect(screen.queryByRole('link', { name: 'Acceso del personal' })).not.toBeInTheDocument();
   });
 

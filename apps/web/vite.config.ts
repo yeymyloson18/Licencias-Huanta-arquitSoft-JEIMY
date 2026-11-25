@@ -8,6 +8,15 @@ export default defineConfig({
   define: {
     __DOCS_API__: JSON.stringify(process.env.VITE_DOCS_API !== 'false'),
   },
+  // 013: el Sass de CoreUI usa funciones globales y de color que Dart Sass marca como obsoletas; se
+  // silencian esos avisos (son del paquete, no del tema propio).
+  css: {
+    preprocessorOptions: {
+      scss: {
+        silenceDeprecations: ['import', 'global-builtin', 'color-functions'],
+      },
+    },
+  },
   server: {
     proxy: {
       '/api': 'http://localhost:3000',

@@ -8,6 +8,7 @@ import {
 } from '../../servicios/clienteApi';
 import { FormularioUsuario } from './FormularioUsuario';
 import { nombreDelRol } from '../../componentes/roles';
+import { Paginacion } from '../../componentes/Paginacion';
 
 type FiltroEstado = 'todos' | 'activos' | 'inactivos';
 
@@ -206,31 +207,14 @@ export function Usuarios() {
                   ))}
                 </ul>
                 {totalPaginas > 1 && (
-                  <nav className="paginacion" aria-label="Páginas">
-                    <button
-                      type="button"
-                      className="boton boton--secundario"
-                      disabled={numeroPagina <= 1}
-                      onClick={() => {
-                        setNumeroPagina((n) => n - 1);
-                      }}
-                    >
-                      Anterior
-                    </button>
-                    <span>
-                      Página {numeroPagina} de {totalPaginas}
-                    </span>
-                    <button
-                      type="button"
-                      className="boton boton--secundario"
-                      disabled={numeroPagina >= totalPaginas}
-                      onClick={() => {
-                        setNumeroPagina((n) => n + 1);
-                      }}
-                    >
-                      Siguiente
-                    </button>
-                  </nav>
+                  <Paginacion
+                    etiqueta="Páginas"
+                    pagina={numeroPagina}
+                    total={totalPaginas}
+                    alCambiar={(n) => {
+                      setNumeroPagina(n);
+                    }}
+                  />
                 )}
               </>
             )}

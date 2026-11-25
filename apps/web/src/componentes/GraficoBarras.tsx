@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { TablaAdaptable } from './TablaAdaptable';
 
 // Gráfico de barras horizontales en SVG, accesible (FR-005 de la 007, contracts/portal-007.md): el SVG
 // tiene título y un resumen en texto, y debajo va una tabla con los mismos datos. Se adapta al ancho
@@ -81,8 +82,8 @@ export function GraficoBarras({ titulo, barras, columnas, leyendaMarca }: Propie
         {resumenDe(titulo, barras)}
         {leyendaMarca && barras.some((b) => b.marca !== undefined) ? ` ${leyendaMarca}` : ''}
       </figcaption>
-      <div className="grafico__tabla" role="region" aria-label={`Tabla: ${titulo}`} tabIndex={0}>
-        <table className="tabla">
+      <TablaAdaptable etiqueta={`Tabla: ${titulo}`}>
+        <table className="table table-hover tabla">
           <thead>
             <tr>
               <th scope="col">{columnas[0]}</th>
@@ -98,7 +99,7 @@ export function GraficoBarras({ titulo, barras, columnas, leyendaMarca }: Propie
             ))}
           </tbody>
         </table>
-      </div>
+      </TablaAdaptable>
     </figure>
   );
 }

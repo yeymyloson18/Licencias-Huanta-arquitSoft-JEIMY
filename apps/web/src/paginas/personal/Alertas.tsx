@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { type AlertaPlazo, atenderAlerta, listarAlertas } from '../../servicios/clienteApi';
-import { ESTADOS } from './Expedientes';
 import { fechaCorta } from './Inspecciones';
+import { InsigniaEstado } from '../../componentes/InsigniaEstado';
 
 // Alertas de plazos para la jefatura (historia 4 de la 006): expedientes a los que les quedan 2 días
 // hábiles o menos, de la más urgente a la menos urgente.
@@ -105,7 +105,13 @@ export function Alertas() {
                 </div>
                 <div className="ficha__dato">
                   <dt>Estado</dt>
-                  <dd>{alerta.estadoExpediente ? ESTADOS[alerta.estadoExpediente] : '—'}</dd>
+                  <dd>
+                    {alerta.estadoExpediente ? (
+                      <InsigniaEstado estado={alerta.estadoExpediente} />
+                    ) : (
+                      '—'
+                    )}
+                  </dd>
                 </div>
               </dl>
               <button

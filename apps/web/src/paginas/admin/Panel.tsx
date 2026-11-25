@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { TablaEventos } from '../../componentes/TablaEventos';
+import { TarjetaIndicador } from '../../componentes/TarjetaIndicador';
 import { HerramientasTecnicas } from './HerramientasTecnicas';
 import { obtenerPanel, type PanelAdministrador } from '../../servicios/clienteApi';
 
@@ -23,24 +24,6 @@ type Carga =
   | { readonly tipo: 'cargando' }
   | { readonly tipo: 'listo'; readonly panel: PanelAdministrador }
   | { readonly tipo: 'error'; readonly mensaje: string };
-
-function Tarjeta({
-  titulo,
-  children,
-}: {
-  readonly titulo: string;
-  readonly children: React.ReactNode;
-}) {
-  const id = `tarjeta-${titulo.toLowerCase().replaceAll(' ', '-')}`;
-  return (
-    <section className="tarjeta" aria-labelledby={id}>
-      <h2 id={id} className="ficha__nombre">
-        {titulo}
-      </h2>
-      {children}
-    </section>
-  );
-}
 
 /** Página `/admin`: inicio del administrador. */
 export function Panel() {
@@ -107,12 +90,15 @@ export function Panel() {
         )}
         {carga.tipo === 'listo' && (
           <>
-            <div className="panel__tarjetas">
-              <Tarjeta titulo="Usuarios">
-                <p className="panel__cifra">{carga.panel.usuarios.activos} activos</p>
+            {/* 013 (US3): los mismos datos, en tarjetas de indicador. */}
+            <div className="indicadores">
+              <TarjetaIndicador
+                nombre="Usuarios"
+                valor={`${String(carga.panel.usuarios.activos)} activos`}
+              >
                 <p>{carga.panel.usuarios.inactivos} inactivos</p>
-              </Tarjeta>
-              <Tarjeta titulo="Usuarios por rol">
+              </TarjetaIndicador>
+              <TarjetaIndicador nombre="Usuarios por rol" variante="info">
                 <ul className="panel__lista">
                   {ROLES.map((rol) => (
                     <li key={rol.codigo}>
@@ -121,26 +107,34 @@ export function Panel() {
                     </li>
                   ))}
                 </ul>
-              </Tarjeta>
-              <Tarjeta titulo="Cuentas bloqueadas">
+              </TarjetaIndicador>
+              <TarjetaIndicador
+                nombre="Cuentas bloqueadas"
+                variante="danger"
+                {...(carga.panel.bloqueos === null ? {} : { valor: carga.panel.bloqueos.cuentas })}
+              >
                 {carga.panel.bloqueos === null ? (
                   <p role="status">No disponible: no se pudo consultar el servicio de bloqueos.</p>
                 ) : (
-                  <>
-                    <p className="panel__cifra">{carga.panel.bloqueos.cuentas}</p>
-                    <p>Orígenes bloqueados: {carga.panel.bloqueos.origenes}</p>
-                  </>
+                  <p>Orígenes bloqueados: {carga.panel.bloqueos.origenes}</p>
                 )}
-              </Tarjeta>
-              <Tarjeta titulo="Sesiones abiertas">
-                <p className="panel__cifra">{carga.panel.sesionesAbiertas}</p>
-              </Tarjeta>
-              <Tarjeta titulo="Ingresos fallidos">
-                <p className="panel__cifra">{carga.panel.ingresosFallidos.hoy} hoy</p>
+              </TarjetaIndicador>
+              <TarjetaIndicador
+                nombre="Sesiones abiertas"
+                variante="success"
+                valor={carga.panel.sesionesAbiertas}
+              />
+              <TarjetaIndicador
+                nombre="Ingresos fallidos"
+                variante="warning"
+                valor={`${String(carga.panel.ingresosFallidos.hoy)} hoy`}
+              >
                 <p>{carga.panel.ingresosFallidos.ultimos7Dias} en los últimos 7 días</p>
-              </Tarjeta>
-              <Tarjeta titulo="Códigos enviados">
-                <p className="panel__cifra">{carga.panel.codigosEnviados.hoy.entregados} hoy</p>
+              </TarjetaIndicador>
+              <TarjetaIndicador
+                nombre="Códigos enviados"
+                valor={`${String(carga.panel.codigosEnviados.hoy.entregados)} hoy`}
+              >
                 <p>{carga.panel.codigosEnviados.hoy.conIngreso} terminaron en ingreso correcto</p>
                 <p>{carga.panel.codigosEnviados.ultimos7Dias.entregados} en los últimos 7 días</p>
                 {carga.panel.codigosEnviados.hoy.fallidos > 0 && (
@@ -149,7 +143,7 @@ export function Panel() {
                 <p>
                   <Link to="/admin/auditoria?accion=CODIGO_ENVIADO">Ver los códigos enviados</Link>
                 </p>
-              </Tarjeta>
+              </TarjetaIndicador>
             </div>
             <section className="tarjeta" aria-labelledby="ultimos-eventos">
               <h2 id="ultimos-eventos" className="ficha__nombre">

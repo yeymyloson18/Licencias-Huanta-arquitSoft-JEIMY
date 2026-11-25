@@ -13,6 +13,7 @@ import {
 } from '../../servicios/clienteApi';
 import { useSesion } from '../../sesion/ProveedorSesion';
 import { nombreDelRol } from '../../componentes/roles';
+import { TablaAdaptable } from '../../componentes/TablaAdaptable';
 
 // Ficha del usuario (HU3 de la 009, contracts/portal-administrador.md): datos con el celular
 // enmascarado, estado de seguridad, historial de roles y acciones rápidas con confirmación.
@@ -317,13 +318,8 @@ export function FichaUsuario() {
           <h2 id="ficha-historial" className="ficha__nombre">
             Historial de roles
           </h2>
-          <div
-            className="grafico__tabla"
-            role="region"
-            aria-label="Tabla del historial de roles"
-            tabIndex={0}
-          >
-            <table className="tabla tabla--apilable">
+          <TablaAdaptable etiqueta="Tabla del historial de roles">
+            <table className="table table-hover tabla tabla--apilable">
               <thead>
                 <tr>
                   <th scope="col">Rol</th>
@@ -347,7 +343,7 @@ export function FichaUsuario() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TablaAdaptable>
         </section>
 
         <section className="tarjeta" aria-labelledby="ficha-eventos">

@@ -37,7 +37,7 @@ export function BotonPreguntanos({ conversacion, alCambiar }: Propiedades) {
       <button
         ref={boton}
         type="button"
-        className="boton boton-preguntanos"
+        className="btn btn-primary boton-preguntanos"
         aria-haspopup="dialog"
         aria-expanded={abierto}
         onClick={() => {

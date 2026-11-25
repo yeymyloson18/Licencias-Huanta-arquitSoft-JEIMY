@@ -10,6 +10,7 @@ import {
   type SituacionReporte,
 } from '../servicios/clienteApi';
 import { CampoFormulario } from './CampoFormulario';
+import { TablaAdaptable } from './TablaAdaptable';
 
 // Reporte de licencias de la jefatura (RF18; historia 2 de la 007, contracts/portal-007.md). Solo
 // muestra el titular público abreviado que manda el servidor.
@@ -177,13 +178,8 @@ export function ReporteLicencias() {
         <p className="aviso">No hay licencias con esos filtros.</p>
       )}
       {carga.tipo === 'lista' && carga.filas.length > 0 && (
-        <div
-          className="grafico__tabla"
-          role="region"
-          aria-label="Resultado del reporte"
-          tabIndex={0}
-        >
-          <table className="tabla">
+        <TablaAdaptable etiqueta="Resultado del reporte">
+          <table className="table table-hover tabla">
             <thead>
               <tr>
                 <th scope="col">Número</th>
@@ -209,7 +205,7 @@ export function ReporteLicencias() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TablaAdaptable>
       )}
     </section>
   );

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { type SyntheticEvent, useState } from 'react';
 import { CampoFormulario } from '../../componentes/CampoFormulario';
 import { formatearTasaFicha } from '../../componentes/formato';
@@ -7,7 +8,7 @@ import {
   obtenerTitularParaCaja,
   registrarPago,
 } from '../../servicios/clienteApi';
-import { ESTADOS } from './Expedientes';
+import { InsigniaEstado } from '../../componentes/InsigniaEstado';
 
 // Caja (historia 2 de la 005, contracts/portal-evaluacion-pago.md): buscar la esquela por su código,
 // ver el expediente, el titular, la licencia y el monto, confirmar y registrar el recibo.
@@ -106,16 +107,18 @@ export function Caja() {
 
   const datosEsquela = (esquela: Esquela, titular: string | null) => (
     <dl className="ficha__datos">
-      {[
-        ['Expediente', esquela.numeroExpediente],
-        ['Titular', titular ?? '—'],
-        ['Licencia', esquela.nombreLicencia ?? esquela.concepto],
-        ['Monto', formatearTasaFicha(esquela.monto)],
+      {(
         [
-          'Estado del expediente',
-          esquela.estadoExpediente ? ESTADOS[esquela.estadoExpediente] : '—',
-        ],
-      ].map(([etiqueta, valor]) => (
+          ['Expediente', esquela.numeroExpediente],
+          ['Titular', titular ?? '—'],
+          ['Licencia', esquela.nombreLicencia ?? esquela.concepto],
+          ['Monto', formatearTasaFicha(esquela.monto)],
+          [
+            'Estado del expediente',
+            esquela.estadoExpediente ? <InsigniaEstado estado={esquela.estadoExpediente} /> : '—',
+          ],
+        ] as [string, ReactNode][]
+      ).map(([etiqueta, valor]) => (
         <div key={etiqueta} className="ficha__dato">
           <dt>{etiqueta}</dt>
           <dd>{valor}</dd>

@@ -11,7 +11,7 @@ flowchart TB
     Per(["Personal municipal<br/>[Persona]<br/>mesa de partes, evaluador, inspector, caja, jefatura"])
     AdmS(["Administrador del sistema<br/>[Persona]<br/>usuarios, catálogo y feriados"])
 
-    Front["Portal Web responsive<br/>[Contenedor: SPA React]"]
+    Front["Portal Web responsive<br/>[Contenedor: SPA React + CoreUI]<br/>área del personal y portal ligero,<br/>modo claro u oscuro"]
 
     subgraph API["Backend API - Contenedor: Node.js + NestJS - monolito modular"]
         Rest["API REST<br/>[Componente: rutas + middlewares]<br/>autenticación JWT + OTP, roles, validación,<br/>límite de intentos"]
@@ -95,6 +95,7 @@ flowchart TB
 
 | Componente | Responsabilidad | Historias / requisitos | Driver / ADR | Escenario |
 |---|---|---|---|---|
+| **Portal Web** | SPA en React (ADR-009). Desde la 013, diseño con CoreUI (ADR-012): área de administración para el personal (menú lateral por rol, barra con el usuario, migas de pan) y portal ligero para el ciudadano, con modo claro u oscuro. Sin estado de negocio: todo pasa por la API REST. | Todas las HU | DA02, DA08 · RC07 · ADR-009, ADR-012 | EQ-05 |
 | **API REST** | Única puerta de entrada; autentica, autoriza, valida solicitudes y limita los intentos fallidos (contadores en Redis). | Todas las HU · RF03, RF16, RF17 | DA03 · ADR-007 | EQ-04 |
 | **Seguridad y Usuarios** | Cuentas, roles y segundo factor (OTP) del personal; código OTP para que el administrado confirme su celular antes de presentar; envía el OTP directamente. | HU02, HU15 · RF06, RF16, RF17, RF22 | DA03 · ADR-007 | EQ-04 |
 | **Catálogo y Asistente de ruta** | Guarda las 9 recetas, propone la licencia con tres preguntas y permite al administrador actualizar las recetas. | HU01, HU03, HU14 · RF01, RF02, RF05, RF21 | DA01 · ADR-002 | EQ-05, EQ-06 |

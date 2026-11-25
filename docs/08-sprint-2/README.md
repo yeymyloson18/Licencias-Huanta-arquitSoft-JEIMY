@@ -210,3 +210,61 @@ Detalle:
 modo snapshot. La Municipalidad debe revisar la guía de preguntas frecuentes y aprobar el uso del
 proveedor en producción (ADR-011).
 
+
+## 10. Mejora posterior al cierre: diseño del portal con CoreUI (013)
+
+La funcionalidad 013 ([`specs/013-diseno-coreui/`](../../specs/013-diseno-coreui/)) cambia solo la
+capa visual del portal, con CoreUI 5 (ADR-012). Las rutas, la sesión, los roles, la API y el backend
+no cambian.
+
+- **Personal**: área de administración con menú lateral por rol, barra con migas de pan y
+  desplegable del usuario, y pie.
+- **Ciudadano**: portal ligero con barra, pie y "Pregúntanos".
+- **Componentes comunes**: tablas que se desplazan dentro de su recuadro, estados como insignias de
+  color con su nombre, tarjetas de indicadores en el tablero y el panel, y formularios, botones,
+  avisos y paginación con el estilo de CoreUI.
+- **Modo claro u oscuro**: un botón alterna entre los dos. Sin elección, vale el modo del
+  dispositivo.
+- **Colores**: los de la Municipalidad (#0b5394 y foco #f2a900).
+- **CSP**: no cambia.
+
+**Antes y después** (Lighthouse 12.2.1 móvil 360×740, mediana de 3 corridas, compose aislado;
+resultados tal como salieron):
+
+| Pantalla | Rendimiento antes | Después, claro | Después, oscuro | Accesibilidad antes | Después (claro / oscuro) |
+| --- | --- | --- | --- | --- | --- |
+| Portada | 97 | 95 | 94 | 100 | 100 / 100 |
+| Asistente | 98 | 98 | 97 | 100 | 100 / 100 |
+| Consulta | 98 | 98 | 98 | 100 | 100 / 100 |
+| Ingresar | 99 | 98 | 97 | 100 | 100 / 100 |
+| Chat abierto | — | — | — | 100 | 100 / 100 |
+| Bandeja | 98 | 95 | 94 | 100 | 100 / 100 |
+| Tablero | 98 | 94 | 94 | 100 | 100 / 100 |
+
+"Después" es la medida 4, con el script que evita el destello al cargar (T049). Sin ese script
+(medida 3), la portada daba 98 y la bandeja y el tablero 96.
+
+**Lo que no se cumplió** (SC-003, rendimiento ≥ la línea base): solo la consulta queda igual. Las
+demás pantallas bajan de 1 a 4 puntos. Hay dos causas:
+- **CSS de CoreUI**: bloquea el primer pintado, con 25.4 KB transferidos frente a 5.4 KB antes. En
+  las pantallas del personal se suma el módulo del área del personal.
+- **`modo-inicial.js`**: también bloquea el pintado, porque así evita el destello. Sube el FCP de la
+  portada de 1.7 a 1.9 s. La primera medida había
+salido peor (portada 80, tablero 82), por desplazamientos del diseño y un contraste insuficiente en
+oscuro; se corrigieron y se volvió a medir.
+
+Detalle de las tres medidas: [`evidencias/diseno-013/despues.md`](evidencias/diseno-013/despues.md).
+Línea base: [`evidencias/diseno-013/linea-base.md`](evidencias/diseno-013/linea-base.md).
+
+**Capturas**:
+- antes: [`evidencias/diseno-013/antes/claro/`](evidencias/diseno-013/antes/claro/);
+- después: [`despues/claro/`](evidencias/diseno-013/despues/claro/) y
+  [`despues/oscuro/`](evidencias/diseno-013/despues/oscuro/).
+
+**Pendientes**:
+- **Destello al cargar: resuelto (T049)**. Con una elección de modo contraria al dispositivo, el
+  primer cuadro salía en el modo del dispositivo. Con la aprobación de la usuaria, el script externo
+  `public/modo-inicial.js` en el `<head>` aplica la elección antes del primer pintado, sin cambiar la
+  CSP. El E2E lo exige. Cuesta de 1 a 3 puntos de rendimiento (medida 4).
+- **Rendimiento**: recuperar los puntos que faltan, recortando más el Sass de CoreUI.
+- **CI**: la primera corrida en GitHub Actions del Lighthouse del chat en los dos modos.

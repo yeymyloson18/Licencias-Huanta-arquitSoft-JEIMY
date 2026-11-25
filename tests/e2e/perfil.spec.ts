@@ -18,7 +18,10 @@ test('CAJA llega a Caja, ve Mi perfil y cambia su clave', async ({ page }, info)
 
   const menu = page.getByRole('navigation', { name: 'Menú del personal' });
   await expect(menu.getByRole('link', { name: 'Inicio' })).toHaveCount(0);
-  await menu.getByRole('link', { name: 'Mi perfil' }).click();
+  // 013 (R-11): "Mi perfil" está en el desplegable del nombre, en la barra.
+  const desplegable = page.locator('.desplegable-usuario');
+  await desplegable.getByRole('button').click();
+  await desplegable.getByRole('link', { name: 'Mi perfil' }).click();
   await expect(page).toHaveURL(/\/perfil$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Mi perfil' })).toBeVisible();
   const datos = page.getByRole('region', { name: 'Mis datos' });
@@ -26,8 +29,15 @@ test('CAJA llega a Caja, ve Mi perfil y cambia su clave', async ({ page }, info)
   await expect(datos.getByText(/^\d\*{5}\d{3}$/)).toBeVisible();
   await expect(datos.getByText('Caja', { exact: true })).toBeVisible();
   if (enCelular) {
-    // Con el menú del personal a la vista (FR-018).
-    await expect(menu).toBeVisible();
+    // Con el menú del personal a mano (FR-018). 013 (R-11): a 360 px se abre con "Mostrar menú" y
+    // queda en la pantalla; con Escape se vuelve a cerrar.
+    await page.getByRole('button', { name: 'Mostrar menú' }).click();
+    await expect(menu).toBeInViewport();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: 'Mostrar menú' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
     expect(await sinDesplazamientoHorizontal(page)).toBe(true);
   }
 
