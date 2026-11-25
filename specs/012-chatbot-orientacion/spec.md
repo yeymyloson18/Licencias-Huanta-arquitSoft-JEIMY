@@ -148,8 +148,8 @@ del chat y el enlace al asistente.
 2. **Dado** que el proveedor responde con un error o con cuota agotada, **cuando** el administrado
    pregunta, **entonces** ve el mismo tipo de mensaje y el enlace al asistente.
 3. **Dado** que no hay clave del proveedor configurada, **cuando** el sistema arranca, **entonces**
-   arranca normalmente, el chat avisa que la orientación por chat no está disponible y ofrece el
-   asistente.
+   arranca normalmente y, al enviar la primera pregunta, el chat avisa que la orientación por chat
+   no está disponible y ofrece el asistente.
 4. **Dado** cualquiera de estas fallas, **cuando** se usa el resto del portal (asistente, solicitud,
    consulta), **entonces** funciona sin cambios.
 
@@ -264,7 +264,8 @@ respuesta y cerrarlo solo con teclado, sin desplazamiento horizontal.
   personas. Ante una pregunta sobre un trámite concreto DEBE remitir a "Consultar mi trámite" con
   su enlace.
 - **FR-011**: Las respuestas DEBEN estar en español sencillo, sin términos técnicos innecesarios, y
-  con un largo que se lea cómodo en un celular.
+  con un largo que se lea cómodo en un celular (120 palabras o menos; 1,200 caracteres como
+  máximo).
 - **FR-012**: Un cambio en una receta del catálogo DEBE reflejarse en las respuestas sin cambiar el
   código (EQ-06). La guía de preguntas frecuentes DEBE poder actualizarse sin cambiar el código del
   chat.
@@ -275,8 +276,8 @@ respuesta y cerrarlo solo con teclado, sin desplazamiento horizontal.
 
 - **FR-014**: Antes de enviar la pregunta y las anteriores de la conversación al proveedor, el
   sistema DEBE reemplazar los DNI (8 dígitos), RUC (11 dígitos que empiezan con 10, 15, 17 o 20),
-  celulares (9 dígitos que empiezan con 9, con o sin espacios, guiones o el prefijo +51) y correos
-  por una marca neutra.
+  celulares (9 dígitos que empiezan con 9, con o sin espacios, guiones o el prefijo +51), carnés de
+  extranjería (9 dígitos) y correos por una marca neutra.
 - **FR-015**: El texto de las preguntas y las respuestas NO DEBE guardarse en la base de datos ni
   aparecer en los registros, en los mensajes de error ni en la dirección (URL). Los registros solo
   pueden contener datos no personales: cuánto tardó, cómo terminó (respondida, sin información,
@@ -297,8 +298,8 @@ respuesta y cerrarlo solo con teclado, sin desplazamiento horizontal.
   mensajes de error.
 - **FR-020**: Cada llamada al proveedor DEBE tener un tiempo máximo de 15 segundos; si se supera, se
   trata como falla.
-- **FR-021**: Cuando el proveedor falla, se agota su cuota, tarda demasiado, responde vacío o no hay
-  clave configurada, el chat DEBE decirlo con un mensaje claro y ofrecer el asistente "¿Qué licencia
+- **FR-021**: Cuando el proveedor falla, se agota su cuota, tarda demasiado, responde vacío, no hay
+  clave configurada, o el catálogo no está disponible o no tiene licencias vigentes, el chat DEBE decirlo con un mensaje claro y ofrecer el asistente "¿Qué licencia
   necesito?" y la lista de licencias. El sistema DEBE arrancar y funcionar normalmente sin clave.
 - **FR-022**: Cambiar de proveedor compatible o de modelo DEBE ser posible solo cambiando las
   variables de entorno.
@@ -347,8 +348,9 @@ respuesta y cerrarlo solo con teclado, sin desplazamiento horizontal.
   coincide con el catálogo vigente; ninguna respuesta mostrada tiene una cifra inventada.
 - **SC-003**: El 100 % de las preguntas fuera del tema y de manipulación del conjunto recibe la
   respuesta de "solo atiendo licencias de funcionamiento".
-- **SC-004**: El 100 % de los DNI, RUC, celulares y correos ficticios del conjunto se quita antes de
-  llegar al proveedor, y ninguno aparece en los registros.
+- **SC-004**: El 100 % de los DNI, RUC, celulares y correos ficticios de las pruebas de privacidad
+  (con un proveedor simulado que guarda lo que recibe) se quita antes de llegar al proveedor, y
+  ninguno aparece en los registros.
 - **SC-005**: El 95 % de las preguntas recibe respuesta en 10 segundos o menos con el proveedor
   funcionando; con el proveedor caído, el mensaje de falla aparece en 16 segundos o menos.
 - **SC-006**: Con el proveedor caído o sin clave, el 100 % de los recorridos del asistente, la
@@ -372,7 +374,8 @@ respuesta y cerrarlo solo con teclado, sin desplazamiento horizontal.
 - **Escenario nuevo, EQ-08 (exactitud de la orientación)**: se agrega a
   `docs/01-analisis-de-sistema/08-escenarios-atributos-calidad.md`:
   - estímulo: el conjunto de preguntas de prueba con su respuesta esperada;
-  - medida: SC-001 a SC-004;
+  - medida: SC-001 a SC-003 y SC-005 (SC-004 se comprueba en la prueba de privacidad de la
+    integración continua);
   - herramienta: una evaluación automática a pedido contra el proveedor real, fuera de las pruebas
     de la integración continua, que usan un proveedor simulado.
 
@@ -400,6 +403,8 @@ respuesta y cerrarlo solo con teclado, sin desplazamiento horizontal.
 - La guía de preguntas frecuentes la redacta el equipo a partir del TUPA 2024 y de cómo funciona
   este sistema, y la revisa la Municipalidad; se mantiene como contenido del sistema (sin pantalla
   de edición en esta funcionalidad).
+- Actualizar la guía de preguntas frecuentes cambia un archivo de datos revisado en un PR y necesita
+  un nuevo despliegue, pero no programación.
 - Las respuestas no se guardan; por eso no hay historial ni estadísticas de preguntas. Solo se
   cuentan, sin texto, cuántas preguntas terminaron de cada forma.
 - En producción se usa el mismo proveedor compatible, configurado por variables; si la

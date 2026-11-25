@@ -35,7 +35,7 @@ usan un proveedor simulado y un servidor `node:http` local.
 declarar las variables sin ninguna clave.
 
 - [ ] T001 Enmendar la constitución a la versión **1.1.0** (MINOR) en `.specify/memory/constitution.md`
-      (research R-01):
+      (research R-01). **Aprobada por la usuaria el 2026-11-24** (análisis D1):
   - principio I: "**10 módulos**", agregando "Orientación";
   - "Restricciones tecnológicas y de alcance": sacar de "fuera de alcance" el chat de orientación
     del portal y dejar "el asistente por WhatsApp (Fase 2, RC13)";
@@ -159,7 +159,9 @@ proveedor puede salir sin pasar por ella (principio VII), ni siquiera en el MVP.
     cambio de giro y duplicado). **Sin montos ni plazos inventados**: las cifras solo si están en
     el TUPA 2024 (`docs/fuentes/tupa-2024.pdf`) o en `docs/01-analisis-de-sistema/09-validacion-del-tupa.md`;
     si no, el tema remite a la ficha de cada licencia. Horarios y teléfonos solo si la
-    Municipalidad los confirmó; si no, "consulte en Mesa de partes";
+    Municipalidad los confirmó; si no, "consulte en Mesa de partes". El tema `tramites-no-atendidos`
+    dice expresamente que la transferencia, el cambio de giro y el duplicado no se atienden en este
+    sistema y que se consultan en la Municipalidad;
   - implementar `infraestructura/guia-orientacion-archivo.ts`, que valida con zod.
 - [ ] T012 [P] Adaptador del proveedor (research R-05 y
       [contracts/proveedor-ia.md](contracts/proveedor-ia.md)):
@@ -218,7 +220,8 @@ a esa receta.
   - `licencias` siempre tiene todas las vigentes;
   - hasta 2 recetas en `detalle` y hasta 4 en `temas`;
   - `cifrasPermitidas` contiene la tasa normalizada (`177.10`), el plazo (`15 dias`) y la vigencia
-    (`12 meses`) de las recetas del contexto, además de las cifras de los temas elegidos;
+    (`12 meses`) de **todas las licencias de la tabla** y de las recetas en detalle, además de las
+    cifras de los temas elegidos;
   - se normaliza sin tildes ni mayúsculas ("BODEGA", "bódega").
 - [ ] T016 [P] [US1] `apps/api/test/unit/modulos/orientacion/dominio/interpretar-respuesta.spec.ts`:
   - un JSON válido `{tipo, texto, codigosReceta}` → `RespuestaModelo`;
@@ -297,8 +300,8 @@ a esa receta.
   - `BotonPreguntanos.tsx`.
 
   La conversación se guarda en el estado de `Diseno` en `apps/web/src/Aplicacion.tsx`, sin
-  `localStorage`. Por ahora se monta en todas las rutas; el filtro por rutas públicas es de US6.
-  Deben pasar T019.
+  `localStorage`. Se monta **ya filtrado** por las rutas públicas (`contracts/portal-orientacion.md`),
+  así nunca aparece en las pantallas del personal; US6 agrega su prueba (T050). Deben pasar T019.
 
 **Punto de control**: US1 funciona con el proveedor simulado (integración y portal) y con el real
 en la prueba manual de `quickstart.md`.
@@ -329,8 +332,9 @@ muestra la respuesta de `SIN_INFORMACION`, no la del proveedor.
     `LICENCIAS` y `desenlace RECHAZADA_POR_REVISION`;
   - el modelo responde `SIN_INFORMACION` → el texto fijo del sistema, no el del modelo;
   - `aclaracion` solo con `RESPONDIDA` (FR-008) y `null` en los demás casos;
-  - una pregunta por "transferencia de licencia" con el modelo que responde `SIN_INFORMACION` →
-    texto fijo.
+  - una pregunta por "transferencia de licencia" lleva al CONTEXTO el tema `tramites-no-atendidos`;
+    si el modelo responde `RESPONDIDA` con ese texto (sin cifras), pasa la revisión y se muestra con
+    el enlace `LICENCIAS`; si responde `SIN_INFORMACION`, se usa el texto fijo.
 - [ ] T027 [P] [US2] Ampliar `apps/api/test/integracion/orientacion.e2e-spec.ts`: con un proveedor
       simulado que responde "La tasa es S/ 999.99", la respuesta HTTP **no** contiene `999.99` y
       tiene `resultado: SIN_INFORMACION`.
@@ -409,10 +413,15 @@ chat lo dice y ofrece el asistente y la lista de licencias. El resto del portal 
       `NO_CONFIGURADO`) → `resultado NO_DISPONIBLE`, el texto fijo, los enlaces `[ASISTENTE,
       LICENCIAS]` y el `desenlace` igual al tipo de falla. Una excepción inesperada del proveedor
       también termina en `NO_DISPONIBLE` (`FALLA`), sin propagarse.
+  - si `FuenteCatalogo.licenciasVigentes()` lanza un error o devuelve `[]` → `resultado
+    NO_DISPONIBLE` y `desenlace CATALOGO_NO_DISPONIBLE`, **sin** llamar al proveedor.
 - [ ] T037 [P] [US4] Ampliar `apps/api/test/integracion/orientacion.e2e-spec.ts`:
   - sin `ORIENTACION_API_KEY` (adaptador real, sin red) → 200 `NO_DISPONIBLE` según el contrato;
   - con el proveedor simulado en `CUOTA_AGOTADA` → `NO_DISPONIBLE`, y en la misma prueba `GET
-    /catalogo/recetas` y `POST /asistente/proponer` responden igual (SC-006).
+    /catalogo/recetas` y `POST /asistente/proponer` responden igual (SC-006);
+  - con el adaptador real, `ORIENTACION_API_URL` apuntando a un servidor `node:http` local que nunca
+    responde y `ORIENTACION_TIEMPO_MAXIMO_MS=1000` → `NO_DISPONIBLE` en menos de 2 s. Es el mismo
+    camino que en producción (15 s + 1 s, SC-005).
 - [ ] T038 [P] [US4] Ampliar `ChatOrientacion.test.tsx`:
   - `NO_DISPONIBLE` → texto y enlaces "¿Qué licencia necesito?" y "Ver la lista de licencias";
   - una ruta no simulada (404), un error de red o un 503 → el mismo mensaje y los mismos enlaces.
@@ -420,7 +429,8 @@ chat lo dice y ofrece el asistente y la lista de licencias. El resto del portal 
 ### Implementación de la historia 4
 
 - [ ] T039 [US4] En `ResponderPregunta`, mapear todas las fallas a `NO_DISPONIBLE` y capturar
-      cualquier excepción del puerto. El controlador registra un `warn` solo con el `desenlace`
+      cualquier excepción del puerto, y capturar los errores de `FuenteCatalogo` antes de llamar al
+      proveedor. El controlador registra un `warn` solo con el `desenlace`
       cuando es `CLAVE_INVALIDA` o `CUOTA_AGOTADA`. Deben pasar T036 y T037.
 - [ ] T040 [US4] Portal: en `clienteApi.ts` y `ChatOrientacion.tsx`, tratar el 503, el error de
       red y los errores inesperados como `no-disponible`, con los enlaces. Debe pasar T038.
@@ -445,7 +455,7 @@ aplicar 10 preguntas cada 15 minutos por huella con sal (sin IP) y el máximo de
       agrega):
   - 10 reservas permitidas y la 11.ª no, con `segundosRestantes` > 0;
   - la clave es `lim:orientacion:<huella>` con vencimiento de 900 s (`EXPIRE … NX`);
-  - si Redis falla → `ErrorLimitadorNoDisponible` propio del módulo.
+  - si Redis falla → `ErrorLimitadorNoDisponible`, definido en `dominio/puertos.ts`.
 - [ ] T042 [P] [US5] Ampliar `responder-pregunta.spec.ts`:
   - el límite no permite → el resultado es `limite` con `segundosRestantes` y el proveedor **no**
     se llama;
@@ -478,8 +488,9 @@ aplicar 10 preguntas cada 15 minutos por huella con sal (sin IP) y el máximo de
       algoritmo que `LimitadorIntentosRedis` de la 002 (`MULTI`, `INCR`, `EXPIRE NX` y `TTL`;
       ventana fija de 15 minutos; máximo `ORIENTACION_LIMITE_PREGUNTAS`). Debe pasar T041.
 - [ ] T047 [US5] Integrar el límite:
-  - huella en el controlador (`peticion.ip` con `trust proxy`, `ProtectorDatos.hmac('orientacion:'
-    + ip)` en hexadecimal);
+  - huella en `apps/api/src/modulos/orientacion/presentacion/huella-orientacion.ts`, usada por el
+    controlador (`peticion.ip` con `trust proxy`, `ProtectorDatos.hmac('orientacion:' + ip)` en
+    hexadecimal);
   - `ResponderPregunta` reserva antes del proveedor y después de validar;
   - `limite` → `ErrorProblema.demasiadosIntentos(segundos)` con el `type`
     `demasiadas-preguntas`, o una variante nueva `demasiadasPreguntas(segundos)` en
@@ -533,7 +544,7 @@ desplazamiento horizontal.
 - [ ] T052 [US6] Implementar la accesibilidad en `ChatOrientacion.tsx` y `BotonPreguntanos.tsx`:
   - `<dialog>` con `showModal()`, foco, Escape y regreso del foco;
   - región `aria-live`;
-  - mostrar el chat solo en las rutas públicas desde `Diseno`, en `apps/web/src/Aplicacion.tsx`.
+  - revisar que el filtro por rutas públicas de T024 cumpla T050 (`apps/web/src/Aplicacion.tsx`).
 
   Deben pasar T049 y T050.
 - [ ] T053 [US6] Estilos en `apps/web/src/estilos/global.css`:
@@ -544,9 +555,11 @@ desplazamiento horizontal.
 
   Debe pasar T051 en CI.
 - [ ] T054 [US6] Lighthouse móvil con el chat abierto: agregar `http://localhost:8080/` a la medida
-      del flujo `E2E` de la 011 (`tests/e2e/lighthouserc.json`), con un `puppeteerScript` o un
-      paso que abra el chat. Si no se puede abrir el chat en Lighthouse, medir `/` y documentarlo.
-      Accesibilidad ≥ 0.9. El resultado se anota tal como salga en `docs/08-sprint-2/README.md`,
+      del flujo `E2E` de la 011 (`tests/e2e/lighthouserc.json`). Abrir el chat antes de medir: el
+      `puppeteerScript` (o uno nuevo, `tests/e2e/apoyo/lighthouse-chat.cjs`) carga `/`, pulsa
+      "Pregúntanos" y deja el diálogo abierto, con `disableStorageReset`. Si Lighthouse recarga la
+      página y el chat se cierra, la medida de SC-007 queda **pendiente**: no se reemplaza por la de
+      `/` sola, y la cubren las pruebas de accesibilidad de T049 y T051. Accesibilidad ≥ 0.9. El resultado se anota tal como salga en `docs/08-sprint-2/README.md`,
       o queda "pendiente de medir".
 
 **Punto de control**: las seis historias completas.
@@ -588,7 +601,9 @@ desplazamiento horizontal.
 
   Documentar en `tests/orientacion/README.md` que corre contra un compose **de pruebas** con
   `ORIENTACION_LIMITE_PREGUNTAS=1000`. Si se puede correr con la clave de la usuaria, anotar los
-  resultados tal como salgan; si no, el informe queda "pendiente de medir", sin inventar.
+  resultados tal como salgan; si no, el informe queda "pendiente de medir", sin inventar. Anotar
+  además una corrida con `ORIENTACION_API_URL` sin respuesta: el tiempo del mensaje de falla
+  (≤ 16 s, SC-005).
 - [ ] T059 [P] Documentación:
   - `README.md`: sección "Chat de orientación (funcionalidad 012)" con qué hace, sus límites, cómo
     configurar la clave en `infra/.env` y qué pasa sin clave;
@@ -603,7 +618,8 @@ desplazamiento horizontal.
       formato`, `npm run contrato`, `npm run regla-dependencia`, `npm run cobertura` (≥ 80 % en
       `dominio/` y `aplicacion/` de `orientacion`) y `npm test -w apps/web`. Integración con
       contenedores temporales de PostgreSQL y Redis (puertos 5433 y 6380), nunca el Redis de
-      desarrollo. Marcar las tareas con `[X]` y hacer el commit `chore(012): cierre`.
+      desarrollo. ZAP: se mide con el flujo "Calidad en producción" existente (el endpoint es
+      público). Marcar las tareas con `[X]` y hacer el commit `chore(012): cierre`.
 
 ---
 

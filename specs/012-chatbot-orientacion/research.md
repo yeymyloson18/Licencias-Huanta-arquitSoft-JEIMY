@@ -120,7 +120,9 @@ Decisiones de la fase 0. Cada una con lo decidido, el motivo y las alternativas 
 - **Decisión**: el mensaje de sistema pide un objeto JSON
   `{ "tipo": "RESPONDIDA" | "SIN_INFORMACION" | "FUERA_DE_TEMA" | "CONSULTA_TRAMITE", "texto":
   string, "codigosReceta": string[] }`. El sistema no confía en el modelo:
-  1. Valida el objeto con zod. Si no cumple, es una falla del proveedor.
+  1. `interpretarRespuesta` (dominio) valida el objeto con comprobaciones de tipos propias, sin
+     zod: el dominio no importa paquetes externos (principio I). Si no cumple, es una falla del
+     proveedor.
   2. Descarta los `codigosReceta` que no están entre las licencias vigentes. Los enlaces a la ficha
      los arma el sistema a partir de los códigos válidos; el modelo nunca escribe URLs.
   3. `revisarCifras(texto, contexto)` (función pura del dominio):

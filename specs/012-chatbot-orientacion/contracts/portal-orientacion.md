@@ -43,7 +43,7 @@
   | `FICHA` | "Ver la ficha de <nombre o código>" | `/licencias/<codigoReceta>` |
   | `ASISTENTE` | "¿Qué licencia necesito?" | `/asistente` |
   | `CONSULTA` | "Consultar mi trámite" | `/consulta` |
-  | `LICENCIAS` | "Ver la lista de licencias" | `/#licencias`, o la lista que ya existe en la portada |
+  | `LICENCIAS` | "Ver la lista de licencias" | `/` (la portada tiene la lista de licencias) |
 
   Al seguir un enlace, el chat se cierra y la conversación se conserva.
 - **Aclaración** (FR-008): si viene `aclaracion`, se muestra debajo de la respuesta en letra
