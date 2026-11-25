@@ -651,7 +651,7 @@ por rutas públicas ya estaba desde T024: T050 solo agregó su prueba. jsdom no 
 
 ## Fase 9: Pulido, documentación y evaluación EQ-08
 
-- [ ] T055 [P] **ADR-011** "Proveedor externo de IA para la orientación" en
+- [X] T055 [P] **ADR-011** "Proveedor externo de IA para la orientación" en
       `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`: fila del resumen y sección
       completa (contexto, decisión, alternativas, consecuencias). Debe decir:
   - formato compatible con OpenAI, Groq y `openai/gpt-oss-120b` por defecto;
@@ -661,11 +661,11 @@ por rutas públicas ya estaba desde T024: T050 solo agregó su prueba. jsdom no 
   - cómo se cambia de proveedor (solo variables).
 
   Nota: se pidió "ADR-008", pero ese número ya es el de PostgreSQL con Patroni.
-- [ ] T056 [P] **EQ-08** "Exactitud de la orientación" en
+- [X] T056 [P] **EQ-08** "Exactitud de la orientación" en
       `docs/01-analisis-de-sistema/08-escenarios-atributos-calidad.md`, con fuente, estímulo,
       entorno, respuesta y medida (SC-001 a SC-003 y SC-005), y su fila en la tabla resumen y en
       la tabla de herramientas (`tests/orientacion/evaluar.mjs`).
-- [ ] T057 [P] Conjunto de preguntas de prueba `tests/orientacion/preguntas-prueba.json`: 30 o
+- [X] T057 [P] Conjunto de preguntas de prueba `tests/orientacion/preguntas-prueba.json`: 30 o
       más preguntas, cada una con `pregunta`, `resultadoEsperado`, `codigosReceta` y
       `cifrasEsperadas` tomadas del catálogo de demostración. Deben cubrir:
   - las 9 licencias (tasa, plazo o requisitos);
@@ -674,7 +674,7 @@ por rutas públicas ya estaba desde T024: T050 solo agregó su prueba. jsdom no 
   - 4 o más preguntas fuera del tema y de manipulación;
   - 3 o más preguntas con datos personales ficticios;
   - 3 o más consultas de expediente.
-- [ ] T058 Evaluador `tests/orientacion/evaluar.mjs` (Node, sin dependencias nuevas):
+- [X] T058 Evaluador `tests/orientacion/evaluar.mjs` (Node, sin dependencias nuevas):
   - envía cada pregunta a `E2E_URL` o `http://localhost:8080/api/v1/orientacion/preguntas`, con
     una pausa configurable entre preguntas;
   - compara cada resultado con lo esperado;
@@ -687,7 +687,7 @@ por rutas públicas ya estaba desde T024: T050 solo agregó su prueba. jsdom no 
   resultados tal como salgan; si no, el informe queda "pendiente de medir", sin inventar. Anotar
   además una corrida con `ORIENTACION_API_URL` sin respuesta: el tiempo del mensaje de falla
   (≤ 16 s, SC-005).
-- [ ] T059 [P] Documentación:
+- [X] T059 [P] Documentación:
   - `README.md`: sección "Chat de orientación (funcionalidad 012)" con qué hace, sus límites, cómo
     configurar la clave en `infra/.env` y qué pasa sin clave;
   - `docs/04-modelo-c4/Nivel1-DiagramadeContextodelSistema.md` y
@@ -695,14 +695,34 @@ por rutas públicas ya estaba desde T024: T050 solo agregó su prueba. jsdom no 
   - `docs/03-diseno-de-software/diagrama-casos-de-uso.md`: CU32 "Preguntar al chat de
     orientación" (Administrado, HU01 y HU03, RF01 y RF02, 012) y el total de casos de uso;
   - `docs/08-sprint-2/README.md`: la 012 en la tabla de funcionalidades y una sección de evidencia.
-- [ ] T060 [P] Postman: en `tests/postman/humo.postman_collection.json`, "Orientación sin pregunta
+- [X] T060 [P] Postman: en `tests/postman/humo.postman_collection.json`, "Orientación sin pregunta
       (012)": `POST /orientacion/preguntas` con `{}` → 422. No llama al proveedor.
-- [ ] T061 Puertas locales de `quickstart.md`: `npm run lint && npm run typecheck && npm run
+- [X] T061 Puertas locales de `quickstart.md`: `npm run lint && npm run typecheck && npm run
       formato`, `npm run contrato`, `npm run regla-dependencia`, `npm run cobertura` (≥ 80 % en
       `dominio/` y `aplicacion/` de `orientacion`) y `npm test -w apps/web`. Integración con
       contenedores temporales de PostgreSQL y Redis (puertos 5433 y 6380), nunca el Redis de
       desarrollo. ZAP: se mide con el flujo "Calidad en producción" existente (el endpoint es
       público). Marcar las tareas con `[X]` y hacer el commit `chore(012): cierre`.
+
+---
+
+**Estado al cierre de la fase 9 (2026-11-25)**:
+
+- **EQ-08**: se corrió en local contra la API levantada con Docker Compose, que lee la clave de
+  `infra/.env` (la clave no se leyó, copió ni imprimió). Se usó `ORIENTACION_LIMITE_PREGUNTAS=1000`
+  solo para la evaluación y después se volvió al límite normal. Resultados tal como salieron:
+  - SC-001: 37/37;
+  - SC-002: 0 cifras ajenas;
+  - SC-003: 4/4;
+  - SC-005: 37/37 en 10 s o menos (p95 3.2 s);
+  - ningún reintento.
+- **SC-007**: Lighthouse 12.2.1 en modo snapshot (`tests/e2e/apoyo/lighthouse-chat.mjs`), con el chat
+  abierto sin recargar: 1.0. Como esta medida funcionó, no se usó `@axe-core/playwright`. En CI corre
+  como paso del flujo `E2E`.
+- **Conjunto de preguntas**: 37 en total, las 33 de T057 más las 4 de la conversación real (T067).
+- **Compose de desarrollo**: tiene `ORIENTACION_LIMITE_PREGUNTAS`, con 10 por defecto, para la
+  evaluación.
+- **Postman**: tiene 18 peticiones.
 
 ---
 

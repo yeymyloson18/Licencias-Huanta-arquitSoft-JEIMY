@@ -72,6 +72,8 @@ services:
       ORIENTACION_API_URL: ${ORIENTACION_API_URL:-}
       ORIENTACION_MODELO: ${ORIENTACION_MODELO:-}
       ORIENTACION_API_KEY: ${ORIENTACION_API_KEY:-}
+      # Solo desarrollo: la evaluación EQ-08 lo sube (tests/orientacion/README.md); por defecto 10.
+      ORIENTACION_LIMITE_PREGUNTAS: ${ORIENTACION_LIMITE_PREGUNTAS:-10}
       # Almacén de documentos (004): fuera de la carpeta pública del portal y compartido por todas las
       # instancias de la API (research §R-08). Cada réplica monta el mismo volumen.
       ALMACEN_ARCHIVOS_RUTA: /var/lib/licencias/archivos

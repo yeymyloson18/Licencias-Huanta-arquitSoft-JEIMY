@@ -16,6 +16,7 @@ flowchart TB
 
     Ident["Validación DNI / RUC<br/>[Sistema externo]"]
     Msg["Servicio de correo y SMS<br/>[Sistema externo]"]
+    IA["Proveedor de IA<br/>[Sistema externo - compatible con OpenAI]<br/>por defecto Groq (ADR-011)"]
     WA["WhatsApp Business API<br/>[Sistema externo - Fase 2]"]
 
     Adm -->|"confirma su identidad, presenta, consulta con expediente + DNI/RUC, descarga su esquela y su licencia"| Sis
@@ -27,6 +28,7 @@ flowchart TB
 
     Sis -->|"valida la identidad"| Ident
     Sis -->|"envía avisos desde sus workers y códigos OTP directos"| Msg
+    Sis -->|"chat de orientación (012): pregunta sin datos personales + contexto público del catálogo"| IA
     Sis -.->|"Fase 2: atiende consultas por chat"| WA
 ```
 
@@ -42,6 +44,7 @@ flowchart TB
 | Administrador del sistema | Persona | Gestiona usuarios, roles, el catálogo de recetas y el calendario de feriados. |
 | Validación DNI / RUC | Sistema externo | Valida la identidad del solicitante (RUC, DNI con fecha de emisión o carné de extranjería; también los del representante legal o apoderado). |
 | Correo y SMS | Sistema externo | Envía las notificaciones y los códigos OTP. |
+| Proveedor de IA | Sistema externo | Responde las preguntas del chat de orientación (012, ADR-011) con el contexto que le envía el sistema; nunca recibe datos personales ni de expedientes. Si falla, el chat ofrece el asistente. |
 | WhatsApp Business API | Sistema externo (Fase 2) | Canal del asistente virtual. |
 
 **Límite del sistema:** no procesa pagos digitales, no define el TUPA ni la matriz de riesgo y no hace la fiscalización en campo.

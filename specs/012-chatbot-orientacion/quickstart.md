@@ -52,10 +52,14 @@ Resultado esperado: todo en verde, sin ninguna clave de proveedor.
   - En el proyecto `celular` no hay desplazamiento horizontal con el chat abierto.
   - "Pregúntanos" no aparece en `/ingresar` ni en `/perfil`.
 - **Lighthouse móvil** (como en la 011): `tests/e2e/lighthouserc.json` mide `/` con el botón
-  "Pregúntanos". **Con el chat abierto (SC-007) queda pendiente de medir**: Lighthouse CI recarga cada URL
-  después del `puppeteerScript`, así que el chat se cierra antes de medir. Mientras tanto, la
-  accesibilidad del chat abierto la cubren las pruebas del portal (T049: foco, Escape, `aria-live`) y el
-  E2E a 360 px (T051: sin desplazamiento horizontal). Correr el E2E sin la clave en `infra/.env`.
+  "Pregúntanos".
+- **Lighthouse con el chat abierto (SC-007)**: `tests/e2e/apoyo/lighthouse-chat.mjs`. Usa Lighthouse
+  en **modo snapshot**: un flujo de puppeteer abre "Pregúntanos" sin recargar y mide. Lighthouse CI
+  recargaba la página y el chat se cerraba. Corre en el flujo `E2E` y falla si el puntaje es menor
+  que 0.9.
+  - Primera medida, en local (2026-11-25): **1.0** en la portada y **1.0** con el chat abierto
+    (`docs/08-sprint-2/evidencias/lighthouse-chat-012.md`).
+  - Correr el E2E sin la clave en `infra/.env`.
 
 ## Evaluación EQ-08 con el proveedor real (a pedido, fuera de CI)
 

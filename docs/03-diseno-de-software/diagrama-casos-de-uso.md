@@ -1,6 +1,6 @@
 # Diagrama de casos de uso
 
-El sistema tiene **31 casos de uso** repartidos entre 7 actores humanos y 2 sistemas externos de la
+El sistema tiene **32 casos de uso** repartidos entre 7 actores humanos y 2 sistemas externos de la
 Fase 1 (ver [01-actores.md](../01-analisis-de-sistema/01-actores.md)). Cada caso de uso se traza a
 sus historias de usuario y requisitos funcionales, y a la funcionalidad SDD que lo construye.
 
@@ -32,6 +32,7 @@ flowchart LR
         CU08(["CU08 Descargar licencia<br/>con QR"])
         CU09(["CU09 Verificar licencia<br/>por QR"])
         CU10(["CU10 Recibir avisos<br/>del trámite"])
+        CU32(["CU32 Preguntar al chat<br/>de orientación"])
     end
 
     ADM --- CU01
@@ -39,6 +40,8 @@ flowchart LR
     ADM --- CU05
     ADM --- CU06
     ADM --- CU09
+    ADM --- CU32
+    CU32 -.->|«extend»<br/>si no sabe qué licencia| CU01
     CU01 -.->|«include»| CU02
     CU04 -.->|«include»| CU03
     CU05 -.->|«include»| CU03
@@ -174,6 +177,7 @@ decisiones), por separación de funciones.
 | CU29 | Desbloquear cuenta | Administrador | HU15 | RF16, RF22 | 009 | ✅ Hecho |
 | CU30 | Ver mi perfil | Todo el personal | HU15 | RF16, RF17 | 011 | ✅ Hecho |
 | CU31 | Cambiar mi clave | Todo el personal | HU15 | RF16 | 011 | ✅ Hecho |
+| CU32 | Preguntar al chat de orientación | Administrado | HU01, HU03 | RF01, RF02 | 012 | ✅ Hecho |
 
 **Cobertura:** las 17 historias de usuario y los 25 requisitos funcionales tienen al menos un caso de
 uso, salvo **HU12 / RF15** (transferencia, cambio de giro y duplicado), que queda como trabajo futuro

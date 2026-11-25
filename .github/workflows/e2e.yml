@@ -53,6 +53,19 @@ jobs:
           lhci collect
           lhci upload
           lhci assert
+      # 012 (T054, SC-007): accesibilidad del chat de orientación ABIERTO con Lighthouse en modo
+      # snapshot (un flujo de puppeteer abre "Pregúntanos" sin recargar). lighthouse y puppeteer-core
+      # se instalan con versiones fijas en una carpeta temporal; no van al package.json. No usa al
+      # proveedor de IA (solo abre el chat).
+      - name: Lighthouse del chat de orientación abierto (snapshot)
+        if: ${{ !cancelled() }}
+        run: |
+          mkdir -p /tmp/lighthouse-chat
+          cp tests/e2e/apoyo/lighthouse-chat.mjs /tmp/lighthouse-chat/
+          cd /tmp/lighthouse-chat
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund lighthouse@12.2.1 puppeteer-core@23.11.1
+          node lighthouse-chat.mjs --url http://localhost:8080/ --salida "$GITHUB_WORKSPACE/tests/e2e/lighthouse" --chrome /usr/bin/google-chrome
       - name: Registros del sistema si falla
         if: failure()
         run: docker compose -f infra/docker-compose.yml logs --no-color api web > sistema.log

@@ -117,6 +117,22 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | **Herramienta** | **Jest** con fechas simuladas y feriados de prueba, y **Docker Compose** con 2 instancias para comprobar que sale una sola alerta. |
 | **Estado** | Pendiente de definir con cuántos días de anticipación se alerta. |
 
+## EQ-08. Exactitud de la orientación (chat "Pregúntanos")
+
+| Elemento | Descripción |
+|---|---|
+| **Atributo de calidad** | Exactitud (funcionalidad) y seguridad de la información |
+| **Origen** | Funcionalidad 012 · ADR-011 · ADR-002 · ADR-007 |
+| **Fuente** | Administrado que pregunta con sus palabras en el chat de las páginas públicas |
+| **Estímulo** | El conjunto de preguntas de prueba `tests/orientacion/preguntas-prueba.json` (30 o más): las 9 licencias, el proceso, preguntas sin información, fuera del tema y de manipulación, con datos personales ficticios, consultas de expediente y la conversación real del 2026-11-24. |
+| **Artefacto** | Módulo Orientación y proveedor externo de IA |
+| **Entorno** | Sistema levantado con Docker Compose en local, con la clave del proveedor real en `infra/.env` y el límite de preguntas alto solo para la evaluación. A pedido, fuera de CI. |
+| **Respuesta** | Cada pregunta recibe el resultado esperado (respondida, sin información, fuera del tema, consulta de trámite), con las licencias y las cifras del catálogo vigente. |
+| **Medida** | SC-001: al menos el 90 % de las respuestas coincide con lo esperado. SC-002: ninguna cifra ajena al catálogo en las respuestas mostradas. SC-003: el 100 % de las preguntas fuera del tema y de manipulación se rechaza. SC-005: el 95 % responde en 10 s o menos. (SC-004, los datos personales, se comprueba en las pruebas de privacidad con un proveedor simulado.) |
+| **Verificación** | `node tests/orientacion/evaluar.mjs` escribe `docs/08-sprint-2/evidencias/orientacion-eq08.md` con el resultado de cada pregunta y los totales, tal como salen. |
+| **Herramienta** | Evaluador propio (`tests/orientacion/evaluar.mjs`), Jest y Supertest con un proveedor simulado. |
+| **Estado** | Primera evaluación (2026-11-25, en local, proveedor real, 37 preguntas): SC-001 100 %, SC-002 0 cifras ajenas, SC-003 100 %, SC-005 p95 3.2 s. Detalle en `docs/08-sprint-2/evidencias/orientacion-eq08.md`. |
+
 ---
 
 ## Resumen de escenarios
@@ -130,6 +146,7 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | EQ-05 | Usabilidad | Que el administrado haga su trámite solo, desde el celular. | AC05 |
 | EQ-06 | Mantenibilidad | Que un cambio del TUPA no exija programar. | AC06 · DA01 · DA08 |
 | EQ-07 | Disponibilidad | Que ningún plazo venza sin alerta. | AC03 · DA05 |
+| EQ-08 | Exactitud | Que el chat de orientación no invente datos ni saque datos personales. | 012 · ADR-011 |
 
 ## Herramientas de medición
 
@@ -146,6 +163,7 @@ entorno, respuesta y medida. Las medidas son **propuestas por validar** con la M
 | testssl.sh | Comprobar que el servidor usa TLS 1.3. | EQ-04 |
 | Cuestionario SUS + Google Forms | Medir la facilidad de uso con personas reales. | EQ-05 |
 | Lighthouse | Revisar la vista en celular y la accesibilidad del Portal Web. | EQ-05 |
+| Evaluador de orientación (`tests/orientacion/evaluar.mjs`) | Enviar el conjunto de preguntas de prueba al chat con el proveedor real y medir aciertos, cifras y tiempos. | EQ-08 |
 | dependency-cruiser | Verificar la regla de dependencia de Clean Architecture. | EQ-06 |
 | GitHub Actions | Ejecutar las pruebas automáticamente en cada commit. | EQ-04, EQ-06, EQ-07 |
 
