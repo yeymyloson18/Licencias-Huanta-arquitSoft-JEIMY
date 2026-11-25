@@ -1,0 +1,188 @@
+import { ResponderPregunta } from '../../../../../src/modulos/orientacion/aplicacion/responder-pregunta';
+import { ErrorPreguntaInvalida } from '../../../../../src/modulos/orientacion/dominio/pregunta-orientacion';
+import type {
+  FuenteCatalogo,
+  LicenciaVigente,
+  MensajeProveedor,
+  ProveedorOrientacion,
+  ResultadoProveedor,
+} from '../../../../../src/modulos/orientacion/dominio/puertos';
+import { MARCA_DATO_PERSONAL } from '../../../../../src/modulos/orientacion/dominio/quitar-datos-personales';
+import { LICENCIAS, TEMAS } from '../dominio/licencias-de-prueba';
+
+// ResponderPregunta (012, research R-04 a R-07), con dobles de los puertos: nunca el proveedor real.
+
+class ProveedorDoble implements ProveedorOrientacion {
+  readonly llamadas: (readonly MensajeProveedor[])[] = [];
+  resultado: ResultadoProveedor = { tipo: 'OK', contenido: '{}' };
+
+  responder(mensajes: readonly MensajeProveedor[]): Promise<ResultadoProveedor> {
+    this.llamadas.push(mensajes);
+    return Promise.resolve(this.resultado);
+  }
+
+  modelo(respuesta: Record<string, unknown>): this {
+    this.resultado = { tipo: 'OK', contenido: JSON.stringify(respuesta) };
+    return this;
+  }
+
+  /** Todo el texto enviado en la última llamada. */
+  texto(): string {
+    return (this.llamadas.at(-1) ?? []).map((mensaje) => mensaje.contenido).join('\n');
+  }
+}
+
+const preparar = (licencias: readonly LicenciaVigente[] = LICENCIAS) => {
+  const proveedor = new ProveedorDoble();
+  const catalogo: FuenteCatalogo = { licenciasVigentes: () => Promise.resolve(licencias) };
+  let ahora = 1_000;
+  const caso = new ResponderPregunta({
+    catalogo,
+    guia: { temas: () => TEMAS },
+    proveedor,
+    reloj: {
+      ahora: () => {
+        ahora += 250;
+        return ahora;
+      },
+    },
+  });
+  const preguntar = (pregunta: string, historial: { rol: string; texto: string }[] = []) =>
+    caso.ejecutar({ pregunta, historial });
+  return { proveedor, preguntar };
+};
+
+describe('ResponderPregunta: camino principal (US1)', () => {
+  it('envía las reglas, el CONTEXTO entre delimitadores y la conversación en orden', async () => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.modelo({ tipo: 'RESPONDIDA', texto: 'Sí.', codigosReceta: [] });
+
+    await preguntar('¿Cuánto cuesta la de bodega?', [
+      { rol: 'PERSONA', texto: 'Hola' },
+      { rol: 'ORIENTADOR', texto: 'Hola, ¿en qué le ayudo?' },
+    ]);
+
+    const mensajes = proveedor.llamadas[0] ?? [];
+    expect(mensajes.map((mensaje) => mensaje.rol)).toEqual(['system', 'user', 'assistant', 'user']);
+    const sistema = mensajes[0]?.contenido ?? '';
+    expect(sistema).toContain('Usa SOLO el CONTEXTO');
+    expect(sistema).toContain('SIN_INFORMACION');
+    expect(sistema).toContain('FUERA_DE_TEMA');
+    expect(sistema).toContain('CONSULTA_TRAMITE');
+    expect(sistema).toMatch(/<<<CONTEXTO[\s\S]*LIC-09[\s\S]*CONTEXTO>>>/);
+    expect(sistema).toContain('S/ 0.00');
+    expect(mensajes.at(-1)?.contenido).toBe('¿Cuánto cuesta la de bodega?');
+    // La pregunta nunca se mezcla con el CONTEXTO.
+    expect(sistema).not.toContain('¿Cuánto cuesta la de bodega?');
+  });
+
+  it('la pregunta y el historial salen hacia el proveedor ya sin datos personales', async () => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.modelo({ tipo: 'CONSULTA_TRAMITE', texto: 'x' });
+
+    const salida = await preguntar('mi DNI es 40000001, ¿cómo va?', [
+      { rol: 'PERSONA', texto: 'mi cel es 987654321' },
+    ]);
+
+    expect(proveedor.texto()).not.toMatch(/40000001|987654321/);
+    expect(proveedor.texto()).toContain(MARCA_DATO_PERSONAL);
+    expect(salida.respuesta.datoPersonalQuitado).toBe(true);
+  });
+
+  it('RESPONDIDA con un código vigente → texto del modelo y enlace FICHA', async () => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.modelo({
+      tipo: 'RESPONDIDA',
+      texto: 'La de riesgo medio cuesta S/ 177.10.',
+      codigosReceta: ['LIC-02'],
+    });
+
+    const salida = await preguntar('¿Cuánto cuesta la de riesgo medio?');
+
+    expect(salida.respuesta).toEqual({
+      resultado: 'RESPONDIDA',
+      texto: 'La de riesgo medio cuesta S/ 177.10.',
+      enlaces: [{ tipo: 'FICHA', codigoReceta: 'LIC-02' }],
+      aclaracion: expect.stringContaining('Esta es una orientación') as unknown,
+      datoPersonalQuitado: false,
+    });
+    expect(salida.desenlace).toBe('RESPONDIDA');
+    expect(salida.duracionMs).toBe(250);
+  });
+
+  it('descarta los códigos que no son licencias vigentes y no repite enlaces', async () => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.modelo({
+      tipo: 'RESPONDIDA',
+      texto: 'Vea estas.',
+      codigosReceta: ['LIC-02', 'TRF-01', 'LIC-99', 'LIC-02', 'LIC-03'],
+    });
+
+    const salida = await preguntar('¿cuáles hay?');
+
+    expect(salida.respuesta.enlaces).toEqual([
+      { tipo: 'FICHA', codigoReceta: 'LIC-02' },
+      { tipo: 'FICHA', codigoReceta: 'LIC-03' },
+    ]);
+  });
+
+  it('sin códigos ni tema que coincida → enlace ASISTENTE', async () => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.modelo({ tipo: 'RESPONDIDA', texto: 'Use el asistente.', codigosReceta: [] });
+
+    expect((await preguntar('hola, buenas tardes')).respuesta.enlaces).toEqual([
+      { tipo: 'ASISTENTE' },
+    ]);
+  });
+
+  it('sin códigos, con un tema que coincide → los enlaces de ese tema', async () => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.modelo({ tipo: 'RESPONDIDA', texto: 'En caja.' });
+
+    expect((await preguntar('¿Cómo pago?')).respuesta.enlaces).toEqual([{ tipo: 'CONSULTA' }]);
+  });
+
+  it('con un catálogo cambiado, el CONTEXTO lleva la tasa nueva (FR-012)', async () => {
+    const cambiado = LICENCIAS.map((licencia) =>
+      licencia.codigo === 'LIC-02' ? { ...licencia, tasa: '199.00' } : licencia,
+    );
+    const { proveedor, preguntar } = preparar(cambiado);
+    proveedor.modelo({ tipo: 'RESPONDIDA', texto: 'x' });
+
+    await preguntar('¿cuánto cuesta la de riesgo medio?');
+
+    expect(proveedor.texto()).toContain('S/ 199.00');
+    expect(proveedor.texto()).not.toContain('S/ 177.10');
+  });
+
+  it('una respuesta del modelo que no es válida → NO_DISPONIBLE (RESPUESTA_INVALIDA)', async () => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.resultado = { tipo: 'OK', contenido: 'no es json' };
+
+    const salida = await preguntar('¿cómo pago?');
+
+    expect(salida.respuesta.resultado).toBe('NO_DISPONIBLE');
+    expect(salida.desenlace).toBe('RESPUESTA_INVALIDA');
+  });
+
+  it('una falla del proveedor → NO_DISPONIBLE con el desenlace de la falla', async () => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.resultado = { tipo: 'TIEMPO_AGOTADO' };
+
+    const salida = await preguntar('¿cómo pago?');
+
+    expect(salida.respuesta).toMatchObject({
+      resultado: 'NO_DISPONIBLE',
+      enlaces: [{ tipo: 'ASISTENTE' }, { tipo: 'LICENCIAS' }],
+      aclaracion: null,
+    });
+    expect(salida.desenlace).toBe('TIEMPO_AGOTADO');
+  });
+
+  it('una pregunta inválida lanza ErrorPreguntaInvalida y no llama al proveedor', async () => {
+    const { proveedor, preguntar } = preparar();
+
+    await expect(preguntar('   ')).rejects.toBeInstanceOf(ErrorPreguntaInvalida);
+    expect(proveedor.llamadas).toHaveLength(0);
+  });
+});

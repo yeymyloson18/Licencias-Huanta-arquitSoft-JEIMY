@@ -1156,3 +1156,148 @@ video {
   color: var(--color-texto-suave);
   font-size: 0.875rem;
 }
+
+/* --- Chat de orientación (012, contracts/portal-orientacion.md) --- */
+.boton-preguntanos {
+  position: fixed;
+  right: var(--espacio);
+  bottom: var(--espacio);
+  z-index: 20;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
+}
+
+.chat-orientacion {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  background-color: var(--color-superficie);
+}
+
+@media (min-width: 40rem) {
+  .chat-orientacion {
+    inset: auto var(--espacio) calc(var(--espacio) * 4) auto;
+    width: 25rem;
+    max-height: min(40rem, calc(100vh - 6rem));
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio);
+    box-shadow: 0 4px 16px rgb(0 0 0 / 20%);
+  }
+}
+
+.chat-orientacion__cabecera {
+  display: flex;
+  gap: var(--espacio);
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem var(--espacio);
+  border-bottom: 1px solid var(--color-borde);
+}
+
+.chat-orientacion__titulo {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.chat-orientacion__cuerpo {
+  flex: 1;
+  min-height: 0;
+  padding: var(--espacio);
+  overflow-y: auto;
+}
+
+.chat-orientacion__saludo {
+  margin: 0 0 var(--espacio);
+}
+
+.chat-orientacion__ejemplos,
+.chat-orientacion__mensajes,
+.chat-orientacion__enlaces {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chat-orientacion__ejemplos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: var(--espacio);
+}
+
+.chat-orientacion__ejemplo {
+  min-height: 2.75rem;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--color-primario);
+  border-radius: var(--radio);
+  font: inherit;
+  color: var(--color-primario);
+  background-color: var(--color-superficie);
+  cursor: pointer;
+}
+
+.chat-orientacion__mensaje {
+  margin-bottom: var(--espacio);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radio);
+}
+
+.chat-orientacion__mensaje--persona {
+  margin-left: 2rem;
+  background-color: var(--color-fondo);
+}
+
+.chat-orientacion__mensaje--orientador {
+  margin-right: 2rem;
+  border: 1px solid var(--color-borde);
+}
+
+.chat-orientacion__autor {
+  margin: 0 0 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-texto-suave);
+}
+
+.chat-orientacion__texto {
+  margin: 0;
+  white-space: pre-line;
+}
+
+.chat-orientacion__enlaces li {
+  margin-top: 0.5rem;
+}
+
+.chat-orientacion__enlaces a {
+  display: inline-block;
+  min-height: 2.75rem;
+  padding: 0.5rem 0;
+}
+
+.chat-orientacion__formulario {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  align-items: end;
+  padding: var(--espacio);
+  border-top: 1px solid var(--color-borde);
+}
+
+.chat-orientacion__etiqueta {
+  grid-column: 1 / -1;
+  font-weight: 600;
+}
+
+.chat-orientacion__campo {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0.5rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  font: inherit;
+  resize: vertical;
+}

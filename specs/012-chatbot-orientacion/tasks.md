@@ -217,7 +217,7 @@ a esa receta.
 
 ### Pruebas de la historia 1 ⚠️ (escribir primero; deben fallar)
 
-- [ ] T015 [P] [US1] `apps/api/test/unit/modulos/orientacion/dominio/seleccionar-contexto.spec.ts`
+- [X] T015 [P] [US1] `apps/api/test/unit/modulos/orientacion/dominio/seleccionar-contexto.spec.ts`
       (research R-04):
   - "¿cuánto cuesta la licencia para una bodega?" → `detalle` incluye la receta de bodega;
   - "¿cómo pago?" → `temas` incluye el tema de pago;
@@ -228,12 +228,12 @@ a esa receta.
     (`12 meses`) de **todas las licencias de la tabla** y de las recetas en detalle, además de las
     cifras de los temas elegidos;
   - se normaliza sin tildes ni mayúsculas ("BODEGA", "bódega").
-- [ ] T016 [P] [US1] `apps/api/test/unit/modulos/orientacion/dominio/interpretar-respuesta.spec.ts`:
+- [X] T016 [P] [US1] `apps/api/test/unit/modulos/orientacion/dominio/interpretar-respuesta.spec.ts`:
   - un JSON válido `{tipo, texto, codigosReceta}` → `RespuestaModelo`;
   - el JSON dentro de un texto con palabras antes y después → se toma el primer objeto;
   - `tipo` desconocido, `texto` vacío, de más de "4,000 caracteres" o que no es JSON → inválida;
   - el `texto` se recorta a 1,200.
-- [ ] T017 [P] [US1] `apps/api/test/unit/modulos/orientacion/aplicacion/responder-pregunta.spec.ts`,
+- [X] T017 [P] [US1] `apps/api/test/unit/modulos/orientacion/aplicacion/responder-pregunta.spec.ts`,
       camino principal, con dobles de los puertos:
   - el proveedor recibe un mensaje de sistema con las reglas de `contracts/proveedor-ia.md`, el
     CONTEXTO entre delimitadores y la conversación (historial y pregunta) **ya sin datos
@@ -243,14 +243,14 @@ a esa receta.
   - un código que no es licencia vigente se descarta;
   - sin códigos → enlace `ASISTENTE`;
   - con un catálogo cambiado (otra tasa), el CONTEXTO lleva la tasa nueva (FR-012).
-- [ ] T018 [P] [US1] `apps/api/test/integracion/orientacion.e2e-spec.ts`, con
+- [X] T018 [P] [US1] `apps/api/test/integracion/orientacion.e2e-spec.ts`, con
       `conProveedorSimulado`:
   - una pregunta sobre una receta de demostración → 200 que cumple el contrato
     (`esperarCumpleContrato('post', '/orientacion/preguntas', …)`), con `Cache-Control: no-store`;
   - `resultado: RESPONDIDA` y el enlace `FICHA` de la receta;
   - el proveedor simulado recibió la tasa real de esa receta en el CONTEXTO;
   - un historial de 2 turnos llega al proveedor en orden (FR-013).
-- [ ] T019 [P] [US1] Portal: **pruebas primero**.
+- [X] T019 [P] [US1] Portal: **pruebas primero**.
   - `apps/web/src/componentes/orientacion/ChatOrientacion.test.tsx`:
     - saludo de FR-002 y 3 preguntas de ejemplo que se pueden pulsar;
     - escribir y enviar → "Preparando la respuesta…" y luego la respuesta con el enlace "Ver la
@@ -263,14 +263,14 @@ a esa receta.
 
 ### Implementación de la historia 1
 
-- [ ] T020 [US1] Implementar en `apps/api/src/modulos/orientacion/dominio/`:
+- [X] T020 [US1] Implementar en `apps/api/src/modulos/orientacion/dominio/`:
   - `seleccionar-contexto.ts`, puro;
   - `interpretar-respuesta.ts`, que valida sin zod: el dominio no importa paquetes externos. Se
     usan comprobaciones de tipos propias;
   - el armado de mensajes en `mensajes-orientacion.ts` (`armarMensajes(contexto, conversación)`).
 
   Deben pasar T015 y T016.
-- [ ] T021 [US1] Implementar `apps/api/src/modulos/orientacion/aplicacion/responder-pregunta.ts`
+- [X] T021 [US1] Implementar `apps/api/src/modulos/orientacion/aplicacion/responder-pregunta.ts`
       (`ResponderPregunta.ejecutar({ pregunta, historial, huella })`):
   1. `PreguntaOrientacion`;
   2. `quitarDatosPersonales` sobre la pregunta y cada turno;
@@ -283,7 +283,7 @@ a esa receta.
 
   Devuelve `RespuestaOrientacion` más `desenlace` y `duracionMs`. El límite se agrega en US5 y la
   revisión de cifras en US2. Debe pasar T017.
-- [ ] T022 [US1] Presentación:
+- [X] T022 [US1] Presentación:
   - `apps/api/src/modulos/orientacion/presentacion/esquemas-orientacion.ts`: zod del cuerpo, igual
     al contrato (`.strict()`). Un error de validación → `ErrorProblema` 422 **sin** repetir el
     texto;
@@ -293,11 +293,11 @@ a esa receta.
     `datoPersonalQuitado`.
 
   Debe pasar T018.
-- [ ] T023 [P] [US1] Portal, cliente: en `apps/web/src/servicios/clienteApi.ts`, `export type
+- [X] T023 [P] [US1] Portal, cliente: en `apps/web/src/servicios/clienteApi.ts`, `export type
       RespuestaOrientacion` (de `@licencias/contracts`) y `preguntarOrientacion(pregunta,
       historial)`, que devuelve `{tipo:'ok',datos}` | `{tipo:'limite',segundos}` |
       `{tipo:'no-disponible'}`. No envía el token del personal.
-- [ ] T024 [US1] Portal, componentes en `apps/web/src/componentes/orientacion/`:
+- [X] T024 [US1] Portal, componentes en `apps/web/src/componentes/orientacion/`:
   - `enlacesOrientacion.ts`: mapa fijo `FICHA` → `/licencias/<codigo>`, `ASISTENTE` →
     `/asistente`, `CONSULTA` → `/consulta` y `LICENCIAS` → `/`;
   - `ChatOrientacion.tsx`: saludo, ejemplos, lista de mensajes, `<textarea>` "Escriba su pregunta"
@@ -310,6 +310,14 @@ a esa receta.
 
 **Punto de control**: US1 funciona con el proveedor simulado (integración y portal) y con el real
 en la prueba manual de `quickstart.md`.
+
+**Estado al cierre de la fase 3**: integración (11) y portal en verde con el proveedor simulado. La
+prueba manual con el proveedor real queda para después de US3 (sin la clave real antes). Notas:
+
+- la huella del límite no entra todavía al caso de uso; se agrega con US5 (T047);
+- las cifras se extraen en `dominio/cifras.ts`, que también usará la revisión de US2;
+- en el portal ya se reutiliza `clientePublico` (sin la sesión del personal) y el chat se monta
+  filtrado por rutas públicas (T024).
 
 ---
 
