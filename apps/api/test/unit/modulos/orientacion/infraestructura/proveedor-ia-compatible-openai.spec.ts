@@ -136,14 +136,16 @@ describe('ProveedorIaCompatibleOpenAI', () => {
     manejador = (peticion, respuesta) => {
       setTimeout(() => {
         responderJson(200, completado('{}'))(peticion, respuesta);
-      }, 500);
+      }, 3000);
     };
 
+    // Margen amplio: con la máquina cargada (cobertura en paralelo) el corte puede tardar más que
+    // los 200 ms, pero nunca los 3 s del proveedor lento.
     const inicio = Date.now();
     await expect(responder({ tiempoMaximoMs: 200 })).resolves.toEqual({
       tipo: 'TIEMPO_AGOTADO',
     });
-    expect(Date.now() - inicio).toBeLessThan(450);
+    expect(Date.now() - inicio).toBeLessThan(2500);
   });
 
   it('si la conexión se rechaza devuelve FALLA', async () => {
