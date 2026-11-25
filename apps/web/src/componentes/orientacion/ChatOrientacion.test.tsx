@@ -285,3 +285,59 @@ describe('ChatOrientacion: conversación real (corrección de la 012, FR-027)', 
     });
   });
 });
+
+describe('ChatOrientacion: el chat sigue útil aunque el proveedor falle (US4)', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  const NO_DISPONIBLE =
+    "En este momento no puedo responder preguntas. Puede usar el asistente '¿Qué licencia necesito?' o ver la lista de licencias.";
+
+  const esperarNoDisponible = async () => {
+    expect(await screen.findByText(NO_DISPONIBLE)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '¿Qué licencia necesito?' })).toHaveAttribute(
+      'href',
+      '/asistente',
+    );
+    expect(screen.getByRole('link', { name: 'Ver la lista de licencias' })).toHaveAttribute(
+      'href',
+      '/',
+    );
+  };
+
+  it('NO_DISPONIBLE del servidor muestra el texto y los enlaces', async () => {
+    simularApi({
+      'POST /orientacion/preguntas': () =>
+        json(
+          respuesta({
+            resultado: 'NO_DISPONIBLE',
+            texto: NO_DISPONIBLE,
+            enlaces: [{ tipo: 'ASISTENTE' }, { tipo: 'LICENCIAS' }],
+            aclaracion: null,
+          }),
+        ),
+    });
+    const usuario = montar();
+
+    await escribirYEnviar(usuario, '¿Cuánto cuesta?');
+
+    await esperarNoDisponible();
+  });
+
+  it.each([
+    ['una ruta que no existe (404)', {}],
+    ['un 503', { 'POST /orientacion/preguntas': () => new Response(null, { status: 503 }) }],
+    [
+      'un error de red',
+      { 'POST /orientacion/preguntas': () => Promise.reject(new TypeError('sin red')) },
+    ],
+  ])('con %s muestra el mismo mensaje y los mismos enlaces', async (_caso, manejadores) => {
+    simularApi(manejadores);
+    const usuario = montar();
+
+    await escribirYEnviar(usuario, '¿Cuánto cuesta?');
+
+    await esperarNoDisponible();
+  });
+});

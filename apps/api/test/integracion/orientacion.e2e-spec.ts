@@ -1,6 +1,9 @@
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types';
+import { ProveedorIaCompatibleOpenAI } from '../../src/modulos/orientacion/infraestructura/proveedor-ia-compatible-openai';
 import { crearAplicacionDePrueba } from '../apoyo/aplicacion-prueba';
 import {
   conProveedorSimulado,
@@ -234,5 +237,93 @@ describe('POST /orientacion/preguntas (012)', () => {
       expect(respuesta.text).not.toContain('aaaaaaaaaa');
       expect(proveedor.llamadas).toHaveLength(0);
     });
+  });
+
+  describe('US4: el chat sigue útil aunque el proveedor falle', () => {
+    it('con CUOTA_AGOTADA responde NO_DISPONIBLE y el resto del portal sigue igual (SC-006)', async () => {
+      proveedor.responderResultado({ tipo: 'CUOTA_AGOTADA' });
+
+      const respuesta = await preguntar({ pregunta: '¿Cuánto cuesta la de riesgo medio?' });
+
+      expect(respuesta.status).toBe(200);
+      await esperarCumpleContrato('post', '/orientacion/preguntas', respuesta);
+      expect(respuesta.body).toMatchObject({
+        resultado: 'NO_DISPONIBLE',
+        enlaces: [{ tipo: 'ASISTENTE' }, { tipo: 'LICENCIAS' }],
+        aclaracion: null,
+      });
+      await request(app.getHttpServer())
+        .get('/api/v1/catalogo/recetas')
+        .query({ tipo: 'LICENCIA' })
+        .expect(200);
+      await request(app.getHttpServer())
+        .post('/api/v1/asistente/proponer')
+        .send({
+          respuestas: { TIPO_ESTABLECIMIENTO: 'OTRO', ES_CESIONARIO: 'NO', NIVEL_RIESGO: 'MEDIO' },
+        })
+        .expect(200);
+    });
+
+    it('una excepción del proveedor responde NO_DISPONIBLE (no 500)', async () => {
+      proveedor.fallarConExcepcion();
+
+      const respuesta = await preguntar({ pregunta: '¿Cómo pago?' });
+
+      expect(respuesta.status).toBe(200);
+      expect(respuesta.body).toMatchObject({ resultado: 'NO_DISPONIBLE' });
+    });
+  });
+});
+
+describe('POST /orientacion/preguntas con el adaptador real, sin red externa (012, US4)', () => {
+  it('sin ORIENTACION_API_KEY responde NO_DISPONIBLE sin llamar a la red', async () => {
+    const { app } = (await crearAplicacionDePrueba()) as { app: INestApplication<App> };
+    try {
+      const respuesta = await request(app.getHttpServer())
+        .post('/api/v1/orientacion/preguntas')
+        .send({ pregunta: '¿Cuánto cuesta la de riesgo medio?' });
+
+      expect(respuesta.status).toBe(200);
+      await esperarCumpleContrato('post', '/orientacion/preguntas', respuesta);
+      expect(respuesta.body).toMatchObject({
+        resultado: 'NO_DISPONIBLE',
+        enlaces: [{ tipo: 'ASISTENTE' }, { tipo: 'LICENCIAS' }],
+      });
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('con un proveedor que nunca responde, el aviso llega antes de 2 s con 1 s de tiempo máximo (SC-005)', async () => {
+    // Servidor LOCAL que nunca responde; clave FICTICIA. Nunca el proveedor ni la clave reales.
+    const servidor = createServer(() => undefined);
+    await new Promise<void>((listo) => servidor.listen(0, '127.0.0.1', listo));
+    const puerto = (servidor.address() as AddressInfo).port;
+    const adaptador = new ProveedorIaCompatibleOpenAI({
+      apiUrl: `http://127.0.0.1:${String(puerto)}/v1`,
+      modelo: 'modelo-de-prueba',
+      apiKey: 'clave-ficticia-de-prueba-012',
+      tiempoMaximoMs: 1000,
+      limitePreguntas: 10,
+      formatoJson: true,
+    });
+    const { app } = (await crearAplicacionDePrueba({
+      ajustar: conProveedorSimulado(adaptador),
+    })) as { app: INestApplication<App> };
+    try {
+      const inicio = Date.now();
+      const respuesta = await request(app.getHttpServer())
+        .post('/api/v1/orientacion/preguntas')
+        .send({ pregunta: '¿Cuánto cuesta la de riesgo medio?' });
+
+      expect(Date.now() - inicio).toBeLessThan(2000);
+      expect(respuesta.status).toBe(200);
+      expect(respuesta.body).toMatchObject({ resultado: 'NO_DISPONIBLE' });
+      expect(respuesta.text).not.toContain('clave-ficticia-de-prueba-012');
+    } finally {
+      await app.close();
+      servidor.closeAllConnections();
+      await new Promise((listo) => servidor.close(listo));
+    }
   });
 });

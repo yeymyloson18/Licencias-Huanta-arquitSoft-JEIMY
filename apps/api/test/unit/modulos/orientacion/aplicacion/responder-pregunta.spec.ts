@@ -13,6 +13,7 @@ import {
   ACLARACION_ORIENTACION,
   REGLAS_ORIENTACION,
   TEXTO_CONSULTA_TRAMITE,
+  TEXTO_NO_DISPONIBLE,
   TEXTO_PREGUNTA_TIPO_NEGOCIO,
   TEXTO_SIN_INFORMACION,
 } from '../../../../../src/modulos/orientacion/dominio/mensajes-orientacion';
@@ -438,4 +439,61 @@ describe('ResponderPregunta: conversación real (corrección de la 012)', () => 
     expect(proveedor.texto()).toContain('Tema: ¿Qué es el TUPA?');
     expect(salida.respuesta.resultado).toBe('RESPONDIDA');
   });
+});
+
+describe('ResponderPregunta: el chat sigue útil aunque el proveedor falle (US4)', () => {
+  it.each([
+    'TIEMPO_AGOTADO',
+    'CUOTA_AGOTADA',
+    'CLAVE_INVALIDA',
+    'FALLA',
+    'RESPUESTA_INVALIDA',
+    'NO_CONFIGURADO',
+  ] as const)('%s → NO_DISPONIBLE con el texto fijo, el asistente y la lista', async (falla) => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.resultado = { tipo: falla };
+
+    const salida = await preguntar('¿Cómo pago?');
+
+    expect(salida.respuesta).toEqual({
+      resultado: 'NO_DISPONIBLE',
+      texto: TEXTO_NO_DISPONIBLE,
+      enlaces: [{ tipo: 'ASISTENTE' }, { tipo: 'LICENCIAS' }],
+      aclaracion: null,
+      datoPersonalQuitado: false,
+    });
+    expect(salida.desenlace).toBe(falla);
+  });
+
+  it('una excepción inesperada del proveedor también termina en NO_DISPONIBLE (FALLA)', async () => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.responder = () => Promise.reject(new Error('se cayó el adaptador'));
+
+    const salida = await preguntar('¿Cómo pago?');
+
+    expect(salida.respuesta.resultado).toBe('NO_DISPONIBLE');
+    expect(salida.desenlace).toBe('FALLA');
+  });
+
+  it.each([
+    ['lanza un error', () => Promise.reject(new Error('Redis y PostgreSQL caídos'))],
+    ['no tiene licencias vigentes', () => Promise.resolve([])],
+  ])(
+    'si el catálogo %s → NO_DISPONIBLE sin llamar al proveedor',
+    async (_caso, licenciasVigentes) => {
+      const proveedor = new ProveedorDoble();
+      const caso = new ResponderPregunta({
+        catalogo: { licenciasVigentes } as FuenteCatalogo,
+        guia: { temas: () => TEMAS },
+        proveedor,
+        reloj: { ahora: () => 0 },
+      });
+
+      const salida = await caso.ejecutar({ pregunta: '¿Cuánto cuesta?', historial: [] });
+
+      expect(salida.respuesta.resultado).toBe('NO_DISPONIBLE');
+      expect(salida.desenlace).toBe('CATALOGO_NO_DISPONIBLE');
+      expect(proveedor.llamadas).toHaveLength(0);
+    },
+  );
 });

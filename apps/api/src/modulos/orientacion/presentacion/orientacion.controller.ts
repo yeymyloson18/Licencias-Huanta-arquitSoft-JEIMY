@@ -41,6 +41,10 @@ export class OrientacionController {
     }
 
     const { respuesta, desenlace, duracionMs } = salida;
+    // US4: la clave inválida y la cuota agotada necesitan atención del equipo (nunca la clave).
+    if (desenlace === 'CLAVE_INVALIDA' || desenlace === 'CUOTA_AGOTADA') {
+      this.registro.warn(`El proveedor de orientación no está disponible: desenlace=${desenlace}`);
+    }
     this.registro.log(
       `Pregunta de orientación: resultado=${respuesta.resultado} desenlace=${desenlace} ` +
         `duracionMs=${String(duracionMs)} modelo=${this.configuracion.orientacion.modelo} ` +

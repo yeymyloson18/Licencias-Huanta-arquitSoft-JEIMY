@@ -479,31 +479,31 @@ chat lo dice y ofrece el asistente y la lista de licencias. El resto del portal 
 
 ### Pruebas de la historia 4 ⚠️
 
-- [ ] T036 [P] [US4] Ampliar `responder-pregunta.spec.ts`: cada `ResultadoProveedor` de falla
+- [X] T036 [P] [US4] Ampliar `responder-pregunta.spec.ts`: cada `ResultadoProveedor` de falla
       (`TIEMPO_AGOTADO`, `CUOTA_AGOTADA`, `CLAVE_INVALIDA`, `FALLA`, `RESPUESTA_INVALIDA` y
       `NO_CONFIGURADO`) → `resultado NO_DISPONIBLE`, el texto fijo, los enlaces `[ASISTENTE,
       LICENCIAS]` y el `desenlace` igual al tipo de falla. Una excepción inesperada del proveedor
       también termina en `NO_DISPONIBLE` (`FALLA`), sin propagarse.
   - si `FuenteCatalogo.licenciasVigentes()` lanza un error o devuelve `[]` → `resultado
     NO_DISPONIBLE` y `desenlace CATALOGO_NO_DISPONIBLE`, **sin** llamar al proveedor.
-- [ ] T037 [P] [US4] Ampliar `apps/api/test/integracion/orientacion.e2e-spec.ts`:
+- [X] T037 [P] [US4] Ampliar `apps/api/test/integracion/orientacion.e2e-spec.ts`:
   - sin `ORIENTACION_API_KEY` (adaptador real, sin red) → 200 `NO_DISPONIBLE` según el contrato;
   - con el proveedor simulado en `CUOTA_AGOTADA` → `NO_DISPONIBLE`, y en la misma prueba `GET
     /catalogo/recetas` y `POST /asistente/proponer` responden igual (SC-006);
   - con el adaptador real, `ORIENTACION_API_URL` apuntando a un servidor `node:http` local que nunca
     responde y `ORIENTACION_TIEMPO_MAXIMO_MS=1000` → `NO_DISPONIBLE` en menos de 2 s. Es el mismo
     camino que en producción (15 s + 1 s, SC-005).
-- [ ] T038 [P] [US4] Ampliar `ChatOrientacion.test.tsx`:
+- [X] T038 [P] [US4] Ampliar `ChatOrientacion.test.tsx`:
   - `NO_DISPONIBLE` → texto y enlaces "¿Qué licencia necesito?" y "Ver la lista de licencias";
   - una ruta no simulada (404), un error de red o un 503 → el mismo mensaje y los mismos enlaces.
 
 ### Implementación de la historia 4
 
-- [ ] T039 [US4] En `ResponderPregunta`, mapear todas las fallas a `NO_DISPONIBLE` y capturar
+- [X] T039 [US4] En `ResponderPregunta`, mapear todas las fallas a `NO_DISPONIBLE` y capturar
       cualquier excepción del puerto, y capturar los errores de `FuenteCatalogo` antes de llamar al
       proveedor. El controlador registra un `warn` solo con el `desenlace`
       cuando es `CLAVE_INVALIDA` o `CUOTA_AGOTADA`. Deben pasar T036 y T037.
-- [ ] T040 [US4] Portal: en `clienteApi.ts` y `ChatOrientacion.tsx`, tratar el 503, el error de
+- [X] T040 [US4] Portal: en `clienteApi.ts` y `ChatOrientacion.tsx`, tratar el 503, el error de
       red y los errores inesperados como `no-disponible`, con los enlaces. Debe pasar T038.
 
 **Punto de control**: con el proveedor caído o sin clave, el chat orienta al asistente y el resto

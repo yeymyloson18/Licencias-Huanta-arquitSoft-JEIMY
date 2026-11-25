@@ -13,8 +13,10 @@ import type {
   FuenteCatalogo,
   FuenteGuia,
   LicenciaVigente,
+  MensajeProveedor,
   ProveedorOrientacion,
   Reloj,
+  ResultadoProveedor,
 } from '../dominio/puertos';
 import { quitarDatosPersonales } from '../dominio/quitar-datos-personales';
 import { revisarCifras } from '../dominio/revisar-cifras';
@@ -107,6 +109,27 @@ const enlacesRespondida = (
 export class ResponderPregunta {
   constructor(private readonly d: DependenciasResponderPregunta) {}
 
+  /** Las licencias vigentes, o `null` si el catálogo falla o está vacío. */
+  private async licenciasVigentes(): Promise<readonly LicenciaVigente[] | null> {
+    try {
+      const licencias = await this.d.catalogo.licenciasVigentes();
+      return licencias.length > 0 ? licencias : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Una excepción inesperada del adaptador cuenta como falla del proveedor (FR-021). */
+  private async responderSinExcepciones(
+    mensajes: readonly MensajeProveedor[],
+  ): Promise<ResultadoProveedor> {
+    try {
+      return await this.d.proveedor.responder(mensajes);
+    } catch {
+      return { tipo: 'FALLA' };
+    }
+  }
+
   async ejecutar(entrada: EntradaPregunta): Promise<SalidaPregunta> {
     const inicio = this.d.reloj.ahora();
     // Valida antes de todo: una pregunta inválida no llega a ningún puerto (lanza el error).
@@ -126,7 +149,11 @@ export class ResponderPregunta {
       duracionMs: this.d.reloj.ahora() - inicio,
     });
 
-    const licencias = await this.d.catalogo.licenciasVigentes();
+    // US4: sin catálogo no hay con qué orientar; no se llama al proveedor (FR-021).
+    const licencias = await this.licenciasVigentes();
+    if (licencias === null) {
+      return terminar(FIJAS.NO_DISPONIBLE, 'CATALOGO_NO_DISPONIBLE');
+    }
     const contexto = seleccionarContexto(limpia.texto, historial, licencias, this.d.guia.temas());
     // FR-029: pide requisitos sin una licencia identificada → se pregunta el tipo de negocio, sin
     // gastar una llamada al proveedor.
@@ -141,7 +168,7 @@ export class ResponderPregunta {
         'PREGUNTA_TIPO_NEGOCIO',
       );
     }
-    const resultado = await this.d.proveedor.responder(
+    const resultado = await this.responderSinExcepciones(
       armarMensajes(contexto, historial, limpia.texto),
     );
     if (resultado.tipo !== 'OK') {
