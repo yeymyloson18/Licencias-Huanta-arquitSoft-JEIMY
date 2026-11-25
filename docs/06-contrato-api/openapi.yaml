@@ -23,6 +23,9 @@ info:
       que su cambio; catálogo y feriados, por la cola de eventos (pueden tardar unos segundos en verse).
     - Mi perfil (011): `GET /perfil` devuelve solo los datos de quien tiene la sesión; no recibe ningún
       identificador. El cambio de clave voluntario usa la misma `POST /auth/cambiar-clave`.
+    - Orientación (012): `POST /orientacion/preguntas` es público y responde preguntas sobre licencias
+      de funcionamiento solo con el catálogo vigente y la guía del sistema. Quita DNI, RUC, celular, CE y
+      correo antes de consultar al proveedor externo de IA (ADR-011); no guarda preguntas ni respuestas.
   contact:
     name: Jeimy Gregori Sulca Ccorimanya
   license:
@@ -44,6 +47,8 @@ tags:
     description: Gestión del personal y sus roles (administrador)
   - name: Catálogo
     description: Recetas del TUPA y asistente de ruta
+  - name: Orientación
+    description: Chat de orientación sobre licencias de funcionamiento (012)
   - name: Trámites
     description: Presentación, evaluación y consulta de expedientes
   - name: Pagos
@@ -716,6 +721,38 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ResultadoAsistente' }
         '422': { $ref: '#/components/responses/NoProcesable' }
+
+  /orientacion/preguntas:
+    post:
+      tags: [Orientación]
+      operationId: preguntarOrientacion
+      summary: Responde una pregunta sobre licencias de funcionamiento (012, público).
+      description: >-
+        Responde solo con las recetas vigentes del catálogo y la guía de preguntas frecuentes del sistema.
+        Antes de consultar al proveedor externo de IA reemplaza DNI, RUC, celular, carné de extranjería y
+        correo por "[dato personal]", también en el historial. Una tasa o un plazo que no están en el
+        catálogo ni en la guía nunca se muestran (responde SIN_INFORMACION). No consulta expedientes
+        (CONSULTA_TRAMITE remite a "Consultar mi trámite"). Si el proveedor falla, se agotó su cuota, no hay
+        clave o el catálogo no está disponible, responde 200 con NO_DISPONIBLE. No guarda la pregunta ni la
+        respuesta. Límite por huella de la conexión (sin guardar la IP), 10 preguntas cada 15 minutos.
+        `Cache-Control: no-store`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PreguntaOrientacion' }
+      responses:
+        '200':
+          description: Respuesta de orientación (también cuando el proveedor no está disponible).
+          headers:
+            Cache-Control: { schema: { type: string }, description: 'no-store' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RespuestaOrientacion' }
+        '422': { $ref: '#/components/responses/NoProcesable' }
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
 
   /admin/catalogo/recetas:
     get:
@@ -1937,7 +1974,7 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problema' }
     DemasiadosIntentos:
-      description: Se superaron 5 intentos fallidos o 3 envíos de código en 15 minutos (ADR-007, FR-002a).
+      description: Se superaron 5 intentos fallidos o 3 envíos de código en 15 minutos (ADR-007, FR-002a). En la orientación (012), más de 10 preguntas en 15 minutos desde la misma conexión (`type` termina en `demasiadas-preguntas`).
       headers:
         Retry-After:
           schema: { type: integer }
@@ -1956,7 +1993,7 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problema' }
     ServicioNoDisponible:
-      description: El inicio de sesión no puede comprobar los límites de intentos o enviar el código en este momento (en el desbloqueo, el servicio de bloqueos no responde).
+      description: El inicio de sesión no puede comprobar los límites de intentos o enviar el código en este momento (en el desbloqueo, el servicio de bloqueos no responde). En la orientación (012), el límite de preguntas no se puede comprobar (`type` termina en `orientacion-no-disponible`).
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problema' }
@@ -2151,6 +2188,54 @@ components:
           items: { $ref: '#/components/schemas/Rol' }
         ultimoIngreso: { type: [string, 'null'], format: date-time }
         sesionesAbiertas: { type: integer, minimum: 0 }
+    PreguntaOrientacion:
+      type: object
+      description: Pregunta al chat de orientación (012). Nunca va en la URL (principio VII).
+      required: [pregunta]
+      additionalProperties: false
+      properties:
+        pregunta: { type: string, minLength: 1, maxLength: 500 }
+        historial:
+          type: array
+          description: Los últimos turnos de la misma conversación, del más antiguo al más reciente.
+          maxItems: 6
+          default: []
+          items: { $ref: '#/components/schemas/TurnoConversacion' }
+    TurnoConversacion:
+      type: object
+      required: [rol, texto]
+      additionalProperties: false
+      properties:
+        rol: { type: string, enum: [PERSONA, ORIENTADOR] }
+        texto: { type: string, minLength: 1, maxLength: 1200 }
+    ResultadoOrientacion:
+      type: string
+      enum: [RESPONDIDA, SIN_INFORMACION, FUERA_DE_TEMA, CONSULTA_TRAMITE, NO_DISPONIBLE]
+    EnlaceOrientacion:
+      type: object
+      description: El portal convierte cada tipo en una ruta interna; nunca es una dirección web.
+      required: [tipo]
+      additionalProperties: false
+      properties:
+        tipo: { type: string, enum: [FICHA, ASISTENTE, CONSULTA, LICENCIAS] }
+        codigoReceta: { $ref: '#/components/schemas/CodigoReceta' }
+    RespuestaOrientacion:
+      type: object
+      required: [resultado, texto, enlaces, aclaracion, datoPersonalQuitado]
+      additionalProperties: false
+      properties:
+        resultado: { $ref: '#/components/schemas/ResultadoOrientacion' }
+        texto: { type: string, maxLength: 1200, description: Texto plano; nunca HTML. }
+        enlaces:
+          type: array
+          maxItems: 4
+          items: { $ref: '#/components/schemas/EnlaceOrientacion' }
+        aclaracion:
+          type: [string, 'null']
+          description: Aclaración de que es una orientación (solo con RESPONDIDA).
+        datoPersonalQuitado:
+          type: boolean
+          description: La pregunta o el historial tenían un dato personal que se quitó.
     NuevoUsuario:
       type: object
       required: [correo, nombreCompleto, celular, claveTemporal, roles]

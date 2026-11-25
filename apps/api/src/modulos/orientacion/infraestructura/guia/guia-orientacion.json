@@ -1,0 +1,253 @@
+{
+  "fuente": "TUPA 2024 de la Municipalidad Provincial de Huanta (docs/fuentes/tupa-2024.pdf, docs/01-analisis-de-sistema/09-validacion-del-tupa.md) y el funcionamiento de este sistema. Las tasas, plazos y requisitos de cada licencia NO van aquí: salen del catálogo vigente. Pendiente de revisión por la Municipalidad.",
+  "temas": [
+    {
+      "id": "rutas",
+      "titulo": "Rutas A, B y C del trámite",
+      "palabrasClave": [
+        "ruta",
+        "rutas",
+        "camino",
+        "pasos",
+        "proceso",
+        "como es el tramite",
+        "etapas"
+      ],
+      "respuesta": "Las nueve licencias siguen uno de tres caminos según su nivel de riesgo. Ruta A (riesgo bajo, riesgo medio y cesionarios de riesgo medio): se verifican los requisitos y el nivel de riesgo, se genera la esquela, se paga en la caja de la Municipalidad y la licencia se emite al registrar el pago; la inspección ITSE es posterior. Ruta B (riesgo alto, muy alto, corporativa y cesionarios de riesgo alto o muy alto): hay evaluación previa, esquela, pago en caja e inspección ITSE previa; la licencia se emite si la ITSE es favorable. Ruta C (licencia provisional para bodegas): es gratuita, no tiene esquela y la ITSE se notifica después. El plazo y la tasa de cada licencia están en su ficha.",
+      "enlaces": ["LICENCIAS", "ASISTENTE"]
+    },
+    {
+      "id": "itse",
+      "titulo": "Inspección técnica de seguridad en edificaciones (ITSE)",
+      "palabrasClave": [
+        "itse",
+        "inspeccion",
+        "inspector",
+        "defensa civil",
+        "seguridad",
+        "certificado itse",
+        "previa",
+        "posterior"
+      ],
+      "respuesta": "La ITSE comprueba las condiciones de seguridad del local. En la ruta A es posterior: se hace después de emitir la licencia. En la ruta B es previa: se hace antes y la licencia solo se emite si el resultado es favorable. En la ruta C (bodegas) se notifica dentro de los 6 meses. El certificado ITSE se renueva cada 2 años. El plazo de la ITSE de cada licencia está en su ficha.",
+      "enlaces": ["LICENCIAS"]
+    },
+    {
+      "id": "pago",
+      "titulo": "Cómo se paga",
+      "palabrasClave": [
+        "pago",
+        "pagar",
+        "pagos",
+        "caja",
+        "esquela",
+        "efectivo",
+        "yape",
+        "tarjeta",
+        "transferencia bancaria",
+        "donde pago",
+        "como pago"
+      ],
+      "respuesta": "El pago es solo presencial, en la caja de la Municipalidad Provincial de Huanta, en efectivo y en soles. No hay pago en línea. Cuando se confirma el nivel de riesgo de su expediente, el sistema genera una esquela de pago con el monto de su licencia; puede verla y descargarla en 'Consultar mi trámite' con su número de expediente y su DNI o RUC. Lleve la esquela a la caja. La licencia provisional para bodegas es gratuita y no tiene esquela.",
+      "enlaces": ["CONSULTA"]
+    },
+    {
+      "id": "estados",
+      "titulo": "Estados del expediente",
+      "palabrasClave": [
+        "estado",
+        "estados",
+        "registrado",
+        "observado",
+        "en evaluacion",
+        "pendiente de pago",
+        "pagado",
+        "en inspeccion",
+        "aprobado",
+        "emitida",
+        "denegado",
+        "finalizado",
+        "que significa"
+      ],
+      "respuesta": "Estados que puede ver al consultar: Registrado (se recibió la solicitud), En evaluación (se revisan los requisitos y el nivel de riesgo), Observado (falta corregir algo; debe subsanar), Pendiente de pago (ya tiene su esquela para pagar en caja), Pagado, En inspección (ITSE previa), Aprobado, Licencia emitida, Licencia provisional (bodegas), ITSE posterior pendiente, Finalizado y Denegado. Para ver el estado de su expediente use 'Consultar mi trámite'.",
+      "enlaces": ["CONSULTA"]
+    },
+    {
+      "id": "presentar",
+      "titulo": "Cómo presentar la solicitud",
+      "palabrasClave": [
+        "presentar",
+        "solicitud",
+        "solicitar",
+        "iniciar",
+        "empezar",
+        "tramitar",
+        "sacar licencia",
+        "como saco",
+        "en linea",
+        "virtual",
+        "mesa de partes",
+        "documentos"
+      ],
+      "respuesta": "Puede presentar en línea desde este portal: primero use '¿Qué licencia necesito?' para saber cuál le corresponde, revise la ficha con sus requisitos, confirme su identidad (RUC y DNI o carné de extranjería, y un código que llega a su celular) y adjunte los documentos en PDF, JPG o PNG. Al terminar recibe un número de expediente; guárdelo. También puede presentar en Mesa de partes de la Municipalidad.",
+      "enlaces": ["ASISTENTE", "LICENCIAS"]
+    },
+    {
+      "id": "subsanar",
+      "titulo": "Cómo subsanar una observación",
+      "palabrasClave": [
+        "subsanar",
+        "subsanacion",
+        "observado",
+        "observacion",
+        "corregir",
+        "falta un documento",
+        "me observaron"
+      ],
+      "respuesta": "Si su expediente está Observado, tiene 2 días hábiles para subsanar. Mientras está observado, el plazo del trámite se detiene y vuelve a correr al subsanar. Puede subsanar en línea desde 'Consultar mi trámite' (con su número de expediente y confirmando su identidad) agregando los documentos que le pidieron, o en Mesa de partes. Al subsanar, el expediente vuelve a evaluación.",
+      "enlaces": ["CONSULTA"]
+    },
+    {
+      "id": "consultar",
+      "titulo": "Cómo consultar mi trámite",
+      "palabrasClave": [
+        "consultar",
+        "consulta",
+        "seguimiento",
+        "como va",
+        "estado de mi tramite",
+        "mi expediente",
+        "numero de expediente",
+        "descargar licencia"
+      ],
+      "respuesta": "En 'Consultar mi trámite' escriba su número de expediente (por ejemplo EXP-2026-000123) y su DNI o RUC. Verá el estado, y según el caso podrá descargar la esquela de pago o la licencia. Este chat no puede ver expedientes.",
+      "enlaces": ["CONSULTA"]
+    },
+    {
+      "id": "calificacion",
+      "titulo": "Aprobación automática y silencio positivo",
+      "palabrasClave": [
+        "aprobacion automatica",
+        "silencio positivo",
+        "evaluacion previa",
+        "calificacion",
+        "automatica",
+        "si no me responden"
+      ],
+      "respuesta": "Las licencias de riesgo bajo, medio, cesionarios de riesgo medio y la provisional para bodegas son de aprobación automática: con los requisitos completos se emiten sin evaluación previa. Las de riesgo alto, muy alto, corporativa y cesionarios de riesgo alto o muy alto son de evaluación previa con silencio positivo: si la Municipalidad no responde dentro del plazo, la solicitud se considera aprobada según la ley. La calificación de cada licencia está en su ficha.",
+      "enlaces": ["LICENCIAS"]
+    },
+    {
+      "id": "vigencia",
+      "titulo": "Vigencia de la licencia",
+      "palabrasClave": [
+        "vigencia",
+        "vence",
+        "vencimiento",
+        "cuanto dura",
+        "renovar",
+        "renovacion",
+        "indeterminada"
+      ],
+      "respuesta": "Las licencias de funcionamiento son de vigencia indeterminada: no hay que renovarlas. Lo que se renueva es el certificado ITSE, cada 2 años. La licencia provisional para bodegas dura 12 meses; al vencer, si cumple las condiciones, se emite la definitiva de forma automática y gratuita dentro de 10 días calendario.",
+      "enlaces": ["LICENCIAS"]
+    },
+    {
+      "id": "bodega",
+      "titulo": "Licencia provisional para bodegas",
+      "palabrasClave": [
+        "bodega",
+        "bodegas",
+        "abarrotes",
+        "tienda",
+        "tiendita",
+        "provisional",
+        "gratis",
+        "gratuita",
+        "mi casa",
+        "vivienda"
+      ],
+      "respuesta": "La licencia provisional para bodegas es gratuita y es solo para bodegas de hasta 50 m², de riesgo bajo, en el primer o segundo piso de una vivienda con acceso directo a la calle, y con conformidad de zonificación. Pide una solicitud con declaración jurada y una declaración jurada de condiciones de seguridad. Su plazo está en la ficha. Si su negocio no cumple esas condiciones, use '¿Qué licencia necesito?'.",
+      "enlaces": ["ASISTENTE", "LICENCIAS"]
+    },
+    {
+      "id": "cesionario",
+      "titulo": "Cesionarios",
+      "palabrasClave": [
+        "cesionario",
+        "cesionarios",
+        "dentro de otro local",
+        "comparto local",
+        "espacio dentro",
+        "stand",
+        "modulo dentro"
+      ],
+      "respuesta": "Un cesionario es quien desarrolla su actividad dentro de un local que ya tiene licencia de otro titular (por ejemplo, un módulo dentro de una tienda). Hay licencias para cesionarios de riesgo medio, alto y muy alto. Use '¿Qué licencia necesito?' para saber cuál le corresponde.",
+      "enlaces": ["ASISTENTE"]
+    },
+    {
+      "id": "riesgo",
+      "titulo": "Nivel de riesgo",
+      "palabrasClave": [
+        "riesgo",
+        "nivel de riesgo",
+        "bajo",
+        "medio",
+        "alto",
+        "muy alto",
+        "matriz de riesgo",
+        "que riesgo"
+      ],
+      "respuesta": "El nivel de riesgo (bajo, medio, alto o muy alto) depende del tipo de negocio, el tamaño y las condiciones del local, y define qué licencia, qué tasa y qué ruta le corresponde. El asistente '¿Qué licencia necesito?' le propone uno con sus respuestas, y la Municipalidad lo confirma al revisar su solicitud.",
+      "enlaces": ["ASISTENTE"]
+    },
+    {
+      "id": "tramites-no-atendidos",
+      "titulo": "Trámites que no se atienden en este sistema",
+      "palabrasClave": [
+        "transferencia",
+        "transferir",
+        "traspaso",
+        "cambio de giro",
+        "cambiar giro",
+        "duplicado",
+        "perdi mi licencia",
+        "cambio de denominacion",
+        "cambio de nombre"
+      ],
+      "respuesta": "La transferencia de licencia, el cambio de denominación, el cambio de giro y el duplicado del certificado no se atienden en este sistema. Consúltelos en Mesa de partes de la Municipalidad Provincial de Huanta.",
+      "enlaces": ["LICENCIAS"]
+    },
+    {
+      "id": "reconsideracion",
+      "titulo": "Reconsideración y apelación",
+      "palabrasClave": [
+        "reconsideracion",
+        "apelacion",
+        "apelar",
+        "reclamo",
+        "denegaron",
+        "denegado",
+        "no estoy de acuerdo"
+      ],
+      "respuesta": "Según el TUPA, estos procedimientos no admiten reconsideración ni apelación. Si su solicitud fue denegada o tiene dudas sobre una decisión, consulte en Mesa de partes de la Municipalidad.",
+      "enlaces": ["CONSULTA"]
+    },
+    {
+      "id": "contacto",
+      "titulo": "Atención presencial en la Municipalidad",
+      "palabrasClave": [
+        "horario",
+        "direccion",
+        "telefono",
+        "donde queda",
+        "atencion",
+        "oficina",
+        "municipalidad",
+        "presencial"
+      ],
+      "respuesta": "Para atención presencial, consulte en Mesa de partes de la Municipalidad Provincial de Huanta. Este chat no tiene el horario ni los teléfonos de las oficinas.",
+      "enlaces": []
+    }
+  ]
+}

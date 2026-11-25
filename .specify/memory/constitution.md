@@ -1,6 +1,19 @@
 <!--
-Sync Impact Report
-==================
+Sync Impact Report (enmienda 1.1.0, 2026-11-24)
+================================================
+Cambio de versión: 1.0.0 → 1.1.0 (MINOR: se amplía materialmente una guía y se agrega un módulo).
+Motivo: funcionalidad 012 (chat de orientación del portal), aprobada por la usuaria en el análisis
+de la 012 (hallazgo D1).
+Principios modificados:
+  - I. Monolito modular con Clean Architecture: de 9 a 10 módulos (se agrega "Orientación").
+Secciones modificadas:
+  - Restricciones tecnológicas y de alcance: el chat de orientación del portal entra en la Fase 1;
+    el asistente por WhatsApp (RC13) sigue fuera de alcance (Fase 2).
+Documentos actualizados: diseno-interno-de-modulos.md (módulo 10) y README.md (alcance).
+Migración del código: ninguna; el módulo nuevo no cambia los existentes.
+
+Sync Impact Report (ratificación 1.0.0)
+=======================================
 Cambio de versión: plantilla sin completar → 1.0.0 (ratificación inicial)
 Principios definidos (los 5 marcadores de la plantilla se amplían a 8 principios, a pedido):
   - [PRINCIPLE_1_NAME] → I. Monolito modular con Clean Architecture
@@ -27,10 +40,10 @@ Fuente: docs/sdd/constitucion-entrada.md y documentos de docs/.
 
 ### I. Monolito modular con Clean Architecture
 
-- El sistema es **una sola aplicación** (ADR-001) dividida en los **9 módulos** definidos en
+- El sistema es **una sola aplicación** (ADR-001) dividida en los **10 módulos** definidos en
   `docs/03-diseno-de-software/diseno-interno/diseno-interno-de-modulos.md`: Seguridad y Usuarios,
   Catálogo y Asistente de ruta, Trámites, Pagos en caja, Inspecciones, Licencias, Reloj de plazos,
-  Notificaciones y Reportes. Agregar, quitar o fusionar un módulo exige enmendar esta constitución.
+  Notificaciones, Reportes y Orientación (desde la enmienda 1.1.0). Agregar, quitar o fusionar un módulo exige enmendar esta constitución.
 - Cada módulo vive en `src/modulos/<modulo>/` con cuatro capas (ADR-003): `dominio/` (domain),
   `aplicacion/` (application), `infraestructura/` (infrastructure) y `presentacion/` (presentation).
 - **Regla de dependencia:** las dependencias apuntan solo hacia el dominio. Los archivos de `dominio/`
@@ -150,7 +163,8 @@ y evitan romper la rama principal.
 - **Plazos:** se cuentan en días hábiles con el calendario de feriados; las tareas diarias usan
   bloqueo en PostgreSQL (ADR-006).
 - **Fuera de alcance:** modo sin conexión, integración con SIAF, recursos de reconsideración o
-  apelación, anulación de pagos en el sistema y el asistente por chat (Fase 2). Incluir cualquiera
+  apelación, anulación de pagos en el sistema y el asistente por WhatsApp (Fase 2, RC13). El chat
+  de orientación del portal (funcionalidad 012) sí está en la Fase 1 (enmienda 1.1.0). Incluir cualquiera
   de ellos exige actualizar el README y, si afecta un principio, enmendar esta constitución.
 
 ## Flujo de desarrollo y puertas de calidad
@@ -183,4 +197,4 @@ y evitan romper la rama principal.
   excepción DEBE justificarse por escrito en el plan (sección de complejidad) y aprobarse en la
   revisión; una excepción no justificada bloquea la fusión.
 
-**Versión**: 1.0.0 | **Ratificada**: 2026-11-16 | **Última enmienda**: 2026-11-16
+**Versión**: 1.1.0 | **Ratificada**: 2026-11-16 | **Última enmienda**: 2026-11-24

@@ -790,7 +790,7 @@ están en el documento 8.
 
 | Idea                                            | Motivo para dejarla después                                                                                                    |
 | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Asistente por chat y WhatsApp                   | Definido como Fase 2 desde el inicio (RC13).                                                                                   |
+| Asistente por WhatsApp                          | Definido como Fase 2 desde el inicio (RC13). El chat de orientación del portal sí entra en la Fase 1 (012, enmienda 1.1.0).    |
 | Pantalla de historial y versionado del catálogo | El registro de cambios ya existe (funcionalidad 003); falta consultarlo desde el portal y poder volver a una versión anterior. |
 
 ## Curso: Arquitectura de Software – UNSCH 2026

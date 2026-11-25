@@ -45,6 +45,11 @@ const claveBase64 = (minimo: number, maximo = Number.MAX_SAFE_INTEGER) =>
       return bytes >= minimo && bytes <= maximo;
     });
 
+// 012 (research R-09): proveedor externo de IA con formato compatible con OpenAI. Sin clave, el chat
+// de orientación queda desactivado y la API arranca igual. La clave nunca se registra.
+export const ORIENTACION_API_URL_POR_DEFECTO = 'https://api.groq.com/openai/v1';
+export const ORIENTACION_MODELO_POR_DEFECTO = 'openai/gpt-oss-120b';
+
 const esquemaConfiguracion = z.object({
   DATABASE_URL: z.url(),
   REDIS_URL: z.url(),
@@ -77,6 +82,16 @@ const esquemaConfiguracion = z.object({
   // 008: documentación interactiva en /api/docs. Sin valor: activa salvo en producción.
   DOCS_API: z.enum(['true', 'false']).optional(),
   DOCS_API_CONTRATO: z.string().min(1).optional(),
+  // 012: chat de orientación (research R-09).
+  ORIENTACION_API_URL: z
+    .url()
+    .refine((url) => /^https?:\/\//.test(url))
+    .default(ORIENTACION_API_URL_POR_DEFECTO),
+  ORIENTACION_MODELO: z.string().min(1).max(200).default(ORIENTACION_MODELO_POR_DEFECTO),
+  ORIENTACION_API_KEY: z.string().min(1).optional(),
+  ORIENTACION_TIEMPO_MAXIMO_MS: z.coerce.number().int().min(1000).max(60_000).default(15_000),
+  ORIENTACION_LIMITE_PREGUNTAS: enteroPositivo(10),
+  ORIENTACION_FORMATO_JSON: z.enum(['true', 'false']).default('true'),
 });
 
 // Valores ficticios de .env.example: prohibidos en producción (research.md §R-16 de la 002).
@@ -89,6 +104,30 @@ const VALORES_DE_EJEMPLO: Readonly<Record<string, string>> = {
 export type Entorno = 'development' | 'test' | 'production';
 export type ModoEnvioOtp = 'simulado' | 'buzon' | 'sms';
 export type ModoEnvioAvisos = 'simulado' | 'buzon';
+
+/** Proveedor del chat de orientación (012). `apiKey` es secreta: nunca se registra. */
+export interface ConfiguracionOrientacion {
+  /** URL base, sin barra final; el adaptador agrega `/chat/completions`. */
+  readonly apiUrl: string;
+  readonly modelo: string;
+  /** `null` = chat desactivado (responde NO_DISPONIBLE sin llamar a la red). */
+  readonly apiKey: string | null;
+  readonly tiempoMaximoMs: number;
+  /** Preguntas por huella cada 15 minutos. */
+  readonly limitePreguntas: number;
+  /** Envía `response_format: json_object` (research R-05). */
+  readonly formatoJson: boolean;
+}
+
+/**
+ * Agrega un `toJSON` no enumerable que oculta la clave: si alguien registra la configuración, la
+ * clave no sale (principio VII, FR-019 de la 012).
+ */
+const conClaveOculta = (orientacion: ConfiguracionOrientacion): ConfiguracionOrientacion =>
+  Object.defineProperty({ ...orientacion }, 'toJSON', {
+    enumerable: false,
+    value: () => ({ ...orientacion, apiKey: orientacion.apiKey === null ? null : '[oculta]' }),
+  });
 
 export interface Configuracion {
   readonly urlBaseDeDatos: string;
@@ -120,6 +159,8 @@ export interface Configuracion {
   readonly docsApi: boolean;
   /** Ruta del openapi.yaml; `null` = buscarlo en la imagen o en el repositorio. */
   readonly docsApiContrato: string | null;
+  /** Chat de orientación (012). */
+  readonly orientacion: ConfiguracionOrientacion;
 }
 
 export class ErrorConfiguracion extends Error {
@@ -185,6 +226,14 @@ export const cargarConfiguracion = (
       variables.push('ENVIO_AVISOS');
       avisos.push('El buzón de pruebas no se permite en producción');
     }
+    // 012: con clave, el proveedor solo por https (la clave viaja en la cabecera).
+    if (
+      datos.ORIENTACION_API_KEY !== undefined &&
+      !datos.ORIENTACION_API_URL.startsWith('https://')
+    ) {
+      variables.push('ORIENTACION_API_URL');
+      avisos.push('En producción el proveedor de orientación debe usar https://');
+    }
     for (const [variable, valorEjemplo] of Object.entries(VALORES_DE_EJEMPLO)) {
       if (datos[variable as keyof typeof datos] === valorEjemplo) {
         variables.push(variable);
@@ -219,5 +268,13 @@ export const cargarConfiguracion = (
     avisosIntervaloMs: datos.AVISOS_INTERVALO_MS,
     docsApi: resolverDocsApi(datos.DOCS_API, datos.NODE_ENV),
     docsApiContrato: datos.DOCS_API_CONTRATO ?? null,
+    orientacion: conClaveOculta({
+      apiUrl: datos.ORIENTACION_API_URL.replace(/\/+$/, ''),
+      modelo: datos.ORIENTACION_MODELO,
+      apiKey: datos.ORIENTACION_API_KEY ?? null,
+      tiempoMaximoMs: datos.ORIENTACION_TIEMPO_MAXIMO_MS,
+      limitePreguntas: datos.ORIENTACION_LIMITE_PREGUNTAS,
+      formatoJson: datos.ORIENTACION_FORMATO_JSON === 'true',
+    }),
   };
 };

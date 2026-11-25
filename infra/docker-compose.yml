@@ -67,6 +67,11 @@ services:
       RELOJ_PLAZOS_INTERVALO_MS: ${RELOJ_PLAZOS_INTERVALO_MS:-3600000}
       AVISOS_INTERVALO_MS: ${AVISOS_INTERVALO_MS:-5000}
       TRUST_PROXY_SALTOS: ${TRUST_PROXY_SALTOS:-1}
+      # 012: chat de orientación. Vacíos por defecto: sin clave el chat queda desactivado. La clave va
+      # solo en infra/.env (no se sube al repositorio).
+      ORIENTACION_API_URL: ${ORIENTACION_API_URL:-}
+      ORIENTACION_MODELO: ${ORIENTACION_MODELO:-}
+      ORIENTACION_API_KEY: ${ORIENTACION_API_KEY:-}
       # Almacén de documentos (004): fuera de la carpeta pública del portal y compartido por todas las
       # instancias de la API (research §R-08). Cada réplica monta el mismo volumen.
       ALMACEN_ARCHIVOS_RUTA: /var/lib/licencias/archivos

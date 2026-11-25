@@ -28,6 +28,7 @@ src/modulos/<modulo>/
 | **Reloj de plazos** | `Plazo`, `Feriado`. Regla: se cuentan solo días hábiles. | `VerificarPlazos` (tarea diaria con bloqueo, ADR-006), `RegistrarFeriado` (administrador) | `CalendarioHabil`, `ConsultaExpedientes` (solo lectura) | `CalendarioFeriadosPostgres`, `ConsultaExpedientesTramites` (usa la fachada de Trámites) |
 | **Notificaciones** | `Mensaje`, `Canal`. | `NotificarCambioEstado`, `NotificarVencimiento` | `Notificador` | `NotificadorEnCola` (deja el mensaje en la cola; el worker lo envía con `NotificadorCorreoSMS`) |
 | **Reportes** | `Indicador`. | `GenerarTablero`, `GenerarReporte` | `ConsultaExpedientes`, `ConsultaPagos`, `ConsultaLicencias` (solo lectura) | Adaptadores que usan las fachadas de Trámites, Pagos en caja y Licencias |
+| **Orientación** (012, enmienda 1.1.0 de la constitución) | `PreguntaOrientacion`, `RespuestaOrientacion`. Reglas: se quitan DNI, RUC, celular, CE y correo antes de salir del sistema; ninguna tasa ni plazo fuera del catálogo o de la guía llega al administrado; 10 preguntas cada 15 minutos por huella. No guarda preguntas ni respuestas y no tiene fachada (nadie lo usa). | `ResponderPregunta` | `FuenteCatalogo` (solo lectura), `FuenteGuia`, `ProveedorOrientacion`, `LimitadorPreguntas` | `FuenteCatalogoFachada` (usa la fachada del Catálogo, con su caché), `GuiaOrientacionArchivo`, `ProveedorIaCompatibleOpenAI` (servicio externo, ADR-011), `LimitadorPreguntasRedis` |
 
 ## Comunicación entre módulos
 

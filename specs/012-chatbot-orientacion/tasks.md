@@ -34,7 +34,7 @@ usan un proveedor simulado y un servidor `node:http` local.
 **Propósito**: habilitar el módulo nuevo según la constitución, publicar el contrato primero y
 declarar las variables sin ninguna clave.
 
-- [ ] T001 Enmendar la constitución a la versión **1.1.0** (MINOR) en `.specify/memory/constitution.md`
+- [X] T001 Enmendar la constitución a la versión **1.1.0** (MINOR) en `.specify/memory/constitution.md`
       (research R-01). **Aprobada por la usuaria el 2026-11-24** (análisis D1):
   - principio I: "**10 módulos**", agregando "Orientación";
   - "Restricciones tecnológicas y de alcance": sacar de "fuera de alcance" el chat de orientación
@@ -46,7 +46,7 @@ declarar las variables sin ninguna clave.
     10 "Orientación" (responsabilidad, puertos, fachada: ninguna, dependencias: `catalogo` por su
     fachada);
   - la línea del README que declara el alcance.
-- [ ] T002 Contrato primero en `docs/06-contrato-api/openapi.yaml`
+- [X] T002 Contrato primero en `docs/06-contrato-api/openapi.yaml`
       ([contracts/api-orientacion.md](contracts/api-orientacion.md)):
   - etiqueta `Orientación`;
   - `POST /orientacion/preguntas` (`operationId: preguntarOrientacion`, `security: []`);
@@ -62,10 +62,10 @@ declarar las variables sin ninguna clave.
     descripción de esas dos respuestas comunes para mencionar la 012.
 
   Validar con `npm run contrato`: sin errores nuevos. Hoy hay 6 advertencias.
-- [ ] T003 Generar los tipos con `npm run generar` (`packages/contracts`) y actualizar
+- [X] T003 Generar los tipos con `npm run generar` (`packages/contracts`) y actualizar
       `docs/06-contrato-api/README.md`: fila "Orientación (público)" en la matriz de permisos,
       `preguntarOrientacion` en la lista de operaciones y tabla de la 012.
-- [ ] T004 [P] **Prueba primero** en `apps/api/test/unit/compartido/configuracion.spec.ts`:
+- [X] T004 [P] **Prueba primero** en `apps/api/test/unit/compartido/configuracion.spec.ts`:
   - sin `ORIENTACION_*` → `orientacion.apiUrl = 'https://api.groq.com/openai/v1'`,
     `modelo = 'openai/gpt-oss-120b'`, `apiKey = null`, `tiempoMaximoMs = 15000`,
     `limitePreguntas = 10`, `formatoJson = true`, y la configuración carga sin error;
@@ -74,12 +74,12 @@ declarar las variables sin ninguna clave.
     `ORIENTACION_API_URL` y **no** contiene la clave ficticia;
   - ningún mensaje de error ni `JSON.stringify` del resumen de la configuración contiene la clave
     ficticia (`clave-ficticia-de-prueba-012`).
-- [ ] T005 Implementar las variables en `apps/api/src/compartido/infraestructura/configuracion.ts`
+- [X] T005 Implementar las variables en `apps/api/src/compartido/infraestructura/configuracion.ts`
       (research R-09): `ORIENTACION_API_URL`, `ORIENTACION_MODELO`, `ORIENTACION_API_KEY` (una
       cadena vacía cuenta como ausente), `ORIENTACION_TIEMPO_MAXIMO_MS`,
       `ORIENTACION_LIMITE_PREGUNTAS` y `ORIENTACION_FORMATO_JSON`. Van en `Configuracion.orientacion`.
       La clave nunca va en ningún resumen ni registro. Depende de T004.
-- [ ] T006 [P] Declarar las variables **con valores vacíos por defecto y sin clave**:
+- [X] T006 [P] Declarar las variables **con valores vacíos por defecto y sin clave**:
   - `infra/docker-compose.yml` (servicio `api`): `ORIENTACION_API_URL: ${ORIENTACION_API_URL:-}`,
     `ORIENTACION_MODELO: ${ORIENTACION_MODELO:-}` y `ORIENTACION_API_KEY: ${ORIENTACION_API_KEY:-}`;
   - lo mismo en `infra/produccion/docker-compose.yml`;
@@ -99,7 +99,7 @@ del proveedor. Sin esto ninguna historia puede responder.
 **⚠️ IMPORTANTE**: `quitarDatosPersonales` está en esta fase porque **ninguna** llamada al
 proveedor puede salir sin pasar por ella (principio VII), ni siquiera en el MVP.
 
-- [ ] T007 [P] Crear el dominio base en `apps/api/src/modulos/orientacion/dominio/`:
+- [X] T007 [P] Crear el dominio base en `apps/api/src/modulos/orientacion/dominio/`:
   - `puertos.ts`: `FuenteCatalogo.licenciasVigentes()`, `FuenteGuia.temas()`,
     `ProveedorOrientacion.responder(mensajes)` con `ResultadoProveedor` (`OK` con `contenido` |
     `TIEMPO_AGOTADO` | `CUOTA_AGOTADA` | `CLAVE_INVALIDA` | `FALLA` | `RESPUESTA_INVALIDA` |
@@ -111,7 +111,7 @@ proveedor puede salir sin pasar por ella (principio VII), ni siquiera en el MVP.
     (`SIN_INFORMACION`, `FUERA_DE_TEMA`, `CONSULTA_TRAMITE`, `NO_DISPONIBLE` y la aclaración).
 
   Sin importar NestJS, zod, ioredis ni `fetch`.
-- [ ] T008 [P] **Prueba primero**
+- [X] T008 [P] **Prueba primero**
       `apps/api/test/unit/modulos/orientacion/dominio/pregunta-orientacion.spec.ts`:
   - recorta espacios;
   - vacía o solo con espacios → error;
@@ -120,7 +120,7 @@ proveedor puede salir sin pasar por ella (principio VII), ni siquiera en el MVP.
     distinto de `PERSONA` u `ORIENTADOR` → error.
 
   Después, implementar `dominio/pregunta-orientacion.ts`.
-- [ ] T009 [P] **Prueba primero**
+- [X] T009 [P] **Prueba primero**
       `apps/api/test/unit/modulos/orientacion/dominio/quitar-datos-personales.spec.ts`
       (research R-07). Se reemplazan por `[dato personal]` y `quitados = true`:
   - correo `ana.perez@correo.pe`;
@@ -140,13 +140,13 @@ proveedor puede salir sin pasar por ella (principio VII), ni siquiera en el MVP.
   Debe respetar el orden (correo, celular, RUC, DNI y CE): `20123456789` queda como un solo
   reemplazo, no como DNI más resto. Después, implementar
   `dominio/quitar-datos-personales.ts` como función pura.
-- [ ] T010 [P] Fuente del catálogo por la fachada (research R-02):
+- [X] T010 [P] Fuente del catálogo por la fachada (research R-02):
   - prueba en `apps/api/test/unit/modulos/orientacion/infraestructura/fuente-catalogo-fachada.spec.ts`
     con una `FachadaCatalogo` doble: usa `listarRecetas({ tipo: 'LICENCIA' })` y
     `obtenerRecetaVigente(codigo)`, descarta los `null` y no llama a nada más;
   - implementar `apps/api/src/modulos/orientacion/infraestructura/fuente-catalogo-fachada.ts`,
     que importa **solo** `../../catalogo/fachada`.
-- [ ] T011 [P] Guía de preguntas frecuentes (research R-03):
+- [X] T011 [P] Guía de preguntas frecuentes (research R-03):
   - prueba en `apps/api/test/unit/modulos/orientacion/infraestructura/guia-orientacion-archivo.spec.ts`:
     - el JSON real carga;
     - cada tema cumple `id` "`^[a-z0-9-]{3,40}$`, único", `titulo` "De 1 a 120 caracteres",
@@ -163,7 +163,7 @@ proveedor puede salir sin pasar por ella (principio VII), ni siquiera en el MVP.
     dice expresamente que la transferencia, el cambio de giro y el duplicado no se atienden en este
     sistema y que se consultan en la Municipalidad;
   - implementar `infraestructura/guia-orientacion-archivo.ts`, que valida con zod.
-- [ ] T012 [P] Adaptador del proveedor (research R-05 y
+- [X] T012 [P] Adaptador del proveedor (research R-05 y
       [contracts/proveedor-ia.md](contracts/proveedor-ia.md)):
   - **prueba primero** en
     `apps/api/test/unit/modulos/orientacion/infraestructura/proveedor-ia-compatible-openai.spec.ts`,
@@ -183,11 +183,11 @@ proveedor puede salir sin pasar por ella (principio VII), ni siquiera en el MVP.
     Comprueba también que ningún resultado ni mensaje de error contiene la clave ficticia;
   - implementar `apps/api/src/modulos/orientacion/infraestructura/proveedor-ia-compatible-openai.ts`
     con `fetch` nativo y `AbortSignal.timeout(tiempoMaximoMs)`, sin reintentos y **sin SDK**.
-- [ ] T013 Apoyo de pruebas `apps/api/test/apoyo/proveedor-orientacion-simulado.ts`: un
+- [X] T013 Apoyo de pruebas `apps/api/test/apoyo/proveedor-orientacion-simulado.ts`: un
       `ProveedorOrientacion` que guarda los `mensajes` recibidos y devuelve una respuesta
       programable (OK con un JSON dado o cualquier falla), más el ayudante `conProveedorSimulado`
       para `crearAplicacionDePrueba({ ajustar })`, que reemplaza el token `PROVEEDOR_ORIENTACION`.
-- [ ] T014 Módulo y registro:
+- [X] T014 Módulo y registro:
   - `apps/api/src/modulos/orientacion/orientacion.module.ts`: raíz de composición con los tokens
     `PROVEEDOR_ORIENTACION`, `FUENTE_CATALOGO`, `FUENTE_GUIA`, `LIMITADOR_PREGUNTAS` y
     `RELOJ_ORIENTACION`, usando `FachadaCatalogo`, `CONFIGURACION` y `REDIS_CLIENTE`. Sigue el
@@ -195,6 +195,11 @@ proveedor puede salir sin pasar por ella (principio VII), ni siquiera en el MVP.
   - importarlo en `apps/api/src/app.module.ts`;
   - comprobar `npm run regla-dependencia` sin violaciones: `orientacion` solo usa
     `catalogo/fachada.ts` y `compartido/`.
+
+  **Estado al cierre de la fase 2**: el módulo registra la fuente del catálogo, la guía, el proveedor y
+  el reloj. `LIMITADOR_PREGUNTAS` queda declarado en `tokens.ts` y se registra con su adaptador en US5
+  (T046). El caso de uso y el controlador llegan con US1. `aplicacion/` y `presentacion/` tienen un
+  `.gitkeep` hasta entonces, para que `estructura-modulos.spec.ts` (ahora con 10 módulos) pase en CI.
 
 **Punto de control**: base lista. Las pruebas de T008 a T012 pasan, la API arranca sin clave y la
 regla de dependencia está en verde.

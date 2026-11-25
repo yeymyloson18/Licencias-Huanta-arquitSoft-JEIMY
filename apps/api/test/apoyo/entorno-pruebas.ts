@@ -19,3 +19,8 @@ const PREDETERMINADOS: Readonly<Record<string, string>> = {
 for (const [variable, valor] of Object.entries(PREDETERMINADOS)) {
   process.env[variable] ??= valor;
 }
+
+// 012: las pruebas NUNCA usan la clave real del proveedor de IA, aunque exista en el entorno de quien
+// las ejecuta. Sin clave, el adaptador real responde NO_CONFIGURADO sin llamar a la red; las pruebas
+// que necesitan respuestas usan el proveedor simulado (test/apoyo/proveedor-orientacion-simulado.ts).
+process.env.ORIENTACION_API_KEY = '';
