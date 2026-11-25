@@ -350,7 +350,10 @@ describe('Menú del personal', () => {
     simularApi(conSesion(['CAJA']));
     montarEn('/');
 
-    await screen.findByRole('navigation', { name: 'Menú del personal' });
+    // 013 (R-11): en el portal público ya no está el menú del personal (US2), sino "Ir a mi
+    // trabajo"; se espera ese enlace para saber que la sesión ya cargó.
+    await screen.findByRole('link', { name: 'Ir a mi trabajo' });
+    expect(screen.queryByRole('navigation', { name: 'Menú del personal' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/licencia/i);
     expect(screen.queryByRole('heading', { level: 1, name: 'Caja' })).not.toBeInTheDocument();
   });

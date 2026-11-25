@@ -8,14 +8,13 @@ import { DesplegableUsuario } from './DesplegableUsuario';
 import { iconoMenu } from './iconos';
 import { migasDe } from './migas';
 import { opcionesDe } from './opcionesMenu';
+import { PIE } from './pie';
 import { CONSULTA_CELULAR, usarMedio } from './usarMedio';
 
 interface Propiedades {
   /** El contenido de la pantalla (el `<Outlet />` de las rutas). */
   readonly children: ReactNode;
 }
-
-export const PIE = 'Municipalidad Provincial de Huanta · Sistema de Licencias de Funcionamiento';
 
 /**
  * Área de administración del personal (013, US1; contracts/portal-diseno.md): menú lateral con las

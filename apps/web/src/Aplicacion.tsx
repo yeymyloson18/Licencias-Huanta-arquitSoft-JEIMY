@@ -1,9 +1,8 @@
 import { lazy, Suspense, useState } from 'react';
 import { Outlet, Route, Routes, useLocation } from 'react-router';
-import { AccesoPersonal } from './componentes/AccesoPersonal';
 import { AvisoNavegacion } from './componentes/AvisoNavegacion';
+import { DisenoPublico } from './componentes/diseno/DisenoPublico';
 import { esRutaPersonal } from './componentes/diseno/rutas';
-import { Menu } from './componentes/Menu';
 import { BotonPreguntanos } from './componentes/orientacion/BotonPreguntanos';
 import type { MensajeChat } from './componentes/orientacion/conversacion';
 import { esRutaPublica } from './componentes/orientacion/enlacesOrientacion';
@@ -52,7 +51,7 @@ const DisenoPersonal = lazy(() =>
  * Diseño común: aviso pendiente (cierre por inactividad, clave cambiada…) y, en las páginas públicas,
  * el chat de orientación (012). La conversación vive aquí, solo en memoria: sigue al cambiar de
  * página pública y se pierde al recargar (FR-017). Las pantallas del personal usan el área de
- * administración (013, US1); las demás, el diseño público (US2 lo reemplaza).
+ * administración (013, US1); las demás, el portal ligero (US2).
  */
 function Diseno() {
   const { aviso } = useSesion();
@@ -71,15 +70,13 @@ function Diseno() {
   }
 
   return (
-    <>
-      <Menu />
-      <AccesoPersonal />
+    <DisenoPublico>
       <AvisoNavegacion respaldo={aviso} />
       <Outlet />
       {esRutaPublica(pathname) && (
         <BotonPreguntanos conversacion={conversacion} alCambiar={setConversacion} />
       )}
-    </>
+    </DisenoPublico>
   );
 }
 

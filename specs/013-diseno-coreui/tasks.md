@@ -326,7 +326,7 @@ pie y "Pregúntanos", sin menú lateral ni desplazamiento horizontal.
 
 ### Pruebas de la historia 2 ⚠️
 
-- [ ] T019 [P] [US2] `apps/web/src/componentes/diseno/DisenoPublico.test.tsx`:
+- [X] T019 [P] [US2] `apps/web/src/componentes/diseno/DisenoPublico.test.tsx`:
   - la barra tiene "Municipalidad Provincial de Huanta" con enlace a `/`;
   - sin sesión, `<nav aria-label="Acceso del personal">` con su enlace a `/ingresar`, salvo en
     `/ingresar`;
@@ -340,16 +340,34 @@ pie y "Pregúntanos", sin menú lateral ni desplazamiento horizontal.
 
 ### Implementación de la historia 2
 
-- [ ] T020 [US2] `componentes/diseno/DisenoPublico.tsx` (`CHeader`, contenido, `CFooter`) y su uso en
+- [X] T020 [US2] `componentes/diseno/DisenoPublico.tsx` (`CHeader`, contenido, `CFooter`) y su uso en
       `Aplicacion.tsx` para las rutas no personales. Retirar `AccesoPersonal.tsx`: lo absorbe la
       barra con el mismo nombre accesible. "Pregúntanos" sigue montado solo en las rutas públicas
       (`esRutaPublica`). Deben pasar T019, `MontajeOrientacion.test.tsx` y las pruebas del chat.
-- [ ] T021 [US2] Chat y botón en ambos diseños (research R-06):
+- [X] T021 [US2] Chat y botón en ambos diseños (research R-06):
   - `.boton-preguntanos` con el aspecto `btn btn-primary` (vía el puente de T034 o directo);
   - los colores de `.chat-orientacion*` con `--color-*` (ya mapeadas a `--cui-*`);
   - el `<dialog>` nativo, su lógica y sus pruebas **no cambian**.
 
 **Punto de control**: las dos historias P1 completas. MVP visual.
+
+**Estado al cierre de la fase 4 (2026-11-25)**:
+
+- **Pruebas**: 577/577 en el portal. A 360 px y en escritorio, la portada, el ingreso y la consulta
+  no tienen desplazamiento horizontal (revisado con capturas en el compose aislado).
+- **Retirados**: `Menu.tsx` y `AccesoPersonal.tsx`, con sus estilos en `global.css`. "Acceso del
+  personal" vive en la barra pública con el mismo nombre accesible y el mismo destino.
+- **Pie compartido**: el texto vive en `componentes/diseno/pie.ts`, para que el diseño público no
+  importe el módulo diferido del área del personal.
+- **Estilos** del portal ligero en `estilos/_disenos.scss`, importado al final de `tema.scss`. A 360 px
+  la barra queda en una fila: el nombre de la Municipalidad se parte en dos líneas. El pie deja lugar
+  abajo para el botón fijo "Pregúntanos".
+- **T021**: el botón "Pregúntanos" usa `btn btn-primary`. El chat ya usaba solo variables
+  `--color-*`; su paso a `--cui-*` llega con el puente (T034). El `<dialog>`, su lógica y sus pruebas
+  no cambiaron.
+- **Ajustes de pruebas existentes (R-11)**, con su comentario: `Inicio.test.tsx` ("con sesión no
+  aparece" espera "Ir a mi trabajo") y `Menu.test.tsx` ("el portal público sigue abierto" espera
+  "Ir a mi trabajo" y comprueba que no hay menú del personal).
 
 ---
 
