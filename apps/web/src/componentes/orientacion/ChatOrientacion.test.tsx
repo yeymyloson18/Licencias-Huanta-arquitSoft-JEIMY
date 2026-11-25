@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { MemoryRouter } from 'react-router';
-import { json, simularApi } from '../../pruebas/api-simulada';
+import { json, problema, simularApi } from '../../pruebas/api-simulada';
 import { ChatOrientacion } from './ChatOrientacion';
 import type { MensajeChat } from './conversacion';
 
@@ -339,5 +339,101 @@ describe('ChatOrientacion: el chat sigue útil aunque el proveedor falle (US4)',
     await escribirYEnviar(usuario, '¿Cuánto cuesta?');
 
     await esperarNoDisponible();
+  });
+});
+
+describe('ChatOrientacion: solo licencias y sin abuso (US5)', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('un 429 dice cuántos minutos esperar y ofrece el asistente', async () => {
+    simularApi({
+      'POST /orientacion/preguntas': () =>
+        problema(429, 'demasiadas-preguntas', { 'Retry-After': '420' }),
+    });
+    const usuario = montar();
+
+    await escribirYEnviar(usuario, '¿Cómo pago?');
+
+    expect(
+      await screen.findByText('Hizo muchas preguntas seguidas. Vuelva a intentarlo en 7 minutos.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '¿Qué licencia necesito?' })).toBeInTheDocument();
+  });
+
+  it('muestra cuántos caracteres lleva de 500', async () => {
+    simularApi({});
+    const usuario = montar();
+
+    expect(screen.getByText('0 de 500')).toBeInTheDocument();
+    await usuario.type(screen.getByLabelText('Escriba su pregunta'), 'Hola');
+
+    expect(screen.getByText('4 de 500')).toBeInTheDocument();
+    expect(screen.getByLabelText('Escriba su pregunta')).toHaveAttribute('maxlength', '500');
+  });
+
+  it('"Enviar" está desactivado con la pregunta vacía y mientras espera la respuesta', async () => {
+    let responder: (valor: Response) => void = () => {};
+    simularApi({
+      'POST /orientacion/preguntas': () =>
+        new Promise<Response>((resolver) => {
+          responder = resolver;
+        }),
+    });
+    const usuario = montar();
+
+    expect(screen.getByRole('button', { name: 'Enviar' })).toBeDisabled();
+    await usuario.type(screen.getByLabelText('Escriba su pregunta'), '   ');
+    expect(screen.getByRole('button', { name: 'Enviar' })).toBeDisabled();
+    await usuario.clear(screen.getByLabelText('Escriba su pregunta'));
+    await escribirYEnviar(usuario, '¿Cómo pago?');
+    await usuario.type(screen.getByLabelText('Escriba su pregunta'), 'otra');
+
+    expect(screen.getByRole('button', { name: 'Enviar' })).toBeDisabled();
+    responder(json(respuesta()));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Enviar' })).toBeEnabled();
+    });
+  });
+
+  it('Enter envía y Mayús + Enter hace un salto de línea', async () => {
+    const llamadas = simularApi({ 'POST /orientacion/preguntas': () => json(respuesta()) });
+    const usuario = montar();
+    const campo = screen.getByLabelText('Escriba su pregunta');
+
+    await usuario.type(campo, 'primera línea{Shift>}{Enter}{/Shift}segunda');
+    expect(campo).toHaveValue('primera línea\nsegunda');
+    expect(llamadas).toHaveLength(0);
+    await usuario.type(campo, '{Enter}');
+
+    await waitFor(() => {
+      expect(llamadas).toHaveLength(1);
+    });
+    expect((llamadas[0]?.cuerpo as { pregunta: string }).pregunta).toBe('primera línea\nsegunda');
+  });
+
+  it('FUERA_DE_TEMA muestra el texto y el enlace al asistente', async () => {
+    simularApi({
+      'POST /orientacion/preguntas': () =>
+        json(
+          respuesta({
+            resultado: 'FUERA_DE_TEMA',
+            texto:
+              'Solo puedo ayudarle con licencias de funcionamiento de la Municipalidad Provincial de Huanta. Puede preguntarme, por ejemplo, qué licencia necesita o cuánto cuesta.',
+            enlaces: [{ tipo: 'ASISTENTE' }],
+            aclaracion: null,
+          }),
+        ),
+    });
+    const usuario = montar();
+
+    await escribirYEnviar(usuario, '¿quién ganó el partido?');
+
+    expect(await screen.findByText(/Solo puedo ayudarle con licencias/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '¿Qué licencia necesito?' })).toHaveAttribute(
+      'href',
+      '/asistente',
+    );
   });
 });

@@ -78,6 +78,8 @@ describe('aProblema', () => {
     [ErrorProblema.ultimoAdministrador(), 409, 'ultimo-administrador'],
     [ErrorProblema.correoEnUso(), 409, 'correo-en-uso'],
     [ErrorProblema.servicioNoDisponible(), 503, 'servicio-no-disponible'],
+    [ErrorProblema.demasiadasPreguntas(420), 429, 'demasiadas-preguntas'],
+    [ErrorProblema.orientacionNoDisponible(), 503, 'orientacion-no-disponible'],
   ])('traduce ErrorProblema a su tipo, estado y título (%#)', (error, status, sufijo) => {
     const problema = aProblema(error);
 

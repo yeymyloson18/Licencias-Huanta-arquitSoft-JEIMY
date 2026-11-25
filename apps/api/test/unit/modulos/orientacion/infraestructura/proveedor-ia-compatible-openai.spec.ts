@@ -70,7 +70,9 @@ const configuracion = (
   apiUrl: base,
   modelo: 'modelo-de-prueba',
   apiKey: CLAVE_FICTICIA,
-  tiempoMaximoMs: 200,
+  // Amplio a propósito: con la máquina cargada, una respuesta correcta del servidor local puede tardar
+  // más de 200 ms. Solo la prueba de tiempo agotado usa 200 ms.
+  tiempoMaximoMs: 5000,
   limitePreguntas: 10,
   formatoJson: true,
   ...cambios,

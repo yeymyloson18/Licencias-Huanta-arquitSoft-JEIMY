@@ -68,8 +68,18 @@ export interface ReservaPregunta {
 }
 
 export interface LimitadorPreguntas {
-  /** Cuenta una pregunta de esta huella (nunca la IP). */
+  /**
+   * Cuenta una pregunta de esta huella (nunca la IP). Si el límite no se puede comprobar, lanza
+   * `ErrorLimitadorNoDisponible` (falla cerrado: protege la cuota del proveedor).
+   */
   reservar(huella: string): Promise<ReservaPregunta>;
+}
+
+export class ErrorLimitadorNoDisponible extends Error {
+  constructor() {
+    super('El límite de preguntas de orientación no se puede comprobar');
+    this.name = 'ErrorLimitadorNoDisponible';
+  }
 }
 
 export interface Reloj {

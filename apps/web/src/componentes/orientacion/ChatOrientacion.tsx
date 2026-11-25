@@ -65,6 +65,7 @@ interface Propiedades {
 export function ChatOrientacion({ conversacion, alCambiar, alCerrar }: Propiedades) {
   const idTitulo = useId();
   const idCampo = useId();
+  const idContador = useId();
   const [texto, setTexto] = useState('');
   const [esperando, setEsperando] = useState(false);
 
@@ -170,10 +171,21 @@ export function ChatOrientacion({ conversacion, alCambiar, alCerrar }: Propiedad
           maxLength={LARGO_MAXIMO}
           rows={2}
           value={texto}
+          aria-describedby={idContador}
           onChange={(evento) => {
             setTexto(evento.target.value);
           }}
+          onKeyDown={(evento) => {
+            // Enter envía; Mayús + Enter hace un salto de línea (contracts/portal-orientacion.md).
+            if (evento.key === 'Enter' && !evento.shiftKey) {
+              evento.preventDefault();
+              void enviar(texto);
+            }
+          }}
         />
+        <p id={idContador} className="chat-orientacion__contador">
+          {String(texto.length)} de {String(LARGO_MAXIMO)}
+        </p>
         <button type="submit" className="boton" disabled={esperando || texto.trim().length === 0}>
           Enviar
         </button>

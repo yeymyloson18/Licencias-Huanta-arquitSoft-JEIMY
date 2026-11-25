@@ -18,3 +18,11 @@ export const limpiarClavesSeguridad = async (redis: Redis): Promise<void> => {
     }
   }
 };
+
+/** 012: borra los contadores del límite de preguntas del chat de orientación (`lim:orientacion:*`). */
+export const limpiarLimiteOrientacion = async (redis: Redis): Promise<void> => {
+  const claves = await redis.keys('lim:orientacion:*');
+  if (claves.length > 0) {
+    await redis.del(...claves);
+  }
+};

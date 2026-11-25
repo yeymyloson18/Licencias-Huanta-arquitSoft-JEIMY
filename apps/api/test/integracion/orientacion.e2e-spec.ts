@@ -9,7 +9,10 @@ import {
   conProveedorSimulado,
   ProveedorOrientacionSimulado,
 } from '../apoyo/proveedor-orientacion-simulado';
+import { limpiarLimiteOrientacion } from '../apoyo/redis-prueba';
 import { esperarCumpleContrato } from '../apoyo/validarContrato';
+import { REDIS_CLIENTE } from '../../src/compartido/infraestructura/redis.proveedor';
+import type Redis from 'ioredis';
 
 // Chat de orientación (012): POST /orientacion/preguntas con un proveedor SIMULADO. Nunca se llama al
 // proveedor real ni se usa su clave (entorno-pruebas.ts la deja vacía). Usa el catálogo de
@@ -38,8 +41,10 @@ describe('POST /orientacion/preguntas (012)', () => {
     });
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     proveedor.reiniciar();
+    // US5: cada caso empieza sin preguntas contadas (10 cada 15 minutos por conexión).
+    await limpiarLimiteOrientacion(app.get<Redis>(REDIS_CLIENTE));
   });
 
   afterAll(async () => {

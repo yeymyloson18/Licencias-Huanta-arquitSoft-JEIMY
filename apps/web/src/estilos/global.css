@@ -1315,3 +1315,10 @@ video {
   font: inherit;
   resize: vertical;
 }
+
+.chat-orientacion__contador {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-texto-suave);
+}

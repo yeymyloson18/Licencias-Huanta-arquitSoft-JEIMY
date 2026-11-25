@@ -521,19 +521,19 @@ aplicar 10 preguntas cada 15 minutos por huella con sal (sin IP) y el máximo de
 
 ### Pruebas de la historia 5 ⚠️
 
-- [ ] T041 [P] [US5] `apps/api/test/unit/modulos/orientacion/infraestructura/limitador-preguntas-redis.spec.ts`
+- [X] T041 [P] [US5] `apps/api/test/unit/modulos/orientacion/infraestructura/limitador-preguntas-redis.spec.ts`
       (research R-08), con un doble propio de Redis (el proyecto no tiene `ioredis-mock` y no se
       agrega):
   - 10 reservas permitidas y la 11.ª no, con `segundosRestantes` > 0;
   - la clave es `lim:orientacion:<huella>` con vencimiento de 900 s (`EXPIRE … NX`);
   - si Redis falla → `ErrorLimitadorNoDisponible`, definido en `dominio/puertos.ts`.
-- [ ] T042 [P] [US5] Ampliar `responder-pregunta.spec.ts`:
+- [X] T042 [P] [US5] Ampliar `responder-pregunta.spec.ts`:
   - el límite no permite → el resultado es `limite` con `segundosRestantes` y el proveedor **no**
     se llama;
   - el modelo responde `FUERA_DE_TEMA` → texto fijo y enlace `ASISTENTE`;
   - el mensaje de sistema contiene las reglas contra cambiar el tema;
   - la pregunta va en un mensaje `user`, nunca dentro del CONTEXTO.
-- [ ] T043 [P] [US5] `apps/api/test/integracion/limite-orientacion.e2e-spec.ts` (limpiar
+- [X] T043 [P] [US5] `apps/api/test/integracion/limite-orientacion.e2e-spec.ts` (limpiar
       `lim:orientacion:*` antes):
   - 10 preguntas → 200;
   - la 11.ª → 429 `demasiadas-preguntas` según el contrato, con `Retry-After` entre 1 y 900;
@@ -541,11 +541,11 @@ aplicar 10 preguntas cada 15 minutos por huella con sal (sin IP) y el máximo de
   - 422 con pregunta vacía, con solo espacios, con 501 caracteres, con un historial de 7 turnos y
     con una propiedad de más, y ninguna cuenta para el límite;
   - con Redis caído (cliente desconectado en la prueba) → 503 `orientacion-no-disponible`.
-- [ ] T044 [P] [US5] `apps/api/test/unit/modulos/orientacion/presentacion/huella.spec.ts`:
+- [X] T044 [P] [US5] `apps/api/test/unit/modulos/orientacion/presentacion/huella.spec.ts`:
   - la huella es `hex(HMAC(…, 'orientacion:' + ip))` usando `ProtectorDatos`;
   - es distinta de `huellaOrigen` de la 009 para la misma IP;
   - no contiene la IP.
-- [ ] T045 [P] [US5] Ampliar `ChatOrientacion.test.tsx`:
+- [X] T045 [P] [US5] Ampliar `ChatOrientacion.test.tsx`:
   - un 429 con `Retry-After: 420` → "Vuelva a intentarlo en 7 minutos" y el enlace al asistente;
   - el contador "N de 500";
   - "Enviar" desactivado con una pregunta vacía y mientras espera;
@@ -554,11 +554,11 @@ aplicar 10 preguntas cada 15 minutos por huella con sal (sin IP) y el máximo de
 
 ### Implementación de la historia 5
 
-- [ ] T046 [US5] Implementar
+- [X] T046 [US5] Implementar
       `apps/api/src/modulos/orientacion/infraestructura/limitador-preguntas-redis.ts`, con el mismo
       algoritmo que `LimitadorIntentosRedis` de la 002 (`MULTI`, `INCR`, `EXPIRE NX` y `TTL`;
       ventana fija de 15 minutos; máximo `ORIENTACION_LIMITE_PREGUNTAS`). Debe pasar T041.
-- [ ] T047 [US5] Integrar el límite:
+- [X] T047 [US5] Integrar el límite:
   - huella en `apps/api/src/modulos/orientacion/presentacion/huella-orientacion.ts`, usada por el
     controlador (`peticion.ip` con `trust proxy`, `ProtectorDatos.hmac('orientacion:' + ip)` en
     hexadecimal);
@@ -571,11 +571,16 @@ aplicar 10 preguntas cada 15 minutos por huella con sal (sin IP) y el máximo de
   - mapear `FUERA_DE_TEMA`.
 
   Deben pasar T042 a T044.
-- [ ] T048 [US5] Portal: contador, envío con Enter, botón desactivado, mensaje del 429 en minutos
+- [X] T048 [US5] Portal: contador, envío con Enter, botón desactivado, mensaje del 429 en minutos
       (redondeado hacia arriba) y `FUERA_DE_TEMA`, en `ChatOrientacion.tsx` y `clienteApi.ts`.
       Debe pasar T045.
 
 **Punto de control**: el límite protege la cuota y el chat no sale de su tema.
+
+**Estado al cierre de la fase 7**: el límite superado se comunica con `ErrorLimitePreguntas` (el
+controlador lo traduce a 429 `demasiadas-preguntas`) en lugar de un resultado `limite`. El tipo
+de problema 429 es una variante nueva, `ErrorProblema.demasiadasPreguntas`. La prueba de Redis caído
+reemplaza el limitador por uno que falla, para no desconectar el Redis compartido de la suite.
 
 ---
 

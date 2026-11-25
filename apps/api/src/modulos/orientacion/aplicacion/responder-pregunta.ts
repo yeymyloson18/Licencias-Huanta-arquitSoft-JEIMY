@@ -13,6 +13,7 @@ import type {
   FuenteCatalogo,
   FuenteGuia,
   LicenciaVigente,
+  LimitadorPreguntas,
   MensajeProveedor,
   ProveedorOrientacion,
   Reloj,
@@ -37,12 +38,23 @@ export interface DependenciasResponderPregunta {
   readonly catalogo: FuenteCatalogo;
   readonly guia: FuenteGuia;
   readonly proveedor: ProveedorOrientacion;
+  readonly limitador: LimitadorPreguntas;
   readonly reloj: Reloj;
 }
 
 export interface EntradaPregunta {
   readonly pregunta: string;
   readonly historial: readonly TurnoRecibido[];
+  /** Huella de la conexión (HMAC con sal), nunca la IP (US5). */
+  readonly huella: string;
+}
+
+/** US5: la persona superó las preguntas permitidas en la ventana (la pregunta no llega al proveedor). */
+export class ErrorLimitePreguntas extends Error {
+  constructor(readonly segundosRestantes: number) {
+    super('Se superó el límite de preguntas de orientación');
+    this.name = 'ErrorLimitePreguntas';
+  }
 }
 
 export interface SalidaPregunta {
@@ -134,6 +146,12 @@ export class ResponderPregunta {
     const inicio = this.d.reloj.ahora();
     // Valida antes de todo: una pregunta inválida no llega a ningún puerto (lanza el error).
     const pregunta = PreguntaOrientacion.crear(entrada.pregunta, entrada.historial);
+    // US5: solo cuentan las preguntas válidas; si se superó el límite, no llega al proveedor. Si el
+    // límite no se puede comprobar, el error del limitador sube (503 en la presentación).
+    const reserva = await this.d.limitador.reservar(entrada.huella);
+    if (!reserva.permitido) {
+      throw new ErrorLimitePreguntas(reserva.segundosRestantes);
+    }
 
     const limpia = quitarDatosPersonales(pregunta.texto);
     const historial = pregunta.historial.map((turno) => ({
