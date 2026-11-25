@@ -124,4 +124,82 @@ describe('GET /perfil (011, HU2)', () => {
     expect(texto).not.toContain(usuario.celular);
     expect(texto).not.toContain(usuario.clave);
   });
+
+  describe('cambio de clave voluntario desde Mi perfil (011, HU3)', () => {
+    const claveNueva = 'ClaveVoluntariaSegura2026';
+    const cambiar = (token: string, claveActual: string, nueva: string) =>
+      request(app.getHttpServer())
+        .post('/api/v1/auth/cambiar-clave')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ claveActual, claveNueva: nueva });
+
+    it('cambia la clave, cierra la otra sesión y queda "Clave cambiada" con actor = afectado', async () => {
+      const administrador = await crearUsuarioDePrueba(prisma, { roles: ['ADMINISTRADOR'] });
+      const usuario = await crearUsuarioDePrueba(prisma, { roles: ['CAJA'] });
+      const otra = await iniciarSesionDePrueba(app, redis, usuario);
+      const actual = await iniciarSesionDePrueba(app, redis, usuario);
+      expect(((await pedirPerfil(actual.accessToken)).body as PerfilApi).sesionesAbiertas).toBe(2);
+
+      const cambio = await cambiar(actual.accessToken, usuario.clave, claveNueva);
+      expect(cambio.status).toBe(200);
+      const tokenNuevo = (cambio.body as { accessToken: string }).accessToken;
+
+      // La otra sesión se cerró; la actual sigue con su token nuevo y ve 1 sesión abierta.
+      expect((await pedirPerfil(otra.accessToken)).status).toBe(401);
+      const perfil = await pedirPerfil(tokenNuevo);
+      expect(perfil.status).toBe(200);
+      expect((perfil.body as PerfilApi).sesionesAbiertas).toBe(1);
+
+      // La clave anterior ya no sirve; la nueva sí.
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/iniciar-sesion')
+        .send({ correo: usuario.correo, clave: usuario.clave })
+        .expect(401);
+      await iniciarSesionDePrueba(app, redis, { ...usuario, clave: claveNueva });
+
+      const { accessToken: tokenAdmin } = await iniciarSesionDePrueba(app, redis, administrador);
+      const auditoria = await request(app.getHttpServer())
+        .get(`/api/v1/admin/auditoria?accion=CLAVE_CAMBIADA&afectadoId=${usuario.id}`)
+        .set('Authorization', `Bearer ${tokenAdmin}`)
+        .expect(200);
+      const eventos = (
+        auditoria.body as {
+          datos: { actor: { id: string } | null; afectado: { id: string } | null }[];
+        }
+      ).datos;
+      expect(eventos).toHaveLength(1);
+      expect(eventos[0]?.actor?.id).toBe(usuario.id);
+      expect(eventos[0]?.afectado?.id).toBe(usuario.id);
+    });
+
+    it.each([
+      ['igual a la actual', null],
+      ['de menos de 12 caracteres', 'Corta123'],
+      ['sin números', 'SoloLetrasMuyLargas'],
+    ])('rechaza con 422 una clave nueva %s', async (_caso, nueva) => {
+      const usuario = await crearUsuarioDePrueba(prisma, { roles: ['EVALUADOR'] });
+      const { accessToken } = await iniciarSesionDePrueba(app, redis, usuario);
+
+      const respuesta = await cambiar(accessToken, usuario.clave, nueva ?? usuario.clave);
+
+      expect(respuesta.status).toBe(422);
+      // La clave no cambió: sigue sirviendo para ingresar.
+      await iniciarSesionDePrueba(app, redis, usuario);
+    });
+
+    it('una clave actual incorrecta cuenta para el límite: al pasarlo responde 429', async () => {
+      const usuario = await crearUsuarioDePrueba(prisma, { roles: ['JEFATURA'] });
+      const { accessToken } = await iniciarSesionDePrueba(app, redis, usuario);
+
+      const estados: number[] = [];
+      for (let intento = 0; intento < 6; intento += 1) {
+        estados.push(
+          (await cambiar(accessToken, `ClaveErrada${String(intento)}2026`, claveNueva)).status,
+        );
+      }
+
+      expect(estados.slice(0, 5)).toEqual([401, 401, 401, 401, 401]);
+      expect(estados[5]).toBe(429);
+    });
+  });
 });

@@ -19,14 +19,14 @@ import {
   usuarioFicticio,
 } from './dobles';
 
-const preparar = async () => {
+const preparar = async (claveTemporal = true) => {
   const usuarios = new RepositorioUsuariosEnMemoria();
   const sesiones = new RepositorioSesionesEnMemoria();
   const almacen = new AlmacenFalso();
   const emisor = new EmisorFalso();
   const eventos = new EventosFalsos();
   const limitador = new LimitadorFalso();
-  const usuario = usuarioFicticio({ clave: 'ClaveTemporal2026', debeCambiarClave: true });
+  const usuario = usuarioFicticio({ clave: 'ClaveTemporal2026', debeCambiarClave: claveTemporal });
   await usuarios.crear(usuario);
   for (const id of ['actual', 'otra-1', 'otra-2']) {
     await sesiones.crear(
@@ -77,6 +77,22 @@ describe('CambiarClave', () => {
       usuarios.auditoria.map((e) => [e.accion, e.actorUsuarioId, e.afectadoUsuarioId]),
     ).toEqual([['CLAVE_CAMBIADA', 'usuario-1', 'usuario-1']]);
     expect(JSON.stringify(usuarios.auditoria)).not.toContain('ClaveDefinitiva2026');
+  });
+
+  it('con clave definitiva (cambio voluntario, 011) cambia la clave y registra CLAVE_CAMBIADA con actor = afectado', async () => {
+    const { usuarios, sesiones, casoDeUso } = await preparar(false);
+    expect((await usuarios.obtenerPorId('usuario-1'))?.debeCambiarClave).toBe(false);
+
+    const resultado = await casoDeUso.ejecutar(entrada('ClaveTemporal2026', 'ClaveVoluntaria2026'));
+
+    expect((await usuarios.obtenerPorId('usuario-1'))?.claveHash).toBe('h:ClaveVoluntaria2026');
+    expect(resultado.usuario.debeCambiarClave).toBe(false);
+    expect(
+      usuarios.auditoria.map((e) => [e.accion, e.actorUsuarioId, e.afectadoUsuarioId]),
+    ).toEqual([['CLAVE_CAMBIADA', 'usuario-1', 'usuario-1']]);
+    expect(JSON.stringify(usuarios.auditoria)).not.toContain('ClaveVoluntaria2026');
+    expect((await sesiones.obtenerPorId('otra-1'))?.revocada).toBe(true);
+    expect((await sesiones.obtenerPorId('actual'))?.revocada).toBe(false);
   });
 
   it('revoca las demás sesiones, rota la actual y devuelve un token sin clave temporal', async () => {

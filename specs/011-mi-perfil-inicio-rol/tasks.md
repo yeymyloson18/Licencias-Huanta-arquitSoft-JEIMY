@@ -390,14 +390,14 @@ voluntario de `perfil.e2e-spec.ts` en verde.
 
 ### Pruebas de US3 (escribirlas primero; deben fallar)
 
-- [ ] T029 [P] [US3] Ampliar `apps/web/src/paginas/CambiarClave.test.tsx`:
+- [X] T029 [P] [US3] Ampliar `apps/web/src/paginas/CambiarClave.test.tsx`:
   - con una sesión **sin** clave temporal se ve el enlace "Volver a mi perfil";
   - un cambio correcto navega a `/perfil` con `state.aviso = 'Su clave se cambió'`;
   - claves nuevas distintas → "Las claves nuevas no coinciden" sin llamar a la API;
   - un 401 de la clave actual → "La clave actual no es correcta";
   - un 429 → "Demasiados intentos. Vuelva a intentarlo más tarde.";
   - un 422 → mensaje de la regla junto al campo.
-- [ ] T030 [P] [US3] Ampliar `apps/api/test/integracion/perfil.e2e-spec.ts` con el cambio voluntario
+- [X] T030 [P] [US3] Ampliar `apps/api/test/integracion/perfil.e2e-spec.ts` con el cambio voluntario
       (usuario con clave definitiva y 2 sesiones):
   - `POST /auth/cambiar-clave` → 200;
   - la sesión anterior responde 401 en `GET /perfil`;
@@ -413,13 +413,13 @@ voluntario de `perfil.e2e-spec.ts` en verde.
 
 ### Implementación de US3
 
-- [ ] T031 [US3] En `apps/web/src/paginas/CambiarClave.tsx`:
+- [X] T031 [US3] En `apps/web/src/paginas/CambiarClave.tsx`:
   - al montar, guardar `const voluntario = sesion?.debeCambiarClave !== true`;
   - si `voluntario`, mostrar el enlace "Volver a mi perfil" (`<Link to="/perfil">`);
   - en `'ok'`, navegar a `voluntario ? '/perfil' : inicioDe(resultado.datos.usuario.roles)` con
     `replace: true` y `state: { aviso: 'Su clave se cambió' }`;
   - no cambiar mensajes, campos ni validaciones de la 002.
-- [ ] T032 [US3] Verificar que `CambiarClave` (API) no necesita cambios. Si `cambiar-clave.spec.ts`
+- [X] T032 [US3] Verificar que `CambiarClave` (API) no necesita cambios. Si `cambiar-clave.spec.ts`
       no cubre "clave definitiva → registra `CLAVE_CAMBIADA` con actor = afectado", agregar ese caso
       en `apps/api/test/unit/modulos/seguridad/aplicacion/cambiar-clave.spec.ts`.
 
