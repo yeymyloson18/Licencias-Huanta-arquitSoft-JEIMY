@@ -594,19 +594,19 @@ desplazamiento horizontal.
 
 ### Pruebas de la historia 6 ⚠️
 
-- [ ] T049 [P] [US6] Ampliar `BotonPreguntanos.test.tsx` y `ChatOrientacion.test.tsx`:
+- [X] T049 [P] [US6] Ampliar `BotonPreguntanos.test.tsx` y `ChatOrientacion.test.tsx`:
   - el botón tiene `aria-haspopup="dialog"` y `aria-expanded`;
   - al abrir, el foco va al `<textarea>`;
   - Escape y "Cerrar" cierran y el foco vuelve a "Pregúntanos";
   - el diálogo tiene `aria-labelledby` con el título "Pregúntanos sobre licencias";
   - la respuesta y los errores se anuncian en una región `aria-live="polite"`;
   - seguir un enlace cierra el chat y conserva la conversación.
-- [ ] T050 [P] [US6] Crear `apps/web/src/componentes/orientacion/MontajeOrientacion.test.tsx`
+- [X] T050 [P] [US6] Crear `apps/web/src/componentes/orientacion/MontajeOrientacion.test.tsx`
       con `montarEn(ruta)` (la app completa, como `Inicio.test.tsx` de la 011):
   - "Pregúntanos" aparece en `/`, `/asistente`, `/licencias/LIC-01`, `/consulta` y
     `/tramite/identidad`;
   - **no** aparece en `/ingresar`, `/perfil`, `/cambiar-clave`, `/admin` ni `/personal/caja`.
-- [ ] T051 [P] [US6] `tests/e2e/orientacion.spec.ts` (Playwright, proyectos `celular` y
+- [X] T051 [P] [US6] `tests/e2e/orientacion.spec.ts` (Playwright, proyectos `celular` y
       `escritorio`; el compose de E2E **no** tiene clave):
   - en `/`, "Pregúntanos" → escribir → "Enviar" → mensaje de `NO_DISPONIBLE` → el enlace "¿Qué
     licencia necesito?" lleva a `/asistente`;
@@ -617,20 +617,20 @@ desplazamiento horizontal.
 
 ### Implementación de la historia 6
 
-- [ ] T052 [US6] Implementar la accesibilidad en `ChatOrientacion.tsx` y `BotonPreguntanos.tsx`:
+- [X] T052 [US6] Implementar la accesibilidad en `ChatOrientacion.tsx` y `BotonPreguntanos.tsx`:
   - `<dialog>` con `showModal()`, foco, Escape y regreso del foco;
   - región `aria-live`;
   - revisar que el filtro por rutas públicas de T024 cumpla T050 (`apps/web/src/Aplicacion.tsx`).
 
   Deben pasar T049 y T050.
-- [ ] T053 [US6] Estilos en `apps/web/src/estilos/global.css`:
+- [X] T053 [US6] Estilos en `apps/web/src/estilos/global.css`:
   - botón flotante abajo a la derecha, de 44 px o más, con foco visible;
   - `.contenido` con `padding-bottom` para que no tape el último botón;
   - diálogo a pantalla completa a 360 px y panel de 400 px desde 640 px;
   - áreas táctiles de 44 px, contraste AA y sin desplazamiento horizontal.
 
   Debe pasar T051 en CI.
-- [ ] T054 [US6] Lighthouse móvil con el chat abierto: agregar `http://localhost:8080/` a la medida
+- [X] T054 [US6] Lighthouse móvil con el chat abierto: agregar `http://localhost:8080/` a la medida
       del flujo `E2E` de la 011 (`tests/e2e/lighthouserc.json`). Abrir el chat antes de medir: el
       `puppeteerScript` (o uno nuevo, `tests/e2e/apoyo/lighthouse-chat.cjs`) carga `/`, pulsa
       "Pregúntanos" y deja el diálogo abierto, con `disableStorageReset`. Si Lighthouse recarga la
@@ -639,6 +639,13 @@ desplazamiento horizontal.
       o queda "pendiente de medir".
 
 **Punto de control**: las seis historias completas.
+
+**Estado al cierre de la fase 8**: pruebas del portal en verde. El E2E (T051) se corre en el flujo `E2E`
+de GitHub Actions (no en local: el compose de desarrollo leería la clave real de `infra/.env`).
+Lighthouse (T054) mide `/` con el botón; **la medida con el chat abierto (SC-007) queda pendiente**,
+porque Lighthouse CI recarga la página y el chat se cierra. No se anotó ningún puntaje. El filtro
+por rutas públicas ya estaba desde T024: T050 solo agregó su prueba. jsdom no implementa
+`showModal`: el chat lo usa cuando existe y, si no, abre el `<dialog>` con el atributo `open`.
 
 ---
 

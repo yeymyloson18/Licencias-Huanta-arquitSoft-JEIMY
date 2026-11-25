@@ -1,4 +1,4 @@
-import { type SyntheticEvent, useId, useState } from 'react';
+import { type SyntheticEvent, useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import {
   preguntarOrientacion,
@@ -68,6 +68,22 @@ export function ChatOrientacion({ conversacion, alCambiar, alCerrar }: Propiedad
   const idContador = useId();
   const [texto, setTexto] = useState('');
   const [esperando, setEsperando] = useState(false);
+  const dialogo = useRef<HTMLDialogElement>(null);
+  const campo = useRef<HTMLTextAreaElement>(null);
+
+  // US6 (FR-026): diálogo modal con el foco en el campo. `showModal` existe en los navegadores; donde
+  // no existe (jsdom de las pruebas) se abre con el atributo `open`.
+  useEffect(() => {
+    const elemento = dialogo.current;
+    if (elemento !== null && !elemento.open) {
+      if (typeof elemento.showModal === 'function') {
+        elemento.showModal();
+      } else {
+        elemento.setAttribute('open', '');
+      }
+    }
+    campo.current?.focus();
+  }, []);
 
   const enviar = async (pregunta: string) => {
     const limpia = pregunta.trim();
@@ -93,7 +109,22 @@ export function ChatOrientacion({ conversacion, alCambiar, alCerrar }: Propiedad
   };
 
   return (
-    <section className="chat-orientacion" role="dialog" aria-labelledby={idTitulo}>
+    <dialog
+      ref={dialogo}
+      className="chat-orientacion"
+      aria-labelledby={idTitulo}
+      onCancel={(evento) => {
+        // Escape en un diálogo modal del navegador.
+        evento.preventDefault();
+        alCerrar();
+      }}
+      onKeyDown={(evento) => {
+        if (evento.key === 'Escape') {
+          evento.preventDefault();
+          alCerrar();
+        }
+      }}
+    >
       <header className="chat-orientacion__cabecera">
         <h2 id={idTitulo} className="chat-orientacion__titulo">
           Pregúntanos sobre licencias
@@ -123,7 +154,8 @@ export function ChatOrientacion({ conversacion, alCambiar, alCerrar }: Propiedad
           ))}
         </ul>
 
-        <ol className="chat-orientacion__mensajes">
+        {/* Región viva: cada mensaje nuevo se anuncia sin mover el foco (FR-026). */}
+        <ol className="chat-orientacion__mensajes" aria-live="polite" aria-relevant="additions">
           {conversacion.map((mensaje) => (
             <li
               key={mensaje.id}
@@ -158,7 +190,11 @@ export function ChatOrientacion({ conversacion, alCambiar, alCerrar }: Propiedad
             </li>
           ))}
         </ol>
-        {esperando && <p className="chat-orientacion__esperando">Preparando la respuesta…</p>}
+        {esperando && (
+          <p className="chat-orientacion__esperando" role="status">
+            Preparando la respuesta…
+          </p>
+        )}
       </div>
 
       <form className="chat-orientacion__formulario" onSubmit={alEnviar}>
@@ -166,6 +202,7 @@ export function ChatOrientacion({ conversacion, alCambiar, alCerrar }: Propiedad
           Escriba su pregunta
         </label>
         <textarea
+          ref={campo}
           id={idCampo}
           className="chat-orientacion__campo"
           maxLength={LARGO_MAXIMO}
@@ -190,6 +227,6 @@ export function ChatOrientacion({ conversacion, alCambiar, alCerrar }: Propiedad
           Enviar
         </button>
       </form>
-    </section>
+    </dialog>
   );
 }

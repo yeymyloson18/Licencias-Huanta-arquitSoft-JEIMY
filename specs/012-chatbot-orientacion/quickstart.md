@@ -51,7 +51,11 @@ Resultado esperado: todo en verde, sin ninguna clave de proveedor.
   - Escape cierra y el foco vuelve al botón.
   - En el proyecto `celular` no hay desplazamiento horizontal con el chat abierto.
   - "Pregúntanos" no aparece en `/ingresar` ni en `/perfil`.
-- **Lighthouse móvil** (como en la 011): `/` con el chat abierto, accesibilidad ≥ 0.9.
+- **Lighthouse móvil** (como en la 011): `tests/e2e/lighthouserc.json` mide `/` con el botón
+  "Pregúntanos". **Con el chat abierto (SC-007) queda pendiente de medir**: Lighthouse CI recarga cada URL
+  después del `puppeteerScript`, así que el chat se cierra antes de medir. Mientras tanto, la
+  accesibilidad del chat abierto la cubren las pruebas del portal (T049: foco, Escape, `aria-live`) y el
+  E2E a 360 px (T051: sin desplazamiento horizontal). Correr el E2E sin la clave en `infra/.env`.
 
 ## Evaluación EQ-08 con el proveedor real (a pedido, fuera de CI)
 

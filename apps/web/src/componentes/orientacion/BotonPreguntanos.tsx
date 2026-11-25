@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChatOrientacion } from './ChatOrientacion';
 import type { MensajeChat } from './conversacion';
 
@@ -12,6 +12,16 @@ interface Propiedades {
 
 export function BotonPreguntanos({ conversacion, alCambiar }: Propiedades) {
   const [abierto, setAbierto] = useState(false);
+  const boton = useRef<HTMLButtonElement>(null);
+  const estabaAbierto = useRef(false);
+
+  // US6 (FR-026): al cerrar el chat, el foco vuelve a "Pregúntanos".
+  useEffect(() => {
+    if (estabaAbierto.current && !abierto) {
+      boton.current?.focus();
+    }
+    estabaAbierto.current = abierto;
+  }, [abierto]);
 
   return (
     <div className="orientacion">
@@ -25,6 +35,7 @@ export function BotonPreguntanos({ conversacion, alCambiar }: Propiedades) {
         />
       )}
       <button
+        ref={boton}
         type="button"
         className="boton boton-preguntanos"
         aria-haspopup="dialog"
