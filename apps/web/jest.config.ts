@@ -18,7 +18,8 @@ const config: Config = {
   coverageDirectory: 'coverage',
   coverageReporters: ['text-summary', 'lcov', 'json-summary'],
   moduleNameMapper: {
-    '\\.css$': '<rootDir>/src/__mocks__/estilo.ts',
+    // 013: también el Sass del tema (tema.scss y sus parciales).
+    '\\.(css|scss)$': '<rootDir>/src/__mocks__/estilo.ts',
   },
 };
 

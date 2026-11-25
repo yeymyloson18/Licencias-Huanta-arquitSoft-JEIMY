@@ -35,7 +35,7 @@ tema compilando.
 **⚠️ IMPORTANTE**: T003 se hace antes de T004. La línea base de SC-003 y las capturas "antes" son
 del portal sin CoreUI.
 
-- [ ] T001 [P] Capturas con Playwright en `tests/e2e/capturas.spec.ts`. Se salta si no hay
+- [X] T001 [P] Capturas con Playwright en `tests/e2e/capturas.spec.ts`. Se salta si no hay
       `CAPTURAS=antes|despues` y no corre en CI.
   - **Pantallas**:
     - portada `/`;
@@ -52,7 +52,7 @@ del portal sin CoreUI.
     "después" son en ambos modos y las "antes" solo en claro.
   - **Salida**: `docs/08-sprint-2/evidencias/diseno-013/<antes|despues>/<modo>/<proyecto>-<pantalla>.png`,
     con página completa.
-- [ ] T002 [P] Medidor `tests/e2e/apoyo/lighthouse-medida.mjs`: Lighthouse con un flujo de puppeteer,
+- [X] T002 [P] Medidor `tests/e2e/apoyo/lighthouse-medida.mjs`: Lighthouse con un flujo de puppeteer,
       instalado como en el paso del chat de la 012 (`lighthouse@12.2.1` y `puppeteer-core@23.11.1`
       en una carpeta temporal).
   - **Argumentos**: `--url`, `--proyecto` (para leer el código simulado de Redis del compose
@@ -70,7 +70,7 @@ del portal sin CoreUI.
     compose, termina con un mensaje claro y no mide. No siembra por su cuenta.
   - **Peso del CSS** (análisis E1): anota también el tamaño, transferido y sin comprimir, del CSS
     que descarga la portada y del que descarga la bandeja.
-- [ ] T003 Tomar la **línea base y las capturas "antes"** (quickstart §0):
+- [X] T003 Tomar la **línea base y las capturas "antes"** (quickstart §0):
   - compose aislado `-p licencias-medida` con los puertos 8090, 3001, 5434, 6381 y 8026, y
     `ORIENTACION_API_KEY=` vacío en el comando, así que no se usa el proveedor;
   - **en este orden** (análisis U3):
@@ -83,13 +83,13 @@ del portal sin CoreUI.
 
   **No se toca el compose de desarrollo** ni `infra/.env`. Commit aparte:
   `docs(013): línea base y capturas antes`.
-- [ ] T004 Instalar con versión **exacta** (sin `^`) en `apps/web/package.json` y actualizar
+- [X] T004 Instalar con versión **exacta** (sin `^`) en `apps/web/package.json` y actualizar
       `package-lock.json` (research R-01):
   - `@coreui/react@5.13.1`, `@coreui/coreui@5.9.1` y `@coreui/icons-react@2.3.0` en `dependencies`;
   - `sass@1.107.1` en `devDependencies`.
 
   Comprobar que no entraron Redux, `react-router-dom`, Chart.js ni simplebar (`npm ls`).
-- [ ] T005 Jest con CoreUI (research R-10):
+- [X] T005 Jest con CoreUI (research R-10):
   - en `apps/web/jest.config.ts`, `moduleNameMapper` de `'\\.(css|scss)$'` al simulador de estilos;
   - **`matchMedia` en jsdom** (análisis C1): jsdom no tiene `window.matchMedia`, y lo usan
     `useModoColor` y, probablemente, `CSidebar` para saber si es celular.
@@ -105,7 +105,7 @@ del portal sin CoreUI.
       true })`;
   - solo si falla con un `import` de `node_modules/@coreui/*`, agregar `transformIgnorePatterns` y
     transformar esos `.js`.
-- [ ] T006 Tema Sass que compila (research R-02 y `contracts/tema.md`):
+- [X] T006 Tema Sass que compila (research R-02 y `contracts/tema.md`):
   - `apps/web/src/estilos/_variables-municipalidad.scss`:
     - `$primary: #0b5394`;
     - variante oscura `#083d6d`;
@@ -129,6 +129,23 @@ del portal sin CoreUI.
 
 **Punto de control**: hay línea base, CoreUI está instalado y el tema compila con las pruebas en
 verde.
+
+**Estado al cierre de la fase 1 (2026-11-25)**:
+
+- **Línea base**: se tomó **antes de instalar CoreUI**, en el compose aislado y sin el proveedor:
+  - 12 capturas "antes";
+  - Lighthouse con la mediana de 3 corridas: rendimiento 97 a 99 y accesibilidad 100.
+
+  El medidor se corrigió durante la toma: caché fría en cada navegación (sin borrar las cookies de
+  la sesión) y sin rendimiento en modo snapshot. Por pedido de la usuaria, va en el mismo commit de
+  la fase (no en uno aparte).
+- **CoreUI**: se instaló con versiones exactas y no agregó vulnerabilidades (`npm audit`: las mismas
+  26 de antes).
+- **Jest**: la prueba de humo pasó **sin** `transformIgnorePatterns`; el simulador de `matchMedia`
+  queda en `jest.setup.ts`.
+- **Tema**: 18.6 KB con gzip después de acotar utilidades, formularios y ayudantes y de quitar
+  `type`, `grid` y `nav`. La configuración común vive en `_configuracion.scss` (`@forward … with`).
+- **Capturas**: sin video ni traza en `capturas.spec.ts`, porque el video necesita ffmpeg.
 
 ---
 

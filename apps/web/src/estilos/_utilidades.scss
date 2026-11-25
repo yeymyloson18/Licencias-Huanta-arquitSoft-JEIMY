@@ -1,0 +1,49 @@
+// API de utilidades de CoreUI acotada a las que usa el portal (013, research R-02). Este módulo se
+// carga ANTES de `utilities/api`, así la API recorre solo esta lista.
+@use 'sass:list';
+@use 'sass:map';
+@use 'configuracion';
+@use '@coreui/coreui/scss/utilities' as utilidades;
+
+// Solo las que usan los componentes del diseño; se agregan aquí si una pantalla necesita otra.
+$usadas: (
+  display,
+  flex-direction,
+  flex-grow,
+  flex-wrap,
+  justify-content,
+  align-items,
+  gap,
+  margin-bottom,
+  margin-start,
+  margin-end,
+  padding-x,
+  padding-y,
+  font-weight,
+  min-viewport-height,
+  text-color,
+  background-color
+);
+// Solo display tiene versiones por ancho de pantalla (por ejemplo, d-md-none); las demás no.
+$responsivas: (display);
+
+$filtradas: ();
+@each $clave, $valor in utilidades.$utilities {
+  @if list.index($usadas, $clave) {
+    @if not list.index($responsivas, $clave) {
+      $valor: map.merge(
+        $valor,
+        (
+          responsive: false,
+        )
+      );
+    }
+    $filtradas: map.merge(
+      $filtradas,
+      (
+        $clave: $valor,
+      )
+    );
+  }
+}
+utilidades.$utilities: $filtradas;

@@ -1,2 +1,2 @@
-// Sustituto de los archivos .css en las pruebas de Jest (jsdom no procesa estilos).
+// Sustituto de los archivos .css y .scss en las pruebas de Jest (jsdom no procesa estilos).
 export default {};

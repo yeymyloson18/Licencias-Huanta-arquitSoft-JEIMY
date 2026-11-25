@@ -1,0 +1,6 @@
+// Estilos que usa solo el área del personal (013, análisis E1): menú lateral y migas. Lo importa el
+// módulo de DisenoPersonal (cargado con React.lazy), así el portal público no los descarga.
+@use 'configuracion';
+@use '@coreui/coreui/scss/nav';
+@use '@coreui/coreui/scss/sidebar';
+@use '@coreui/coreui/scss/breadcrumb';
