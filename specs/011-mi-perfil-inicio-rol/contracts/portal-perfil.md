@@ -10,6 +10,13 @@
   roles. El menú no enlaza a `/` (portal público del ciudadano). Las páginas públicas siguen
   abiertas para todos y no se redirigen.
 
+## Acceso del personal (`componentes/AccesoPersonal.tsx`, FR-021)
+
+- Barra fina sobre las páginas públicas, con el enlace "Acceso del personal" → `/ingresar`.
+- Solo sin sesión del personal. No aparece mientras se comprueba la sesión ni en `/ingresar`.
+- Es un `<nav aria-label="Acceso del personal">`. A 360 px cabe sin desplazamiento horizontal y
+  tiene área táctil de 44 px.
+
 ## `/perfil` (`paginas/personal/MiPerfil.tsx`, nueva)
 
 - `RutaProtegida` **sin** `roles`. Sin sesión lleva a `/ingresar` con `volverA: '/perfil'`; con clave

@@ -187,6 +187,26 @@ E2E ingresa con CAJA y llega a `/personal/caja`.
     `<Link to={inicioDe(sesion.usuario.roles)}>Inicio</Link>` (con `inicioDe` de
     `sesion/inicio.ts`). No se toca ninguna ruta pública.
   - Correr `npm test -w apps/web`.
+- [X] T038 [US1] Enlace "Acceso del personal" en las páginas públicas (FR-021, escenario 8 de US1).
+      Es otra corrección posterior; toma el siguiente número libre.
+  - **Prueba primero**, en `apps/web/src/paginas/Inicio.test.tsx`, montando el portal completo con
+    `montarEn` y `simularApi`:
+    - sin sesión (`POST /auth/renovar` → 401), en `/` existe el enlace "Acceso del personal" con
+      `href="/ingresar"`, y al pulsarlo se abre la pantalla de ingreso;
+    - sin sesión también aparece en otra página pública (`/consulta`);
+    - con sesión (`POST /auth/renovar` → 200), en `/` no aparece;
+    - en `/ingresar` no aparece.
+  - **Implementación**:
+    - `apps/web/src/componentes/AccesoPersonal.tsx`: con `useSesion()` y `useLocation()`, devuelve
+      `null` si `estado !== 'sin-sesion'` o si la ruta es `/ingresar`. Si no, devuelve
+      `<nav className="acceso-personal" aria-label="Acceso del personal">` con
+      `<Link to="/ingresar">Acceso del personal</Link>`.
+    - Se monta en `Diseno` de `apps/web/src/Aplicacion.tsx`, junto a `<Menu />` (que solo aparece
+      con sesión), para que lo tengan todas las páginas públicas sin tocar cada una.
+    - Estilo en `apps/web/src/estilos/global.css`: barra fina alineada a la derecha, texto pequeño
+      pero legible (≥ 0.875rem), área táctil de 44 px, foco visible, contraste suficiente y nada de
+      desplazamiento horizontal a 360 px.
+  - Correr `npm test -w apps/web`.
 
 **Punto de control**: US1 completa. Commit `feat(web): cada rol llega a su pantalla al ingresar`.
 

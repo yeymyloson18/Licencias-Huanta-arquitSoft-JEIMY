@@ -60,6 +60,9 @@ comprobar la pantalla a la que llega cada uno.
    el menú, **entonces** llega a la pantalla principal de su rol (por ejemplo, Caja a Caja), nunca al
    portal público del ciudadano; **y** si escribe a mano la dirección del portal público, la página
    se abre igual (FR-020).
+8. **Dado** una persona del personal sin sesión en la portada o en otra página pública, **cuando**
+   busca cómo entrar, **entonces** ve el enlace "Acceso del personal", que la lleva a la pantalla de
+   ingreso; **y** con sesión ese enlace no aparece (FR-021).
 
 ---
 
@@ -231,6 +234,12 @@ posibles y comprobar que siempre se recibe el propio o un rechazo.
   menú del personal NO DEBE enlazar al portal público del ciudadano (`/`, con el asistente y la
   consulta), porque ningún rol del personal hace ese trámite. Las páginas públicas siguen abiertas:
   no se bloquean ni redirigen para quien tiene sesión; solo dejan de estar en el menú del personal.
+- **FR-021**: La portada (`/`) y las demás páginas públicas (asistente, consulta, verificación de
+  licencias y trámite en línea) DEBEN mostrar un enlace discreto "Acceso del personal" que lleve a la
+  pantalla de ingreso (`/ingresar`), visible solo cuando no hay sesión del personal. Con sesión no
+  aparece, porque el menú ya lleva a su pantalla (FR-020). No aparece en la propia pantalla de
+  ingreso ni mientras se comprueba si hay sesión. Se usa con el teclado y con lector de pantalla y
+  cabe a 360 px sin desplazamiento horizontal.
 
 **Privacidad, contrato y accesibilidad**
 

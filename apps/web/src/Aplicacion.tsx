@@ -1,4 +1,5 @@
 import { Outlet, Route, Routes } from 'react-router';
+import { AccesoPersonal } from './componentes/AccesoPersonal';
 import { AvisoNavegacion } from './componentes/AvisoNavegacion';
 import { Menu } from './componentes/Menu';
 import { RutaProtegida } from './componentes/RutaProtegida';
@@ -41,6 +42,7 @@ function Diseno() {
   return (
     <>
       <Menu />
+      <AccesoPersonal />
       <AvisoNavegacion respaldo={aviso} />
       <Outlet />
     </>
