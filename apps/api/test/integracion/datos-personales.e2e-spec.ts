@@ -7,6 +7,10 @@ import { PrismaServicio } from '../../src/compartido/infraestructura/prisma.serv
 import { REDIS_CLIENTE } from '../../src/compartido/infraestructura/redis.proveedor';
 import { crearAplicacionDePrueba, type LoggerCapturador } from '../apoyo/aplicacion-prueba';
 import { limpiarSeguridad } from '../apoyo/limpiar-seguridad';
+import {
+  conProveedorSimulado,
+  ProveedorOrientacionSimulado,
+} from '../apoyo/proveedor-orientacion-simulado';
 import { leerOtpSimulado, limpiarClavesSeguridad } from '../apoyo/redis-prueba';
 import { iniciarSesionDePrueba } from '../apoyo/sesion-prueba';
 import { crearUsuarioDePrueba } from '../apoyo/usuarios-prueba';
@@ -34,6 +38,8 @@ describe('Datos personales fuera de respuestas, URLs y logs (SC-007)', () => {
   let prisma: PrismaServicio;
   let redis: Redis;
   const intercambios: Intercambio[] = [];
+  // 012: el chat de orientación usa un proveedor SIMULADO que guarda lo que recibe.
+  const proveedorOrientacion = new ProveedorOrientacionSimulado();
 
   const sufijo = randomUUID().slice(0, 8);
   const persona = {
@@ -106,7 +112,9 @@ describe('Datos personales fuera de respuestas, URLs y logs (SC-007)', () => {
   };
 
   beforeAll(async () => {
-    const creada = await crearAplicacionDePrueba();
+    const creada = await crearAplicacionDePrueba({
+      ajustar: conProveedorSimulado(proveedorOrientacion),
+    });
     app = creada.app as INestApplication<App>;
     logger = creada.logger;
     prisma = app.get(PrismaServicio);
@@ -354,4 +362,64 @@ describe('Datos personales fuera de respuestas, URLs y logs (SC-007)', () => {
       expect({ linea, filtrados: contiene(linea, todos) }).toEqual({ linea, filtrados: [] });
     }
   }, 60_000);
+
+  it('privacidad-012: el chat de orientación no entrega datos personales al proveedor ni a los registros', async () => {
+    await limpiarClavesSeguridad(redis);
+    proveedorOrientacion.reiniciar();
+    proveedorOrientacion.responderCon({ tipo: 'CONSULTA_TRAMITE', texto: 'x' });
+    const lineasAntes = logger.lineas.length;
+    const desde = intercambios.length;
+    const datos = ['40000001', '20123456789', '987 654 321', '987654321', 'ana.perez@correo.pe'];
+    const pregunta =
+      'mi DNI es 40000001, RUC 20123456789, cel 987 654 321, correo ana.perez@correo.pe, ' +
+      '¿cómo va mi trámite?';
+
+    const respuesta = await pedir('post', '/orientacion/preguntas', {
+      cuerpo: {
+        pregunta,
+        historial: [
+          { rol: 'PERSONA', texto: 'Hola, soy el titular del RUC 10400000011' },
+          { rol: 'ORIENTADOR', texto: 'Hola, ¿en qué le ayudo?' },
+        ],
+      },
+    });
+
+    expect(respuesta.status).toBe(200);
+    // (a) El proveedor no recibió ninguno de los datos, sí la marca neutra.
+    const recibido = proveedorOrientacion.textoRecibido();
+    for (const dato of [...datos, '10400000011']) {
+      expect(recibido).not.toContain(dato);
+    }
+    expect(recibido).toContain('[dato personal]');
+    // (b) La respuesta avisa y no repite los datos; remite a "Consultar mi trámite".
+    expect(respuesta.body).toMatchObject({
+      resultado: 'CONSULTA_TRAMITE',
+      enlaces: [{ tipo: 'CONSULTA' }],
+      datoPersonalQuitado: true,
+    });
+    for (const dato of [...datos, '10400000011']) {
+      expect(respuesta.text).not.toContain(dato);
+    }
+    // (c) Los registros no tienen los datos, el texto de la pregunta ni la IP.
+    const nuevas = logger.lineas.slice(lineasAntes);
+    expect(nuevas.some((linea) => linea.includes('Pregunta de orientación'))).toBe(true);
+    for (const linea of nuevas) {
+      for (const prohibido of [...datos, '10400000011', '¿cómo va mi trámite?', IP]) {
+        expect({ linea, prohibido, aparece: linea.includes(prohibido) }).toEqual({
+          linea,
+          prohibido,
+          aparece: false,
+        });
+      }
+    }
+    // Ni en la URL.
+    for (const { url } of intercambios.slice(desde)) {
+      expect(url).toBe('/api/v1/orientacion/preguntas');
+    }
+    // (d) Ninguna clave de Redis del límite de orientación contiene la IP (huella con sal, US5).
+    const claves = await redis.keys('lim:orientacion:*');
+    for (const clave of claves) {
+      expect(clave).not.toContain(IP);
+    }
+  });
 });

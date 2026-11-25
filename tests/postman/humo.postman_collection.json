@@ -201,6 +201,47 @@
               }
             }
           ]
+        },
+        {
+          "name": "Orientación sin pregunta (012)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orientacion/preguntas",
+              "host": ["{{baseUrl}}"],
+              "path": ["orientacion", "preguntas"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Orientación sin pregunta: responde 422 sin llamar al proveedor', function () {",
+                  "  pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test('responde en menos de 2 s (EQ-01)', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

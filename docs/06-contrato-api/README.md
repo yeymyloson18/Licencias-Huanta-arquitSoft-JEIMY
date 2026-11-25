@@ -78,6 +78,8 @@ Los errores usan `application/problem+json`; el campo `type` es `https://licenci
 | `alerta-atendida`        | 409    | La alerta ya se marcó como atendida (006)                                                    |
 | `feriado-repetido`       | 409    | Ya hay un feriado en esa fecha (006)                                                         |
 | `accion-sobre-si-mismo`  | 409    | El administrador intenta cerrar sus propias sesiones o desbloquearse a sí mismo (009)        |
+| `demasiadas-preguntas`   | 429    | Más de 10 preguntas al chat de orientación en 15 minutos; incluye `Retry-After` (012)       |
+| `orientacion-no-disponible` | 503 | El límite de preguntas del chat de orientación no se puede comprobar (012)                  |
 
 ## Matriz de permisos por rol (propuesta para EQ-04)
 
@@ -91,6 +93,7 @@ Cada celda marcada es una prueba automática que debe responder 2xx; cada celda 
 | Panel del administrador y auditoría de seguridad, con CSV (009)           |                |           |                  |      |          |   ✓    |                                  |
 | Ficha del usuario, cerrar sus sesiones y desbloquear su cuenta (009)      |                |           |                  |      |          |   ✓    |                                  |
 | Ver mi perfil y cambiar mi clave, solo los propios (011)                  |       ✓        |     ✓     |        ✓         |  ✓   |    ✓     |   ✓    |                                  |
+| Preguntar al chat de orientación (012)                                    |       ✓        |     ✓     |        ✓         |  ✓   |    ✓     |   ✓    |                ✓                 |
 | Ver feriados del año                                                      |       ✓        |     ✓     |        ✓         |  ✓   |    ✓     |   ✓    |                                  |
 | Registrar y eliminar feriados (RF23)                                      |                |           |                  |      |          |   ✓    |                                  |
 | Presentar solicitud y subir documentos                                    |       ✓        |           |                  |      |          |        |          tokenIdentidad          |
@@ -129,12 +132,23 @@ persona).
 
 Se prueban en `apps/api/test/integracion/matriz-permisos-011.e2e-spec.ts`.
 
+Orientación (012): `POST /orientacion/preguntas` es público (sin token) y no da acceso a ningún
+expediente ni persona. La pregunta va en el cuerpo; nunca se guarda.
+
+| Respuesta | Cuándo |
+| --- | --- |
+| 200 | Con `resultado`: `RESPONDIDA`, `SIN_INFORMACION`, `FUERA_DE_TEMA`, `CONSULTA_TRAMITE` o `NO_DISPONIBLE` (proveedor caído, sin clave, cuota agotada o catálogo no disponible) |
+| 422 `validacion` | Pregunta vacía o de más de 500 caracteres, o historial inválido (más de 6 turnos o campos de más) |
+| 429 `demasiadas-preguntas` | Más de 10 preguntas en 15 minutos desde la misma conexión (huella con sal, sin guardar la IP), con `Retry-After` |
+| 503 `orientacion-no-disponible` | El límite de preguntas no se puede comprobar |
+
 ## Operaciones por módulo
 
 | Módulo               | Operaciones                                                                                                                                                                                                                                                                                                  |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Seguridad y Usuarios | `iniciarSesion`, `verificarOtpPersonal`, `renovarSesion`, `cerrarSesion`, `verificarIdentidadAdministrado`, `verificarOtpAdministrado`, `cambiarClave`, `obtenerMiPerfil`, `listarUsuarios`, `buscarUsuarios`, `crearUsuario`, `actualizarUsuario`, `asignarRoles`, `asignarClaveTemporal`, `obtenerFichaUsuario`, `cerrarSesionesDeUsuario`, `desbloquearUsuario`, `obtenerPanelAdministrador`, `consultarAuditoriaSeguridad` |
 | Catálogo y Asistente | `listarRecetas`, `obtenerReceta`, `actualizarReceta`, `listarRecetasAdmin`, `obtenerRecetaAdmin`, `obtenerPreguntasAsistente`, `proponerLicencia`                                                                                                                                                            |
+| Orientación (012)    | `preguntarOrientacion`                                                                                                                                                                                                                                                                                       |
 | Trámites             | `subirDocumento`, `presentarSolicitud`, `listarExpedientes`, `consultarEstado`, `obtenerExpediente`, `obtenerTitularParaCaja`, `iniciarEvaluacion`, `confirmarNivelRiesgo`, `aprobarEvaluacion`, `observarExpediente`, `denegarExpediente`, `subsanarObservacion`, `auditoriaTramites`, `descargarDocumento` |
 | Pagos en caja        | `consultarEsquela`, `descargarEsquela`, `registrarPagoEnCaja`, `corregirNumeroRecibo`, `auditoriaPagos`                                                                                                                                                                                                      |
 | Inspecciones         | `listarInspecciones`, `listarInspectores`, `asignarInspector`, `registrarResultadoItse`                                                                                                                                                                                                                      |

@@ -262,6 +262,37 @@ npm run contrato            # validación del contrato OpenAPI
 Las pruebas de integración usan `DATABASE_URL` y `REDIS_URL` (por defecto, `localhost:5432` y
 `localhost:6379`), así que basta con tener levantado el sistema con el comando único.
 
+## Chat de orientación (funcionalidad 012)
+
+En las páginas públicas, el botón **Pregúntanos** abre un chat donde el administrado pregunta con sus
+palabras sobre licencias de funcionamiento (qué licencia necesita, tasas, plazos, requisitos, rutas,
+ITSE, pago en caja, estados, cómo presentar, subsanar o consultar).
+
+- **Solo con datos del sistema:** responde con el catálogo de recetas vigente y una guía de preguntas
+  frecuentes (`apps/api/src/modulos/orientacion/infraestructura/guia/guia-orientacion.json`). Si una
+  respuesta trae un monto o un plazo que no está en el catálogo, muestra "No tengo esa información".
+- **Datos personales:** antes de consultar al proveedor de IA se quitan DNI, RUC, celular, carné de
+  extranjería y correo. No guarda preguntas ni respuestas; los registros solo dicen cómo terminó.
+- **No ve expedientes:** para eso remite a "Consultar mi trámite". Fuera del tema, responde que solo
+  atiende licencias de funcionamiento.
+- **Límite:** 10 preguntas cada 15 minutos por conexión (huella con sal, sin guardar la IP).
+- **Proveedor:** un servicio externo compatible con OpenAI, por defecto Groq con el modelo
+  `openai/gpt-oss-120b` (ADR-011), llamado solo desde el backend con 15 s como máximo.
+
+**Cómo configurar la clave:** pida una clave en la consola del proveedor y escríbala solo en
+`infra/.env`, que no se sube al repositorio:
+
+```text
+ORIENTACION_API_KEY=<su clave>
+```
+
+`ORIENTACION_API_URL` y `ORIENTACION_MODELO` pueden quedar vacías (usan Groq y el modelo por
+defecto). **Sin clave**, el sistema arranca igual y el chat responde que no está disponible y ofrece
+el asistente "¿Qué licencia necesito?". La exactitud del chat se mide con el escenario EQ-08
+(`tests/orientacion/`).
+
+Especificación, plan y tareas: [`specs/012-chatbot-orientacion/`](specs/012-chatbot-orientacion/).
+
 ## Asistente de ruta y catálogo (funcionalidad 003)
 
 - **Asistente "¿Qué licencia necesito?"** (`/asistente`, sin iniciar sesión): hace las preguntas del
@@ -790,7 +821,7 @@ están en el documento 8.
 
 | Idea                                            | Motivo para dejarla después                                                                                                    |
 | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Asistente por chat y WhatsApp                   | Definido como Fase 2 desde el inicio (RC13).                                                                                   |
+| Asistente por WhatsApp                          | Definido como Fase 2 desde el inicio (RC13). El chat de orientación del portal sí entra en la Fase 1 (012, enmienda 1.1.0).    |
 | Pantalla de historial y versionado del catálogo | El registro de cambios ya existe (funcionalidad 003); falta consultarlo desde el portal y poder volver a una versión anterior. |
 
 ## Curso: Arquitectura de Software – UNSCH 2026

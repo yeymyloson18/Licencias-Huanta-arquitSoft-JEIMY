@@ -78,6 +78,7 @@ GitHub Actions y dejan sus resultados como archivos descargables (artefactos).
 | 008 Cierre del Sprint 2 | — (entregables de la guía) | Swagger, Postman, cobertura publicada, carga hasta 2,000 usuarios y estos documentos |
 | 009 Panel del administrador | HU15 ampliada | Panel, auditoría de seguridad con CSV, ficha con cerrar sesiones y desbloquear, y buzón de pruebas en desarrollo |
 | 011 Mi perfil e inicio por rol | HU15 ampliada | Cada rol llega a su pantalla al ingresar, Mi perfil con sus propios datos y cambio de clave voluntario |
+| 012 Chat de orientación | HU01 y HU03 ampliadas | "Pregúntanos" responde preguntas libres sobre licencias solo con el catálogo y la guía, sin datos personales hacia el proveedor de IA (ADR-011) |
 
 ## 5. Pruebas y cobertura
 
@@ -86,8 +87,8 @@ GitHub Actions y dejan sus resultados como archivos descargables (artefactos).
 | Unitarias de la API (Jest) | 1,107 | Job `pruebas` y `cobertura` del CI, y en local |
 | Integración de la API (Jest + Supertest, PostgreSQL y Redis reales) | 580 en verde en la última ejecución local completa, más las nuevas de la 007 y la 008 que corren en el CI | Job `pruebas` del CI |
 | Portal (Jest + Testing Library) | 303 | Job `pruebas` del CI y en local |
-| Extremo a extremo (Playwright, celular y escritorio) | 3 recorridos × 2 tamaños (rutas A y B, y Mi perfil de la 011) | Flujo `E2E` |
-| Humo de la API (Postman y Newman) | 17 peticiones (13 de la 008, 3 de la 009 y 1 de la 011) | Flujo `Postman` |
+| Extremo a extremo (Playwright, celular y escritorio) | 4 recorridos × 2 tamaños (rutas A y B, Mi perfil de la 011 y el chat de orientación de la 012) | Flujo `E2E` |
+| Humo de la API (Postman y Newman) | 18 peticiones (13 de la 008, 3 de la 009, 1 de la 011 y 1 de la 012) | Flujo `Postman` |
 | Carga (k6) | 387,235 peticiones hasta 2,000 usuarios: p95 6 ms, 0 % de errores | Flujo `Carga Sprint 2`, [`evidencias/carga-2000-despues.txt`](evidencias/carga-2000-despues.txt) |
 
 **Cobertura** (pruebas unitarias; el reporte navegable está en el artefacto `cobertura` de cada
@@ -170,3 +171,42 @@ datos personales).
 
 Cuando el flujo `E2E` corra en el PR, se anotan aquí el puntaje de cada pantalla y el enlace a la
 corrida.
+
+## 9. Mejora posterior al cierre: chat de orientación (012)
+
+La funcionalidad 012 ([`specs/012-chatbot-orientacion/`](../../specs/012-chatbot-orientacion/))
+agrega el botón **Pregúntanos** en las páginas públicas. Para eso se enmendó la constitución a la
+versión 1.1.0: el módulo 10 es "Orientación" y el asistente por WhatsApp sigue en la Fase 2.
+
+- **Fuentes**: responde solo con el catálogo vigente (por la fachada del módulo Catálogo, con su
+  caché) y con una guía de preguntas frecuentes.
+- **Revisión de cifras**: si una respuesta trae un monto o un plazo que no está en esas fuentes, se
+  muestra "No tengo esa información".
+- **Datos personales**: DNI, RUC, celular, carné de extranjería y correo se quitan antes de consultar
+  al proveedor de IA (ADR-011: compatible con OpenAI, por defecto Groq). No se guardan preguntas ni
+  respuestas.
+- **Límite**: 10 preguntas cada 15 minutos por conexión, con una huella con sal y sin guardar la IP.
+- **Sin proveedor**: si el proveedor falla, no hay clave o se agota la cuota, el chat ofrece el
+  asistente "¿Qué licencia necesito?".
+
+**Evidencia** (resultados tal como salieron):
+
+| Medida | Herramienta | Resultado |
+| --- | --- | --- |
+| EQ-08 · SC-001: respuestas que coinciden con lo esperado (≥ 90 %) | `tests/orientacion/evaluar.mjs`, 37 preguntas, proveedor real, en local (2026-11-25) | **37 de 37 (100 %)** |
+| EQ-08 · SC-002: respuestas mostradas con cifras ajenas (0) | La misma evaluación | **0** |
+| EQ-08 · SC-003: preguntas fuera del tema o de manipulación rechazadas (100 %) | La misma evaluación | **4 de 4 (100 %)** |
+| EQ-08 · SC-005: respuestas en 10 s o menos (≥ 95 %) | La misma evaluación | **37 de 37; p95 3.2 s** |
+| SC-004: datos personales fuera del proveedor y de los registros | `privacidad-012` (Jest + Supertest, proveedor simulado) | En verde |
+| SC-005: aviso con el proveedor caído (≤ 16 s) | Integración con un servidor local que nunca responde (tiempo máximo de 1 s) | Menos de 2 s |
+| SC-007: accesibilidad con el chat abierto (≥ 0.9) | Lighthouse 12.2.1 en modo snapshot, 360×740, en local (2026-11-25) | **1.0** (y 1.0 en la portada) |
+| SC-008: la pregunta 11 en 15 minutos no llega al proveedor | `limite-orientacion` (integración) | En verde |
+
+Detalle:
+[`evidencias/orientacion-eq08.md`](evidencias/orientacion-eq08.md) y
+[`evidencias/lighthouse-chat-012.md`](evidencias/lighthouse-chat-012.md).
+
+**Pendientes**: la primera corrida en GitHub Actions del E2E del chat y del paso de Lighthouse en
+modo snapshot. La Municipalidad debe revisar la guía de preguntas frecuentes y aprobar el uso del
+proveedor en producción (ADR-011).
+

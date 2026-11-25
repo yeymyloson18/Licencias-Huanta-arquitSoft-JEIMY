@@ -1724,3 +1724,53 @@ export const desbloquearUsuario = async (
     return { tipo: 'no-disponible' };
   }
 };
+
+// ----------------------------------------------------------------- chat de orientación (012)
+
+export type RespuestaOrientacion = components['schemas']['RespuestaOrientacion'];
+export type EnlaceOrientacion = components['schemas']['EnlaceOrientacion'];
+export type TurnoOrientacion = components['schemas']['TurnoConversacion'];
+
+/** Resultado para la pantalla, sin detalles técnicos (contracts/portal-orientacion.md). */
+export type ResultadoPreguntaOrientacion =
+  | { readonly tipo: 'ok'; readonly datos: RespuestaOrientacion }
+  | { readonly tipo: 'limite'; readonly segundos: number }
+  | { readonly tipo: 'no-disponible' };
+
+/** El proveedor tiene 15 s como máximo; el portal espera un poco más. */
+const TIEMPO_LIMITE_ORIENTACION_MS = 20_000;
+
+/**
+ * Pregunta al chat de orientación (012). Operación pública: usa `clientePublico` (sin el middleware de
+ * sesión, nunca envía el token del personal). La pregunta nunca se guarda ni va en la URL.
+ */
+export const preguntarOrientacion = async (
+  pregunta: string,
+  historial: readonly TurnoOrientacion[],
+): Promise<ResultadoPreguntaOrientacion> => {
+  const controlador = new AbortController();
+  const temporizador = setTimeout(() => {
+    controlador.abort();
+  }, TIEMPO_LIMITE_ORIENTACION_MS);
+  try {
+    const { data, response } = await clientePublico.POST('/orientacion/preguntas', {
+      body: { pregunta, historial: historial.map((turno) => ({ ...turno })) },
+      signal: controlador.signal,
+    });
+    if (response.status === 200 && data !== undefined) {
+      return { tipo: 'ok', datos: data };
+    }
+    if (response.status === 429) {
+      const segundos = Number(response.headers.get('Retry-After'));
+      return {
+        tipo: 'limite',
+        segundos: Number.isFinite(segundos) && segundos > 0 ? segundos : 60,
+      };
+    }
+    return { tipo: 'no-disponible' };
+  } catch {
+    return { tipo: 'no-disponible' };
+  } finally {
+    clearTimeout(temporizador);
+  }
+};

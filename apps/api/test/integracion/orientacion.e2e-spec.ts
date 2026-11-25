@@ -1,0 +1,334 @@
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import type { INestApplication } from '@nestjs/common';
+import request from 'supertest';
+import type { App } from 'supertest/types';
+import { ProveedorIaCompatibleOpenAI } from '../../src/modulos/orientacion/infraestructura/proveedor-ia-compatible-openai';
+import { crearAplicacionDePrueba } from '../apoyo/aplicacion-prueba';
+import {
+  conProveedorSimulado,
+  ProveedorOrientacionSimulado,
+} from '../apoyo/proveedor-orientacion-simulado';
+import { limpiarLimiteOrientacion } from '../apoyo/redis-prueba';
+import { esperarCumpleContrato } from '../apoyo/validarContrato';
+import { REDIS_CLIENTE } from '../../src/compartido/infraestructura/redis.proveedor';
+import type Redis from 'ioredis';
+
+// Chat de orientación (012): POST /orientacion/preguntas con un proveedor SIMULADO. Nunca se llama al
+// proveedor real ni se usa su clave (entorno-pruebas.ts la deja vacía). Usa el catálogo de
+// demostración de las migraciones (LIC-01 a LIC-09).
+
+interface RespuestaApi {
+  readonly resultado: string;
+  readonly texto: string;
+  readonly enlaces: { tipo: string; codigoReceta?: string }[];
+  readonly aclaracion: string | null;
+  readonly datoPersonalQuitado: boolean;
+}
+
+describe('POST /orientacion/preguntas (012)', () => {
+  let app: INestApplication<App>;
+  const proveedor = new ProveedorOrientacionSimulado();
+
+  const preguntar = (cuerpo: unknown) =>
+    request(app.getHttpServer())
+      .post('/api/v1/orientacion/preguntas')
+      .send(cuerpo as object);
+
+  beforeAll(async () => {
+    ({ app } = (await crearAplicacionDePrueba({ ajustar: conProveedorSimulado(proveedor) })) as {
+      app: INestApplication<App>;
+    });
+  });
+
+  beforeEach(async () => {
+    proveedor.reiniciar();
+    // US5: cada caso empieza sin preguntas contadas (10 cada 15 minutos por conexión).
+    await limpiarLimiteOrientacion(app.get<Redis>(REDIS_CLIENTE));
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  describe('US1: responde con el catálogo vigente', () => {
+    it('responde 200 según el contrato, con no-store, el texto del modelo y la ficha', async () => {
+      proveedor.responderCon({
+        tipo: 'RESPONDIDA',
+        texto: 'La licencia de riesgo medio cuesta S/ 177.10 y demora 2 días hábiles.',
+        codigosReceta: ['LIC-02'],
+      });
+
+      const respuesta = await preguntar({
+        pregunta: '¿Cuánto cuesta la licencia de riesgo medio?',
+      });
+
+      expect(respuesta.status).toBe(200);
+      await esperarCumpleContrato('post', '/orientacion/preguntas', respuesta);
+      expect(respuesta.headers['cache-control']).toBe('no-store');
+      expect(respuesta.body).toMatchObject({
+        resultado: 'RESPONDIDA',
+        texto: 'La licencia de riesgo medio cuesta S/ 177.10 y demora 2 días hábiles.',
+        enlaces: [{ tipo: 'FICHA', codigoReceta: 'LIC-02' }],
+        datoPersonalQuitado: false,
+      });
+      expect((respuesta.body as RespuestaApi).aclaracion).toContain('Esta es una orientación');
+    });
+
+    it('el proveedor recibió la tasa real de la receta en el CONTEXTO del mensaje de sistema', async () => {
+      proveedor.responderCon({ tipo: 'RESPONDIDA', texto: 'Sí.', codigosReceta: [] });
+
+      await preguntar({ pregunta: '¿Cuánto cuesta la licencia de riesgo medio?' }).expect(200);
+
+      const sistema = proveedor.llamadas[0]?.[0];
+      expect(sistema?.rol).toBe('system');
+      expect(sistema?.contenido).toMatch(/LIC-02 \| [^\n]*riesgo medio[^\n]*S\/ 177\.10/);
+      expect(sistema?.contenido).toContain('LIC-09');
+    });
+
+    it('un historial de 2 turnos llega al proveedor en orden (FR-013)', async () => {
+      proveedor.responderCon({ tipo: 'RESPONDIDA', texto: 'Sí.', codigosReceta: ['LIC-09'] });
+
+      await preguntar({
+        pregunta: '¿y cuánto demora?',
+        historial: [
+          { rol: 'PERSONA', texto: 'Quiero abrir una bodega' },
+          { rol: 'ORIENTADOR', texto: 'Le corresponde la licencia provisional para bodegas.' },
+        ],
+      }).expect(200);
+
+      expect(proveedor.llamadas[0]?.slice(1)).toEqual([
+        { rol: 'user', contenido: 'Quiero abrir una bodega' },
+        { rol: 'assistant', contenido: 'Le corresponde la licencia provisional para bodegas.' },
+        { rol: 'user', contenido: '¿y cuánto demora?' },
+      ]);
+    });
+
+    it('descarta los códigos que no son licencias vigentes', async () => {
+      proveedor.responderCon({
+        tipo: 'RESPONDIDA',
+        texto: 'Vea la ficha.',
+        codigosReceta: ['TRF-01', 'LIC-99', 'LIC-09'],
+      });
+
+      const respuesta = await preguntar({ pregunta: 'bodega' }).expect(200);
+
+      expect((respuesta.body as RespuestaApi).enlaces).toEqual([
+        { tipo: 'FICHA', codigoReceta: 'LIC-09' },
+      ]);
+    });
+  });
+
+  describe('US2: nunca datos inventados', () => {
+    it('una tasa inventada por el modelo nunca llega: SIN_INFORMACION', async () => {
+      proveedor.responderCon({
+        tipo: 'RESPONDIDA',
+        texto: 'La tasa es S/ 999.99.',
+        codigosReceta: ['LIC-02'],
+      });
+
+      const respuesta = await preguntar({ pregunta: '¿Cuánto cuesta la de riesgo medio?' });
+
+      expect(respuesta.status).toBe(200);
+      await esperarCumpleContrato('post', '/orientacion/preguntas', respuesta);
+      expect(respuesta.text).not.toContain('999.99');
+      expect(respuesta.body).toMatchObject({
+        resultado: 'SIN_INFORMACION',
+        enlaces: [{ tipo: 'LICENCIAS' }],
+        aclaracion: null,
+      });
+    });
+  });
+
+  describe('conversación real que falló (corrección de la 012, FR-027 a FR-030)', () => {
+    it('"que documentos tengo que presentar" pregunta por el tipo de negocio sin llamar al proveedor', async () => {
+      const respuesta = await preguntar({ pregunta: 'que documentos tengo que presentar' });
+
+      expect(respuesta.status).toBe(200);
+      await esperarCumpleContrato('post', '/orientacion/preguntas', respuesta);
+      expect(proveedor.llamadas).toHaveLength(0);
+      expect(respuesta.body).toMatchObject({
+        resultado: 'RESPONDIDA',
+        enlaces: [{ tipo: 'ASISTENTE' }],
+      });
+      expect((respuesta.body as RespuestaApi).texto).toMatch(/tipo de negocio/);
+    });
+
+    it('"cuales son esos documento requeridos" lleva al proveedor los requisitos reales de LIC-01', async () => {
+      proveedor.responderCon({
+        tipo: 'RESPONDIDA',
+        texto: 'Debe presentar la solicitud con declaración jurada.',
+        codigosReceta: ['LIC-01'],
+      });
+
+      const respuesta = await preguntar({
+        pregunta: 'cuales son esos documento requeridos',
+        historial: [
+          { rol: 'PERSONA', texto: 'que documentos tengo que presentar' },
+          { rol: 'ORIENTADOR', texto: '¿Para qué tipo de negocio es?' },
+          { rol: 'PERSONA', texto: 'par ala categoria mas basica' },
+          {
+            rol: 'ORIENTADOR',
+            texto: 'La más básica es la licencia de funcionamiento de riesgo bajo.',
+            codigosReceta: ['LIC-01'],
+          },
+        ],
+      });
+
+      expect(respuesta.status).toBe(200);
+      await esperarCumpleContrato('post', '/orientacion/preguntas', respuesta);
+      const sistema = proveedor.llamadas[0]?.[0]?.contenido ?? '';
+      expect(sistema).toContain('Requisitos de LIC-01');
+      expect(sistema).toContain('Declaración jurada de condiciones de seguridad');
+      expect(respuesta.body).toMatchObject({ resultado: 'RESPONDIDA' });
+    });
+
+    it('"par ala categoria mas basica" lleva el detalle de LIC-01', async () => {
+      proveedor.responderCon({ tipo: 'RESPONDIDA', texto: 'x', codigosReceta: ['LIC-01'] });
+
+      await preguntar({
+        pregunta: 'par ala categoria mas basica',
+        historial: [
+          { rol: 'PERSONA', texto: 'que documentos tengo que presentar' },
+          { rol: 'ORIENTADOR', texto: '¿Para qué tipo de negocio es?' },
+        ],
+      }).expect(200);
+
+      expect(proveedor.llamadas[0]?.[0]?.contenido).toContain('Requisitos de LIC-01');
+    });
+
+    it('"que es el tupa" lleva el tema del TUPA al CONTEXTO', async () => {
+      proveedor.responderCon({ tipo: 'RESPONDIDA', texto: 'El TUPA es el documento oficial.' });
+
+      await preguntar({ pregunta: 'que es el tupa' }).expect(200);
+
+      expect(proveedor.llamadas[0]?.[0]?.contenido).toContain('Tema: ¿Qué es el TUPA?');
+    });
+
+    it('un turno con un código de receta inválido responde 422', async () => {
+      const respuesta = await preguntar({
+        pregunta: '¿y los requisitos?',
+        historial: [{ rol: 'ORIENTADOR', texto: 'x', codigosReceta: ['NO-VALE'] }],
+      });
+
+      expect(respuesta.status).toBe(422);
+      expect(proveedor.llamadas).toHaveLength(0);
+    });
+  });
+
+  describe('validación (422)', () => {
+    it.each([
+      ['sin pregunta', {}],
+      ['con la pregunta vacía', { pregunta: '' }],
+      ['con la pregunta solo con espacios', { pregunta: '    ' }],
+      ['con 501 caracteres', { pregunta: 'a'.repeat(501) }],
+      [
+        'con un historial de 7 turnos',
+        {
+          pregunta: '¿Y?',
+          historial: Array.from({ length: 7 }, () => ({ rol: 'PERSONA', texto: 'x' })),
+        },
+      ],
+      [
+        'con un turno de rol desconocido',
+        { pregunta: '¿Y?', historial: [{ rol: 'X', texto: 'x' }] },
+      ],
+      ['con un campo de más', { pregunta: '¿Y?', usuarioId: 'abc' }],
+    ])('responde 422 %s, sin llamar al proveedor ni repetir el texto', async (_caso, cuerpo) => {
+      const respuesta = await preguntar(cuerpo);
+
+      expect(respuesta.status).toBe(422);
+      await esperarCumpleContrato('post', '/orientacion/preguntas', respuesta);
+      expect(respuesta.text).not.toContain('aaaaaaaaaa');
+      expect(proveedor.llamadas).toHaveLength(0);
+    });
+  });
+
+  describe('US4: el chat sigue útil aunque el proveedor falle', () => {
+    it('con CUOTA_AGOTADA responde NO_DISPONIBLE y el resto del portal sigue igual (SC-006)', async () => {
+      proveedor.responderResultado({ tipo: 'CUOTA_AGOTADA' });
+
+      const respuesta = await preguntar({ pregunta: '¿Cuánto cuesta la de riesgo medio?' });
+
+      expect(respuesta.status).toBe(200);
+      await esperarCumpleContrato('post', '/orientacion/preguntas', respuesta);
+      expect(respuesta.body).toMatchObject({
+        resultado: 'NO_DISPONIBLE',
+        enlaces: [{ tipo: 'ASISTENTE' }, { tipo: 'LICENCIAS' }],
+        aclaracion: null,
+      });
+      await request(app.getHttpServer())
+        .get('/api/v1/catalogo/recetas')
+        .query({ tipo: 'LICENCIA' })
+        .expect(200);
+      await request(app.getHttpServer())
+        .post('/api/v1/asistente/proponer')
+        .send({
+          respuestas: { TIPO_ESTABLECIMIENTO: 'OTRO', ES_CESIONARIO: 'NO', NIVEL_RIESGO: 'MEDIO' },
+        })
+        .expect(200);
+    });
+
+    it('una excepción del proveedor responde NO_DISPONIBLE (no 500)', async () => {
+      proveedor.fallarConExcepcion();
+
+      const respuesta = await preguntar({ pregunta: '¿Cómo pago?' });
+
+      expect(respuesta.status).toBe(200);
+      expect(respuesta.body).toMatchObject({ resultado: 'NO_DISPONIBLE' });
+    });
+  });
+});
+
+describe('POST /orientacion/preguntas con el adaptador real, sin red externa (012, US4)', () => {
+  it('sin ORIENTACION_API_KEY responde NO_DISPONIBLE sin llamar a la red', async () => {
+    const { app } = (await crearAplicacionDePrueba()) as { app: INestApplication<App> };
+    try {
+      const respuesta = await request(app.getHttpServer())
+        .post('/api/v1/orientacion/preguntas')
+        .send({ pregunta: '¿Cuánto cuesta la de riesgo medio?' });
+
+      expect(respuesta.status).toBe(200);
+      await esperarCumpleContrato('post', '/orientacion/preguntas', respuesta);
+      expect(respuesta.body).toMatchObject({
+        resultado: 'NO_DISPONIBLE',
+        enlaces: [{ tipo: 'ASISTENTE' }, { tipo: 'LICENCIAS' }],
+      });
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('con un proveedor que nunca responde, el aviso llega antes de 2 s con 1 s de tiempo máximo (SC-005)', async () => {
+    // Servidor LOCAL que nunca responde; clave FICTICIA. Nunca el proveedor ni la clave reales.
+    const servidor = createServer(() => undefined);
+    await new Promise<void>((listo) => servidor.listen(0, '127.0.0.1', listo));
+    const puerto = (servidor.address() as AddressInfo).port;
+    const adaptador = new ProveedorIaCompatibleOpenAI({
+      apiUrl: `http://127.0.0.1:${String(puerto)}/v1`,
+      modelo: 'modelo-de-prueba',
+      apiKey: 'clave-ficticia-de-prueba-012',
+      tiempoMaximoMs: 1000,
+      limitePreguntas: 10,
+      formatoJson: true,
+    });
+    const { app } = (await crearAplicacionDePrueba({
+      ajustar: conProveedorSimulado(adaptador),
+    })) as { app: INestApplication<App> };
+    try {
+      const inicio = Date.now();
+      const respuesta = await request(app.getHttpServer())
+        .post('/api/v1/orientacion/preguntas')
+        .send({ pregunta: '¿Cuánto cuesta la de riesgo medio?' });
+
+      expect(Date.now() - inicio).toBeLessThan(2000);
+      expect(respuesta.status).toBe(200);
+      expect(respuesta.body).toMatchObject({ resultado: 'NO_DISPONIBLE' });
+      expect(respuesta.text).not.toContain('clave-ficticia-de-prueba-012');
+    } finally {
+      await app.close();
+      servidor.closeAllConnections();
+      await new Promise((listo) => servidor.close(listo));
+    }
+  });
+});

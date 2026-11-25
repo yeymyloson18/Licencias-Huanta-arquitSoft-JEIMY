@@ -23,6 +23,7 @@ flowchart TB
 
     Ident["Validación DNI / RUC<br/>[Sistema externo]"]
     Msg["Correo y SMS<br/>[Sistema externo]"]
+    IA["Proveedor de IA<br/>[Sistema externo - compatible con OpenAI]"]
     WA["WhatsApp Business API<br/>[Sistema externo - Fase 2]"]
 
     Adm -->|"HTTPS"| Portal
@@ -46,6 +47,7 @@ flowchart TB
 
     API -->|"HTTPS/REST"| Ident
     API -->|"solo el código OTP, directo"| Msg
+    API -->|"HTTPS/JSON, 15 s máx.: chat de orientación (012)"| IA
 ```
 
 ## Contenedores
@@ -55,7 +57,7 @@ flowchart TB
 | Portal Web | React + TypeScript (SPA responsive) | Única entrada, con una vista por perfil; el inspector la usa desde su celular. | ADR-001 |
 | Chatbot (Fase 2) | Servicio conectado a la API | Responder con datos del catálogo. | ADR-003 |
 | Balanceador de carga | Servicio cloud o Nginx | Repartir las solicitudes entre las instancias. | ADR-005 |
-| Backend API | Node.js + NestJS | Monolito modular con Clean Architecture; incluye el módulo Seguridad y Usuarios (JWT + OTP, roles, límite de intentos); sin estado para poder replicarse. | ADR-001, ADR-003, ADR-007 |
+| Backend API | Node.js + NestJS | Monolito modular con Clean Architecture; incluye el módulo Seguridad y Usuarios (JWT + OTP, roles, límite de intentos) y, desde la 012, el módulo Orientación, que llama al proveedor de IA; sin estado para poder replicarse. | ADR-001, ADR-003, ADR-007, ADR-011 |
 | Workers + cola | Node.js + cola de tareas | PDF de esquelas y licencias, QR, y envío de correos y SMS en segundo plano. Envían todos los mensajes, salvo el código OTP, que la API envía directo. Además leen la tabla `eventos_pendientes` (outbox) y, como se ejecutan con el mismo código del backend, ejecutan el caso de uso de Trámites que avanza el expediente; si falla, lo reintentan. | ADR-005 |
 | Caché | Redis | Catálogo, estado de trámites y contadores de intentos. La clave se borra cuando la receta o el estado cambian. | ADR-005, ADR-007 |
 | Base de datos | PostgreSQL con réplica y conmutación automática | Toda la información del sistema, incluido el registro de auditoría. | ADR-001, ADR-005 |

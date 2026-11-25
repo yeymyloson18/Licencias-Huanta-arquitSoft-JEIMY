@@ -87,6 +87,25 @@ export class ErrorProblema extends Error {
     );
   }
 
+  // --- Funcionalidad 012 (chat de orientación, contracts/api-orientacion.md).
+
+  static demasiadasPreguntas(segundos: number): ErrorProblema {
+    return new ErrorProblema(
+      'demasiadas-preguntas',
+      429,
+      'Hizo muchas preguntas seguidas. Vuelva a intentarlo más tarde',
+      Math.max(1, Math.ceil(segundos)),
+    );
+  }
+
+  static orientacionNoDisponible(): ErrorProblema {
+    return new ErrorProblema(
+      'orientacion-no-disponible',
+      503,
+      'La orientación por chat no está disponible en este momento',
+    );
+  }
+
   // --- Funcionalidad 004 (contracts/identidad-y-solicitud.md y consulta-y-bandeja.md).
 
   static identificacionNoDisponible(): ErrorProblema {

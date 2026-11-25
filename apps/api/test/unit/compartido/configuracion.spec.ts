@@ -222,6 +222,107 @@ describe('cargarConfiguracion', () => {
     });
   });
 
+  describe('orientación (012, research R-09)', () => {
+    // Clave FICTICIA: ninguna prueba usa la clave real del proveedor.
+    const claveFicticia = 'clave-ficticia-de-prueba-012';
+
+    it('sin variables ORIENTACION_* usa Groq y el modelo por defecto, sin clave (chat desactivado)', () => {
+      expect(cargarConfiguracion(base).orientacion).toEqual({
+        apiUrl: 'https://api.groq.com/openai/v1',
+        modelo: 'openai/gpt-oss-120b',
+        apiKey: null,
+        tiempoMaximoMs: 15000,
+        limitePreguntas: 10,
+        formatoJson: true,
+      });
+    });
+
+    it('trata las variables vacías como ausentes (valores vacíos del compose)', () => {
+      expect(
+        cargarConfiguracion({
+          ...base,
+          ORIENTACION_API_URL: '',
+          ORIENTACION_MODELO: '',
+          ORIENTACION_API_KEY: '',
+        }).orientacion,
+      ).toMatchObject({
+        apiUrl: 'https://api.groq.com/openai/v1',
+        modelo: 'openai/gpt-oss-120b',
+        apiKey: null,
+      });
+    });
+
+    it('toma la URL (sin la barra final), el modelo, la clave y los límites indicados', () => {
+      expect(
+        cargarConfiguracion({
+          ...base,
+          ORIENTACION_API_URL: 'https://proveedor.example/v1/',
+          ORIENTACION_MODELO: 'otro-modelo',
+          ORIENTACION_API_KEY: claveFicticia,
+          ORIENTACION_TIEMPO_MAXIMO_MS: '1000',
+          ORIENTACION_LIMITE_PREGUNTAS: '1000',
+          ORIENTACION_FORMATO_JSON: 'false',
+        }).orientacion,
+      ).toEqual({
+        apiUrl: 'https://proveedor.example/v1',
+        modelo: 'otro-modelo',
+        apiKey: claveFicticia,
+        tiempoMaximoMs: 1000,
+        limitePreguntas: 1000,
+        formatoJson: false,
+      });
+    });
+
+    it.each(['999', '60001', 'mucho'])(
+      'rechaza ORIENTACION_TIEMPO_MAXIMO_MS=%s (entre 1000 y 60000)',
+      (valor) => {
+        expect(
+          mensajeDe(() => cargarConfiguracion({ ...base, ORIENTACION_TIEMPO_MAXIMO_MS: valor })),
+        ).toContain('ORIENTACION_TIEMPO_MAXIMO_MS');
+      },
+    );
+
+    it('rechaza una URL inválida y un formato JSON que no es true o false', () => {
+      expect(
+        mensajeDe(() => cargarConfiguracion({ ...base, ORIENTACION_API_URL: 'no es url' })),
+      ).toContain('ORIENTACION_API_URL');
+      expect(
+        mensajeDe(() => cargarConfiguracion({ ...base, ORIENTACION_FORMATO_JSON: 'si' })),
+      ).toContain('ORIENTACION_FORMATO_JSON');
+    });
+
+    it('en producción, con clave, exige https:// y el error no contiene la clave', () => {
+      const mensaje = mensajeDe(() =>
+        cargarConfiguracion({
+          ...base,
+          NODE_ENV: 'production',
+          ENVIO_OTP: 'sms',
+          ORIENTACION_API_URL: 'http://proveedor.example/v1',
+          ORIENTACION_API_KEY: claveFicticia,
+        }),
+      );
+
+      expect(mensaje).toContain('ORIENTACION_API_URL');
+      expect(mensaje).not.toContain(claveFicticia);
+    });
+
+    it('un error de otra variable no muestra la clave del proveedor', () => {
+      const mensaje = mensajeDe(() =>
+        cargarConfiguracion({ ...base, PUERTO_API: 'no', ORIENTACION_API_KEY: claveFicticia }),
+      );
+
+      expect(mensaje).not.toContain(claveFicticia);
+    });
+
+    it('la clave no aparece al convertir la configuración a texto (registros)', () => {
+      const configuracion = cargarConfiguracion({ ...base, ORIENTACION_API_KEY: claveFicticia });
+
+      expect(configuracion.orientacion.apiKey).toBe(claveFicticia);
+      expect(JSON.stringify(configuracion)).not.toContain(claveFicticia);
+      expect(String(configuracion.orientacion)).not.toContain(claveFicticia);
+    });
+  });
+
   describe('documentación interactiva (008)', () => {
     it('activa por defecto en desarrollo y pruebas, apagada en producción', () => {
       expect(cargarConfiguracion(base).docsApi).toBe(true);
