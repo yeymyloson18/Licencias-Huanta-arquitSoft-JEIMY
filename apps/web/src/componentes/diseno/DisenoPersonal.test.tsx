@@ -132,6 +132,23 @@ describe('DisenoPersonal (US1)', () => {
     expect(lateral).toHaveClass('show');
   });
 
+  // T043 (b): a 360 px el menú abierto tapa el botón de la barra; se cierra desde adentro.
+  it('en el celular, al abrir el menú el foco va a "Cerrar menú", que lo cierra y vuelve al botón', async () => {
+    simularMedios({ celular: true });
+    const usuario = userEvent.setup();
+    simularApi(conSesion(['CAJA']));
+    montarEn('/perfil');
+    const lateral = (await menuLateral()).closest('.sidebar');
+
+    await usuario.click(screen.getByRole('button', { name: 'Mostrar menú' }));
+    const cerrar = screen.getByRole('button', { name: 'Cerrar menú' });
+    expect(cerrar).toHaveFocus();
+
+    await usuario.click(cerrar);
+    expect(lateral).toHaveAttribute('inert');
+    expect(screen.getByRole('button', { name: 'Mostrar menú' })).toHaveFocus();
+  });
+
   it('en escritorio, el menú se puede plegar', async () => {
     const usuario = userEvent.setup();
     simularApi(conSesion(['CAJA']));

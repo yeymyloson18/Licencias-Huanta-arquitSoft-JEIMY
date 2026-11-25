@@ -30,6 +30,13 @@ export function DisenoPublico({ children }: Propiedades) {
         </Link>
         <div className="diseno-publico__acciones">
           <SelectorModo />
+          {/* 013 (T045, CLS): mientras se comprueba la sesión, se reserva el lugar del enlace con un
+              texto invisible, así la barra no cambia de alto cuando aparece. */}
+          {estado === 'cargando' && pathname !== '/ingresar' && (
+            <span className="diseno-publico__enlace diseno-publico__reserva" aria-hidden="true">
+              Acceso del personal
+            </span>
+          )}
           {estado === 'sin-sesion' && pathname !== '/ingresar' && (
             <nav aria-label="Acceso del personal">
               <Link to="/ingresar" className="diseno-publico__enlace">

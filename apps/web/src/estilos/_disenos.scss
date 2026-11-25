@@ -10,6 +10,13 @@
 .diseno-publico__contenido {
   flex: 1 0 auto;
   min-width: 0; // sin desplazamiento horizontal a 360 px
+  // 013 (T045, CLS): el pie empieza fuera de la pantalla y no salta cuando llega el contenido.
+  min-height: 100vh;
+}
+
+// Lugar del enlace mientras se comprueba la sesión (no se ve ni se lee).
+.diseno-publico__reserva {
+  visibility: hidden;
 }
 
 .diseno-publico__barra {

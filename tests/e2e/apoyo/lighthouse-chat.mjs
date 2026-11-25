@@ -4,6 +4,7 @@
 //
 // No necesita al proveedor de IA (solo se abre el chat, no se pregunta nada). Uso:
 //   node lighthouse-chat.mjs --url http://localhost:8080/ --salida <carpeta> [--chrome <ruta>]
+//     [--modo claro|oscuro]   (013: emula prefers-color-scheme; por defecto, claro)
 // Requiere `lighthouse` y `puppeteer-core` instalados junto al script (en CI, en una carpeta
 // temporal con versiones fijas; no van al package.json). Sale con código 1 si el puntaje es < 0.9.
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -19,6 +20,10 @@ const argumento = (nombre, porDefecto) => {
 const URL_PORTADA = argumento('--url', 'http://localhost:8080/');
 const SALIDA = argumento('--salida', 'lighthouse-chat');
 const CHROME = argumento('--chrome', process.env.CHROME_PATH ?? '/usr/bin/google-chrome');
+const MODO = argumento('--modo', 'claro');
+if (MODO !== 'claro' && MODO !== 'oscuro') {
+  throw new Error(`--modo debe ser claro u oscuro, no ${MODO}`);
+}
 const MINIMO = 0.9;
 
 // Las mismas opciones móviles de las medidas anteriores (calidad-produccion.yml y la 011).
@@ -51,8 +56,12 @@ try {
     isMobile: true,
     hasTouch: true,
   });
+  // 013 (T044): el modo de color del dispositivo; sin elección guardada, el portal lo sigue.
+  await pagina.emulateMediaFeatures([
+    { name: 'prefers-color-scheme', value: MODO === 'oscuro' ? 'dark' : 'light' },
+  ]);
   const flujo = await startFlow(pagina, {
-    name: 'Chat de orientación abierto (012)',
+    name: `Chat de orientación abierto (012), modo ${MODO}`,
     config: configuracion,
   });
 
@@ -63,8 +72,8 @@ try {
 
   const resultado = await flujo.createFlowResult();
   mkdirSync(SALIDA, { recursive: true });
-  writeFileSync(join(SALIDA, 'chat-orientacion.html'), await flujo.generateReport());
-  writeFileSync(join(SALIDA, 'chat-orientacion.json'), JSON.stringify(resultado, null, 2));
+  writeFileSync(join(SALIDA, `chat-orientacion-${MODO}.html`), await flujo.generateReport());
+  writeFileSync(join(SALIDA, `chat-orientacion-${MODO}.json`), JSON.stringify(resultado, null, 2));
 
   let cumple = true;
   for (const paso of resultado.steps) {
@@ -73,7 +82,7 @@ try {
       .filter((auditoria) => auditoria.score === 0 && auditoria.scoreDisplayMode === 'binary')
       .map((auditoria) => auditoria.id);
     console.log(
-      `${paso.name} (${paso.lhr.gatherMode}): accesibilidad ${String(puntaje)}` +
+      `${paso.name} (${paso.lhr.gatherMode}, ${MODO}): accesibilidad ${String(puntaje)}` +
         (fallas.length > 0 ? ` · auditorías fallidas: ${fallas.join(', ')}` : ''),
     );
     cumple &&= puntaje !== null && puntaje >= MINIMO;

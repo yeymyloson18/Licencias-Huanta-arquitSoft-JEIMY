@@ -343,6 +343,11 @@ video {
 /* 013: el menú del personal y el acceso del personal pasaron a los diseños con CoreUI
    (tema-personal.scss y tema.scss). */
 
+/* 013 (T045, CLS): el tablero reserva una pantalla de alto mientras carga. */
+.tablero__datos--cargando {
+  min-height: 100vh;
+}
+
 /* ---- Mi perfil (011): una sola columna (ficha__datos); el correo largo se parte a 360 px ---- */
 
 .perfil__correo {

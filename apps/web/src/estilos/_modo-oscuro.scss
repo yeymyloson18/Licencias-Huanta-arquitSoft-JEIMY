@@ -8,6 +8,7 @@
 //
 // Las reglas se arman con los mapas $*-dark de CoreUI, igual que su _root.scss y sus componentes,
 // así no se copian valores a mano. tema.test.ts comprueba que los dos bloques coinciden.
+@use 'sass:map';
 @use 'configuracion';
 @use '@coreui/coreui/scss/functions/color' as *;
 @use '@coreui/coreui/scss/functions/color-contrast' as *;
@@ -124,19 +125,23 @@
 
 // ---- Componentes que usa el portal (los bloques color-mode(dark) de CoreUI) ----
 @include en-sistema-oscuro {
-  // Botones (_buttons.scss).
-  @each $color, $value in $theme-colors-dark {
+  // Botones (_buttons.scss): solo las variantes que usa el portal (las del puente y las de los
+  // diseños), para no sumar peso al CSS que bloquea el primer pintado (T045).
+  @each $color in (primary, secondary, light, danger) {
     .btn-#{$color} {
-      @include button-variant($value, $value);
+      @include button-variant(
+        map.get($theme-colors-dark, $color),
+        map.get($theme-colors-dark, $color)
+      );
     }
+  }
 
-    .btn-outline-#{$color} {
-      @include button-outline-variant($value);
-    }
+  .btn-outline-primary {
+    @include button-outline-variant(map.get($theme-colors-dark, 'primary'));
+  }
 
-    .btn-ghost-#{$color} {
-      @include button-ghost-variant($value);
-    }
+  .btn-ghost-secondary {
+    @include button-ghost-variant(map.get($theme-colors-dark, 'secondary'));
   }
 
   // Insignias de estado (helpers/_color-bg.scss).

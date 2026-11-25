@@ -135,10 +135,35 @@ export const aislarLimitesDePrueba = (): void => {
   );
 };
 
+/**
+ * 013 (T043 e, FR-003): registra en la página las violaciones de la CSP (`securitypolicyviolation`)
+ * desde antes de que corra cualquier script. Se leen con `violacionesCsp`.
+ */
+export const vigilarCsp = async (pagina: Page): Promise<void> => {
+  await pagina.addInitScript(() => {
+    const ventana = window as unknown as { __violacionesCsp?: string[] };
+    if (ventana.__violacionesCsp !== undefined) {
+      return;
+    }
+    ventana.__violacionesCsp = [];
+    document.addEventListener('securitypolicyviolation', (evento) => {
+      ventana.__violacionesCsp?.push(`${evento.violatedDirective} ${evento.blockedURI}`);
+    });
+  });
+};
+
+/** Las violaciones de la CSP registradas en la página actual (ver `vigilarCsp`). */
+export const violacionesCsp = (pagina: Page): Promise<string[]> =>
+  pagina.evaluate(
+    () => (window as unknown as { __violacionesCsp?: string[] }).__violacionesCsp ?? [],
+  );
+
 /** Ingreso del personal con clave y código (002). */
 export const ingresar = async (pagina: Page, rol: Rol): Promise<void> => {
   const persona = usuario(rol);
   aislarLimitesDePrueba();
+  // 013 (T043 e): todos los recorridos que ingresan vigilan la CSP.
+  await vigilarCsp(pagina);
   await pagina.goto('/ingresar');
   await pagina.getByLabel('Correo').fill(persona.correo);
   await pagina.getByLabel('Clave', { exact: true }).fill(persona.clave);

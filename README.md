@@ -293,6 +293,34 @@ el asistente "¿Qué licencia necesito?". La exactitud del chat se mide con el e
 
 Especificación, plan y tareas: [`specs/012-chatbot-orientacion/`](specs/012-chatbot-orientacion/).
 
+## Diseño del portal (funcionalidad 013)
+
+El portal usa **CoreUI 5** (ADR-012): `@coreui/react` 5.13.1, `@coreui/coreui` 5.9.1 y
+`@coreui/icons-react` 2.3.0, con versiones fijas. Se importa solo lo que se usa, con los colores de
+la Municipalidad (primario `#0b5394`, foco `#f2a900`). Las rutas, la sesión, los roles, la API y el
+backend no cambian.
+
+- **Personal** (`/admin`, `/personal/*`, `/perfil`): área de administración con menú lateral por
+  rol (en el celular se abre con "Mostrar menú" y se cierra con "Cerrar menú" o Escape), barra con
+  migas de pan y el desplegable del usuario ("Mi perfil" y "Cerrar sesión"), y pie.
+- **Ciudadano** (portada, asistente, consulta, trámite e ingreso): portal ligero con la barra de la
+  Municipalidad, "Acceso del personal" (o "Ir a mi trabajo" con sesión), pie y "Pregúntanos".
+- **Modo claro u oscuro**: un botón en las dos barras (luna o sol) alterna entre los dos modos.
+  - Mientras la persona no elige, el portal empieza en el modo de su dispositivo.
+  - La elección se guarda en el navegador (`licencias-modo-color`) y se respeta.
+  - No hay scripts ni estilos en línea: la CSP no cambia.
+- **Estilos** en `apps/web/src/estilos/`:
+  - `tema.scss`, la entrada;
+  - `tema-personal.scss`, que solo descarga el área del personal;
+  - `_modo-oscuro.scss`;
+  - `_puente.scss`, que da a las clases propias el aspecto de CoreUI.
+
+**Cómo medir** (compose aislado, sin tocar los datos de desarrollo ni usar el proveedor de IA): ver
+[`specs/013-diseno-coreui/quickstart.md`](specs/013-diseno-coreui/quickstart.md). Capturas y
+medidas antes y después: [`docs/08-sprint-2/evidencias/diseno-013/`](docs/08-sprint-2/evidencias/diseno-013/).
+
+Especificación, plan y tareas: [`specs/013-diseno-coreui/`](specs/013-diseno-coreui/).
+
 ## Asistente de ruta y catálogo (funcionalidad 003)
 
 - **Asistente "¿Qué licencia necesito?"** (`/asistente`, sin iniciar sesión): hace las preguntas del

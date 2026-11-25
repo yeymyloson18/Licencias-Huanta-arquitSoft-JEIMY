@@ -657,7 +657,7 @@ recargar lo mantiene. El chat abierto se ve bien en ambos modos.
 
 ## Fase 9: Pulido, medidas, ADR-012 y cierre
 
-- [ ] T043 E2E `tests/e2e/diseno.spec.ts`, en los proyectos `celular` y `escritorio`:
+- [X] T043 E2E `tests/e2e/diseno.spec.ts`, en los proyectos `celular` y `escritorio`:
   - **(a)** para los 6 roles, el `<nav>` "Menú del personal" tiene exactamente sus opciones
     (SC-007);
   - **(b)** a 360 px, el botón del menú lo abre y lo cierra, y no hay desplazamiento horizontal con
@@ -681,10 +681,10 @@ recargar lo mantiene. El chat abierto se ve bien en ambos modos.
     oculto y el botón lo abre.
 
   Agregar el escucha de (e) también en `apoyo/sistema.ts`, para que lo usen todos los recorridos.
-- [ ] T044 Lighthouse del chat en ambos modos: `tests/e2e/apoyo/lighthouse-chat.mjs` acepta
+- [X] T044 Lighthouse del chat en ambos modos: `tests/e2e/apoyo/lighthouse-chat.mjs` acepta
       `--modo oscuro` (emula `prefers-color-scheme`), y `.github/workflows/e2e.yml` lo corre en modo
       claro y oscuro (accesibilidad ≥ 0.9).
-- [ ] T045 Medidas y capturas **"después"** (quickstart §2), en el compose aislado reconstruido:
+- [X] T045 Medidas y capturas **"después"** (quickstart §2), en el compose aislado reconstruido:
   - `CAPTURAS=despues`;
   - `lighthouse-medida.mjs --corridas 3 --modos claro,oscuro`;
   - el resultado va a `docs/08-sprint-2/evidencias/diseno-013/despues.md`, con la comparación con
@@ -705,7 +705,7 @@ recargar lo mantiene. El chat abierto se ve bien en ambos modos.
   Si SC-003 no se cumple, se ajusta y se vuelve a medir: por ejemplo, revisando que
   `DisenoPersonal` y `tema-personal.scss` se carguen con `React.lazy` y no lleguen al portal
   público. Al terminar, `down -v`.
-- [ ] T046 [P] **ADR-012** "Adopción de CoreUI para el diseño del portal" en
+- [X] T046 [P] **ADR-012** "Adopción de CoreUI para el diseño del portal" en
       `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`. Va en la fila del resumen y en
       su sección (contexto, alternativas, decisión y consecuencias), con:
   - las versiones fijas y por qué no las últimas;
@@ -714,19 +714,58 @@ recargar lo mantiene. El chat abierto se ve bien en ambos modos.
   - el modo oscuro con `data-coreui-theme` y la media query;
   - la CSP sin cambios;
   - la licencia MIT.
-- [ ] T047 [P] Documentación:
+- [X] T047 [P] Documentación:
   - `README.md`: sección "Diseño del portal (funcionalidad 013)", con el selector de modo y cómo
     medir;
   - `docs/08-sprint-2/README.md` §10: tabla antes y después (rendimiento y accesibilidad por
     pantalla y modo) y enlaces a las capturas;
   - `docs/02-arquitectura-software/` o C4 nivel 2: el portal ahora usa CoreUI (ADR-012).
-- [ ] T048 Puertas locales y cierre:
+- [X] T048 Puertas locales y cierre:
   - `npm run lint && npm run typecheck && npm run formato`;
   - `npm test -w apps/web`, todo en verde;
   - `npm run build -w apps/web`, anotando el tamaño final de CSS y JS frente al de T006;
   - las de la API sin cambios (`npm run cobertura`, `npm run regla-dependencia`), que deben seguir
     igual;
   - marcar las tareas con `[X]` y hacer el commit `chore(013): cierre`.
+
+**Estado al cierre de la fase 9 (2026-11-25)**:
+
+- **T043** (`tests/e2e/diseno.spec.ts`): 23 pruebas en verde entre celular y escritorio; el E2E
+  completo da 31 en verde contra el compose aislado. `apoyo/sistema.ts` vigila la CSP en todos los
+  recorridos que ingresan (`vigilarCsp`): sin violaciones.
+  - **(b) encontró una falla real**: a 360 px, el menú abierto tapaba el botón de la barra y no se
+    podía cerrar con él. Se agregó "Cerrar menú" dentro del menú, con el foco en él al abrir y de
+    vuelta al botón al cerrar (con su prueba en `DisenoPersonal.test.tsx`).
+  - **(d) hay destello**: los primeros 3 a 5 cuadros salen en el modo del dispositivo, en los dos
+    sentidos y en los dos proyectos. La prueba lo anota sin fallar. El plan B de R-05 **no se
+    aplicó**: espera la aprobación de la usuaria.
+- **T044**: `lighthouse-chat.mjs --modo claro|oscuro` y `e2e.yml` lo corre en los dos modos.
+  Accesibilidad del chat abierto: 1 en claro y en oscuro (en local). Falta su primera corrida en CI.
+- **T045**: tres medidas completas; las tres se anotan en
+  `docs/08-sprint-2/evidencias/diseno-013/despues.md`, con las 24 capturas "después".
+  - **Medida 1**: rendimiento muy por debajo de la base (portada 80, tablero 82) por desplazamientos
+    del diseño (pie, barra pública, tablero), y `color-contrast` en oscuro (el nombre del usuario,
+    3.32:1). Se corrigieron.
+  - **Medida 2**: se movió el CSS del desplegable al área del personal y se acotaron los botones
+    oscuros.
+  - **Medida 3, final**:
+    - **SC-002**: se cumple (accesibilidad 100 en todo, en los dos modos).
+    - **SC-004**: se cumple.
+    - **SC-003**: **no se cumple del todo**. La portada sube 1, el asistente y la consulta quedan
+      iguales, el ingreso baja 1 y la bandeja y el tablero bajan 2. La causa es el CSS de CoreUI que
+      bloquea el pintado (25.4 frente a 5.4 KB transferidos) y, en el personal, el módulo del área.
+      Queda registrado y pendiente.
+- **T046**: ADR-012 en `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md` (fila del
+  resumen y sección).
+- **T047**:
+  - `README.md`: sección "Diseño del portal (funcionalidad 013)";
+  - `docs/08-sprint-2/README.md` §10: antes y después y pendientes;
+  - `componentes-arquitectonicos.md`: el portal con CoreUI en el C4 y en la tabla de componentes.
+- **T048**:
+  - portal: 660/660 pruebas; lint, tipos, formato y build en verde;
+  - build final: CSS 124.98 KB (19.76 KB gzip), JS 470.48 KB (133.15 KB gzip), área del personal
+    46.78 KB de JS (15.62 KB gzip) y 38.08 KB de CSS (6.11 KB gzip);
+  - API sin cambios: cobertura 1463/1463 y ninguna violación de la regla de dependencia.
 
 ---
 

@@ -65,7 +65,10 @@ jobs:
           cd /tmp/lighthouse-chat
           npm init -y > /dev/null
           npm install --no-audit --no-fund lighthouse@12.2.1 puppeteer-core@23.11.1
-          node lighthouse-chat.mjs --url http://localhost:8080/ --salida "$GITHUB_WORKSPACE/tests/e2e/lighthouse" --chrome /usr/bin/google-chrome
+          # 013 (T044): en modo claro y oscuro; los dos deben tener accesibilidad >= 0.9.
+          for modo in claro oscuro; do
+            node lighthouse-chat.mjs --url http://localhost:8080/ --salida "$GITHUB_WORKSPACE/tests/e2e/lighthouse" --chrome /usr/bin/google-chrome --modo "$modo"
+          done
       - name: Registros del sistema si falla
         if: failure()
         run: docker compose -f infra/docker-compose.yml logs --no-color api web > sistema.log

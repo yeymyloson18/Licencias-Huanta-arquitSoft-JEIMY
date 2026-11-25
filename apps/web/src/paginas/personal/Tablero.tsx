@@ -119,112 +119,122 @@ export function Tablero() {
           </div>
         </form>
 
-        {carga.tipo === 'cargando' && (
-          <p className="aviso" role="status">
-            Cargando…
-          </p>
-        )}
-        {carga.tipo === 'error' && (
-          <p className="aviso aviso--error" role="alert">
-            {carga.mensaje}
-          </p>
-        )}
+        {/* 013 (T045, CLS): mientras carga, el área reserva una pantalla de alto, así el reporte de
+            abajo no salta cuando llegan los datos. */}
+        <div
+          className={
+            carga.tipo === 'cargando' ? 'tablero__datos tablero__datos--cargando' : 'tablero__datos'
+          }
+        >
+          {carga.tipo === 'cargando' && (
+            <p className="aviso" role="status">
+              Cargando…
+            </p>
+          )}
+          {carga.tipo === 'error' && (
+            <p className="aviso aviso--error" role="alert">
+              {carga.mensaje}
+            </p>
+          )}
 
-        {tablero && (
-          <>
-            {totalExpedientes === 0 &&
-              tablero.ingresos.total === '0.00' &&
-              conAtencion.length === 0 && <p className="aviso">No hay datos en este rango.</p>}
-            {/* 013 (US3): los totales de hoy, en tarjetas de indicador. */}
-            <div className="indicadores">
-              <TarjetaIndicador nombre="Expedientes presentados" valor={totalExpedientes} />
-              <TarjetaIndicador
-                nombre="Total de ingresos en caja"
-                variante="success"
-                valor={formatearTasa(tablero.ingresos.total)}
-              />
-            </div>
-            <section className="tarjeta" aria-labelledby="titulo-estados">
-              <h2 id="titulo-estados" className="ficha__nombre">
-                Expedientes por estado
-              </h2>
-              <p>
-                {totalExpedientes}{' '}
-                {totalExpedientes === 1 ? 'expediente presentado' : 'expedientes presentados'} en el
-                rango.
-              </p>
-              <GraficoBarras
-                titulo="Expedientes por estado"
-                columnas={['Estado', 'Cantidad']}
-                barras={estados.map(([estado, cantidad]) => ({
-                  etiqueta: nombreEstado(estado),
-                  valor: cantidad,
-                }))}
-              />
-            </section>
+          {tablero && (
+            <>
+              {totalExpedientes === 0 &&
+                tablero.ingresos.total === '0.00' &&
+                conAtencion.length === 0 && <p className="aviso">No hay datos en este rango.</p>}
+              {/* 013 (US3): los totales de hoy, en tarjetas de indicador. */}
+              <div className="indicadores">
+                <TarjetaIndicador nombre="Expedientes presentados" valor={totalExpedientes} />
+                <TarjetaIndicador
+                  nombre="Total de ingresos en caja"
+                  variante="success"
+                  valor={formatearTasa(tablero.ingresos.total)}
+                />
+              </div>
+              <section className="tarjeta" aria-labelledby="titulo-estados">
+                <h2 id="titulo-estados" className="ficha__nombre">
+                  Expedientes por estado
+                </h2>
+                <p>
+                  {totalExpedientes}{' '}
+                  {totalExpedientes === 1 ? 'expediente presentado' : 'expedientes presentados'} en
+                  el rango.
+                </p>
+                <GraficoBarras
+                  titulo="Expedientes por estado"
+                  columnas={['Estado', 'Cantidad']}
+                  barras={estados.map(([estado, cantidad]) => ({
+                    etiqueta: nombreEstado(estado),
+                    valor: cantidad,
+                  }))}
+                />
+              </section>
 
-            <section className="tarjeta" aria-labelledby="titulo-tiempos">
-              <h2 id="titulo-tiempos" className="ficha__nombre">
-                Tiempo de atención frente al plazo del TUPA
-              </h2>
-              <GraficoBarras
-                titulo="Promedio de días hábiles de atención por licencia"
-                columnas={['Licencia', 'Promedio']}
-                leyendaMarca="La línea vertical marca el plazo del TUPA."
-                barras={conAtencion.map((t) => ({
-                  etiqueta: t.codigoReceta,
-                  valor: t.promedioDiasHabiles ?? 0,
-                  texto: textoPromedio(t.promedioDiasHabiles),
-                  ...(t.plazoTupaDias > 0 ? { marca: t.plazoTupaDias } : {}),
-                }))}
-              />
-              <TablaAdaptable etiqueta="Detalle por licencia">
-                <table className="table table-hover tabla">
-                  <thead>
-                    <tr>
-                      <th scope="col">Licencia</th>
-                      <th scope="col">Plazo TUPA</th>
-                      <th scope="col">Atendidos</th>
-                      <th scope="col">Promedio (días hábiles)</th>
-                      <th scope="col">Dentro del plazo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tablero.tiempoPromedioPorReceta.map((t) => (
-                      <tr key={t.codigoReceta}>
-                        <th scope="row">{t.codigoReceta}</th>
-                        <td>
-                          {t.plazoTupaDias === 0 ? 'No aplica' : `${String(t.plazoTupaDias)} días`}
-                        </td>
-                        <td>{t.atendidos}</td>
-                        <td>{textoPromedio(t.promedioDiasHabiles)}</td>
-                        <td>
-                          {textoDentroDelPlazo(t.dentroDelPlazo, t.plazoTupaDias, t.atendidos)}
-                        </td>
+              <section className="tarjeta" aria-labelledby="titulo-tiempos">
+                <h2 id="titulo-tiempos" className="ficha__nombre">
+                  Tiempo de atención frente al plazo del TUPA
+                </h2>
+                <GraficoBarras
+                  titulo="Promedio de días hábiles de atención por licencia"
+                  columnas={['Licencia', 'Promedio']}
+                  leyendaMarca="La línea vertical marca el plazo del TUPA."
+                  barras={conAtencion.map((t) => ({
+                    etiqueta: t.codigoReceta,
+                    valor: t.promedioDiasHabiles ?? 0,
+                    texto: textoPromedio(t.promedioDiasHabiles),
+                    ...(t.plazoTupaDias > 0 ? { marca: t.plazoTupaDias } : {}),
+                  }))}
+                />
+                <TablaAdaptable etiqueta="Detalle por licencia">
+                  <table className="table table-hover tabla">
+                    <thead>
+                      <tr>
+                        <th scope="col">Licencia</th>
+                        <th scope="col">Plazo TUPA</th>
+                        <th scope="col">Atendidos</th>
+                        <th scope="col">Promedio (días hábiles)</th>
+                        <th scope="col">Dentro del plazo</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </TablaAdaptable>
-            </section>
+                    </thead>
+                    <tbody>
+                      {tablero.tiempoPromedioPorReceta.map((t) => (
+                        <tr key={t.codigoReceta}>
+                          <th scope="row">{t.codigoReceta}</th>
+                          <td>
+                            {t.plazoTupaDias === 0
+                              ? 'No aplica'
+                              : `${String(t.plazoTupaDias)} días`}
+                          </td>
+                          <td>{t.atendidos}</td>
+                          <td>{textoPromedio(t.promedioDiasHabiles)}</td>
+                          <td>
+                            {textoDentroDelPlazo(t.dentroDelPlazo, t.plazoTupaDias, t.atendidos)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </TablaAdaptable>
+              </section>
 
-            <section className="tarjeta" aria-labelledby="titulo-ingresos">
-              <h2 id="titulo-ingresos" className="ficha__nombre">
-                Ingresos en caja
-              </h2>
-              {/* 013: el total pasó a la tarjeta "Total de ingresos en caja", arriba. */}
-              <GraficoBarras
-                titulo="Ingresos por licencia"
-                columnas={['Licencia', 'Monto']}
-                barras={Object.entries(tablero.ingresos.porReceta).map(([codigo, monto]) => ({
-                  etiqueta: codigo,
-                  valor: Number(monto),
-                  texto: formatearTasa(monto),
-                }))}
-              />
-            </section>
-          </>
-        )}
+              <section className="tarjeta" aria-labelledby="titulo-ingresos">
+                <h2 id="titulo-ingresos" className="ficha__nombre">
+                  Ingresos en caja
+                </h2>
+                {/* 013: el total pasó a la tarjeta "Total de ingresos en caja", arriba. */}
+                <GraficoBarras
+                  titulo="Ingresos por licencia"
+                  columnas={['Licencia', 'Monto']}
+                  barras={Object.entries(tablero.ingresos.porReceta).map(([codigo, monto]) => ({
+                    etiqueta: codigo,
+                    valor: Number(monto),
+                    texto: formatearTasa(monto),
+                  }))}
+                />
+              </section>
+            </>
+          )}
+        </div>
 
         <ReporteLicencias />
       </main>

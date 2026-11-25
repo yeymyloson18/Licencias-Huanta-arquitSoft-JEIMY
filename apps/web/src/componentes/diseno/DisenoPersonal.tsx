@@ -5,7 +5,7 @@ import { Link, NavLink, useLocation } from 'react-router';
 import '../../estilos/tema-personal.scss';
 import { useSesion } from '../../sesion/ProveedorSesion';
 import { DesplegableUsuario } from './DesplegableUsuario';
-import { iconoMenu } from './iconos';
+import { iconoCerrar, iconoMenu } from './iconos';
 import { migasDe } from './migas';
 import { opcionesDe } from './opcionesMenu';
 import { PIE } from './pie';
@@ -31,6 +31,7 @@ export function DisenoPersonal({ children }: Propiedades) {
   const [angosto, setAngosto] = useState(false);
   const idMenu = useId();
   const boton = useRef<HTMLButtonElement>(null);
+  const cerrarMenu = useRef<HTMLButtonElement>(null);
 
   // Al cambiar de pantalla o al pasar a escritorio, el menú del celular se cierra.
   useEffect(() => {
@@ -52,6 +53,14 @@ export function DisenoPersonal({ children }: Propiedades) {
       document.removeEventListener('keydown', alTeclear);
     };
   }, [abierto]);
+
+  // En el celular, el menú abierto tapa el botón de la barra: el foco pasa a "Cerrar menú", dentro
+  // del menú (T043 b).
+  useEffect(() => {
+    if (celular && abierto) {
+      cerrarMenu.current?.focus();
+    }
+  }, [celular, abierto]);
 
   const opciones = sesion === null ? [] : opcionesDe(sesion.usuario.roles);
   const migas = migasDe(pathname);
@@ -75,6 +84,18 @@ export function DisenoPersonal({ children }: Propiedades) {
           >
             Municipalidad Provincial de Huanta
           </CSidebarBrand>
+          <button
+            ref={cerrarMenu}
+            type="button"
+            className="btn btn-ghost-secondary d-md-none diseno-personal__cerrar"
+            aria-label="Cerrar menú"
+            onClick={() => {
+              setAbierto(false);
+              boton.current?.focus();
+            }}
+          >
+            <CIcon icon={iconoCerrar} />
+          </button>
         </CSidebarHeader>
         <nav aria-label="Menú del personal" className="diseno-personal__menu">
           {/* Sin "Inicio" ni enlace al portal público (011, FR-020). Sin roles, la lista no se muestra. */}

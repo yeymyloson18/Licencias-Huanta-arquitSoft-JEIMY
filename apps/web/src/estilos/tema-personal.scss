@@ -4,6 +4,9 @@
 @use '@coreui/coreui/scss/nav';
 @use '@coreui/coreui/scss/sidebar';
 @use '@coreui/coreui/scss/breadcrumb';
+// 013 (T045): el desplegable solo lo usa el área del personal (el del usuario); el portal público ya
+// no lo descarga.
+@use '@coreui/coreui/scss/dropdown';
 
 // ---- Área de administración del personal (013, US1; T017) ----
 
@@ -32,6 +35,20 @@
 .diseno-personal__contenido {
   flex: 1 0 auto;
   min-width: 0;
+  // 013 (T045, CLS): el pie empieza fuera de la pantalla y no salta cuando llega el contenido.
+  min-height: 100vh;
+}
+
+// 013 (T045, SC-004): la variante ghost-secondary de CoreUI usa #6b7785, que en oscuro da 3.3:1. El
+// nombre del usuario usa el color del texto y "Plegar menú" el secundario del tema (≥ 4.5:1 en los
+// dos modos). Con :root delante, para ganarle al bloque oscuro del sistema (_modo-oscuro.scss).
+:root .desplegable-usuario .dropdown-toggle {
+  --cui-btn-color: var(--cui-body-color);
+  --cui-btn-hover-color: var(--cui-body-color);
+}
+
+:root .diseno-personal__plegar {
+  --cui-btn-color: var(--cui-secondary-color);
 }
 
 .diseno-personal__marca {
@@ -121,6 +138,14 @@
 
 .diseno-personal__plegar {
   width: 100%;
+}
+
+// "Cerrar menú" dentro del menú del celular (el menú abierto tapa el botón de la barra).
+.diseno-personal__cerrar {
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
 }
 
 // Modo angosto: sin iconos por opción, se muestra la inicial (data-inicial) con CSS, así el nombre
