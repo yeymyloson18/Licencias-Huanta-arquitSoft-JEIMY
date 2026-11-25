@@ -56,10 +56,11 @@ comprobar la pantalla a la que llega cada uno.
 6. **Dado** un usuario que intentó abrir una pantalla protegida sin sesión y fue enviado a ingresar,
    **cuando** completa el ingreso, **entonces** vuelve a la pantalla que intentaba abrir, si su rol la
    permite; si no, llega a la pantalla principal de su rol.
-7. **Dado** un usuario del personal con sesión en cualquier pantalla, **cuando** pulsa "Inicio" en
-   el menú, **entonces** llega a la pantalla principal de su rol (por ejemplo, Caja a Caja), nunca al
-   portal público del ciudadano; **y** si escribe a mano la dirección del portal público, la página
-   se abre igual (FR-020).
+7. **Dado** un usuario del personal con sesión en cualquier pantalla, **cuando** quiere volver a su
+   pantalla principal, **entonces** usa la opción de su rol en el menú (por ejemplo, Caja usa "Caja";
+   sin roles, "Mi perfil"); el menú no tiene "Inicio" ni ningún enlace al portal público del
+   ciudadano; **y** si escribe a mano la dirección del portal público, la página se abre igual
+   (FR-020).
 8. **Dado** una persona del personal sin sesión en la portada o en otra página pública, **cuando**
    busca cómo entrar, **entonces** ve el enlace "Acceso del personal", que la lleva a la pantalla de
    ingreso; **y** con sesión ese enlace no aparece (FR-021).
@@ -229,11 +230,14 @@ posibles y comprobar que siempre se recibe el propio o un rechazo.
 - **FR-015**: Si la persona fue enviada a ingresar al intentar abrir una pantalla protegida, después
   de ingresar el portal DEBE devolverla a esa pantalla cuando su rol la permite; si no, aplica
   FR-012.
-- **FR-020**: Para el personal con sesión, el enlace "Inicio" del menú DEBE llevar a su pantalla
-  principal, con la misma regla de FR-012 a FR-014 (`inicioDe(roles)`; sin roles, "Mi perfil"). El
-  menú del personal NO DEBE enlazar al portal público del ciudadano (`/`, con el asistente y la
-  consulta), porque ningún rol del personal hace ese trámite. Las páginas públicas siguen abiertas:
-  no se bloquean ni redirigen para quien tiene sesión; solo dejan de estar en el menú del personal.
+- **FR-020**: El menú del personal NO DEBE tener un enlace "Inicio": la pantalla principal de cada
+  rol ya es una opción propia del menú (Administrador → "Panel"; Mesa de partes y Evaluador →
+  "Expedientes"; Caja → "Caja"; Inspector → "Inspecciones"; Jefatura → "Tablero"; sin roles →
+  "Mi perfil"), y un "Inicio" solo la repetiría. Al ingresar, cada persona sigue llegando a su
+  pantalla principal con la regla de FR-012 a FR-014 (`inicioDe(roles)`). El menú del personal NO
+  DEBE enlazar al portal público del ciudadano (`/`, con el asistente y la consulta), porque ningún
+  rol del personal hace ese trámite. Las páginas públicas siguen abiertas: no se bloquean ni
+  redirigen para quien tiene sesión; solo no están en el menú del personal.
 - **FR-021**: La portada (`/`) y las demás páginas públicas (asistente, consulta, verificación de
   licencias y trámite en línea) DEBEN mostrar un enlace discreto "Acceso del personal" que lleve a la
   pantalla de ingreso (`/ingresar`), visible solo cuando no hay sesión del personal. Con sesión no

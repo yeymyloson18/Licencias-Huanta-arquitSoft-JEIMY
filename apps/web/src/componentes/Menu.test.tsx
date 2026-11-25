@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { json, problema, sesionDePrueba, simularApi } from '../pruebas/api-simulada';
 import { montarEn } from '../pruebas/montar';
 import { obtenerSesion, reiniciarSesion } from '../sesion/almacen-sesion';
+import { inicioDe } from '../sesion/inicio';
 
 const conSesion = (roles: string[]) => ({
   'POST /auth/renovar': () => json(sesionDePrueba({ roles })),
@@ -276,24 +277,27 @@ describe('Menú del personal', () => {
     expect(screen.queryByRole('link', { name: 'Mi perfil' })).not.toBeInTheDocument();
   });
 
-  it.each<[string[], string]>([
-    [['ADMINISTRADOR'], '/admin'],
-    [['MESA_PARTES'], '/personal/expedientes'],
-    [['EVALUADOR'], '/personal/expedientes'],
-    [['CAJA'], '/personal/caja'],
-    [['INSPECTOR'], '/personal/inspecciones'],
-    [['JEFATURA'], '/personal/tablero'],
-    [['INSPECTOR', 'CAJA'], '/personal/caja'],
-    [[], '/perfil'],
+  it.each<[string[], string, string]>([
+    [['ADMINISTRADOR'], 'Panel', '/admin'],
+    [['MESA_PARTES'], 'Expedientes', '/personal/expedientes'],
+    [['EVALUADOR'], 'Expedientes', '/personal/expedientes'],
+    [['CAJA'], 'Caja', '/personal/caja'],
+    [['INSPECTOR'], 'Inspecciones', '/personal/inspecciones'],
+    [['JEFATURA'], 'Tablero', '/personal/tablero'],
+    [['INSPECTOR', 'CAJA'], 'Caja', '/personal/caja'],
+    [[], 'Mi perfil', '/perfil'],
   ])(
-    'con roles %j, "Inicio" lleva a %s y nada del menú va a "/" (011, FR-020)',
-    async (roles, pantalla) => {
+    'con roles %j no hay "Inicio"; su pantalla es la opción "%s" (%s) y nada va a "/" (011, FR-020)',
+    async (roles, opcion, pantalla) => {
       simularApi(conSesion(roles));
       montarEn('/');
 
       const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
 
-      expect(within(menu).getByRole('link', { name: 'Inicio' })).toHaveAttribute('href', pantalla);
+      expect(within(menu).queryByRole('link', { name: 'Inicio' })).not.toBeInTheDocument();
+      expect(within(menu).getByRole('link', { name: opcion })).toHaveAttribute('href', pantalla);
+      // Es la misma pantalla a la que llega al ingresar.
+      expect(inicioDe(roles)).toBe(pantalla);
       const destinos = within(menu)
         .getAllByRole('link')
         .map((enlace) => enlace.getAttribute('href'));

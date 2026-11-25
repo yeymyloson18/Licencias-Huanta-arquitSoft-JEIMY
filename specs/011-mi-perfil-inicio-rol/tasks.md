@@ -172,7 +172,7 @@ E2E ingresa con CAJA y llega a `/personal/caja`.
   de US3) sigue enviando `state: { aviso: 'Su clave se cambió' }`. Correr T008 en verde.
 
 - [X] T037 [US1] "Inicio" del menú del personal lleva a su pantalla principal (FR-020, escenario 7
-      de US1). Se agregó después de la implementación de la Fase 3, como corrección; toma el
+      de US1). **Reemplazada por T039**: después se quitó "Inicio" del menú. Se agregó después de la implementación de la Fase 3, como corrección; toma el
       siguiente número libre para no mover los identificadores de las demás tareas.
   - **Prueba primero**, en `apps/web/src/componentes/Menu.test.tsx`:
     - para cada rol (`ADMINISTRADOR` → `/admin`, `MESA_PARTES` y `EVALUADOR` →
@@ -206,6 +206,31 @@ E2E ingresa con CAJA y llega a `/personal/caja`.
     - Estilo en `apps/web/src/estilos/global.css`: barra fina alineada a la derecha, texto pequeño
       pero legible (≥ 0.875rem), área táctil de 44 px, foco visible, contraste suficiente y nada de
       desplazamiento horizontal a 360 px.
+  - Correr `npm test -w apps/web`.
+
+- [X] T039 [US1] Quitar "Inicio" del menú del personal para todos los roles (FR-020 actualizado,
+      escenario 7 de US1). Reemplaza a T037: con FR-020, "Inicio" siempre repetía una opción que ya
+      existe. Toma el siguiente número libre.
+  - **Prueba primero**, en `apps/web/src/componentes/Menu.test.tsx`: reemplazar la prueba de T037.
+    Para cada rol y sin roles:
+    - no existe el enlace "Inicio";
+    - sí existe la opción de su pantalla principal, con su ruta:
+
+      | Rol | Opción | Ruta |
+      | --- | --- | --- |
+      | `ADMINISTRADOR` | "Panel" | `/admin` |
+      | `MESA_PARTES`, `EVALUADOR` | "Expedientes" | `/personal/expedientes` |
+      | `CAJA` | "Caja" | `/personal/caja` |
+      | `INSPECTOR` | "Inspecciones" | `/personal/inspecciones` |
+      | `JEFATURA` | "Tablero" | `/personal/tablero` |
+      | sin roles | "Mi perfil" | `/perfil` |
+
+    - ese destino coincide con `inicioDe(roles)`;
+    - ningún enlace del menú tiene `href="/"`.
+
+    La prueba "con sesión, el portal público sigue abierto" se mantiene.
+  - **Implementación**, en `apps/web/src/componentes/Menu.tsx`: borrar el `<li>` de "Inicio" y la
+    importación de `inicioDe`. La llegada al ingresar (`Ingresar` y `CambiarClave`) no cambia.
   - Correr `npm test -w apps/web`.
 
 **Punto de control**: US1 completa. Commit `feat(web): cada rol llega a su pantalla al ingresar`.

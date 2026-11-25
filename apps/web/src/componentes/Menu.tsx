@@ -1,7 +1,6 @@
 import type { components } from '@licencias/contracts';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { useSesion } from '../sesion/ProveedorSesion';
-import { inicioDe } from '../sesion/inicio';
 
 type Rol = components['schemas']['Rol'];
 
@@ -65,17 +64,17 @@ export function Menu() {
       >
         Mi perfil
       </Link>
-      <ul className="menu__opciones">
-        <li>
-          {/* Su pantalla principal, no el portal público del ciudadano (011, FR-020). */}
-          <Link to={inicioDe(sesion.usuario.roles)}>Inicio</Link>
-        </li>
-        {visibles.map((opcion) => (
-          <li key={opcion.ruta}>
-            <Link to={opcion.ruta}>{opcion.etiqueta}</Link>
-          </li>
-        ))}
-      </ul>
+      {/* Sin "Inicio": la pantalla principal de cada rol ya es una opción propia, y el menú no
+          enlaza al portal público del ciudadano (011, FR-020). Sin roles, la lista no se muestra. */}
+      {visibles.length > 0 && (
+        <ul className="menu__opciones">
+          {visibles.map((opcion) => (
+            <li key={opcion.ruta}>
+              <Link to={opcion.ruta}>{opcion.etiqueta}</Link>
+            </li>
+          ))}
+        </ul>
+      )}
       <button type="button" className="boton boton--secundario" onClick={() => void cerrar()}>
         Cerrar sesión
       </button>
