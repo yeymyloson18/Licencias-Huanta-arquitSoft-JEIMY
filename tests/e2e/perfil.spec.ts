@@ -38,16 +38,16 @@ test('CAJA llega a Caja, ve Mi perfil y cambia su clave', async ({ page }, info)
   // Primero, claves nuevas distintas: el error queda visible junto al campo.
   const claveActual = usuario('CAJA').clave;
   const claveNueva = `PerfilE2e${Date.now().toString()}`;
-  await page.getByLabel('Clave actual').fill(claveActual);
+  await page.getByLabel('Clave actual', { exact: true }).fill(claveActual);
   await page.getByLabel('Clave nueva', { exact: true }).fill(claveNueva);
-  await page.getByLabel('Repetir clave nueva').fill(`${claveNueva}x`);
+  await page.getByLabel('Repetir clave nueva', { exact: true }).fill(`${claveNueva}x`);
   await page.getByRole('button', { name: 'Cambiar clave' }).click();
   await expect(page.getByText('Las claves nuevas no coinciden')).toBeVisible();
   if (enCelular) {
     expect(await sinDesplazamientoHorizontal(page)).toBe(true);
   }
 
-  await page.getByLabel('Repetir clave nueva').fill(claveNueva);
+  await page.getByLabel('Repetir clave nueva', { exact: true }).fill(claveNueva);
   await page.getByRole('button', { name: 'Cambiar clave' }).click();
   await expect(page).toHaveURL(/\/perfil$/);
   // Desde aquí los demás recorridos ingresan con la clave nueva.
