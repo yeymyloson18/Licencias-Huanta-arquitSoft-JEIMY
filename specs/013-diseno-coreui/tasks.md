@@ -525,15 +525,21 @@ de un usuario y la caja se ven con el mismo estilo.
     `--color-primario`, `--color-borde` y `--color-foco` a las `--cui-*`.
   - Conservar el chat, `.cabecera*`, las fichas, el asistente, el gráfico y `:focus-visible`.
   - Anotar en el mensaje del commit cada bloque retirado y qué lo reemplaza.
-- [ ] T036 [US5] Correr todas las pruebas del portal: las 497 originales más las nuevas, en verde.
+- [X] T036 [US5] Correr todas las pruebas del portal: las 497 originales más las nuevas, en verde.
       Revisar a 360 px (en Playwright o a mano) el ingreso, la solicitud, la caja y la ficha de un
       usuario.
 
 **Estado al cierre de la fase 7 (2026-11-25)**:
 
 - **Pruebas**: 610/610 en el portal; lint, tipos, formato y build en verde.
-- **T036 queda abierta**: falta la revisión a 360 px del ingreso, la solicitud, la caja y la ficha
-  de un usuario con el puente aplicado. No se hizo por falta de tiempo en la sesión.
+- **T036**: se revisaron a 360 px el ingreso (con error), la solicitud, la caja y la ficha de un
+  usuario, sin desplazamiento horizontal y con el anillo doble del foco visible. La revisión encontró
+  tres retrocesos, corregidos en `_puente.scss`:
+  - las etiquetas (`form-label`) y los botones (`btn`) habían perdido la negrita;
+  - el borde de los controles de CoreUI (#dbdfe6) daba 1.3:1 sobre blanco, menos que el 3:1 de WCAG
+    1.4.11. Ahora usa `--cui-secondary-color`.
+
+  El E2E completo pasa contra el compose aislado (8 recorridos).
 - **`Paginacion`** (nuevo, con prueba): reemplaza las cuatro copias de la paginación. Mismos textos y
   `aria-current="page"` en "Página X de Y".
 - **`CampoFormulario`**: agrega las clases de CoreUI y conserva las propias.
