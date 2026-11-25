@@ -753,7 +753,13 @@ recargar lo mantiene. El chat abierto se ve bien en ambos modos.
     31 en verde, sin violaciones de la CSP, y el portal 668/668.
   - **Cómo se sirve**: nginx entrega `/modo-inicial.js` como `application/javascript`, con
     `Cache-Control: no-cache` y la CSP de siempre.
-  - **Medidas de Lighthouse**: son anteriores a este cambio y no se repitieron.
+  - **Medida 4 de Lighthouse** (2026-11-25 21:23 UTC, con el script): accesibilidad 100 en todo y en
+    los dos modos.
+    - **Rendimiento**: portada 95/94, asistente 98/97, consulta 98/98, ingreso 98/97, bandeja 95/94
+      y tablero 94/94. Baja de 1 a 3 puntos frente a la medida 3.
+    - **Causa**: el script es una petición que bloquea el primer pintado (FCP de la portada de 1.7 a
+      1.9 s).
+    - **Registro**: queda en `despues.md` como resultado vigente.
 
 **Estado al cierre de la fase 9 (2026-11-25)**:
 

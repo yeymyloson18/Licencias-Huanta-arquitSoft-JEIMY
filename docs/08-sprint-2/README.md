@@ -233,20 +233,23 @@ resultados tal como salieron):
 
 | Pantalla | Rendimiento antes | Después, claro | Después, oscuro | Accesibilidad antes | Después (claro / oscuro) |
 | --- | --- | --- | --- | --- | --- |
-| Portada | 97 | 98 | 98 | 100 | 100 / 100 |
-| Asistente | 98 | 98 | 98 | 100 | 100 / 100 |
+| Portada | 97 | 95 | 94 | 100 | 100 / 100 |
+| Asistente | 98 | 98 | 97 | 100 | 100 / 100 |
 | Consulta | 98 | 98 | 98 | 100 | 100 / 100 |
-| Ingresar | 99 | 98 | 98 | 100 | 100 / 100 |
+| Ingresar | 99 | 98 | 97 | 100 | 100 / 100 |
 | Chat abierto | — | — | — | 100 | 100 / 100 |
-| Bandeja | 98 | 96 | 96 | 100 | 100 / 100 |
-| Tablero | 98 | 96 | 96 | 100 | 100 / 100 |
+| Bandeja | 98 | 95 | 94 | 100 | 100 / 100 |
+| Tablero | 98 | 94 | 94 | 100 | 100 / 100 |
 
-**Lo que no se cumplió** (SC-003, rendimiento ≥ la línea base):
-- **Ingreso**: baja 1 punto.
-- **Bandeja y tablero**: bajan 2 puntos.
+"Después" es la medida 4, con el script que evita el destello al cargar (T049). Sin ese script
+(medida 3), la portada daba 98 y la bandeja y el tablero 96.
 
-La causa es el CSS de CoreUI, que bloquea el primer pintado: 25.4 KB transferidos frente a 5.4 KB
-antes. En las pantallas del personal se suma el módulo del área del personal. La primera medida había
+**Lo que no se cumplió** (SC-003, rendimiento ≥ la línea base): solo la consulta queda igual. Las
+demás pantallas bajan de 1 a 4 puntos. Hay dos causas:
+- **CSS de CoreUI**: bloquea el primer pintado, con 25.4 KB transferidos frente a 5.4 KB antes. En
+  las pantallas del personal se suma el módulo del área del personal.
+- **`modo-inicial.js`**: también bloquea el pintado, porque así evita el destello. Sube el FCP de la
+  portada de 1.7 a 1.9 s. La primera medida había
 salido peor (portada 80, tablero 82), por desplazamientos del diseño y un contraste insuficiente en
 oscuro; se corrigieron y se volvió a medir.
 
@@ -262,6 +265,6 @@ Línea base: [`evidencias/diseno-013/linea-base.md`](evidencias/diseno-013/linea
 - **Destello al cargar: resuelto (T049)**. Con una elección de modo contraria al dispositivo, el
   primer cuadro salía en el modo del dispositivo. Con la aprobación de la usuaria, el script externo
   `public/modo-inicial.js` en el `<head>` aplica la elección antes del primer pintado, sin cambiar la
-  CSP. El E2E lo exige. Las medidas de Lighthouse son anteriores a este cambio.
+  CSP. El E2E lo exige. Cuesta de 1 a 3 puntos de rendimiento (medida 4).
 - **Rendimiento**: recuperar los puntos que faltan, recortando más el Sass de CoreUI.
 - **CI**: la primera corrida en GitHub Actions del Lighthouse del chat en los dos modos.

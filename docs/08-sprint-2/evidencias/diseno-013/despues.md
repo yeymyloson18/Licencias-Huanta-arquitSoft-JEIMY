@@ -9,46 +9,61 @@ pantalla, caché vacía en cada navegación. En modo oscuro, el dispositivo emul
 Capturas: [`despues/claro/`](despues/claro/) y [`despues/oscuro/`](despues/oscuro/), 6 pantallas ×
 celular y escritorio, frente a [`antes/claro/`](antes/claro/).
 
-## Resultado final frente a la línea base
+## Resultado vigente frente a la línea base (medida 4, con `modo-inicial.js`)
 
-| Pantalla | Línea base (claro) | Después, claro | Después, oscuro | Diferencia | Accesibilidad (claro / oscuro) |
+La medida 4 (2026-11-25 21:23 UTC) es la del código actual, con el script que evita el destello al
+cargar (T049). La medida 3, sin ese script, queda en el historial.
+
+| Pantalla | Línea base (claro) | Medida 3 (claro / oscuro) | Medida 4 (claro / oscuro) | Diferencia con la base | Accesibilidad (medida 4) |
 | --- | --- | --- | --- | --- | --- |
-| Portada | 97 | 98 | 98 | +1 | 100 / 100 |
-| Asistente | 98 | 98 | 98 | 0 | 100 / 100 |
-| Consulta | 98 | 98 | 98 | 0 | 100 / 100 |
-| Ingresar | 99 | 98 | 98 | **−1** | 100 / 100 |
+| Portada | 97 | 98 / 98 | 95 / 94 | **−2 / −3** | 100 / 100 |
+| Asistente | 98 | 98 / 98 | 98 / 97 | 0 / **−1** | 100 / 100 |
+| Consulta | 98 | 98 / 98 | 98 / 98 | 0 / 0 | 100 / 100 |
+| Ingresar | 99 | 98 / 98 | 98 / 97 | **−1 / −2** | 100 / 100 |
 | Chat abierto (snapshot) | — | — | — | — | 100 / 100 |
-| Bandeja (EVALUADOR) | 98 | 96 | 96 | **−2** | 100 / 100 |
-| Tablero (JEFATURA) | 98 | 96 | 96 | **−2** | 100 / 100 |
+| Bandeja (EVALUADOR) | 98 | 96 / 96 | 95 / 94 | **−3 / −4** | 100 / 100 |
+| Tablero (JEFATURA) | 98 | 96 / 96 | 94 / 94 | **−4 / −4** | 100 / 100 |
 
-| Criterio | Meta | Resultado |
+| Criterio | Meta | Resultado (medida 4) |
 | --- | --- | --- |
 | SC-002 | Accesibilidad ≥ 90 en ambos modos | **Se cumple**: 100 en todas las pantallas y en el chat abierto, en claro y en oscuro. |
-| SC-003 | Rendimiento ≥ la línea base | **No se cumple del todo**: la portada sube 1 punto, el asistente y la consulta quedan iguales, el ingreso baja 1 y la bandeja y el tablero bajan 2 (ver abajo). |
-| SC-004 | Sin fallas de `color-contrast` | **Se cumple** en la medida final, en ambos modos. En la primera medida fallaba en oscuro (ver el historial). |
+| SC-003 | Rendimiento ≥ la línea base | **No se cumple**: solo la consulta queda igual (y el asistente en claro); las demás bajan de 1 a 4 puntos. |
+| SC-004 | Sin fallas de `color-contrast` | **Se cumple** en ambos modos. |
 
-### Por qué bajan el ingreso, la bandeja y el tablero
+### Por qué bajó de la medida 3 a la medida 4
+
+- **`modo-inicial.js` bloquea el primer pintado.** Es un script externo en el `<head>`, sin `async`
+  ni `defer`, a propósito: si no bloquea, no evita el destello. El navegador espera esa petición
+  antes de pintar.
+- **Lo que mide Lighthouse en la portada**: en dos corridas de diagnóstico, FCP de **1.9 s**, frente
+  a 1.7 s en la medida 3, y LCP de 2.2 s; CLS sigue en 0. El JS transferido pasa de 156.8 a 158.6 KB
+  (el script pesa menos de 1 KB, más las cabeceras). El efecto es más la espera de la petición en la
+  red lenta simulada que el tamaño.
+- **Variación entre corridas**: la portada en oscuro dio 96, sin puntaje y 92. Lighthouse dio puntaje
+  en 2 de las 3 corridas.
+- **El intercambio**: con el script no hay destello (el E2E lo exige); sin él, la portada vuelve a 98
+  pero los primeros cuadros salen en el modo del dispositivo.
+- **Una alternativa que no se aplicó**: evitar la petición extra exige un script en línea, permitido
+  en la CSP con su hash (`script-src 'self' 'sha256-…'`). Eso cambia la política de seguridad de
+  nginx y de Caddy, y la especificación lo prohíbe; necesitaría la decisión de la usuaria.
+
+### Por qué sigue por debajo de la línea base (lo mismo que en la medida 3)
 
 - **CSS que bloquea el primer pintado**: el portal público descarga 25.4 KB de CSS transferido
-  (122.1 KB sin comprimir) frente a 5.4 KB (17.0 KB) antes de CoreUI. En la red lenta que simula
-  Lighthouse, eso atrasa el primer pintado. Las corridas sueltas de la portada salen con FCP 1.7 s,
-  LCP 2.0 s, TBT 60 a 80 ms y CLS 0.
+  (122.1 KB sin comprimir) frente a 5.4 KB (17.0 KB) antes de CoreUI.
 - **El área del personal se carga aparte**: la bandeja y el tablero descargan además el módulo de
-  `DisenoPersonal` (15.6 KB de JS y 6.1 KB de CSS con gzip, con CoreUI, el menú lateral y el
-  desplegable). Por eso pesan 34.0 KB de CSS y 175.0 KB de JS transferidos, frente a 5.4 KB y
-  151.0 KB antes.
-- **El ingreso** baja de 99 a 98 por el mismo CSS del portal público. Es la pantalla con menos
-  contenido, así que el CSS pesa más en su tiempo de pintado.
+  `DisenoPersonal` (15.6 KB de JS y 6.1 KB de CSS con gzip). Por eso pesan 34.0 KB de CSS y 176.7 KB
+  de JS transferidos, frente a 5.4 KB y 151.0 KB antes.
 - **No es la accesibilidad ni los desplazamientos**: CLS 0 en las páginas públicas y 0.008 en el
-  tablero (medido con `PerformanceObserver`), y accesibilidad 100.
+  tablero, y accesibilidad 100.
 
-Lo que queda para recuperar esos puntos, sin hacer: recortar más el Sass de CoreUI (por ejemplo, las
-reglas de botones y utilidades que no se usan) o dividir el CSS por diseño. Se deja registrado como
-pendiente.
+Lo que queda para recuperar puntos, sin hacer: recortar más el Sass de CoreUI o dividir el CSS por
+diseño. Se deja registrado como pendiente.
 
 ## Historial de las medidas (las tres, tal como salieron)
 
-La medida se repitió dos veces después de corregir lo que mostró la anterior.
+Las medidas 2 y 3 se repitieron después de corregir lo que mostró la anterior. La 4 se tomó
+después de agregar `modo-inicial.js` (T049).
 
 ### Medida 1 (2026-11-25 20:21 UTC): desplazamientos y contraste
 
@@ -97,7 +112,7 @@ La medida se repitió dos veces después de corregir lo que mostró la anterior.
 
   El CSS del portal público bajó de 21.5 a 19.8 KB con gzip.
 
-### Medida 3, final (2026-11-25 20:45 UTC)
+### Medida 3 (2026-11-25 20:45 UTC): antes de `modo-inicial.js`
 
 Fecha: 2026-11-25 20:45 UTC. Sistema: http://localhost:8090 (compose
 aislado `licencias-medida`, sin el proveedor de IA). Lighthouse en modo móvil 360×740,
@@ -140,6 +155,49 @@ El chat abierto se mide en modo snapshot: Lighthouse no da rendimiento en ese mo
 | Bandeja (EVALUADOR) | oscuro | 34.0 KB | 159.2 KB | 175.0 KB | 505.2 KB |
 | Tablero (JEFATURA) | oscuro | 34.0 KB | 159.2 KB | 175.0 KB | 505.2 KB |
 
+### Medida 4 (2026-11-25 21:23 UTC): con `modo-inicial.js` (vigente)
+
+Fecha: 2026-11-25 21:23 UTC. Sistema: http://localhost:8090 (compose
+aislado `licencias-medida`, sin el proveedor de IA). Lighthouse en modo móvil 360×740,
+`deviceScaleFactor: 2`, con la mediana de 3 corridas por pantalla. Resultados tal
+como salieron.
+
+| Pantalla | Modo | Rendimiento (mediana) | Corridas | Accesibilidad (mediana) | Auditorías de accesibilidad fallidas |
+| --- | --- | --- | --- | --- | --- |
+| Portada | claro | 95 | 96, 95, 94 | 100 | — |
+| Asistente | claro | 98 | 97, 98, 98 | 100 | — |
+| Consulta | claro | 98 | 98, 98, 98 | 100 | — |
+| Ingresar | claro | 98 | 98, 98, 97 | 100 | — |
+| Chat abierto (snapshot) | claro | — | —, —, — | 100 | — |
+| Bandeja (EVALUADOR) | claro | 95 | 94, 95, 95 | 100 | — |
+| Tablero (JEFATURA) | claro | 94 | 94, 94, 94 | 100 | — |
+| Portada | oscuro | 94 | 96, —, 92 | 100 | — |
+| Asistente | oscuro | 97 | 97, 97, 97 | 100 | — |
+| Consulta | oscuro | 98 | 98, 97, 98 | 100 | — |
+| Ingresar | oscuro | 97 | 97, 98, 97 | 100 | — |
+| Chat abierto (snapshot) | oscuro | — | —, —, — | 100 | — |
+| Bandeja (EVALUADOR) | oscuro | 94 | 95, 94, 94 | 100 | — |
+| Tablero (JEFATURA) | oscuro | 94 | 95, 94, 94 | 100 | — |
+
+El chat abierto se mide en modo snapshot: Lighthouse no da rendimiento en ese modo.
+
+#### Peso descargado (primera corrida de cada pantalla, con la caché vacía)
+
+| Pantalla | Modo | CSS transferido | CSS sin comprimir | JS transferido | JS sin comprimir |
+| --- | --- | --- | --- | --- | --- |
+| Portada | claro | 25.4 KB | 122.1 KB | 158.6 KB | 460.4 KB |
+| Asistente | claro | 25.4 KB | 122.1 KB | 158.6 KB | 460.4 KB |
+| Consulta | claro | 25.4 KB | 122.1 KB | 158.6 KB | 460.4 KB |
+| Ingresar | claro | 25.4 KB | 122.1 KB | 158.6 KB | 460.4 KB |
+| Bandeja (EVALUADOR) | claro | 34.0 KB | 159.2 KB | 176.7 KB | 506.1 KB |
+| Tablero (JEFATURA) | claro | 34.0 KB | 159.2 KB | 176.7 KB | 506.1 KB |
+| Portada | oscuro | 25.4 KB | 122.1 KB | 158.6 KB | 460.4 KB |
+| Asistente | oscuro | 25.4 KB | 122.1 KB | 158.6 KB | 460.4 KB |
+| Consulta | oscuro | 25.4 KB | 122.1 KB | 158.6 KB | 460.4 KB |
+| Ingresar | oscuro | 25.4 KB | 122.1 KB | 158.6 KB | 460.4 KB |
+| Bandeja (EVALUADOR) | oscuro | 34.0 KB | 159.2 KB | 176.7 KB | 506.1 KB |
+| Tablero (JEFATURA) | oscuro | 34.0 KB | 159.2 KB | 176.7 KB | 506.1 KB |
+
 ## Tamaño de la compilación (`npm run build -w apps/web`)
 
 | Archivo | Antes de CoreUI | Al instalar CoreUI (T006) | Final |
@@ -173,5 +231,5 @@ el asistente, la consulta y el ingreso.
     en el `<head>` aplica la elección antes del primer pintado, y sigue cumpliendo la CSP.
   - El E2E ahora **exige** que no haya ningún cuadro con el fondo contrario. Pasa en los 4 casos, en
     tres corridas seguidas.
-  - **Las medidas de Lighthouse de arriba son anteriores a T049**: el script agrega una petición
-    pequeña (menos de 1 KB, sin caché), que no se volvió a medir.
+  - **Medido después de T049 (medida 4)**: el script agrega una petición pequeña que bloquea el
+    primer pintado, y el rendimiento baja de 1 a 3 puntos frente a la medida 3 (ver arriba).
