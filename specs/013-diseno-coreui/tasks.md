@@ -556,8 +556,11 @@ de un usuario y la caja se ven con el mismo estilo.
 
 ## Fase 8: Historia de usuario 6 - Modo claro u oscuro (Prioridad: P2)
 
-**Objetivo**: un selector "Claro", "Oscuro" o "Como el sistema" en las dos barras. Sin elección,
-sigue al sistema desde el primer pintado. La elección se recuerda.
+**Objetivo**: un botón que alterna entre "Claro" y "Oscuro" en las dos barras. Sin elección, el
+modo inicial es el del dispositivo desde el primer pintado. La elección se recuerda y se respeta.
+
+> **Corrección (2026-11-25)**: se quitó la opción "Como el sistema" (FR-019 y FR-020 actualizados).
+> T037, T038 y T042 se rehicieron con dos estados (pruebas primero).
 
 **Prueba independiente**: con el sistema en oscuro, el primer pintado es oscuro. Elegir "Claro" y
 recargar lo mantiene. El chat abierto se ve bien en ambos modos.
@@ -565,17 +568,25 @@ recargar lo mantiene. El chat abierto se ve bien en ambos modos.
 ### Pruebas de la historia 6 ⚠️
 
 - [X] T037 [P] [US6] **Prueba primero** `apps/web/src/sesion/modo-color.test.ts`:
-  - `leerModoGuardado()` devuelve `"claro"`, `"oscuro"` o `"sistema"`; un valor ajeno o ausente da
-    `"sistema"`;
-  - `guardarModo` escribe o borra `licencias-modo-color`;
-  - `aplicarModoGuardado()` pone `data-coreui-theme="light"` o `"dark"` en `<html>`, o lo quita;
-  - con `localStorage` que lanza un error (al leer y al escribir), nada falla y se usa `"sistema"`.
+  - `leerModoGuardado()` devuelve `"claro"`, `"oscuro"` o `null` (sin elección; también con un
+    valor ajeno, como el `"sistema"` que guardaba la versión anterior);
+  - `modoInicial()` es el guardado o, sin elección, el del dispositivo (`prefers-color-scheme`);
+  - `guardarModo` escribe `licencias-modo-color`;
+  - `aplicarModoGuardado()` pone `data-coreui-theme="light"` o `"dark"` en `<html>` solo si hay
+    elección; sin elección no pone atributo (el CSS sigue al dispositivo);
+  - con `localStorage` que lanza un error (al leer y al escribir), nada falla y se usa el modo del
+    dispositivo.
 - [X] T038 [P] [US6] **Prueba primero** `apps/web/src/sesion/useModoColor.test.tsx` y
       `componentes/diseno/SelectorModo.test.tsx`:
-  - las tres opciones `menuitemradio` con `aria-checked`;
-  - elegir cambia el atributo y lo anuncia en `aria-live`;
+  - un solo botón, sin "Como el sistema": en claro muestra la luna y se llama "Cambiar a modo
+    oscuro"; en oscuro, el sol y "Cambiar a modo claro";
+  - el modo inicial es el del dispositivo si no hay elección, y el guardado si la hay (aunque el
+    dispositivo esté en el contrario);
+  - alternar cambia el atributo, lo guarda y lo anuncia en `aria-live`;
   - el evento `storage` de otra pestaña se aplica;
-  - en "sistema", un cambio de `matchMedia` no deja atributo.
+  - sin elección, un cambio de `matchMedia` actualiza el botón sin poner atributo; con elección, no
+    cambia nada;
+  - el botón está en las dos barras (`DisenoPublico.test.tsx` y `DisenoPersonal.test.tsx`).
 - [X] T039 [P] [US6] **Prueba primero** `apps/web/src/estilos/tema.test.ts` (entorno `node`): compila
       `tema.scss` con `sass.compile` y comprueba que el CSS tiene:
   - las variables oscuras bajo `[data-coreui-theme=dark]` **y** bajo
@@ -593,9 +604,24 @@ recargar lo mantiene. El chat abierto se ve bien en ambos modos.
       oscuras de CoreUI (los mapas `$*-dark`) y las propias bajo los dos selectores (research R-05).
       En modo oscuro, el texto y los enlaces con el color primario usan su tinte claro (R-07). Debe
       pasar T039, y `contraste.test.ts` sigue en verde.
-- [X] T042 [US6] `componentes/diseno/SelectorModo.tsx` (`CDropdown` con iconos de `iconos.ts`) en
+- [X] T042 [US6] `componentes/diseno/SelectorModo.tsx` (un botón que alterna, con el sol y la luna
+      de `iconos.ts`; antes, `CDropdown` con tres opciones) en
       `DisenoPersonal` y en `DisenoPublico`. El chat, las insignias, las tablas y las barras se ven
       bien en ambos modos (revisión a mano en el navegador).
+
+**Corrección del modo de color (2026-11-25)**:
+
+- **Un solo botón** que alterna entre claro y oscuro: la luna en claro, el sol en oscuro, y un nombre
+  accesible que dice a qué modo cambia. Se quitó "Como el sistema", y con ella el `CDropdown`, el
+  icono del medio círculo y la carga diferida del selector en el portal público.
+- **Sin elección, el modo inicial es el del dispositivo**, y el botón se actualiza si cambia; el CSS
+  sigue resolviendo el primer pintado sin atributo. En cuanto la persona elige, se guarda y manda
+  sobre el dispositivo. Un `"sistema"` guardado por la versión anterior cuenta como "sin elección".
+- **Pruebas**: 659/659 en el portal, con las de `modo-color`, `useModoColor`, `SelectorModo` y el
+  botón en `DisenoPublico` y `DisenoPersonal`. Revisado en el navegador, a 360 px y en escritorio.
+- **Peso**: sin el desplegable, el selector va en el paquete principal. El JS principal pasa de 130.8
+  a 133.1 KB con gzip, por `CIcon`.
+- **Lo de abajo** describe la primera versión: tres opciones y la carga diferida en el portal público.
 
 **Estado al cierre de la fase 8 (2026-11-25)**:
 

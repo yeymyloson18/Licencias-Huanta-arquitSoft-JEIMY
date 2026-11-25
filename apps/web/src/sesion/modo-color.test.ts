@@ -1,13 +1,17 @@
+import { simularMedios } from '../pruebas/medios';
 import {
   aplicarModo,
   aplicarModoGuardado,
   CLAVE_MODO,
   guardarModo,
   leerModoGuardado,
+  modoDelDispositivo,
+  modoInicial,
 } from './modo-color';
 
-// Modo de color (013, US6; research R-05): se lee y se guarda en localStorage dentro de try/catch y
-// se aplica con data-coreui-theme en <html>. Sin elección ("sistema"), no hay atributo.
+// Modo de color (013, US6; FR-019 y FR-020 corregidos): solo "claro" u "oscuro". Sin elección, el
+// valor inicial es el del dispositivo; en cuanto la persona elige, se guarda y se respeta. Se guarda
+// en localStorage dentro de try/catch y se aplica con data-coreui-theme en <html>.
 
 const html = () => document.documentElement;
 
@@ -18,26 +22,50 @@ describe('modo-color', () => {
     html().removeAttribute('data-coreui-theme');
   });
 
-  it.each(['claro', 'oscuro', 'sistema'] as const)('lee el modo guardado "%s"', (modo) => {
+  it.each(['claro', 'oscuro'] as const)('lee el modo guardado "%s"', (modo) => {
     localStorage.setItem(CLAVE_MODO, modo);
 
     expect(leerModoGuardado()).toBe(modo);
   });
 
-  it.each([null, 'azul', '', 'DARK'])('un valor ausente o ajeno (%p) es "sistema"', (valor) => {
-    if (valor !== null) {
-      localStorage.setItem(CLAVE_MODO, valor);
-    }
+  it.each([null, 'sistema', 'azul', '', 'DARK'])(
+    'un valor ausente o ajeno (%p) es "sin elección" (null)',
+    (valor) => {
+      if (valor !== null) {
+        localStorage.setItem(CLAVE_MODO, valor);
+      }
 
-    expect(leerModoGuardado()).toBe('sistema');
+      expect(leerModoGuardado()).toBeNull();
+    },
+  );
+
+  it('el modo del dispositivo sigue a prefers-color-scheme', () => {
+    expect(modoDelDispositivo()).toBe('claro');
+
+    simularMedios({ oscuro: true });
+
+    expect(modoDelDispositivo()).toBe('oscuro');
   });
 
-  it('guardarModo escribe la elección y "sistema" la borra', () => {
+  it('sin elección, el modo inicial es el del dispositivo', () => {
+    simularMedios({ oscuro: true });
+
+    expect(modoInicial()).toBe('oscuro');
+  });
+
+  it('con elección, el modo inicial es el guardado aunque el dispositivo esté en el contrario', () => {
+    simularMedios({ oscuro: true });
+    localStorage.setItem(CLAVE_MODO, 'claro');
+
+    expect(modoInicial()).toBe('claro');
+  });
+
+  it('guardarModo escribe la elección', () => {
     guardarModo('oscuro');
     expect(localStorage.getItem(CLAVE_MODO)).toBe('oscuro');
 
-    guardarModo('sistema');
-    expect(localStorage.getItem(CLAVE_MODO)).toBeNull();
+    guardarModo('claro');
+    expect(localStorage.getItem(CLAVE_MODO)).toBe('claro');
   });
 
   it('la clave es licencias-modo-color', () => {
@@ -53,14 +81,6 @@ describe('modo-color', () => {
     expect(html()).toHaveAttribute('data-coreui-theme', atributo);
   });
 
-  it('aplicarModo("sistema") quita el atributo', () => {
-    html().setAttribute('data-coreui-theme', 'dark');
-
-    aplicarModo('sistema');
-
-    expect(html()).not.toHaveAttribute('data-coreui-theme');
-  });
-
   it('aplicarModoGuardado aplica la elección guardada', () => {
     localStorage.setItem(CLAVE_MODO, 'oscuro');
 
@@ -69,20 +89,26 @@ describe('modo-color', () => {
     expect(html()).toHaveAttribute('data-coreui-theme', 'dark');
   });
 
-  it('si localStorage lanza un error al leer y al escribir, nada falla y se usa "sistema"', () => {
+  it('sin elección, aplicarModoGuardado no pone atributo (el CSS sigue al dispositivo)', () => {
+    simularMedios({ oscuro: true });
+
+    aplicarModoGuardado();
+
+    expect(html()).not.toHaveAttribute('data-coreui-theme');
+  });
+
+  it('si localStorage lanza un error al leer y al escribir, nada falla y vale el dispositivo', () => {
     const lanzar = () => {
       throw new Error('bloqueado');
     };
     jest.spyOn(Storage.prototype, 'getItem').mockImplementation(lanzar);
     jest.spyOn(Storage.prototype, 'setItem').mockImplementation(lanzar);
-    jest.spyOn(Storage.prototype, 'removeItem').mockImplementation(lanzar);
+    simularMedios({ oscuro: true });
 
-    expect(leerModoGuardado()).toBe('sistema');
+    expect(leerModoGuardado()).toBeNull();
+    expect(modoInicial()).toBe('oscuro');
     expect(() => {
-      guardarModo('oscuro');
-    }).not.toThrow();
-    expect(() => {
-      guardarModo('sistema');
+      guardarModo('claro');
     }).not.toThrow();
     expect(() => {
       aplicarModoGuardado();

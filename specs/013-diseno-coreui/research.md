@@ -130,6 +130,9 @@ Se retira **solo lo que CoreUI reemplaza**. Cada bloque retirado se anota en el 
     **antes de `createRoot`**. Lee `localStorage` dentro de `try/catch` y pone
     `data-coreui-theme="light"` o `"dark"`. No hay script en línea ni archivos nuevos en `index.html`,
     así que es compatible con `script-src 'self'` de nginx y de Caddy.
+  - **Corrección (2026-11-25)**: ya no hay opción "sistema". El botón alterna entre "claro" y
+    "oscuro"; sin elección guardada, el modo inicial es el del dispositivo (sin atributo, como
+    abajo), y en cuanto la persona elige, se guarda y se respeta.
   - **El hook `useModoColor`**: maneja "claro", "oscuro" y "sistema" (quita el atributo), guarda con
     `try/catch` y escucha el evento `storage` para sincronizar pestañas. No se usa el hook
     `useColorModes` de CoreUI porque no envuelve `localStorage` en `try/catch` y siempre escribe el

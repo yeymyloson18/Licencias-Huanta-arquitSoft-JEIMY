@@ -27,11 +27,20 @@
 
 ## Modo de color
 
+Solo hay dos modos, "claro" y "oscuro" (corrección del 2026-11-25: no hay opción "Como el
+sistema"). La preferencia del dispositivo solo da el valor inicial mientras la persona no elige.
+
 | Situación | Atributo en `<html>` | Quién lo pone | Primer pintado |
 | --- | --- | --- | --- |
-| Sin elección guardada | ninguno | — | El CSS sigue a `prefers-color-scheme` (sin JavaScript) |
-| Elección "claro" | `data-coreui-theme="light"` | `aplicarModoGuardado()` en `main.tsx`, antes de `createRoot` | Ver el riesgo y el plan B en research R-05 |
+| Sin elección guardada | ninguno | — | El CSS usa `prefers-color-scheme` como valor inicial (sin JavaScript) |
+| Elección "claro" | `data-coreui-theme="light"` | `aplicarModoGuardado()` en `main.tsx`, antes de `createRoot`; después, el botón | Ver el riesgo y el plan B en research R-05 |
 | Elección "oscuro" | `data-coreui-theme="dark"` | Ídem | Ídem |
+
+- **El botón** (`SelectorModo`) alterna entre los dos modos. Sin elección guardada, muestra el modo
+  del dispositivo. Al usarlo, guarda la elección y pone el atributo; desde ahí, la elección manda
+  sobre el dispositivo. No hay forma de volver a "sin elección" desde el portal.
+- Si el navegador no deja guardar, la elección vale hasta recargar; al recargar vuelve el modo del
+  dispositivo.
 
 - **Sin scripts ni estilos en línea**: compatible con `script-src 'self'; style-src 'self'` de
   `cabeceras-seguridad.conf` y del Caddyfile de producción. No se cambia ninguna política.

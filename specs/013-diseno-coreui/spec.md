@@ -208,10 +208,14 @@ actuales del portal deben seguir en verde sin cambiar lo que comprueban.
 
 ### Historia de usuario 6 - Modo claro u oscuro, a elección (Prioridad: P2)
 
-Un selector en la barra superior del personal y del portal público permite elegir entre modo
-claro, oscuro o "como el sistema". Sin elección, sigue la preferencia del sistema. La elección se
-recuerda en ese navegador, y la página aparece desde el primer momento en el modo correcto, sin
-destellos.
+Un botón en la barra superior del personal y del portal público alterna entre modo claro y
+oscuro. Mientras la persona no elige, el portal empieza en el modo de su dispositivo. En cuanto
+elige, la elección se recuerda en ese navegador y se respeta aunque el dispositivo cambie. La página
+aparece desde el primer momento en el modo correcto, sin destellos.
+
+> **Corrección (2026-11-25)**: el selector tenía tres opciones ("Claro", "Oscuro" y "Como el
+> sistema"). Se quita "Como el sistema": queda un solo botón que alterna entre los dos modos. La
+> preferencia del dispositivo solo da el valor inicial.
 
 **Por qué esta prioridad**: muchas personas usan el celular en modo oscuro, y el personal que
 trabaja muchas horas lo agradece. Es una mejora de comodidad, no de función.
@@ -224,17 +228,18 @@ chat abierto.
 
 1. **Dado** un navegador sin elección guardada, **cuando** el sistema está en modo oscuro,
    **entonces** el portal se muestra oscuro desde el primer pintado.
-2. **Dado** el selector, **cuando** la persona elige "claro", "oscuro" o "como el sistema",
-   **entonces** el portal cambia de inmediato y la elección se recuerda al recargar y al cerrar
-   sesión.
+2. **Dado** el botón de modo, **cuando** la persona lo usa, **entonces** el portal pasa al otro
+   modo de inmediato, y la elección se recuerda al recargar y al cerrar sesión, aunque el dispositivo
+   esté en el modo contrario.
 3. **Dado** el navegador no deja guardar la elección (modo privado o almacenamiento bloqueado),
-   **cuando** elige un modo, **entonces** se aplica en esa página y, al recargar, vuelve a seguir al
-   sistema, sin errores.
+   **cuando** elige un modo, **entonces** se aplica en esa página y, al recargar, vuelve al modo del
+   dispositivo, sin errores.
 4. **Dado** el modo oscuro, **cuando** se muestra cualquier pantalla (incluido el chat
    "Pregúntanos" abierto, las insignias, las tablas y las barras), **entonces** el texto tiene
    contraste suficiente.
-5. **Dado** el selector, **cuando** se usa con teclado o lector de pantalla, **entonces** tiene un
-   nombre accesible y anuncia el modo elegido.
+5. **Dado** el botón de modo, **cuando** se usa con teclado o lector de pantalla, **entonces** su
+   nombre accesible dice a qué modo cambia ("Cambiar a modo oscuro" o "Cambiar a modo claro") y el
+   cambio se anuncia.
 
 ---
 
@@ -321,10 +326,13 @@ chat abierto.
 
 - **FR-018**: El tema DEBE usar los colores de la Municipalidad: primario #0b5394 (con su variante
   oscura #083d6d) y foco #f2a900. No se usan los colores de la plantilla de CoreUI.
-- **FR-019**: El portal DEBE ofrecer modo claro y oscuro. Un selector en la barra superior del
-  personal y del portal público ofrece "Claro", "Oscuro" y "Como el sistema".
-- **FR-020**: Sin elección guardada, DEBE seguir la preferencia del sistema (`prefers-color-scheme`)
-  y cambiar si esa preferencia cambia. La elección se guarda solo en el navegador (sin datos
+- **FR-019**: El portal DEBE ofrecer modo claro y oscuro con un solo botón en la barra superior
+  del personal y del portal público, que alterna entre los dos. Muestra un sol o una luna, y su
+  nombre accesible dice a qué modo cambia ("Cambiar a modo oscuro" o "Cambiar a modo claro"). No
+  hay opción "Como el sistema".
+- **FR-020**: Mientras la persona no elige, el modo inicial DEBE ser la preferencia del dispositivo
+  (`prefers-color-scheme`). En cuanto elige, la elección se guarda y se respeta aunque el
+  dispositivo esté en el modo contrario. La elección se guarda solo en el navegador (sin datos
   personales ni llamadas a la API) y se conserva al cerrar sesión.
 - **FR-021**: La página DEBE pintarse desde el primer momento en el modo correcto, sin destellos del
   modo equivocado, sin scripts ni estilos en línea.
@@ -349,8 +357,8 @@ chat abierto.
 
 ### Entidades clave
 
-- **Preferencia de modo**: "claro", "oscuro" o "sistema". Se guarda solo en el navegador; si no hay
-  una guardada, vale "sistema".
+- **Preferencia de modo**: "claro" u "oscuro". Se guarda solo en el navegador cuando la persona
+  elige; si no hay una guardada, vale la preferencia del dispositivo.
 - **Opción del menú**: etiqueta, ruta y roles que la ven. Son las mismas de hoy; el menú lateral las
   lee de la misma fuente que el menú actual.
 - **Grupo de estado**: en curso, requiere acción, positivo o negativo. Lo usa la insignia de cada

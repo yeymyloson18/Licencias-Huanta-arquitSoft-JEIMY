@@ -58,10 +58,8 @@
   font-size: 0.875rem;
 }
 
-// Selector de modo (US6): el botón y su hueco mientras se carga miden lo mismo (44 px).
-.selector-modo .dropdown-toggle,
-.selector-modo__hueco {
-  display: inline-flex;
+// Botón del modo de color (US6): área táctil de 44 px, en las dos barras.
+.selector-modo {
   width: 2.75rem;
   height: 2.75rem;
   padding: 0;

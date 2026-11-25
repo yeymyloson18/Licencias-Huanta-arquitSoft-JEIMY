@@ -25,11 +25,5 @@ export const iconoSol = trazo(
 /** Luna: modo oscuro. */
 export const iconoLuna = trazo('<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>');
 
-/** Medio círculo: como el sistema. */
-export const iconoSistema: Icono = [
-  '24 24',
-  '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>',
-];
-
 /** Equis: cerrar. */
 export const iconoCerrar = trazo('<path d="M6 6l12 12M18 6L6 18"/>');

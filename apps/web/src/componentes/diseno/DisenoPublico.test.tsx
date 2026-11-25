@@ -1,5 +1,7 @@
 import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { json, problema, sesionDePrueba, simularApi } from '../../pruebas/api-simulada';
+import { simularMedios } from '../../pruebas/medios';
 import { montarEn } from '../../pruebas/montar';
 import { reiniciarSesion } from '../../sesion/almacen-sesion';
 
@@ -106,5 +108,32 @@ describe('DisenoPublico (US2)', () => {
     await barra();
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'Menú del personal' })).not.toBeInTheDocument();
+  });
+
+  // 013 (FR-019 corregido): el botón de modo está en la barra pública, con dos estados.
+  it('la barra tiene el botón de modo, que alterna entre claro y oscuro', async () => {
+    simularApi(sinSesion);
+    montarEn('/');
+    const enBarra = within(await barra());
+
+    await userEvent
+      .setup()
+      .click(await enBarra.findByRole('button', { name: 'Cambiar a modo oscuro' }));
+
+    expect(document.documentElement).toHaveAttribute('data-coreui-theme', 'dark');
+    expect(enBarra.getByRole('button', { name: 'Cambiar a modo claro' })).toBeInTheDocument();
+    expect(screen.queryByText(/como el sistema/i)).not.toBeInTheDocument();
+    localStorage.clear();
+    document.documentElement.removeAttribute('data-coreui-theme');
+  });
+
+  it('con el dispositivo en oscuro y sin elección, el botón ofrece el modo claro', async () => {
+    simularMedios({ oscuro: true });
+    simularApi(sinSesion);
+    montarEn('/');
+
+    expect(
+      await within(await barra()).findByRole('button', { name: 'Cambiar a modo claro' }),
+    ).toBeInTheDocument();
   });
 });

@@ -52,10 +52,14 @@
 
 ## `componentes/diseno/SelectorModo.tsx`
 
-- Un `CDropdown` con el botón "Modo de color" y el icono del modo actual. Sus opciones son tres
-  `role="menuitemradio"` con `aria-checked`: "Claro", "Oscuro" y "Como el sistema".
-- Usa `useModoColor()`.
-- Con `aria-live="polite"`, anuncia "Modo oscuro activado" o el modo que corresponda.
+- **Un solo botón** que alterna entre claro y oscuro (corrección del 2026-11-25: sin
+  desplegable ni opción "Como el sistema").
+  - En modo claro muestra una luna y su nombre accesible es "Cambiar a modo oscuro"; en modo
+    oscuro, un sol y "Cambiar a modo claro".
+  - Área táctil de 44 px.
+- Usa `useModoColor()`: el modo inicial es el guardado o, sin elección, el del dispositivo.
+- Con `aria-live="polite"`, anuncia "Modo oscuro activado" o "Modo claro activado". Sin
+  `role="status"`, para no confundirse con el estado de cada pantalla.
 
 ## Componentes compartidos (por dentro, FR-016)
 

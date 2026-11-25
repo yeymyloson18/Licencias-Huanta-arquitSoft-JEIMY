@@ -7,15 +7,19 @@ del portal.
 
 | Dónde | Clave | Valores | Notas |
 | --- | --- | --- | --- |
-| `localStorage` del navegador | `licencias-modo-color` | `"claro"` \| `"oscuro"` (ausente = `"sistema"`) | Se lee y se escribe dentro de `try/catch`. No es un dato personal ni viaja a la API. Se conserva al cerrar sesión. |
-| `<html data-coreui-theme>` | — | `light` \| `dark` \| (sin atributo) | Sin atributo, el CSS sigue a `prefers-color-scheme`. |
+| `localStorage` del navegador | `licencias-modo-color` | `"claro"` \| `"oscuro"` (ausente = sin elección) | Se lee y se escribe dentro de `try/catch`. No es un dato personal ni viaja a la API. Se conserva al cerrar sesión. |
+| `<html data-coreui-theme>` | — | `light` \| `dark` \| (sin atributo) | Sin atributo (sin elección), el CSS usa `prefers-color-scheme`. |
 
 **Transiciones** (`useModoColor`):
 
+Corrección del 2026-11-25: solo dos modos; la preferencia del dispositivo es el valor inicial.
+
 ```text
-"sistema" ──elige "claro"──► data-coreui-theme="light", guarda "claro"
-"sistema" ──elige "oscuro"─► data-coreui-theme="dark",  guarda "oscuro"
-"claro"/"oscuro" ──elige "sistema"──► quita el atributo, borra la clave
+sin elección ──────────────► modo = el del dispositivo (sin atributo; el CSS lo resuelve)
+sin elección ──el dispositivo cambia──► el botón muestra el nuevo modo (sigue sin atributo)
+"claro" ──alterna──► data-coreui-theme="dark",  guarda "oscuro"
+"oscuro" ─alterna──► data-coreui-theme="light", guarda "claro"
+con elección ──el dispositivo cambia──► nada: se respeta la elección
 almacenamiento bloqueado ──► se aplica solo a la página abierta (sin error)
 otra pestaña cambia la clave (evento storage) ──► se aplica aquí también
 ```

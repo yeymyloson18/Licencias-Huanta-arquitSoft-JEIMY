@@ -1,50 +1,62 @@
-// Modo de color (013, US6; research R-05). La elección se guarda en localStorage; si el navegador no
-// lo permite (modo privado, bloqueo), todo sigue funcionando con "sistema". Se aplica con el atributo
-// data-coreui-theme en <html>. Sin elección no hay atributo y el CSS sigue al sistema.
+// Modo de color (013, US6; FR-019 y FR-020, corregidos el 2026-11-25). Solo hay dos modos, "claro" y
+// "oscuro". Mientras la persona no elige, vale el del dispositivo (prefers-color-scheme) y no se pone
+// atributo: el CSS lo resuelve desde el primer pintado. En cuanto elige, la elección se guarda en
+// localStorage y se aplica con data-coreui-theme en <html>, y manda sobre el dispositivo. Si el
+// navegador no deja guardar (modo privado, bloqueo), todo sigue funcionando.
 
-export type ModoColor = 'claro' | 'oscuro' | 'sistema';
+export type ModoColor = 'claro' | 'oscuro';
 
 export const CLAVE_MODO = 'licencias-modo-color';
 
 const ATRIBUTO = 'data-coreui-theme';
 
-const esModo = (valor: string | null): valor is ModoColor =>
-  valor === 'claro' || valor === 'oscuro' || valor === 'sistema';
+export const CONSULTA_OSCURO = '(prefers-color-scheme: dark)';
 
-/** El modo guardado; un valor ausente, ajeno o ilegible es "sistema". */
-export const leerModoGuardado = (): ModoColor => {
+const esModo = (valor: string | null): valor is ModoColor =>
+  valor === 'claro' || valor === 'oscuro';
+
+/** La elección guardada, o `null` si no hay (también con un valor ajeno o ilegible). */
+export const leerModoGuardado = (): ModoColor | null => {
   try {
     const valor = localStorage.getItem(CLAVE_MODO);
-    return esModo(valor) ? valor : 'sistema';
+    return esModo(valor) ? valor : null;
   } catch {
-    return 'sistema';
+    return null;
   }
 };
 
-/** Guarda la elección; "sistema" la borra. Si no se puede guardar, solo dura en esta pestaña. */
+/** El modo del dispositivo (prefers-color-scheme). */
+export const modoDelDispositivo = (): ModoColor =>
+  typeof window.matchMedia === 'function' && window.matchMedia(CONSULTA_OSCURO).matches
+    ? 'oscuro'
+    : 'claro';
+
+/** La elección guardada o, sin elección, el modo del dispositivo. */
+export const modoInicial = (): ModoColor => leerModoGuardado() ?? modoDelDispositivo();
+
+/** Guarda la elección. Si no se puede guardar, solo dura hasta recargar. */
 export const guardarModo = (modo: ModoColor): void => {
   try {
-    if (modo === 'sistema') {
-      localStorage.removeItem(CLAVE_MODO);
-    } else {
-      localStorage.setItem(CLAVE_MODO, modo);
-    }
+    localStorage.setItem(CLAVE_MODO, modo);
   } catch {
     // Sin almacenamiento: la elección vale hasta recargar.
   }
 };
 
-/** Pone `light` o `dark` en <html>, o lo quita para seguir al sistema. */
+/** Pone `light` o `dark` en <html>. */
 export const aplicarModo = (modo: ModoColor): void => {
-  const raiz = document.documentElement;
-  if (modo === 'sistema') {
-    raiz.removeAttribute(ATRIBUTO);
-  } else {
-    raiz.setAttribute(ATRIBUTO, modo === 'oscuro' ? 'dark' : 'light');
-  }
+  document.documentElement.setAttribute(ATRIBUTO, modo === 'oscuro' ? 'dark' : 'light');
 };
 
-/** Aplica la elección guardada (main.tsx, antes de montar React). */
+/** Quita el atributo: el CSS vuelve a seguir al dispositivo. */
+export const quitarModo = (): void => {
+  document.documentElement.removeAttribute(ATRIBUTO);
+};
+
+/** Aplica la elección guardada (main.tsx, antes de montar React). Sin elección, no pone atributo. */
 export const aplicarModoGuardado = (): void => {
-  aplicarModo(leerModoGuardado());
+  const guardado = leerModoGuardado();
+  if (guardado !== null) {
+    aplicarModo(guardado);
+  }
 };

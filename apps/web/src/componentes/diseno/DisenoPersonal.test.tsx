@@ -210,4 +210,21 @@ describe('DisenoPersonal (US1)', () => {
     expect(await screen.findByLabelText('Correo')).toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'Menú del personal' })).not.toBeInTheDocument();
   });
+
+  // 013 (FR-019 corregido): el botón de modo también está en la barra del personal.
+  it('la barra tiene el botón de modo, que respeta la elección guardada', async () => {
+    simularMedios({ oscuro: true });
+    localStorage.setItem('licencias-modo-color', 'claro');
+    const usuario = userEvent.setup();
+    simularApi(conSesion(['CAJA']));
+    montarEn('/perfil');
+    await menuLateral();
+
+    await usuario.click(screen.getByRole('button', { name: 'Cambiar a modo oscuro' }));
+
+    expect(document.documentElement).toHaveAttribute('data-coreui-theme', 'dark');
+    expect(localStorage.getItem('licencias-modo-color')).toBe('oscuro');
+    localStorage.clear();
+    document.documentElement.removeAttribute('data-coreui-theme');
+  });
 });
