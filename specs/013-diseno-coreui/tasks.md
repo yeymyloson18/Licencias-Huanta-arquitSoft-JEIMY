@@ -728,6 +728,33 @@ recargar lo mantiene. El chat abierto se ve bien en ambos modos.
     igual;
   - marcar las tareas con `[X]` y hacer el commit `chore(013): cierre`.
 
+- [X] T049 **Plan B de research R-05, aprobado por la usuaria (2026-11-25)**: el destello al cargar
+      con una elección de modo contraria al dispositivo (T043 d) se evita con un script clásico
+      externo, compatible con la CSP (`script-src 'self'`), sin scripts en línea:
+  - **Prueba primero**: en `tests/e2e/diseno.spec.ts`, el caso (d) pasa a **exigir** que ningún
+    cuadro registrado antes de que React monte tenga el fondo del modo contrario, en los dos sentidos
+    ("claro" guardado con el dispositivo oscuro y "oscuro" con el dispositivo claro);
+  - `apps/web/public/modo-inicial.js` (Vite lo copia tal cual a `dist/`): lee
+    `licencias-modo-color` dentro de `try/catch` y, si es `"claro"` u `"oscuro"`, pone
+    `data-coreui-theme` en `<html>`. Sin elección no hace nada (el CSS sigue al dispositivo);
+  - `apps/web/index.html`: `<script src="/modo-inicial.js"></script>` en el `<head>`, sin `async`
+    ni `defer`, para que corra antes del primer pintado;
+  - una prueba unitaria del script (`sesion/modo-inicial.test.ts`) con los mismos casos que
+    `aplicarModoGuardado`, incluido `localStorage` que lanza un error;
+  - `main.tsx` sigue llamando a `aplicarModoGuardado()` (no hace daño si el script ya puso el
+    atributo);
+  - nginx y Caddy ya lo sirven sin cambios (`try_files`), con `Cache-Control: no-cache`;
+  - actualizar `contracts/tema.md`, research R-05 y `despues.md`.
+
+  **Estado (2026-11-25)**:
+  - **Pruebas primero**: el caso (d) falló sin el script (2 de 4 en esa corrida; el destello depende
+    del momento) y la prueba unitaria falló sin el archivo.
+  - **Con el script**: el caso (d) pasa en los 4 casos, en tres corridas seguidas. El E2E completo da
+    31 en verde, sin violaciones de la CSP, y el portal 668/668.
+  - **Cómo se sirve**: nginx entrega `/modo-inicial.js` como `application/javascript`, con
+    `Cache-Control: no-cache` y la CSP de siempre.
+  - **Medidas de Lighthouse**: son anteriores a este cambio y no se repitieron.
+
 **Estado al cierre de la fase 9 (2026-11-25)**:
 
 - **T043** (`tests/e2e/diseno.spec.ts`): 23 pruebas en verde entre celular y escritorio; el E2E
@@ -736,9 +763,9 @@ recargar lo mantiene. El chat abierto se ve bien en ambos modos.
   - **(b) encontró una falla real**: a 360 px, el menú abierto tapaba el botón de la barra y no se
     podía cerrar con él. Se agregó "Cerrar menú" dentro del menú, con el foco en él al abrir y de
     vuelta al botón al cerrar (con su prueba en `DisenoPersonal.test.tsx`).
-  - **(d) hay destello**: los primeros 3 a 5 cuadros salen en el modo del dispositivo, en los dos
-    sentidos y en los dos proyectos. La prueba lo anota sin fallar. El plan B de R-05 **no se
-    aplicó**: espera la aprobación de la usuaria.
+  - **(d) había destello**: los primeros 3 a 5 cuadros salían en el modo del dispositivo, en los dos
+    sentidos y en los dos proyectos. Se corrigió en T049 (plan B de R-05, aprobado por la usuaria),
+    y la prueba ahora lo exige.
 - **T044**: `lighthouse-chat.mjs --modo claro|oscuro` y `e2e.yml` lo corre en los dos modos.
   Accesibilidad del chat abierto: 1 en claro y en oscuro (en local). Falta su primera corrida en CI.
 - **T045**: tres medidas completas; las tres se anotan en

@@ -165,10 +165,13 @@ el asistente, la consulta y el ingreso.
   - sin violaciones de la CSP;
   - teclado del desplegable;
   - corte de 768 px.
-- **Destello con una elección contraria al dispositivo (T043 d)**: **sí hay destello**, en celular y
-  en escritorio, en los dos sentidos ("claro" guardado con el dispositivo oscuro, y al revés). Los
-  primeros 3 a 5 cuadros salen con el fondo del dispositivo, antes de que `main.tsx` aplique la
-  elección; no hay contenido todavía.
-  - El plan B de research R-05 lo evitaría: un script externo `public/modo-inicial.js` en `<head>`,
-    que sigue cumpliendo la CSP. Cambia `index.html`.
-  - **No se aplicó**: queda pendiente de la aprobación de la usuaria.
+- **Destello con una elección contraria al dispositivo (T043 d)**: en la fase 9 **había destello**,
+  en celular y en escritorio, en los dos sentidos ("claro" guardado con el dispositivo oscuro, y al
+  revés). Los primeros 3 a 5 cuadros salían con el fondo del dispositivo, antes de que `main.tsx`
+  aplicara la elección.
+  - **Corregido en T049**, con la aprobación de la usuaria: el script externo `public/modo-inicial.js`
+    en el `<head>` aplica la elección antes del primer pintado, y sigue cumpliendo la CSP.
+  - El E2E ahora **exige** que no haya ningún cuadro con el fondo contrario. Pasa en los 4 casos, en
+    tres corridas seguidas.
+  - **Las medidas de Lighthouse de arriba son anteriores a T049**: el script agrega una petición
+    pequeña (menos de 1 KB, sin caché), que no se volvió a medir.

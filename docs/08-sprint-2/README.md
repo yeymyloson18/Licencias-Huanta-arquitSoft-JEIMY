@@ -259,8 +259,9 @@ Línea base: [`evidencias/diseno-013/linea-base.md`](evidencias/diseno-013/linea
   [`despues/oscuro/`](evidencias/diseno-013/despues/oscuro/).
 
 **Pendientes**:
-- **Destello al cargar**: con una elección de modo contraria al dispositivo, el primer cuadro sale en
-  el modo del dispositivo. El plan B (un script externo en `<head>`) espera la aprobación de la
-  usuaria.
+- **Destello al cargar: resuelto (T049)**. Con una elección de modo contraria al dispositivo, el
+  primer cuadro salía en el modo del dispositivo. Con la aprobación de la usuaria, el script externo
+  `public/modo-inicial.js` en el `<head>` aplica la elección antes del primer pintado, sin cambiar la
+  CSP. El E2E lo exige. Las medidas de Lighthouse son anteriores a este cambio.
 - **Rendimiento**: recuperar los puntos que faltan, recortando más el Sass de CoreUI.
 - **CI**: la primera corrida en GitHub Actions del Lighthouse del chat en los dos modos.

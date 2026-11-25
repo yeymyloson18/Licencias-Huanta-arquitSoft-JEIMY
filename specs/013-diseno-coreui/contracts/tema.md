@@ -33,8 +33,13 @@ sistema"). La preferencia del dispositivo solo da el valor inicial mientras la p
 | Situación | Atributo en `<html>` | Quién lo pone | Primer pintado |
 | --- | --- | --- | --- |
 | Sin elección guardada | ninguno | — | El CSS usa `prefers-color-scheme` como valor inicial (sin JavaScript) |
-| Elección "claro" | `data-coreui-theme="light"` | `aplicarModoGuardado()` en `main.tsx`, antes de `createRoot`; después, el botón | Ver el riesgo y el plan B en research R-05 |
+| Elección "claro" | `data-coreui-theme="light"` | `public/modo-inicial.js` en el `<head>` (T049); después, el botón | Ya en el modo elegido, sin destello |
 | Elección "oscuro" | `data-coreui-theme="dark"` | Ídem | Ídem |
+
+- **`public/modo-inicial.js`** (T049, plan B de research R-05 aprobado por la usuaria): script
+  clásico externo del mismo origen, cargado en el `<head>` de `index.html` sin `async` ni `defer`.
+  Lee la elección dentro de `try/catch` y pone el atributo antes del primer pintado. `main.tsx`
+  sigue llamando a `aplicarModoGuardado()`, que da el mismo resultado.
 
 - **El botón** (`SelectorModo`) alterna entre los dos modos. Sin elección guardada, muestra el modo
   del dispositivo. Al usarlo, guarda la elección y pone el atributo; desde ahí, la elección manda
@@ -43,7 +48,8 @@ sistema"). La preferencia del dispositivo solo da el valor inicial mientras la p
   dispositivo.
 
 - **Sin scripts ni estilos en línea**: compatible con `script-src 'self'; style-src 'self'` de
-  `cabeceras-seguridad.conf` y del Caddyfile de producción. No se cambia ninguna política.
+  `cabeceras-seguridad.conf` y del Caddyfile de producción. No se cambia ninguna política: el script
+  de modo inicial es un archivo propio del mismo origen.
 
 ## Lo que se retira de `global.css`
 

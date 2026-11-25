@@ -86,14 +86,15 @@ test('(c) dispositivo oscuro y sin elección: el fondo es oscuro antes de que Re
   await contexto.close();
 });
 
-// (d) Elección guardada contraria al dispositivo (análisis U1): se registra el fondo en cada cuadro
-// hasta que React monta. Este caso NO falla la prueba: anota si hubo destello, porque el plan B de
-// research R-05 (un script externo en <head>) necesita la aprobación de la usuaria.
+// (d) Elección guardada contraria al dispositivo (análisis U1; T049): se registra el fondo en cada
+// cuadro hasta que React monta, y ninguno puede tener el fondo del modo contrario. Lo evita
+// public/modo-inicial.js, un script clásico externo en el <head> (plan B de research R-05, aprobado
+// por la usuaria), que aplica la elección antes del primer pintado.
 for (const [eleccion, dispositivo, esperado, contrario] of [
   ['claro', 'dark', FONDO_CLARO, FONDO_OSCURO],
   ['oscuro', 'light', FONDO_OSCURO, FONDO_CLARO],
 ] as const) {
-  test(`(d) elección "${eleccion}" con el dispositivo en ${dispositivo}: ¿destello?`, async ({
+  test(`(d) elección "${eleccion}" con el dispositivo en ${dispositivo}: sin destello`, async ({
     browser,
   }, info) => {
     const contexto = await browser.newContext({
@@ -127,14 +128,15 @@ for (const [eleccion, dispositivo, esperado, contrario] of [
       () => (window as unknown as { __colores: string[] }).__colores,
     );
     const final = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-    const destello = colores.includes(contrario);
     test.info().annotations.push({
-      type: destello ? 'destello' : 'sin destello',
-      description: `${info.project.name}: cuadros ${colores.join(' | ')}; final ${final}`,
+      type: 'cuadros',
+      description: `${info.project.name}: ${colores.join(' | ')}; final ${final}`,
     });
-    console.log(
-      `DESTELLO ${info.project.name} ${eleccion}/${dispositivo}: ${destello ? 'sí' : 'no'} (${String(colores.length)} cuadros)`,
-    );
+
+    // Hubo al menos un cuadro antes de que React montara, y ninguno con el fondo contrario.
+    expect(colores.length).toBeGreaterThan(0);
+    expect(colores).not.toContain(contrario);
+    expect(colores.every((color) => color === esperado)).toBe(true);
     expect(final).toBe(esperado);
     await contexto.close();
   });

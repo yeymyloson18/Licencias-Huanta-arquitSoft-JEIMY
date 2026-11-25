@@ -144,6 +144,10 @@ Se retira **solo lo que CoreUI reemplaza**. Cada bloque retirado se anota en el 
     (unas 10 líneas, `<script src>` en `<head>`, sin `async` ni `defer`). Corre antes del primer
     pintado, sigue sin ser un script en línea y cumple la CSP. Se registraría como desviación
     aprobada por la usuaria.
+  - **Resultado (2026-11-25)**: el E2E de la fase 9 (T043 d) **mostró el destello**: 3 a 5 cuadros
+    con el fondo del dispositivo, en celular y escritorio y en los dos sentidos. La usuaria aprobó
+    el plan B y se aplicó en T049. Con el script, el mismo E2E pasa sin destello (tres corridas
+    seguidas).
 - **Alternativas**:
   - un script en línea en `index.html`: prohibido por la CSP (`script-src 'self'`) y por la usuaria;
   - solo JavaScript: siempre habría destellos en el modo del sistema.
