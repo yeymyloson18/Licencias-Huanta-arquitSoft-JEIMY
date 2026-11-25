@@ -211,7 +211,7 @@ funciona. A 360 px el botón abre y cierra el menú, sin desplazamiento horizont
 
 ### Pruebas de la historia 1 ⚠️
 
-- [ ] T012 [P] [US1] `apps/web/src/componentes/diseno/DisenoPersonal.test.tsx`, con `montarEn` y una
+- [X] T012 [P] [US1] `apps/web/src/componentes/diseno/DisenoPersonal.test.tsx`, con `montarEn` y una
       sesión de prueba:
   - el `<nav>` "Menú del personal" tiene las opciones de `opcionesDe(roles)`, con `aria-current` en
     la actual;
@@ -229,7 +229,7 @@ funciona. A 360 px el botón abre y cierra el menú, sin desplazamiento horizont
     navegador, en T043 (f);
   - las migas tienen `aria-current="page"` en el último tramo;
   - el pie dice "Municipalidad Provincial de Huanta".
-- [ ] T013 [US1] Ajustar `apps/web/src/componentes/Menu.test.tsx` según research R-11:
+- [X] T013 [US1] Ajustar `apps/web/src/componentes/Menu.test.tsx` según research R-11:
   - "Mi perfil" y "Cerrar sesión" se buscan en el desplegable (abriéndolo);
   - las opciones por rol se siguen comprobando en el `<nav>` "Menú del personal";
   - cada ajuste lleva un comentario con su justificación;
@@ -237,10 +237,10 @@ funciona. A 360 px el botón abre y cierra el menú, sin desplazamiento horizont
 
 ### Implementación de la historia 1
 
-- [ ] T014 [US1] `componentes/diseno/DesplegableUsuario.tsx`: `CDropdown`, `CDropdownToggle` (con el
+- [X] T014 [US1] `componentes/diseno/DesplegableUsuario.tsx`: `CDropdown`, `CDropdownToggle` (con el
       nombre recortado y `title` completo) y `CDropdownMenu`, con "Mi perfil" (`NavLink`) y "Cerrar
       sesión" (la misma lógica de hoy de `Menu.tsx`: `salir()` y navegar a `/ingresar`).
-- [ ] T015 [US1] `componentes/diseno/DisenoPersonal.tsx` (`contracts/portal-diseno.md`):
+- [X] T015 [US1] `componentes/diseno/DisenoPersonal.tsx` (`contracts/portal-diseno.md`):
   - `CSidebar` con `visible` y `narrow` en `useState`, sin Redux;
   - **corte de 768 px** (análisis I1): `CSidebar` se oculta por defecto por debajo de `lg` (992 px),
     pero FR-006 dice 768 px. Se configura el corte `md`:
@@ -256,7 +256,7 @@ funciona. A 360 px el botón abre y cierra el menú, sin desplazamiento horizont
   - `<main>` con `<Outlet />` y `CFooter`.
 
   Se cierra con Escape y al elegir una opción. Deben pasar T012 y T013.
-- [ ] T016 [US1] `apps/web/src/Aplicacion.tsx`: `Diseno` usa `DisenoPersonal` si
+- [X] T016 [US1] `apps/web/src/Aplicacion.tsx`: `Diseno` usa `DisenoPersonal` si
       `esRutaPersonal(pathname)`; si no, el diseño público actual (US2 lo reemplaza).
       **`DisenoPersonal` se carga con `React.lazy` y `Suspense`** (análisis E1), para que su código
       y `tema-personal.scss` no lleguen al portal público. Las pruebas que montan pantallas del
@@ -264,14 +264,14 @@ funciona. A 360 px el botón abre y cierra el menú, sin desplazamiento horizont
       `findBy…` con su justificación (R-11). Retirar
       `Menu.tsx` o dejarlo como reexportación del menú lateral si alguna prueba lo importa. Las
       rutas y `RutaProtegida` no cambian.
-- [ ] T017 [US1] Estilos del área del personal en `apps/web/src/estilos/tema.scss`:
+- [X] T017 [US1] Estilos del área del personal en `apps/web/src/estilos/tema.scss`:
   - ancho del menú lateral y su modo angosto;
   - barra fija;
   - sin transiciones con `prefers-reduced-motion`;
   - el nombre del usuario recortado con puntos suspensivos;
   - áreas táctiles de 44 px;
   - a 360 px, sin desplazamiento horizontal.
-- [ ] T018 [US1] Ajustar el E2E según research R-11, con un comentario de justificación:
+- [X] T018 [US1] Ajustar el E2E según research R-11, con un comentario de justificación:
   - `tests/e2e/apoyo/sistema.ts` (`ingresar`) espera la barra con el nombre (`banner`), no la
     visibilidad del `<nav>` lateral;
   - `tests/e2e/perfil.spec.ts` abre el desplegable para ir a "Mi perfil";
@@ -279,6 +279,40 @@ funciona. A 360 px el botón abre y cierra el menú, sin desplazamiento horizont
     en el DOM.
 
 **Punto de control**: el personal trabaja con el diseño nuevo y las pruebas siguen en verde.
+
+**Estado al cierre de la fase 3 (2026-11-25)**:
+
+- **Pruebas**: 567/567 en el portal. El E2E completo pasa contra el compose aislado
+  `licencias-medida` (8 recorridos; las 12 capturas solo corren con `CAPTURAS`).
+- **Teclado del desplegable** (T012): Enter, Espacio, flechas y Escape se comprueban en jsdom, así que
+  la parte (f) de T043 ya no depende de esta tarea.
+- **Puntos de referencia**: las pantallas ya traen su `<main>` y su `<header>`. Por eso el contenido va
+  en un contenedor sin rol, `CHeader` queda como `<div>` y el pie es un `<footer>`. Así no se repiten
+  `main` ni `banner`.
+- **Estilos** (T017): van en `tema-personal.scss`, que se carga con el área del personal, y no en
+  `tema.scss`, para que no lleguen al portal público (análisis E1). El corte de 768 px se fija con
+  `$mobile-breakpoint: md` en `_configuracion.scss`. Peso del área: 18.4 KB de JS y 4.9 KB de CSS con
+  gzip; el portal público creció 1 KB.
+- **Modo angosto**: las opciones no tienen iconos, así que se muestra su inicial con CSS
+  (`data-inicial`). El texto y el nombre accesible del enlace no cambian.
+- **`Menu.tsx`** sigue en el diseño público hasta US2 (fase 4), que lo reemplaza por "Ir a mi trabajo".
+- **Error encontrado en el navegador**: `CIcon` 2.3.0 lee la variable global `process` cuando recibe
+  `content` o `name` (propiedades obsoletas). En Jest existe y no falla; en el navegador tiraba el
+  área del personal. Se usa `icon`, y `coreui-humo.test.tsx` comprueba que ningún `CIcon` use las
+  obsoletas.
+- **Ajustes de pruebas existentes (R-11)**, cada uno con su comentario:
+  - `Menu.test.tsx`: las opciones por rol se comprueban montando `/perfil`; "Mi perfil" y "Cerrar
+    sesión", en el desplegable. Se agregó una prueba para conservar la afirmación "fuera de /perfil,
+    Mi perfil no lleva `aria-current`".
+  - `DetalleExpediente.test.tsx`: el historial se busca dentro de `main`, porque las migas también
+    son un `<ol>`.
+  - `jest.setup.ts` precarga el módulo diferido. Sin eso, la primera prueba de cada archivo podía
+    pasar la espera de `findBy…` mientras se compilaba CoreUI.
+  - `sistema.ts` (`ingresar`) espera el botón del desplegable del usuario. Los usuarios de
+    demostración no traen su nombre, así que no se puede buscar la barra por él.
+  - `perfil.spec.ts`: a 360 px abre el menú con "Mostrar menú", comprueba que esté en la pantalla y
+    lo cierra con Escape.
+  - `lighthouse-ingreso.cjs` no cambia: el `<nav>` sigue en el DOM.
 
 ---
 

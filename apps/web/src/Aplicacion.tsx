@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Outlet, Route, Routes, useLocation } from 'react-router';
 import { AccesoPersonal } from './componentes/AccesoPersonal';
 import { AvisoNavegacion } from './componentes/AvisoNavegacion';
+import { esRutaPersonal } from './componentes/diseno/rutas';
 import { Menu } from './componentes/Menu';
 import { BotonPreguntanos } from './componentes/orientacion/BotonPreguntanos';
 import type { MensajeChat } from './componentes/orientacion/conversacion';
@@ -39,15 +40,35 @@ import { useSesion } from './sesion/ProveedorSesion';
 import { ProveedorMesaPartes } from './tramite/ContextoMesaPartes';
 import { ProveedorTramite } from './tramite/ContextoTramite';
 
+// 013: el área del personal se carga aparte (análisis E1), para que su código y tema-personal.scss
+// no lleguen al portal público.
+const DisenoPersonal = lazy(() =>
+  import('./componentes/diseno/DisenoPersonal').then((modulo) => ({
+    default: modulo.DisenoPersonal,
+  })),
+);
+
 /**
- * Diseño común: menú del personal, aviso pendiente (cierre por inactividad, clave cambiada…) y, en
- * las páginas públicas, el chat de orientación (012). La conversación vive aquí, solo en memoria:
- * sigue al cambiar de página pública y se pierde al recargar (FR-017).
+ * Diseño común: aviso pendiente (cierre por inactividad, clave cambiada…) y, en las páginas públicas,
+ * el chat de orientación (012). La conversación vive aquí, solo en memoria: sigue al cambiar de
+ * página pública y se pierde al recargar (FR-017). Las pantallas del personal usan el área de
+ * administración (013, US1); las demás, el diseño público (US2 lo reemplaza).
  */
 function Diseno() {
   const { aviso } = useSesion();
   const { pathname } = useLocation();
   const [conversacion, setConversacion] = useState<MensajeChat[]>([]);
+
+  if (esRutaPersonal(pathname)) {
+    return (
+      <Suspense fallback={null}>
+        <DisenoPersonal>
+          <AvisoNavegacion respaldo={aviso} />
+          <Outlet />
+        </DisenoPersonal>
+      </Suspense>
+    );
+  }
 
   return (
     <>

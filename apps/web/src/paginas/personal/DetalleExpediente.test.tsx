@@ -85,7 +85,11 @@ describe('Página Detalle del expediente', () => {
     expect(dato('Área')).toBe('40 m²');
     expect(screen.queryByText('Razón social', { selector: 'dt' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Descargar solicitud.pdf' })).toBeInTheDocument();
-    const historial = screen.getAllByRole('list').find((lista) => lista.tagName === 'OL');
+    // 013 (R-11): las migas de pan del área del personal también son un <ol>; el historial se busca
+    // dentro del contenido de la pantalla.
+    const historial = within(screen.getByRole('main'))
+      .getAllByRole('list')
+      .find((lista) => lista.tagName === 'OL');
     expect(within(historial as HTMLElement).getByRole('listitem')).toHaveTextContent(
       /^Registrado — Registrada en mesa de partes/,
     );

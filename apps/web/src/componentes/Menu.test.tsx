@@ -5,11 +5,33 @@ import { montarEn } from '../pruebas/montar';
 import { obtenerSesion, reiniciarSesion } from '../sesion/almacen-sesion';
 import { inicioDe } from '../sesion/inicio';
 
+const PERFIL = {
+  nombreCompleto: 'Persona de Prueba',
+  correo: 'persona@ejemplo.pe',
+  celularEnmascarado: '9*****321',
+  roles: ['CAJA'],
+  ultimoIngreso: null,
+  sesionesAbiertas: 1,
+};
+
 const conSesion = (roles: string[]) => ({
   'POST /auth/renovar': () => json(sesionDePrueba({ roles })),
   'GET /catalogo/recetas': () => json([]),
+  'GET /perfil': () => json({ ...PERFIL, roles }),
   'POST /auth/cerrar-sesion': () => new Response(null, { status: 204 }),
 });
+
+// 013 (R-11): el menú del personal vive ahora en el área de administración (DisenoPersonal), así que
+// las opciones por rol se comprueban montando una pantalla del personal (/perfil, que admite cualquier
+// rol y también ninguno) en lugar de la portada. El <nav> "Menú del personal" es el mismo.
+const PANTALLA_PERSONAL = '/perfil';
+
+// 013 (R-11): "Mi perfil" y "Cerrar sesión" pasaron del <nav> al desplegable del nombre en la barra.
+const abrirDesplegable = async () => {
+  const boton = screen.getByRole('button', { name: 'Persona de Prueba' });
+  await userEvent.setup().click(boton);
+  return boton.closest('.dropdown') as HTMLElement;
+};
 
 describe('Menú del personal', () => {
   afterEach(() => {
@@ -31,7 +53,7 @@ describe('Menú del personal', () => {
 
   it('el administrador ve "Usuarios"', async () => {
     simularApi(conSesion(['ADMINISTRADOR']));
-    montarEn('/');
+    montarEn(PANTALLA_PERSONAL);
 
     const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
 
@@ -39,12 +61,13 @@ describe('Menú del personal', () => {
       'href',
       '/admin/usuarios',
     );
-    expect(within(menu).getByText('Persona de Prueba')).toBeInTheDocument();
+    // 013 (R-11): el nombre está en el botón del desplegable de la barra, no dentro del <nav>.
+    expect(screen.getByRole('button', { name: 'Persona de Prueba' })).toBeInTheDocument();
   });
 
   it('el administrador ve "Auditoría" de seguridad (009)', async () => {
     simularApi(conSesion(['ADMINISTRADOR']));
-    montarEn('/');
+    montarEn(PANTALLA_PERSONAL);
 
     const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
 
@@ -56,7 +79,7 @@ describe('Menú del personal', () => {
 
   it('caja no ve "Usuarios"', async () => {
     simularApi(conSesion(['CAJA']));
-    montarEn('/');
+    montarEn(PANTALLA_PERSONAL);
 
     const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
 
@@ -65,7 +88,7 @@ describe('Menú del personal', () => {
 
   it('el administrador ve "Catálogo" (003)', async () => {
     simularApi(conSesion(['ADMINISTRADOR']));
-    montarEn('/');
+    montarEn(PANTALLA_PERSONAL);
 
     const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
 
@@ -79,7 +102,7 @@ describe('Menú del personal', () => {
     'el rol %s no ve "Catálogo"',
     async (rol) => {
       simularApi(conSesion([rol]));
-      montarEn('/');
+      montarEn(PANTALLA_PERSONAL);
 
       const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
 
@@ -89,7 +112,7 @@ describe('Menú del personal', () => {
 
   it.each(['MESA_PARTES', 'EVALUADOR', 'JEFATURA'])('%s ve "Expedientes" (004)', async (rol) => {
     simularApi(conSesion([rol]));
-    montarEn('/');
+    montarEn(PANTALLA_PERSONAL);
 
     const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
 
@@ -101,7 +124,7 @@ describe('Menú del personal', () => {
 
   it.each(['CAJA', 'INSPECTOR', 'ADMINISTRADOR'])('%s no ve "Expedientes" (004)', async (rol) => {
     simularApi(conSesion([rol]));
-    montarEn('/');
+    montarEn(PANTALLA_PERSONAL);
 
     const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
 
@@ -110,7 +133,7 @@ describe('Menú del personal', () => {
 
   it('caja ve "Caja"; el evaluador no (005)', async () => {
     simularApi(conSesion(['CAJA']));
-    montarEn('/');
+    montarEn(PANTALLA_PERSONAL);
 
     const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
 
@@ -122,7 +145,7 @@ describe('Menú del personal', () => {
 
   it.each([['INSPECTOR'], ['JEFATURA']])('%s ve "Inspecciones" (006)', async (rol) => {
     simularApi(conSesion([rol]));
-    montarEn('/');
+    montarEn(PANTALLA_PERSONAL);
 
     const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
 
@@ -137,7 +160,7 @@ describe('Menú del personal', () => {
     ['JEFATURA', 'Alertas', '/personal/alertas'],
   ])('%s ve "%s" (006)', async (rol, etiqueta, ruta) => {
     simularApi(conSesion([rol]));
-    montarEn('/');
+    montarEn(PANTALLA_PERSONAL);
 
     const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
 
@@ -146,7 +169,7 @@ describe('Menú del personal', () => {
 
   it('solo jefatura ve "Tablero" (007)', async () => {
     simularApi(conSesion(['JEFATURA']));
-    montarEn('/');
+    montarEn(PANTALLA_PERSONAL);
     const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
     expect(within(menu).getByRole('link', { name: 'Tablero' })).toHaveAttribute(
       'href',
@@ -158,7 +181,7 @@ describe('Menú del personal', () => {
     '%s no ve "Tablero" (007)',
     async (rol) => {
       simularApi(conSesion([rol]));
-      montarEn('/');
+      montarEn(PANTALLA_PERSONAL);
       const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
       expect(within(menu).queryByRole('link', { name: 'Tablero' })).not.toBeInTheDocument();
     },
@@ -166,7 +189,7 @@ describe('Menú del personal', () => {
 
   it('jefatura ve "Auditoría" (005)', async () => {
     simularApi(conSesion(['JEFATURA']));
-    montarEn('/');
+    montarEn(PANTALLA_PERSONAL);
 
     const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
 
@@ -178,7 +201,7 @@ describe('Menú del personal', () => {
 
   it('el evaluador no ve "Caja" (005)', async () => {
     simularApi(conSesion(['EVALUADOR']));
-    montarEn('/');
+    montarEn(PANTALLA_PERSONAL);
 
     const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
 
@@ -187,7 +210,7 @@ describe('Menú del personal', () => {
 
   it('mesa de partes ve "Registrar solicitud" (004)', async () => {
     simularApi(conSesion(['MESA_PARTES']));
-    montarEn('/');
+    montarEn(PANTALLA_PERSONAL);
 
     const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
 
@@ -201,7 +224,7 @@ describe('Menú del personal', () => {
     '%s no ve "Registrar solicitud" (004)',
     async (rol) => {
       simularApi(conSesion([rol]));
-      montarEn('/');
+      montarEn(PANTALLA_PERSONAL);
 
       const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
 
@@ -213,24 +236,19 @@ describe('Menú del personal', () => {
 
   it('"Cerrar sesión" llama a la API y vuelve a /ingresar', async () => {
     const llamadas = simularApi(conSesion(['CAJA']));
-    montarEn('/');
+    montarEn(PANTALLA_PERSONAL);
     const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
 
-    await userEvent.setup().click(within(menu).getByRole('button', { name: 'Cerrar sesión' }));
+    expect(menu).toBeInTheDocument();
+    const desplegable = await abrirDesplegable();
+    await userEvent
+      .setup()
+      .click(within(desplegable).getByRole('button', { name: 'Cerrar sesión' }));
 
     expect(await screen.findByLabelText('Correo')).toBeInTheDocument();
     expect(llamadas.some((l) => l.clave === 'POST /auth/cerrar-sesion')).toBe(true);
     expect(obtenerSesion()).toBeNull();
   });
-
-  const PERFIL = {
-    nombreCompleto: 'Persona de Prueba',
-    correo: 'persona@ejemplo.pe',
-    celularEnmascarado: '9*****321',
-    roles: ['CAJA'],
-    ultimoIngreso: null,
-    sesionesAbiertas: 1,
-  };
 
   it.each([
     [['ADMINISTRADOR']],
@@ -242,25 +260,41 @@ describe('Menú del personal', () => {
     [[]],
   ])('con roles %j muestra "Mi perfil" junto al nombre (011)', async (roles) => {
     simularApi(conSesion(roles));
-    montarEn('/');
+    montarEn(PANTALLA_PERSONAL);
 
-    const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
-    const nombre = within(menu).getByText('Persona de Prueba');
-    const perfil = within(menu).getByRole('link', { name: 'Mi perfil' });
+    await screen.findByRole('navigation', { name: 'Menú del personal' });
+    // 013 (R-11): "junto al nombre" es ahora dentro del desplegable que abre el botón con el nombre.
+    const desplegable = await abrirDesplegable();
+    const perfil = within(desplegable).getByRole('link', { name: 'Mi perfil' });
 
     expect(perfil).toHaveAttribute('href', '/perfil');
-    expect(perfil).not.toHaveAttribute('aria-current');
-    // Junto al nombre: es lo siguiente después de él en el menú.
-    expect(nombre.nextElementSibling).toBe(perfil);
+    expect(
+      within(desplegable).getByRole('button', { name: 'Persona de Prueba' }),
+    ).toBeInTheDocument();
+  });
+
+  // 013 (R-11): la prueba anterior ahora monta /perfil; que "Mi perfil" no lleve aria-current fuera
+  // de su pantalla se comprueba aquí, en otra pantalla del personal.
+  it('fuera de /perfil, "Mi perfil" no lleva aria-current (011)', async () => {
+    simularApi(conSesion(['CAJA']));
+    montarEn('/personal/caja');
+
+    await screen.findByRole('navigation', { name: 'Menú del personal' });
+    const desplegable = await abrirDesplegable();
+
+    expect(within(desplegable).getByRole('link', { name: 'Mi perfil' })).not.toHaveAttribute(
+      'aria-current',
+    );
   });
 
   it('en /perfil, "Mi perfil" lleva aria-current="page" (011)', async () => {
     simularApi({ ...conSesion(['CAJA']), 'GET /perfil': () => json(PERFIL) });
     montarEn('/perfil');
 
-    const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+    await screen.findByRole('navigation', { name: 'Menú del personal' });
+    const desplegable = await abrirDesplegable();
 
-    expect(within(menu).getByRole('link', { name: 'Mi perfil' })).toHaveAttribute(
+    expect(within(desplegable).getByRole('link', { name: 'Mi perfil' })).toHaveAttribute(
       'aria-current',
       'page',
     );
@@ -271,7 +305,7 @@ describe('Menú del personal', () => {
       'POST /auth/renovar': () => problema(401, 'no-autenticado'),
       'GET /catalogo/recetas': () => json([]),
     });
-    montarEn('/');
+    montarEn(PANTALLA_PERSONAL);
 
     await screen.findByRole('heading', { level: 1 });
     expect(screen.queryByRole('link', { name: 'Mi perfil' })).not.toBeInTheDocument();
@@ -290,17 +324,24 @@ describe('Menú del personal', () => {
     'con roles %j no hay "Inicio"; su pantalla es la opción "%s" (%s) y nada va a "/" (011, FR-020)',
     async (roles, opcion, pantalla) => {
       simularApi(conSesion(roles));
-      montarEn('/');
+      montarEn(PANTALLA_PERSONAL);
 
       const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+      // 013 (R-11): las opciones de trabajo están en el <nav>; "Mi perfil", en el desplegable.
+      const desplegable = await abrirDesplegable();
+      const enlaces = [
+        ...within(menu).queryAllByRole('link'),
+        ...within(desplegable).getAllByRole('link'),
+      ];
 
-      expect(within(menu).queryByRole('link', { name: 'Inicio' })).not.toBeInTheDocument();
-      expect(within(menu).getByRole('link', { name: opcion })).toHaveAttribute('href', pantalla);
+      expect(enlaces.map((enlace) => enlace.textContent)).not.toContain('Inicio');
+      expect(enlaces.find((enlace) => enlace.textContent === opcion)).toHaveAttribute(
+        'href',
+        pantalla,
+      );
       // Es la misma pantalla a la que llega al ingresar.
       expect(inicioDe(roles)).toBe(pantalla);
-      const destinos = within(menu)
-        .getAllByRole('link')
-        .map((enlace) => enlace.getAttribute('href'));
+      const destinos = enlaces.map((enlace) => enlace.getAttribute('href'));
       expect(destinos).not.toContain('/');
     },
   );

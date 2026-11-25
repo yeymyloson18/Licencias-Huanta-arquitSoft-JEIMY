@@ -11,3 +11,9 @@ instalarMatchMedia();
 afterEach(() => {
   reiniciarMedios();
 });
+
+// 013 (análisis E1): el área del personal se carga con React.lazy. La primera carga del módulo en cada
+// archivo de pruebas (transformarlo con CoreUI) puede tardar más que la espera de findBy…; se
+// precarga aquí para que las pruebas midan la pantalla y no esa compilación. En el portal real el
+// módulo sigue llegando aparte.
+import './src/componentes/diseno/DisenoPersonal';

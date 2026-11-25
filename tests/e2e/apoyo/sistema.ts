@@ -145,7 +145,9 @@ export const ingresar = async (pagina: Page, rol: Rol): Promise<void> => {
   await pagina.getByRole('button', { name: 'Continuar' }).click();
   await pagina.getByLabel('Código').fill(await leerOtp(persona.id));
   await pagina.getByRole('button', { name: 'Ingresar' }).click();
-  await expect(pagina.getByRole('navigation', { name: 'Menú del personal' })).toBeVisible();
+  // 013 (R-11): se espera el botón con el nombre del usuario en la barra, no el <nav> lateral, que a
+  // 360 px está fuera de la pantalla hasta abrirlo con "Mostrar menú".
+  await expect(pagina.locator('.desplegable-usuario').getByRole('button')).toBeVisible();
 };
 
 export const hoyLima = (): string =>

@@ -14,7 +14,10 @@
   $font-family-sans-serif: m.$tipografia,
   $enable-dark-mode: true,
   $color-mode-type: data,
-  $enable-deprecation-messages: false
+  $enable-deprecation-messages: false,
+  // FR-006 (análisis I1): el menú lateral pasa a ser desplegable por debajo de 768 px (md), no de
+  // 992 px (lg), que es lo que trae CoreUI.
+  $mobile-breakpoint: md
 );
 @forward '@coreui/coreui/scss/variables-dark' with (
   $primary-text-emphasis-dark: m.$primario-claro-en-oscuro,

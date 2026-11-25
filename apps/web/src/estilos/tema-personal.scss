@@ -4,3 +4,178 @@
 @use '@coreui/coreui/scss/nav';
 @use '@coreui/coreui/scss/sidebar';
 @use '@coreui/coreui/scss/breadcrumb';
+
+// ---- Área de administración del personal (013, US1; T017) ----
+
+.diseno-personal {
+  display: flex;
+  min-height: 100vh;
+}
+
+// En escritorio, el menú lateral acompaña al desplazarse. Por debajo de 768 px CoreUI lo fija fuera
+// de la pantalla hasta abrirlo (clase show).
+@media (min-width: 768px) {
+  .diseno-personal > .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+}
+
+.diseno-personal__cuerpo {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0; // sin desplazamiento horizontal a 360 px
+}
+
+.diseno-personal__contenido {
+  flex: 1 0 auto;
+  min-width: 0;
+}
+
+.diseno-personal__marca {
+  min-height: 2.75rem;
+  overflow: hidden;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: normal;
+}
+
+// Barra fija arriba.
+.diseno-personal__barra {
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  min-height: 3.5rem;
+  padding: 0.25rem 1rem;
+  border-bottom: 1px solid var(--cui-border-color);
+  background-color: var(--cui-body-bg);
+}
+
+.diseno-personal__migas {
+  flex: 1 1 auto;
+  min-width: 0;
+
+  .breadcrumb {
+    flex-wrap: wrap;
+  }
+}
+
+.diseno-personal__acciones {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+// El nombre del usuario se recorta con puntos suspensivos (el title lleva el nombre completo).
+.desplegable-usuario {
+  min-width: 0;
+
+  .dropdown-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    max-width: 100%;
+  }
+}
+
+.desplegable-usuario__icono {
+  flex: 0 0 auto;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.desplegable-usuario__nombre {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 767.98px) {
+  .desplegable-usuario__nombre {
+    max-width: 7.5rem;
+  }
+}
+
+// Áreas táctiles de al menos 44 px (EQ-05).
+.diseno-personal {
+  .sidebar-nav .nav-link,
+  .header-toggler,
+  .dropdown-toggle,
+  .dropdown-item,
+  .diseno-personal__plegar {
+    min-height: 2.75rem;
+  }
+
+  .header-toggler {
+    min-width: 2.75rem;
+  }
+}
+
+.diseno-personal__plegar {
+  width: 100%;
+}
+
+// Modo angosto: sin iconos por opción, se muestra la inicial (data-inicial) con CSS, así el nombre
+// accesible y el texto del enlace no cambian.
+.sidebar-narrow {
+  .sidebar-nav .nav-link {
+    justify-content: center;
+    padding-inline: 0;
+    font-size: 0;
+
+    &::before {
+      content: attr(data-inicial);
+      font-size: 1rem;
+      font-weight: 600;
+    }
+  }
+
+  .diseno-personal__marca {
+    font-size: 0;
+
+    &::before {
+      content: 'MPH';
+      font-size: 1rem;
+    }
+  }
+
+  // Sin espacio para el texto: una flecha (el nombre accesible sigue siendo "Desplegar menú").
+  .diseno-personal__plegar {
+    padding-inline: 0;
+    font-size: 0;
+
+    &::before {
+      content: '»';
+      font-size: 1.25rem;
+    }
+  }
+}
+
+.diseno-personal__pie {
+  flex-wrap: wrap;
+  min-height: 3rem;
+  font-size: 0.875rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .diseno-personal .sidebar,
+  .sidebar-backdrop {
+    transition: none;
+  }
+}
+
+@media print {
+  .diseno-personal > .sidebar,
+  .diseno-personal__barra,
+  .sidebar-backdrop {
+    display: none;
+  }
+}
