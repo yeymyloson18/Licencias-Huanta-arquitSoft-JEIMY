@@ -6,6 +6,7 @@ import {
   type RegistroAuditoria,
 } from '../../servicios/clienteApi';
 import { formatearFecha } from './Expedientes';
+import { TablaAdaptable } from '../../componentes/TablaAdaptable';
 
 // Auditoría de pagos para la jefatura (historia 6 de la 005, contracts/portal-evaluacion-pago.md):
 // filtro por fechas, paginación y "Corregir recibo" con motivo.
@@ -183,53 +184,58 @@ export function Auditoria() {
           <p className="aviso">No hay registros en ese periodo.</p>
         )}
         {carga.tipo === 'lista' && carga.datos.length > 0 && (
-          <table className="bandeja__tabla">
-            <thead>
-              <tr>
-                <th scope="col">Fecha</th>
-                <th scope="col">Acción</th>
-                <th scope="col">Esquela</th>
-                <th scope="col">Recibo</th>
-                <th scope="col">Usuario</th>
-                <th scope="col">Motivo</th>
-                <th scope="col">
-                  <span className="solo-lectores">Acciones</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {carga.datos.map((registro, indice) => {
-                const detalle = (registro.detalle ?? {}) as Detalle;
-                return (
-                  <tr key={`${registro.ocurridoEn}-${String(indice)}`}>
-                    <td>{formatearFecha(registro.ocurridoEn)}</td>
-                    <td>{ACCIONES[registro.accion] ?? registro.accion}</td>
-                    <td>{registro.referencia}</td>
-                    <td>
-                      {detalle.reciboAnterior
-                        ? `${detalle.reciboAnterior} → ${detalle.reciboNuevo ?? ''}`
-                        : detalle.reciboNuevo}
-                    </td>
-                    <td>{registro.nombreUsuario ?? '—'}</td>
-                    <td>{detalle.motivo ?? '—'}</td>
-                    <td>
-                      {registro.accion === 'REGISTRAR_PAGO' && registro.referencia && (
-                        <button
-                          type="button"
-                          className="boton boton--claro"
-                          onClick={() => {
-                            abrirCorreccion(registro.referencia ?? '');
-                          }}
-                        >
-                          Corregir recibo
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          // 013 (US4): antes usaba bandeja__tabla, que se oculta por debajo de 768 px, y esta pantalla
+          // no tiene tarjetas: en el celular no se veía ningún registro. Ahora se desplaza dentro de
+          // su contenedor.
+          <TablaAdaptable etiqueta="Registros de auditoría">
+            <table className="table table-hover tabla">
+              <thead>
+                <tr>
+                  <th scope="col">Fecha</th>
+                  <th scope="col">Acción</th>
+                  <th scope="col">Esquela</th>
+                  <th scope="col">Recibo</th>
+                  <th scope="col">Usuario</th>
+                  <th scope="col">Motivo</th>
+                  <th scope="col">
+                    <span className="solo-lectores">Acciones</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {carga.datos.map((registro, indice) => {
+                  const detalle = (registro.detalle ?? {}) as Detalle;
+                  return (
+                    <tr key={`${registro.ocurridoEn}-${String(indice)}`}>
+                      <td>{formatearFecha(registro.ocurridoEn)}</td>
+                      <td>{ACCIONES[registro.accion] ?? registro.accion}</td>
+                      <td>{registro.referencia}</td>
+                      <td>
+                        {detalle.reciboAnterior
+                          ? `${detalle.reciboAnterior} → ${detalle.reciboNuevo ?? ''}`
+                          : detalle.reciboNuevo}
+                      </td>
+                      <td>{registro.nombreUsuario ?? '—'}</td>
+                      <td>{detalle.motivo ?? '—'}</td>
+                      <td>
+                        {registro.accion === 'REGISTRAR_PAGO' && registro.referencia && (
+                          <button
+                            type="button"
+                            className="boton boton--claro"
+                            onClick={() => {
+                              abrirCorreccion(registro.referencia ?? '');
+                            }}
+                          >
+                            Corregir recibo
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </TablaAdaptable>
         )}
 
         {carga.tipo === 'lista' && paginas > 1 && (

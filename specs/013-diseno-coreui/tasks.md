@@ -429,7 +429,7 @@ insignias de color con su nombre.
 **Prueba independiente**: la bandeja a 360 px no desplaza la página y cada estado es una insignia
 con texto.
 
-- [ ] T027 [P] [US4] **Prueba primero** `apps/web/src/componentes/InsigniaEstado.test.tsx`: los 13
+- [X] T027 [P] [US4] **Prueba primero** `apps/web/src/componentes/InsigniaEstado.test.tsx`: los 13
       estados de `EstadoExpediente` muestran el texto de `ESTADOS` y la clase de su grupo:
 
   | Grupo | Clase | Estados |
@@ -440,9 +440,9 @@ con texto.
   | Negativo | `text-bg-danger` | DENEGADO, DERIVADO_A_FISCALIZACION |
 
   Un estado sin grupo usa `text-bg-secondary`.
-- [ ] T028 [P] [US4] **Prueba primero** `apps/web/src/componentes/TablaAdaptable.test.tsx`: envuelve
+- [X] T028 [P] [US4] **Prueba primero** `apps/web/src/componentes/TablaAdaptable.test.tsx`: envuelve
       la tabla en un contenedor `table-responsive` y conserva `<caption>` y encabezados.
-- [ ] T029 [US4] Implementar `InsigniaEstado.tsx` (`CBadge`) y `TablaAdaptable.tsx`. Usar
+- [X] T029 [US4] Implementar `InsigniaEstado.tsx` (`CBadge`) y `TablaAdaptable.tsx`. Usar
       `InsigniaEstado` donde hoy se muestra el estado con `ESTADOS[…]`:
   - `paginas/personal/Expedientes.tsx`, `DetalleExpediente.tsx`, `Alertas.tsx`, `Caja.tsx` e
     `Inspecciones.tsx`;
@@ -450,7 +450,7 @@ con texto.
   - `paginas/Consulta.tsx`, si muestra el estado.
 
   Deben pasar sus pruebas actuales, que buscan el mismo texto.
-- [ ] T030 [US4] Poner dentro de `TablaAdaptable`, con las clases `table table-hover`, las tablas de:
+- [X] T030 [US4] Poner dentro de `TablaAdaptable`, con las clases `table table-hover`, las tablas de:
   - `componentes/TablaEventos.tsx`;
   - `componentes/ReporteLicencias.tsx`;
   - `paginas/personal/Expedientes.tsx`;
@@ -460,6 +460,27 @@ con texto.
 
   Deben pasar sus pruebas. **Conservar `tabla--apilable`** de `TablaEventos`: hoy esa tabla se
   apila en filas en el celular, y su comportamiento a 360 px no debe empeorar.
+
+**Estado al cierre de la fase 6 (2026-11-25)**:
+
+- **Pruebas**: 604/604 en el portal. Las pruebas de las pantallas, que buscan el mismo texto del
+  estado, pasan sin cambios. La bandeja a 360 px y en escritorio no tiene desplazamiento horizontal
+  (revisado con capturas en el compose aislado).
+- **`ESTADOS`** se movió a `componentes/estados.ts`, para que `InsigniaEstado` no importe una página.
+  `Expedientes.tsx` lo reexporta y `Comprobante.tsx` deja su copia parcial.
+- **Insignias** en la bandeja (tarjetas y tabla), el detalle del expediente, las alertas, la caja, las
+  inspecciones y el comprobante. **No** en `Verificar.tsx`: muestra el estado de la licencia dentro de
+  una frase de un aviso, no el de un expediente. Tampoco en `Consulta.tsx`: muestra la descripción
+  pública que manda la API, no el código.
+- **Detalle del expediente**: su ficha descartaba los datos que no son texto; ahora conserva también
+  la insignia.
+- **Tablas**: las de `TablaEventos` (conserva `tabla--apilable`), `ReporteLicencias`,
+  `GraficoBarras`, `FichaUsuario`, el tablero, la bandeja y la auditoría van dentro de
+  `TablaAdaptable` (`table-responsive`), con `table table-hover`. Las regiones con nombre se
+  conservan.
+- **Error previo corregido**: la tabla de auditoría de pagos (`/personal/auditoria`) usaba
+  `bandeja__tabla`, que se oculta por debajo de 768 px, y esa pantalla no tiene tarjetas: en el
+  celular no se veía ningún registro. Ahora se desplaza dentro de la región "Registros de auditoría".
 
 ---
 

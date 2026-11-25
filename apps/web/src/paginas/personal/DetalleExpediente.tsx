@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, isValidElement, type ReactElement } from 'react';
 import { Link, useParams } from 'react-router';
 import {
   descargarDocumentoExpediente,
@@ -11,6 +11,7 @@ import { DescargarEsquela } from '../../componentes/DescargarEsquela';
 import { DescargarLicencia } from '../../componentes/DescargarLicencia';
 import { useSesion } from '../../sesion/ProveedorSesion';
 import { ESTADOS, formatearFecha } from './Expedientes';
+import { InsigniaEstado } from '../../componentes/InsigniaEstado';
 
 // Detalle del expediente para el personal (historia 4 de la 004): datos, historial y documentos con
 // descarga. La API registra quién abrió el detalle (VER_DETALLE).
@@ -160,7 +161,7 @@ export function DetalleExpediente() {
             <dl className="ficha__datos">
               {[
                 ['Licencia', carga.expediente.nombreLicencia ?? carga.expediente.codigoReceta],
-                ['Estado', ESTADOS[carga.expediente.estado]],
+                ['Estado', <InsigniaEstado key="estado" estado={carga.expediente.estado} />],
                 ['Ruta', carga.expediente.ruta],
                 ['Canal', CANALES[carga.expediente.canal] ?? carga.expediente.canal],
                 ['Presentado', formatearFecha(carga.expediente.presentadoEn)],
@@ -178,8 +179,10 @@ export function DetalleExpediente() {
                     : `${String(carga.expediente.areaM2)} m²`,
                 ],
               ]
+                // Sin dato vacío; el estado es una insignia (013, US4), no texto.
                 .filter(
-                  (dato): dato is [string, string] => typeof dato[1] === 'string' && dato[1] !== '',
+                  (dato): dato is [string, string | ReactElement] =>
+                    (typeof dato[1] === 'string' && dato[1] !== '') || isValidElement(dato[1]),
                 )
                 .map(([etiqueta, valor]) => (
                   <div key={etiqueta} className="ficha__dato">

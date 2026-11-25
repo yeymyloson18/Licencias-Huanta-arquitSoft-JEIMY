@@ -6,6 +6,7 @@ import { ReporteLicencias } from '../../componentes/ReporteLicencias';
 import { TarjetaIndicador } from '../../componentes/TarjetaIndicador';
 import { obtenerTablero, type Tablero as DatosTablero } from '../../servicios/clienteApi';
 import { ESTADOS } from './Expedientes';
+import { TablaAdaptable } from '../../componentes/TablaAdaptable';
 
 // Tablero de la jefatura (HU10, RF19; historia 1 de la 007, contracts/portal-007.md).
 
@@ -177,13 +178,8 @@ export function Tablero() {
                   ...(t.plazoTupaDias > 0 ? { marca: t.plazoTupaDias } : {}),
                 }))}
               />
-              <div
-                className="grafico__tabla"
-                role="region"
-                aria-label="Detalle por licencia"
-                tabIndex={0}
-              >
-                <table className="tabla">
+              <TablaAdaptable etiqueta="Detalle por licencia">
+                <table className="table table-hover tabla">
                   <thead>
                     <tr>
                       <th scope="col">Licencia</th>
@@ -209,7 +205,7 @@ export function Tablero() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </TablaAdaptable>
             </section>
 
             <section className="tarjeta" aria-labelledby="titulo-ingresos">

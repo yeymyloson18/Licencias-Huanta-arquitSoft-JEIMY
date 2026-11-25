@@ -1,4 +1,5 @@
 import type { AccionAuditoriaSeguridad, EventoAuditoriaSeguridad } from '../servicios/clienteApi';
+import { TablaAdaptable } from './TablaAdaptable';
 
 // Tabla de eventos de la auditoría de seguridad (009, contracts/portal-administrador.md). La usan el
 // panel, la auditoría y la ficha del usuario. En pantallas angostas cada fila se apila y cada celda
@@ -109,8 +110,8 @@ export function TablaEventos({ eventos, etiqueta }: Propiedades) {
     return <p className="aviso">No hay eventos para mostrar.</p>;
   }
   return (
-    <div className="grafico__tabla" role="region" aria-label={etiqueta} tabIndex={0}>
-      <table className="tabla tabla--apilable">
+    <TablaAdaptable etiqueta={etiqueta}>
+      <table className="table table-hover tabla tabla--apilable">
         <thead>
           <tr>
             <th scope="col">Fecha y hora</th>
@@ -139,6 +140,6 @@ export function TablaEventos({ eventos, etiqueta }: Propiedades) {
           ))}
         </tbody>
       </table>
-    </div>
+    </TablaAdaptable>
   );
 }

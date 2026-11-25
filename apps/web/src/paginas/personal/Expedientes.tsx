@@ -6,26 +6,16 @@ import {
   listarExpedientes,
   type PaginaExpedientes,
 } from '../../servicios/clienteApi';
+import { ESTADOS } from '../../componentes/estados';
+import { InsigniaEstado } from '../../componentes/InsigniaEstado';
+import { TablaAdaptable } from '../../componentes/TablaAdaptable';
 
 // Bandeja del personal (historia 4 de la 004, contracts/portal-tramite.md): todos los expedientes,
 // tarjetas en el celular y tabla en pantallas anchas. Los filtros van en la URL (no son datos
 // personales) para poder volver a la misma vista.
 
-export const ESTADOS: Readonly<Record<EstadoExpediente, string>> = {
-  REGISTRADO: 'Registrado',
-  OBSERVADO: 'Observado',
-  EN_EVALUACION: 'En evaluación',
-  PENDIENTE_PAGO: 'Pendiente de pago',
-  PAGADO: 'Pagado',
-  EN_INSPECCION: 'En inspección',
-  APROBADO: 'Aprobado',
-  LICENCIA_PROVISIONAL: 'Licencia provisional',
-  LICENCIA_EMITIDA: 'Licencia emitida',
-  ITSE_POSTERIOR_PENDIENTE: 'ITSE posterior pendiente',
-  FINALIZADO: 'Finalizado',
-  DENEGADO: 'Denegado',
-  DERIVADO_A_FISCALIZACION: 'Derivado a fiscalización',
-};
+// 013: ESTADOS vive en componentes/estados.ts (lo usa también InsigniaEstado); se reexporta aquí.
+export { ESTADOS };
 
 const POR_PAGINA = 20;
 
@@ -187,7 +177,8 @@ export function Expedientes() {
                   </Link>
                   <p>{licenciaDe(fila)}</p>
                   <p>
-                    {ESTADOS[fila.estado]} · Ruta {fila.ruta} · {formatearFecha(fila.presentadoEn)}
+                    <InsigniaEstado estado={fila.estado} /> · Ruta {fila.ruta} ·{' '}
+                    {formatearFecha(fila.presentadoEn)}
                   </p>
                   <p>
                     {fila.nombreTitular}
@@ -197,35 +188,39 @@ export function Expedientes() {
               ))}
             </ul>
 
-            <table className="bandeja__tabla">
-              <caption className="solo-lectores">Expedientes</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Número</th>
-                  <th scope="col">Licencia</th>
-                  <th scope="col">Ruta</th>
-                  <th scope="col">Estado</th>
-                  <th scope="col">Titular</th>
-                  <th scope="col">Giro</th>
-                  <th scope="col">Presentado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {carga.pagina.datos.map((fila) => (
-                  <tr key={fila.numero}>
-                    <th scope="row">
-                      <Link to={`/personal/expedientes/${fila.numero}`}>{fila.numero}</Link>
-                    </th>
-                    <td>{licenciaDe(fila)}</td>
-                    <td>{fila.ruta}</td>
-                    <td>{ESTADOS[fila.estado]}</td>
-                    <td>{fila.nombreTitular}</td>
-                    <td>{fila.giro}</td>
-                    <td>{formatearFecha(fila.presentadoEn)}</td>
+            <TablaAdaptable>
+              <table className="table table-hover bandeja__tabla">
+                <caption className="solo-lectores">Expedientes</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Número</th>
+                    <th scope="col">Licencia</th>
+                    <th scope="col">Ruta</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col">Titular</th>
+                    <th scope="col">Giro</th>
+                    <th scope="col">Presentado</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {carga.pagina.datos.map((fila) => (
+                    <tr key={fila.numero}>
+                      <th scope="row">
+                        <Link to={`/personal/expedientes/${fila.numero}`}>{fila.numero}</Link>
+                      </th>
+                      <td>{licenciaDe(fila)}</td>
+                      <td>{fila.ruta}</td>
+                      <td>
+                        <InsigniaEstado estado={fila.estado} />
+                      </td>
+                      <td>{fila.nombreTitular}</td>
+                      <td>{fila.giro}</td>
+                      <td>{formatearFecha(fila.presentadoEn)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TablaAdaptable>
 
             <nav className="paginacion" aria-label="Páginas">
               <button

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { type SyntheticEvent, useCallback, useEffect, useId, useState } from 'react';
 import { Link } from 'react-router';
 import {
@@ -7,6 +8,7 @@ import {
   listarInspectores,
 } from '../../servicios/clienteApi';
 import { useSesion } from '../../sesion/ProveedorSesion';
+import { InsigniaEstado } from '../../componentes/InsigniaEstado';
 
 // Inspecciones ITSE (historia 2 de la 006, contracts/portal-006.md). La jefatura ve todas y asigna;
 // el inspector ve solo las suyas, en tarjetas pensadas para el celular.
@@ -247,18 +249,20 @@ export function Inspecciones() {
             >
               <h2 className="ficha__nombre">{inspeccion.numeroExpediente}</h2>
               <dl className="ficha__datos">
-                {[
-                  ['Tipo', TIPOS[inspeccion.tipo] ?? inspeccion.tipo],
-                  ['Estado', ESTADOS[inspeccion.estado]],
-                  ['Licencia', inspeccion.nombreLicencia ?? '—'],
-                  ['Giro', inspeccion.giro ?? '—'],
-                  ...(inspeccion.direccion ? [['Dirección', inspeccion.direccion]] : []),
-                  ['Fecha', fechaCorta(inspeccion.programadaPara)],
-                  ...(esJefatura ? [['Inspector', inspeccion.nombreInspector ?? '—']] : []),
-                  ...(inspeccion.resultado
-                    ? [['Resultado', RESULTADOS[inspeccion.resultado] ?? inspeccion.resultado]]
-                    : []),
-                ].map(([etiqueta, valor]) => (
+                {(
+                  [
+                    ['Tipo', TIPOS[inspeccion.tipo] ?? inspeccion.tipo],
+                    ['Estado', <InsigniaEstado key="estado" estado={inspeccion.estado} />],
+                    ['Licencia', inspeccion.nombreLicencia ?? '—'],
+                    ['Giro', inspeccion.giro ?? '—'],
+                    ...(inspeccion.direccion ? [['Dirección', inspeccion.direccion]] : []),
+                    ['Fecha', fechaCorta(inspeccion.programadaPara)],
+                    ...(esJefatura ? [['Inspector', inspeccion.nombreInspector ?? '—']] : []),
+                    ...(inspeccion.resultado
+                      ? [['Resultado', RESULTADOS[inspeccion.resultado] ?? inspeccion.resultado]]
+                      : []),
+                  ] as [string, ReactNode][]
+                ).map(([etiqueta, valor]) => (
                   <div key={etiqueta} className="ficha__dato">
                     <dt>{etiqueta}</dt>
                     <dd>{valor}</dd>

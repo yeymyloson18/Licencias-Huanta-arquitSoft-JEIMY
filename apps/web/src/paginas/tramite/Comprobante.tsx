@@ -3,11 +3,10 @@ import { Link, useLocation, useParams } from 'react-router';
 import type { ExpedienteRegistrado } from '../../servicios/clienteApi';
 import { conPuntoFinal } from '../../componentes/formato';
 import { useTramite } from '../../tramite/ContextoTramite';
+import { InsigniaEstado } from '../../componentes/InsigniaEstado';
 
 // Comprobante de la presentación (CU04 de la 004, contracts/portal-tramite.md). Los datos llegan en
 // el estado de la navegación (memoria); al recargar solo queda el número de la URL.
-
-const ESTADOS: Record<string, string> = { REGISTRADO: 'Registrado' };
 
 const formatearFecha = (iso: string) =>
   new Intl.DateTimeFormat('es-PE', {
@@ -56,7 +55,9 @@ export function Comprobante() {
               </div>
               <div className="ficha__dato">
                 <dt>Estado</dt>
-                <dd>{ESTADOS[datos.estado] ?? datos.estado}</dd>
+                <dd>
+                  <InsigniaEstado estado={datos.estado} />
+                </dd>
               </div>
               <div className="ficha__dato">
                 <dt>Presentada el</dt>
