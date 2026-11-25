@@ -564,19 +564,19 @@ recargar lo mantiene. El chat abierto se ve bien en ambos modos.
 
 ### Pruebas de la historia 6 ⚠️
 
-- [ ] T037 [P] [US6] **Prueba primero** `apps/web/src/sesion/modo-color.test.ts`:
+- [X] T037 [P] [US6] **Prueba primero** `apps/web/src/sesion/modo-color.test.ts`:
   - `leerModoGuardado()` devuelve `"claro"`, `"oscuro"` o `"sistema"`; un valor ajeno o ausente da
     `"sistema"`;
   - `guardarModo` escribe o borra `licencias-modo-color`;
   - `aplicarModoGuardado()` pone `data-coreui-theme="light"` o `"dark"` en `<html>`, o lo quita;
   - con `localStorage` que lanza un error (al leer y al escribir), nada falla y se usa `"sistema"`.
-- [ ] T038 [P] [US6] **Prueba primero** `apps/web/src/sesion/useModoColor.test.tsx` y
+- [X] T038 [P] [US6] **Prueba primero** `apps/web/src/sesion/useModoColor.test.tsx` y
       `componentes/diseno/SelectorModo.test.tsx`:
   - las tres opciones `menuitemradio` con `aria-checked`;
   - elegir cambia el atributo y lo anuncia en `aria-live`;
   - el evento `storage` de otra pestaña se aplica;
   - en "sistema", un cambio de `matchMedia` no deja atributo.
-- [ ] T039 [P] [US6] **Prueba primero** `apps/web/src/estilos/tema.test.ts` (entorno `node`): compila
+- [X] T039 [P] [US6] **Prueba primero** `apps/web/src/estilos/tema.test.ts` (entorno `node`): compila
       `tema.scss` con `sass.compile` y comprueba que el CSS tiene:
   - las variables oscuras bajo `[data-coreui-theme=dark]` **y** bajo
     `@media (prefers-color-scheme: dark)` con `:root:not([data-coreui-theme])`;
@@ -586,16 +586,46 @@ recargar lo mantiene. El chat abierto se ve bien en ambos modos.
 
 ### Implementación de la historia 6
 
-- [ ] T040 [US6] `apps/web/src/sesion/modo-color.ts` (leer, guardar y aplicar, con `try/catch`) y
+- [X] T040 [US6] `apps/web/src/sesion/modo-color.ts` (leer, guardar y aplicar, con `try/catch`) y
       `useModoColor.ts`. En `main.tsx`, `aplicarModoGuardado()` **antes de `createRoot`**, sin
       scripts en línea ni cambios en `index.html`. Deben pasar T037 y T038.
-- [ ] T041 [US6] `apps/web/src/estilos/_modo-oscuro.scss`: un mixin propio que emite las variables
+- [X] T041 [US6] `apps/web/src/estilos/_modo-oscuro.scss`: un mixin propio que emite las variables
       oscuras de CoreUI (los mapas `$*-dark`) y las propias bajo los dos selectores (research R-05).
       En modo oscuro, el texto y los enlaces con el color primario usan su tinte claro (R-07). Debe
       pasar T039, y `contraste.test.ts` sigue en verde.
-- [ ] T042 [US6] `componentes/diseno/SelectorModo.tsx` (`CDropdown` con iconos de `iconos.ts`) en
+- [X] T042 [US6] `componentes/diseno/SelectorModo.tsx` (`CDropdown` con iconos de `iconos.ts`) en
       `DisenoPersonal` y en `DisenoPublico`. El chat, las insignias, las tablas y las barras se ven
       bien en ambos modos (revisión a mano en el navegador).
+
+**Estado al cierre de la fase 8 (2026-11-25)**:
+
+- **Pruebas**: 648/648 en el portal; lint, tipos, formato y build en verde. El E2E completo pasa
+  contra el compose aislado (8 recorridos).
+- **Primer pintado (SC-006)**: con el sistema en oscuro y sin elección, el fondo sale oscuro aun con
+  el JavaScript apagado (`rgb(33, 38, 49)`): lo resuelve el CSS solo.
+- **Riesgo de R-05 confirmado, pendiente de decisión**: con "Claro" guardado y el sistema en oscuro,
+  en el proyecto celular el primer cuadro salió oscuro antes de que `main.tsx` pusiera el atributo
+  (en escritorio no). Es un destello del fondo, sin contenido, porque React aún no pintó nada. El plan
+  B de R-05 (`public/modo-inicial.js`, un script clásico externo en `<head>`) lo evitaría, pero
+  cambia `index.html` y necesita la aprobación de la usuaria. **No se aplicó.**
+- **`_modo-oscuro.scss`**: emite bajo `prefers-color-scheme: dark` las mismas variables oscuras de
+  CoreUI (a partir de sus mapas `$*-dark`) y las variantes oscuras de botones, insignias y select.
+  `tema.test.ts` comprueba que coinciden con las de `[data-coreui-theme=dark]`. Las variables propias
+  usan `:root[data-coreui-theme=dark]` para ganarle al `:root` de `global.css`.
+- **Contraste en oscuro**: el primario sigue siendo #0b5394 en botones y en la cabecera
+  (`$primary-dark`). Como texto o borde usa el tinte #9dbad4: enlaces, `--color-primario` y el botón
+  de contorno. La etiqueta de rol queda clara en los dos modos. El foco es solo el #f2a900 (7.5:1),
+  sin anillo interior.
+- **El selector en el portal público se carga aparte** (`React.lazy`), con un hueco de 44 px mientras
+  llega. Trae `CDropdown` y Popper: sin esto, el JS principal crecía de 130.8 a 144.2 KB con gzip.
+  El CSS creció de 19.3 a 21.5 KB con gzip por el bloque oscuro del sistema.
+- **El anuncio del selector** usa solo `aria-live="polite"`, sin `role="status"`: con ese rol, las
+  pruebas de 18 pantallas encontraban dos estados.
+- **`jest.setup.ts`**: la parte de jsdom (matchMedia y la precarga del área del personal) solo corre si
+  hay `window`, porque `tema.test.ts` usa el entorno node.
+- **Error de la fase 7 corregido**: `.boton.boton--secundario` (20 usos, por ejemplo "Cerrar" del
+  chat) dejaba el fondo primario con el texto del mismo color, en los dos modos. El puente fija el
+  fondo transparente, y `tema.test.ts` lo vigila.
 
 ---
 

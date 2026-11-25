@@ -58,6 +58,20 @@
   font-size: 0.875rem;
 }
 
+// Selector de modo (US6): el botón y su hueco mientras se carga miden lo mismo (44 px).
+.selector-modo .dropdown-toggle,
+.selector-modo__hueco {
+  display: inline-flex;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+}
+
+.selector-modo__icono {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
 @media print {
   .diseno-publico__barra,
   .boton-preguntanos {

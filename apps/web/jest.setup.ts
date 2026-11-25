@@ -7,13 +7,21 @@ import '@testing-library/jest-dom';
 // CoreUI. Por defecto responde modo claro y escritorio; una prueba lo cambia con simularMedios().
 import { instalarMatchMedia, reiniciarMedios } from './src/pruebas/medios';
 
-instalarMatchMedia();
-afterEach(() => {
-  reiniciarMedios();
-});
+// Solo en las pruebas con jsdom: estilos/tema.test.ts corre en el entorno node, sin window.
+if (typeof window !== 'undefined') {
+  instalarMatchMedia();
+  afterEach(() => {
+    reiniciarMedios();
+  });
+}
 
 // 013 (análisis E1): el área del personal se carga con React.lazy. La primera carga del módulo en cada
 // archivo de pruebas (transformarlo con CoreUI) puede tardar más que la espera de findBy…; se
 // precarga aquí para que las pruebas midan la pantalla y no esa compilación. En el portal real el
 // módulo sigue llegando aparte.
-import './src/componentes/diseno/DisenoPersonal';
+// Solo con jsdom (el módulo usa window al cargarse).
+if (typeof window !== 'undefined') {
+  beforeAll(async () => {
+    await import('./src/componentes/diseno/DisenoPersonal');
+  });
+}

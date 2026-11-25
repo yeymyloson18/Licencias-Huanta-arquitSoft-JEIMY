@@ -10,6 +10,8 @@
 @use '@coreui/coreui/scss/forms/form-control';
 @use '@coreui/coreui/scss/forms/form-select';
 @use '@coreui/coreui/scss/forms/validation';
+// El bloque oscuro del sistema: así las clases propias también toman sus variantes oscuras.
+@use 'modo-oscuro';
 
 // ---- Botones ----
 .boton {
@@ -19,6 +21,13 @@
 
 .boton--secundario {
   @extend .btn-outline-primary;
+}
+
+// Las pantallas lo usan junto con .boton (botón primario), y la variante de contorno de CoreUI no
+// vuelve a fijar el fondo: sin esto, el fondo primario quedaba con el texto del mismo color. Con
+// :root delante, también le gana a las reglas del modo oscuro.
+:root .boton.boton--secundario {
+  --#{configuracion.$prefix}btn-bg: transparent;
 }
 
 .boton--claro {
@@ -139,9 +148,9 @@ select.campo__entrada {
 // ---- Foco (FR-024, contracts/tema.md) ----
 // En modo claro, anillo doble: el #f2a900 solo, sobre blanco, da 2.0:1. Un anillo interior #083d6d
 // (11.1:1 sobre blanco) con el contorno #f2a900 encima (5.5:1 sobre ese anillo) cumple 3:1 en todo
-// fondo. paleta.ts y contraste.test.ts lo comprueban. El modo oscuro se ajusta en T041.
+// fondo. paleta.ts y contraste.test.ts lo comprueban. En oscuro (_modo-oscuro.scss) basta el #f2a900.
 :root :focus-visible {
   outline: 3px solid var(--color-foco);
   outline-offset: 3px;
-  box-shadow: 0 0 0 3px #083d6d;
+  box-shadow: 0 0 0 3px var(--foco-anillo-interior, #083d6d);
 }

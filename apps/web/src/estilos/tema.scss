@@ -31,6 +31,8 @@
 @use '@coreui/coreui/scss/helpers/color-bg';
 @use '@coreui/coreui/scss/utilities/api';
 // Estilos propios (los que CoreUI no reemplaza; se recortan en T035).
+// Modo oscuro también para el sistema sin elección guardada (013, US6).
+@use 'modo-oscuro';
 @use 'global';
 // Clases propias con el aspecto de CoreUI (013, US5).
 @use 'puente';

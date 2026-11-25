@@ -20,6 +20,8 @@
   $mobile-breakpoint: md
 );
 @forward '@coreui/coreui/scss/variables-dark' with (
+  // Contrato del tema: el primario sigue siendo #0b5394 en oscuro (botones con texto blanco, 7.8:1).
+  $primary-dark: m.$primario,
   $primary-text-emphasis-dark: m.$primario-claro-en-oscuro,
   $link-color-dark: m.$primario-claro-en-oscuro,
   $link-hover-color-dark: color.mix(#fff, m.$primario, 75%)

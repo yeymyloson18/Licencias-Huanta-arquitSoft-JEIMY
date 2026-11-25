@@ -50,7 +50,8 @@ video {
 .cabecera {
   padding: calc(var(--espacio) * 1.5) var(--espacio);
   color: #ffffff;
-  background-color: var(--color-primario);
+  /* 013: --cui-primary es #0b5394 en los dos modos (texto blanco, 7.8:1). */
+  background-color: var(--cui-primary);
 }
 
 .cabecera__entidad {
@@ -407,7 +408,8 @@ video {
   padding: 0.1rem 0.6rem;
   border-radius: 999px;
   font-size: 0.875rem;
-  color: var(--color-primario-oscuro);
+  /* 013: colores fijos: la etiqueta es clara en los dos modos (10:1). */
+  color: #083d6d;
   background-color: #e3edf7;
 }
 

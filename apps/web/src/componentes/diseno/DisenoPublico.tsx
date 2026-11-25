@@ -1,9 +1,16 @@
 import { CHeader } from '@coreui/react';
-import type { ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useSesion } from '../../sesion/ProveedorSesion';
 import { inicioDe } from '../../sesion/inicio';
 import { PIE } from './pie';
+
+// 013 (US6): el selector usa CDropdown (con Popper). En el portal público se carga aparte, para no
+// sumar ese código al primer paquete; mientras llega, un hueco del mismo tamaño evita que la barra
+// salte.
+const SelectorModo = lazy(() =>
+  import('./SelectorModo').then((modulo) => ({ default: modulo.SelectorModo })),
+);
 
 interface Propiedades {
   /** El contenido de la pantalla. */
@@ -28,7 +35,9 @@ export function DisenoPublico({ children }: Propiedades) {
           Municipalidad Provincial de Huanta
         </Link>
         <div className="diseno-publico__acciones">
-          {/* El selector de modo (US6) va aquí. */}
+          <Suspense fallback={<span className="selector-modo__hueco" aria-hidden="true" />}>
+            <SelectorModo />
+          </Suspense>
           {estado === 'sin-sesion' && pathname !== '/ingresar' && (
             <nav aria-label="Acceso del personal">
               <Link to="/ingresar" className="diseno-publico__enlace">

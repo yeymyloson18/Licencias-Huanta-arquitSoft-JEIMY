@@ -9,6 +9,7 @@ import { iconoMenu } from './iconos';
 import { migasDe } from './migas';
 import { opcionesDe } from './opcionesMenu';
 import { PIE } from './pie';
+import { SelectorModo } from './SelectorModo';
 import { CONSULTA_CELULAR, usarMedio } from './usarMedio';
 
 interface Propiedades {
@@ -147,7 +148,7 @@ export function DisenoPersonal({ children }: Propiedades) {
             </ol>
           </nav>
           <div className="diseno-personal__acciones">
-            {/* El selector de modo (US6) va aquí. */}
+            <SelectorModo />
             <DesplegableUsuario />
           </div>
         </CHeader>
