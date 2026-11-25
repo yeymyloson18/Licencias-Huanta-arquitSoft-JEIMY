@@ -45,15 +45,43 @@ Resultado esperado: todo en verde, incluidas las pruebas unitarias nuevas:
     - la respuesta no trae `id`, la huella de la clave, el código ni el celular completo;
     - los registros capturados al pedir el perfil y al cambiar la clave no contienen el correo, el
       nombre, el celular ni la clave.
-- Flujo `E2E` (Playwright): ingresar con CAJA llega a `/personal/caja`; "Mi perfil" → "Cambiar mi
-  clave" → vuelve al perfil con el aviso. Se ajustan las pruebas que esperaban `/` después de
-  ingresar.
+- Flujo `E2E` (Playwright, `tests/e2e/perfil.spec.ts`): ingresar con CAJA llega a
+  `/personal/caja`; "Mi perfil" → "Cambiar mi clave" → vuelve al perfil con el aviso y "1 sesión
+  abierta". La clave nueva se guarda en `tests/e2e/.datos/usuarios-demo.json` para los recorridos
+  siguientes. Ninguna prueba de las rutas A y B esperaba `/` después de ingresar, así que no
+  cambiaron.
 - `Postman`: suma `GET /perfil` sin token → 401.
 - Flujo `E2E`:
   - `tests/e2e/perfil.spec.ts` comprueba que no hay desplazamiento horizontal a 360 px;
   - Lighthouse móvil (`@lhci/cli@0.14.0`, 360×740) con sesión en `/perfil` y `/cambiar-clave` da
     accesibilidad ≥ 0.9;
   - el resultado se anota en `docs/08-sprint-2/README.md`.
+
+### Medida de accesibilidad con sesión (T035): pendiente de medir
+
+**Estado: pendiente de medir.** En el cierre de la 011 no se corrió Lighthouse en local. El único
+sistema levantado en la máquina era el de desarrollo, con imágenes anteriores a la 011, y el E2E
+regenera las claves de los usuarios de demostración. Por eso no hay puntajes todavía; no se anotó
+ningún valor.
+
+Cómo se mide (paso "Lighthouse móvil con sesión" de `.github/workflows/e2e.yml`, después de
+Playwright):
+
+- Configuración: `tests/e2e/lighthouserc.json`:
+  - `http://localhost:8080/perfil` y `/cambiar-clave`;
+  - `formFactor: mobile`, 360×740, `deviceScaleFactor: 2`;
+  - `disableStorageReset: true` y `numberOfRuns: 1`;
+  - aserción `categories:accessibility` ≥ 0.9.
+- Ingreso: `tests/e2e/apoyo/lighthouse-ingreso.cjs` (`puppeteerScript`). Ingresa una vez como el
+  usuario de demostración de CAJA, con la clave que dejó el E2E y el código simulado de Redis.
+- Comando: `npx --yes -p @lhci/cli@0.14.0 -p puppeteer@23.11.1 lhci collect|upload|assert
+  --config=tests/e2e/lighthouserc.json`. Los informes quedan en el artefacto `lighthouse-011`.
+- Para medir en local, levantar un compose **de pruebas** con el código de la 011 y
+  `ENVIO_OTP=simulado`, correr `npm run e2e` y luego los tres comandos anteriores.
+
+Si alguna pantalla da menos de 0.9, se corrige en `apps/web/src/estilos/global.css` o en el
+componente y se vuelve a medir. El puntaje y el enlace a la corrida se anotan en
+`docs/08-sprint-2/README.md` §8.
 
 ## Recorrido manual (cuando se levante el sistema)
 

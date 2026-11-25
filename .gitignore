@@ -16,3 +16,5 @@ zap-informe.json
 tests/e2e/informe/
 tests/e2e/resultados/
 tests/e2e/.datos/
+tests/e2e/lighthouse/
+.lighthouseci/

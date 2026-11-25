@@ -116,7 +116,7 @@ comprobar cada resultado y el evento en la auditoría.
 **Escenarios de aceptación**:
 
 1. **Dado** un usuario con clave definitiva, **cuando** pulsa "Cambiar mi clave" en su perfil,
-   **entonces** ve un formulario con "Clave actual", "Clave nueva" y "Repita la clave nueva".
+   **entonces** ve un formulario con "Clave actual", "Clave nueva" y "Repetir clave nueva".
 2. **Dado** el formulario lleno con la clave actual correcta y una clave nueva válida escrita dos
    veces igual, **cuando** lo envía, **entonces** la clave cambia, la anterior deja de servir, vuelve a
    "Mi perfil" con el aviso "Su clave se cambió" y la auditoría de seguridad registra "Clave

@@ -429,7 +429,7 @@ voluntario de `perfil.e2e-spec.ts` en verde.
 
 ## Fase 7: Pulido y temas transversales
 
-- [ ] T033 [P] Crear `tests/e2e/perfil.spec.ts` (Playwright; corre en los proyectos de
+- [X] T033 [P] Crear `tests/e2e/perfil.spec.ts` (Playwright; corre en los proyectos de
       `tests/e2e/playwright.config.ts`, incluido `celular` de 360×740), con los ayudantes de
       `tests/e2e/apoyo/sistema.ts`:
   - después de `ingresar(pagina, 'CAJA')`, `toHaveURL(/\/personal\/caja$/)`;
@@ -440,15 +440,19 @@ voluntario de `perfil.e2e-spec.ts` en verde.
     document.documentElement.clientWidth)` es `true`, con el menú abierto y con un error de
     validación visible en el formulario.
 
+  **Estado al cierre**: escrita, con tipos y la lista de Playwright en verde (6 pruebas en 3
+  archivos). Se corre en el flujo `E2E`, no en local. La clave nueva queda en
+  `tests/e2e/.datos/usuarios-demo.json` con `guardarClave` (`apoyo/sistema.ts`).
+
   Revisar `tests/e2e/ruta-a.spec.ts` y `tests/e2e/ruta-b.spec.ts`: si alguna espera llegar a `/`
   después de ingresar, cambiarla por la pantalla del rol (hoy `ingresar` en `apoyo/sistema.ts` solo
   espera el menú, así que se prevé que no haga falta cambiar nada).
-- [ ] T034 [P] Documentación:
+- [X] T034 [P] Documentación:
   - `README.md`: pantalla de llegada por rol, "Mi perfil" y cambio de clave voluntario;
   - `docs/03-diseno-de-software/diagrama-casos-de-uso.md`: caso "Ver mi perfil" y "Cambiar mi clave"
     para todo el personal;
   - `docs/08-sprint-2/README.md`, si ahí se listan las funcionalidades.
-- [ ] T035 Lighthouse móvil en pantallas con sesión (FR-018, SC-007, EQ-05). Usa la misma medida
+- [X] T035 Lighthouse móvil en pantallas con sesión (FR-018, SC-007, EQ-05). Usa la misma medida
       de las funcionalidades anteriores (`.github/workflows/calidad-produccion.yml`): `formFactor:
       mobile`, `screenEmulation` 360×740 y `deviceScaleFactor: 2`, con la aserción
       `categories:accessibility` ≥ 0.9. Ese flujo solo mide pantallas públicas y en producción el
@@ -474,7 +478,12 @@ voluntario de `perfil.e2e-spec.ts` en verde.
 
   Es una dependencia de CI que se usa con `npx` y una versión fija; no se agrega al
   `package.json`.
-- [ ] T036 Puertas locales de `quickstart.md`: `npm run lint && npm run typecheck && npm run
+
+  **Estado al cierre**: configuración, script y paso del flujo hechos. **La medida está pendiente**:
+  no se pudo correr en local y no se anotó ningún puntaje. Se anota en `docs/08-sprint-2/README.md`
+  §8 con la primera corrida del flujo `E2E` (ver `quickstart.md`). El script necesita `puppeteer`,
+  que también se usa con `npx` y una versión fija (`puppeteer@23.11.1`).
+- [X] T036 Puertas locales de `quickstart.md`: `npm run lint && npm run typecheck && npm run
       formato`, `npm run contrato`, `npm run regla-dependencia`, `npm run cobertura` (≥ 80 % en
       `dominio/` y `aplicacion/`) y `npm test -w apps/web`, todo en verde. Marcar las tareas con
       `[X]` y hacer el commit `chore(011): cierre`.

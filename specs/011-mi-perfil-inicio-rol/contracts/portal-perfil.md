@@ -41,7 +41,7 @@
 
 ## `/cambiar-clave` (`paginas/CambiarClave.tsx`, se amplía)
 
-- Mismos campos y mensajes de la 002: "Clave actual", "Clave nueva", "Repita la clave nueva",
+- Mismos campos y mensajes de la 002: "Clave actual", "Clave nueva", "Repetir clave nueva",
   "Las claves nuevas no coinciden", "La clave actual no es correcta" y "Demasiados intentos. Vuelva a
   intentarlo más tarde.", más los errores de la política junto al campo.
 - Si la sesión **no** tenía clave temporal, muestra un enlace "Volver a mi perfil" y, al terminar

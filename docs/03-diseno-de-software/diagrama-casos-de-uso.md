@@ -1,6 +1,6 @@
 # Diagrama de casos de uso
 
-El sistema tiene **25 casos de uso** repartidos entre 7 actores humanos y 2 sistemas externos de la
+El sistema tiene **31 casos de uso** repartidos entre 7 actores humanos y 2 sistemas externos de la
 Fase 1 (ver [01-actores.md](../01-analisis-de-sistema/01-actores.md)). Cada caso de uso se traza a
 sus historias de usuario y requisitos funcionales, y a la funcionalidad SDD que lo construye.
 
@@ -71,9 +71,14 @@ flowchart LR
         CU15(["CU15 Registrar resultado<br/>ITSE con fotos"])
         CU16(["CU16 Registrar pago<br/>en caja"])
         CU17(["CU17 Emitir licencia<br/>con QR"])
+        CU30(["CU30 Ver mi perfil"])
+        CU31(["CU31 Cambiar mi clave"])
     end
 
     PM --- CU11
+    PM --- CU30
+    PM --- CU31
+    CU31 -.->|«extend»<br/>desde el perfil| CU30
     MP --- CU12
     EV --- CU13
     IN --- CU15
@@ -85,7 +90,9 @@ flowchart LR
 
 **Personal municipal** es un actor general: mesa de partes, evaluador, inspector, caja, jefatura y
 administrador son casos particulares de él (generalización de actores), así que todos usan CU11
-para entrar. El código OTP lo envía el servicio de correo y SMS.
+para entrar. El código OTP lo envía el servicio de correo y SMS. Desde la 011, al entrar cada rol
+llega a su pantalla principal, y todo el personal puede ver su propio perfil (CU30) y cambiar su
+clave cuando quiera desde ahí (CU31). Nadie ve el perfil de otra persona.
 
 ## Vista 3: supervisión y administración
 
@@ -165,6 +172,8 @@ decisiones), por separación de funciones.
 | CU27 | Consultar auditoría de seguridad | Administrador | HU15 | RF16, RF22 | 009 | ✅ Hecho |
 | CU28 | Cerrar sesiones de un usuario | Administrador | HU15 | RF16, RF22 | 009 | ✅ Hecho |
 | CU29 | Desbloquear cuenta | Administrador | HU15 | RF16, RF22 | 009 | ✅ Hecho |
+| CU30 | Ver mi perfil | Todo el personal | HU15 | RF16, RF17 | 011 | ✅ Hecho |
+| CU31 | Cambiar mi clave | Todo el personal | HU15 | RF16 | 011 | ✅ Hecho |
 
 **Cobertura:** las 17 historias de usuario y los 25 requisitos funcionales tienen al menos un caso de
 uso, salvo **HU12 / RF15** (transferencia, cambio de giro y duplicado), que queda como trabajo futuro
