@@ -46,8 +46,10 @@ del portal sin CoreUI.
     - el panel `/admin` (ADMINISTRADOR).
   - **Ingreso**: con `ingresar` de `apoyo/sistema.ts`.
   - **Tamaños**: los proyectos `celular` (360×740) y `escritorio` (1280×800).
-  - **Modos**: con `antes`, solo el claro. Con `despues`, claro y oscuro, emulando
-    `colorScheme` con `page.emulateMedia`.
+  - **Modos**: con `antes`, **solo el claro**, porque antes de la 013 no existe modo oscuro y una
+    captura "antes" en oscuro no mostraría nada distinto. Con `despues`, claro y oscuro, emulando
+    `colorScheme` con `page.emulateMedia`. Así se interpreta SC-008 (análisis I2): las capturas
+    "después" son en ambos modos y las "antes" solo en claro.
   - **Salida**: `docs/08-sprint-2/evidencias/diseno-013/<antes|despues>/<modo>/<proyecto>-<pantalla>.png`,
     con página completa.
 - [ ] T002 [P] Medidor `tests/e2e/apoyo/lighthouse-medida.mjs`: Lighthouse con un flujo de puppeteer,
@@ -63,10 +65,19 @@ del portal sin CoreUI.
     `page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }])`.
   - **Salida**: una tabla Markdown con la **mediana** de rendimiento y de accesibilidad por pantalla
     y modo, y las auditorías fallidas.
+  - **Usuarios** (análisis U3): lee las claves de `tests/e2e/.datos/usuarios-demo.json`, que crea
+    la preparación global de Playwright (`sembrarUsuarios`). Si el archivo no existe o es de otro
+    compose, termina con un mensaje claro y no mide. No siembra por su cuenta.
+  - **Peso del CSS** (análisis E1): anota también el tamaño, transferido y sin comprimir, del CSS
+    que descarga la portada y del que descarga la bandeja.
 - [ ] T003 Tomar la **línea base y las capturas "antes"** (quickstart §0):
   - compose aislado `-p licencias-medida` con los puertos 8090, 3001, 5434, 6381 y 8026, y
     `ORIENTACION_API_KEY=` vacío en el comando, así que no se usa el proveedor;
-  - `CAPTURAS=antes` y luego `lighthouse-medida.mjs --corridas 3`;
+  - **en este orden** (análisis U3):
+    1. `CAPTURAS=antes` con Playwright. Su preparación global siembra los usuarios de demostración
+       en `licencias-medida` (`E2E_PROYECTO=licencias-medida`) y escribe `usuarios-demo.json`.
+    2. Luego `lighthouse-medida.mjs --corridas 3 --proyecto licencias-medida`, que usa esos
+       usuarios;
   - el resultado va a `docs/08-sprint-2/evidencias/diseno-013/linea-base.md`;
   - al terminar, `docker compose -p licencias-medida down -v`.
 
@@ -80,8 +91,18 @@ del portal sin CoreUI.
   Comprobar que no entraron Redux, `react-router-dom`, Chart.js ni simplebar (`npm ls`).
 - [ ] T005 Jest con CoreUI (research R-10):
   - en `apps/web/jest.config.ts`, `moduleNameMapper` de `'\\.(css|scss)$'` al simulador de estilos;
-  - **prueba de humo** `apps/web/src/componentes/diseno/coreui-humo.test.tsx`: renderiza `CButton`,
-    `CSidebar` y `CDropdown` de `@coreui/react`;
+  - **`matchMedia` en jsdom** (análisis C1): jsdom no tiene `window.matchMedia`, y lo usan
+    `useModoColor` y, probablemente, `CSidebar` para saber si es celular.
+    - En `apps/web/jest.setup.ts`, un simulador de `matchMedia` que por defecto responde **modo
+      claro y escritorio** (`prefers-color-scheme: dark` → `false` y `min-width` → `true`).
+    - Un ayudante `apps/web/src/pruebas/medios.ts` con `simularMedios({ oscuro, celular })` para que
+      una prueba lo cambie y avise a los escuchas (`change`). Se reinicia en `afterEach`.
+    - Sin esto, las pruebas que montan pantallas del personal con `montarEn` podrían fallar todas a
+      la vez.
+  - **prueba de humo** `apps/web/src/componentes/diseno/coreui-humo.test.tsx`:
+    - renderiza `CButton`, `CSidebar` y `CDropdown` de `@coreui/react` con el simulador activo;
+    - comprueba que `CSidebar` se monta sin errores en escritorio y con `simularMedios({ celular:
+      true })`;
   - solo si falla con un `import` de `node_modules/@coreui/*`, agregar `transformIgnorePatterns` y
     transformar esos `.js`.
 - [ ] T006 Tema Sass que compila (research R-02 y `contracts/tema.md`):
@@ -94,7 +115,14 @@ del portal sin CoreUI.
   - `apps/web/src/estilos/tema.scss`:
     - importa **solo las partes listadas** de `@coreui/coreui/scss/`;
     - después, `global.css` sin cambios por ahora;
-  - `main.tsx` importa `./estilos/tema.scss` en lugar de `./estilos/global.css`.
+  - `main.tsx` importa `./estilos/tema.scss` en lugar de `./estilos/global.css`;
+  - **CSS del personal aparte** (análisis E1): las partes que usa solo el área del personal
+    (`sidebar`, `header` con su `toggler`, `dropdown` y `breadcrumb`) van en
+    `apps/web/src/estilos/tema-personal.scss`. Ese archivo lo importa el módulo de `DisenoPersonal`
+    (T015), no `main.tsx`, para que Vite lo separe junto con `React.lazy` (T016) y el portal público
+    no lo descargue. `tema.scss` lleva lo común: variables, reboot, tipografía, grilla, formularios,
+    botones, tarjetas, insignias, alertas, tablas y paginación. `DisenoPublico` usa una barra simple
+    con las clases de `header` que importe `tema.scss`, o su propio CSS mínimo.
 
   Deben pasar `npm run build -w apps/web` (anotar el tamaño de CSS y JS de la salida) y las 497
   pruebas.
@@ -132,6 +160,10 @@ verde.
       el texto primario oscuro sobre el fondo oscuro y el foco `#f2a900` sobre ambos fondos.
       Después, `paleta.ts` con los mismos valores que `_variables-municipalidad.scss` (comentario en
       ambos: "mantener iguales").
+      **Sin dos fuentes que se desincronicen** (análisis U2): T039 compila `tema.scss` y compara cada
+      color de `paleta.ts` con el valor real de su variable `--cui-*` en el CSS compilado, en modo
+      claro (`:root`) y oscuro (`[data-coreui-theme=dark]`). Si alguno difiere, la prueba falla. Así
+      el contraste se mide sobre los colores que de verdad se publican.
 
 **Punto de control**: la fuente de las opciones es una sola y las migas no muestran datos
 personales.
@@ -157,6 +189,13 @@ funciona. A 360 px el botón abre y cierra el menú, sin desplazamiento horizont
     cierran;
   - el desplegable con el nombre tiene "Mi perfil" (a `/perfil`) y "Cerrar sesión" (llama a `salir`
     y va a `/ingresar`);
+  - **con teclado** (análisis E2):
+    - con el foco en el botón del nombre, Enter y Espacio lo abren (`aria-expanded="true"`);
+    - las flechas recorren "Mi perfil" y "Cerrar sesión";
+    - Escape lo cierra y el foco vuelve al botón.
+
+    Si jsdom no reproduce el posicionamiento de Popper, la parte de las flechas se comprueba en el
+    navegador, en T043 (f);
   - las migas tienen `aria-current="page"` en el último tramo;
   - el pie dice "Municipalidad Provincial de Huanta".
 - [ ] T013 [US1] Ajustar `apps/web/src/componentes/Menu.test.tsx` según research R-11:
@@ -172,6 +211,12 @@ funciona. A 360 px el botón abre y cierra el menú, sin desplazamiento horizont
       sesión" (la misma lógica de hoy de `Menu.tsx`: `salir()` y navegar a `/ingresar`).
 - [ ] T015 [US1] `componentes/diseno/DisenoPersonal.tsx` (`contracts/portal-diseno.md`):
   - `CSidebar` con `visible` y `narrow` en `useState`, sin Redux;
+  - **corte de 768 px** (análisis I1): `CSidebar` se oculta por defecto por debajo de `lg` (992 px),
+    pero FR-006 dice 768 px. Se configura el corte `md`:
+    - la prop de punto de corte de `CSidebar`, si existe en 5.13.1;
+    - si no, el Sass de `tema-personal.scss`.
+
+    El `useState` de `abierto` solo se aplica por debajo de 768 px.
   - `CSidebarBrand` con el nombre de la Municipalidad;
   - `<nav aria-label="Menú del personal">` con `CNavItem` y `NavLink` de `react-router`;
   - `CHeader` con `CHeaderToggler` ("Mostrar menú" u "Ocultar menú", `aria-expanded` y
@@ -181,7 +226,11 @@ funciona. A 360 px el botón abre y cierra el menú, sin desplazamiento horizont
 
   Se cierra con Escape y al elegir una opción. Deben pasar T012 y T013.
 - [ ] T016 [US1] `apps/web/src/Aplicacion.tsx`: `Diseno` usa `DisenoPersonal` si
-      `esRutaPersonal(pathname)`; si no, el diseño público actual (US2 lo reemplaza). Retirar
+      `esRutaPersonal(pathname)`; si no, el diseño público actual (US2 lo reemplaza).
+      **`DisenoPersonal` se carga con `React.lazy` y `Suspense`** (análisis E1), para que su código
+      y `tema-personal.scss` no lleguen al portal público. Las pruebas que montan pantallas del
+      personal esperan con `findBy…`. Si alguna usaba `getBy…` justo después de montar, se ajusta a
+      `findBy…` con su justificación (R-11). Retirar
       `Menu.tsx` o dejarlo como reexportación del menú lateral si alguna prueba lo importa. Las
       rutas y `RutaProtegida` no cambian.
 - [ ] T017 [US1] Estilos del área del personal en `apps/web/src/estilos/tema.scss`:
@@ -412,10 +461,20 @@ recargar lo mantiene. El chat abierto se ve bien en ambos modos.
   - **(c)** con `colorScheme: 'dark'` y sin elección guardada, antes de que React monte (`#raiz`
     vacío, esperado con `page.waitForFunction`), el color de fondo calculado del `body` ya es el
     oscuro (SC-006);
-  - **(d)** con la elección "claro" guardada y el sistema en oscuro, se registra el color del primer
-    `requestAnimationFrame`. **Si se ve un destello, se avisa a la usuaria** y se propone el plan B
-    de research R-05 (no se aplica sin su aprobación);
-  - **(e)** en todas las páginas recorridas, ningún evento `securitypolicyviolation` (FR-003).
+  - **(d)** con la elección "claro" guardada y el sistema en oscuro (análisis U1):
+    1. `page.addInitScript` corre antes de cualquier script de la página. Guarda `localStorage`
+       con `licencias-modo-color=claro` y registra en `window.__colores` el color de fondo
+       calculado del `body` en **cada** `requestAnimationFrame` hasta que `#raiz` tenga contenido.
+    2. Con `colorScheme: 'dark'`, se carga `/` y se leen los colores.
+    3. Hay **destello** si algún frame registrado tiene el fondo oscuro antes del claro final.
+
+    Lo mismo al revés: elección "oscuro" con el sistema en claro. **Si hay destello, se avisa a la
+    usuaria** y se propone el plan B de research R-05; no se aplica sin su aprobación;
+  - **(e)** en todas las páginas recorridas, ningún evento `securitypolicyviolation` (FR-003);
+  - **(f)** en el proyecto `escritorio` (análisis E2): el desplegable del usuario se abre con Enter,
+    se recorre con las flechas, se cierra con Escape y devuelve el foco al botón;
+  - **(g)** a 800 px de ancho (análisis I1), el menú lateral está visible sin el botón; a 767 px está
+    oculto y el botón lo abre.
 
   Agregar el escucha de (e) también en `apoyo/sistema.ts`, para que lo usen todos los recorridos.
 - [ ] T044 Lighthouse del chat en ambos modos: `tests/e2e/apoyo/lighthouse-chat.mjs` acepta
@@ -435,9 +494,13 @@ recargar lo mantiene. El chat abierto se ve bien en ambos modos.
   | SC-003 | Rendimiento ≥ la línea base |
   | SC-004 | Sin fallas de `color-contrast` |
 
-  Si SC-003 no se cumple, se ajusta (por ejemplo, cargando `DisenoPersonal` con `React.lazy`, para
-  que el portal público no descargue el menú lateral) y se vuelve a medir. Al terminar,
-  `down -v`.
+  Se anota también el tamaño del CSS y del JS que descarga la portada, frente a la línea base
+  (análisis E1). El objetivo es que el portal público no descargue `tema-personal.scss` ni el código
+  de `DisenoPersonal`.
+
+  Si SC-003 no se cumple, se ajusta y se vuelve a medir: por ejemplo, revisando que
+  `DisenoPersonal` y `tema-personal.scss` se carguen con `React.lazy` y no lleguen al portal
+  público. Al terminar, `down -v`.
 - [ ] T046 [P] **ADR-012** "Adopción de CoreUI para el diseño del portal" en
       `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`. Va en la fila del resumen y en
       su sección (contexto, alternativas, decisión y consecuencias), con:
