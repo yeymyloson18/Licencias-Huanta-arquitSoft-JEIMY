@@ -151,15 +151,15 @@ verde.
 
 ## Fase 2: Base (bloquea las historias)
 
-- [ ] T007 [P] **Prueba primero** `apps/web/src/componentes/diseno/opcionesMenu.test.ts`: para cada
+- [X] T007 [P] **Prueba primero** `apps/web/src/componentes/diseno/opcionesMenu.test.ts`: para cada
       uno de los 6 roles, para JEFATURA con todas sus opciones y sin roles, `opcionesDe(roles)`
       devuelve **exactamente** las mismas opciones (etiqueta, ruta y orden) que el `OPCIONES` actual
       de `Menu.tsx`. Después, mover `OPCIONES` y el filtro a
       `apps/web/src/componentes/diseno/opcionesMenu.ts` **sin cambiar ningún valor**.
-- [ ] T008 [P] **Prueba primero** `componentes/diseno/rutas.test.ts`: `esRutaPersonal` es verdadera en
+- [X] T008 [P] **Prueba primero** `componentes/diseno/rutas.test.ts`: `esRutaPersonal` es verdadera en
       `/admin`, `/admin/usuarios/x`, `/personal/caja` y `/perfil`, y falsa en `/`, `/ingresar`,
       `/cambiar-clave`, `/consulta` y `/tramite/identidad`. Después, `componentes/diseno/rutas.ts`.
-- [ ] T009 [P] **Prueba primero** `componentes/diseno/migas.test.ts`, con el mapa de
+- [X] T009 [P] **Prueba primero** `componentes/diseno/migas.test.ts`, con el mapa de
       `data-model.md`:
   - `/admin/usuarios/123e4567-…` → `Panel › Usuarios › Ficha del usuario`, **sin** el id;
   - `/personal/expedientes/EXP-2026-000123` → `Expedientes › EXP-2026-000123`;
@@ -168,10 +168,10 @@ verde.
   - el último tramo no tiene ruta.
 
   Después, `componentes/diseno/migas.ts`.
-- [ ] T010 [P] `componentes/diseno/iconos.ts`: iconos propios para `CIcon` (menú, usuario, sol, luna,
+- [X] T010 [P] `componentes/diseno/iconos.ts`: iconos propios para `CIcon` (menú, usuario, sol, luna,
       medio círculo y cerrar), con trazos SVG simples dibujados a mano. Sin copiar los de
       `@coreui/icons`.
-- [ ] T011 [P] **Prueba primero** `apps/web/src/estilos/contraste.test.ts`: con la fórmula de WCAG,
+- [X] T011 [P] **Prueba primero** `apps/web/src/estilos/contraste.test.ts`: con la fórmula de WCAG,
       cada pareja de `apps/web/src/estilos/paleta.ts` (texto sobre fondo y texto de botón, en claro
       y oscuro) da 4.5:1 o más (3:1 para componentes de interfaz). Incluye el blanco sobre `#0b5394`,
       el texto primario oscuro sobre el fondo oscuro y el foco `#f2a900` sobre ambos fondos.
@@ -184,6 +184,20 @@ verde.
 
 **Punto de control**: la fuente de las opciones es una sola y las migas no muestran datos
 personales.
+
+**Estado al cierre de la fase 2 (2026-11-25)**:
+
+- **Opciones del menú**: `Menu.tsx` lee `opcionesDe` de `opcionesMenu.ts`, adonde se movieron las
+  opciones sin cambios. Las pruebas del menú actual siguen en verde.
+- **Iconos** (`iconos.ts`): no tienen prueba propia; los cubrirán las de `SelectorModo` y
+  `DisenoPersonal` (análisis D1).
+- **Foco en modo claro**: la paleta encontró que el contorno de foco #f2a900 sobre blanco da 2.0:1,
+  menos que el 3:1 de FR-024. Ya era así antes de la 013. Se resuelve con un **anillo doble** en
+  modo claro:
+  - anillo interior #083d6d, con 11.1:1 sobre blanco;
+  - contorno #f2a900, con 5.5:1 sobre ese anillo.
+
+  `contraste.test.ts` lo exige; el CSS se aplica en T034 (puente) y T041 (modo oscuro).
 
 ---
 

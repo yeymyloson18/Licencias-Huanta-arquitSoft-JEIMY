@@ -1,36 +1,9 @@
-import type { components } from '@licencias/contracts';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { useSesion } from '../sesion/ProveedorSesion';
+import { opcionesDe } from './diseno/opcionesMenu';
 
-type Rol = components['schemas']['Rol'];
-
-interface Opcion {
-  readonly etiqueta: string;
-  readonly ruta: string;
-  /** Roles que ven la opción (basta con uno). */
-  readonly roles: readonly Rol[];
-}
-
-// Las opciones de los demás módulos se agregan aquí a medida que existan (FR-026).
-const OPCIONES: readonly Opcion[] = [
-  { etiqueta: 'Panel', ruta: '/admin', roles: ['ADMINISTRADOR'] },
-  { etiqueta: 'Usuarios', ruta: '/admin/usuarios', roles: ['ADMINISTRADOR'] },
-  { etiqueta: 'Catálogo', ruta: '/admin/catalogo', roles: ['ADMINISTRADOR'] },
-  { etiqueta: 'Feriados', ruta: '/admin/feriados', roles: ['ADMINISTRADOR'] },
-  // 009: auditoría de seguridad (accesos y configuración); la de JEFATURA sigue aparte.
-  { etiqueta: 'Auditoría', ruta: '/admin/auditoria', roles: ['ADMINISTRADOR'] },
-  {
-    etiqueta: 'Expedientes',
-    ruta: '/personal/expedientes',
-    roles: ['MESA_PARTES', 'EVALUADOR', 'JEFATURA'],
-  },
-  { etiqueta: 'Registrar solicitud', ruta: '/personal/mesa-partes/nueva', roles: ['MESA_PARTES'] },
-  { etiqueta: 'Caja', ruta: '/personal/caja', roles: ['CAJA'] },
-  { etiqueta: 'Auditoría', ruta: '/personal/auditoria', roles: ['JEFATURA'] },
-  { etiqueta: 'Inspecciones', ruta: '/personal/inspecciones', roles: ['JEFATURA', 'INSPECTOR'] },
-  { etiqueta: 'Alertas', ruta: '/personal/alertas', roles: ['JEFATURA'] },
-  { etiqueta: 'Tablero', ruta: '/personal/tablero', roles: ['JEFATURA'] },
-];
+// 013: las opciones por rol viven en componentes/diseno/opcionesMenu.ts, la misma fuente que usa el
+// menú lateral. Se movieron sin cambios.
 
 /**
  * Menú del personal: el nombre con "Mi perfil" (011, cualquier rol), las opciones de sus roles y
@@ -45,9 +18,7 @@ export function Menu() {
     return null;
   }
 
-  const visibles = OPCIONES.filter((opcion) =>
-    opcion.roles.some((rol) => sesion.usuario.roles.includes(rol)),
-  );
+  const visibles = opcionesDe(sesion.usuario.roles);
 
   const cerrar = async () => {
     await salir();
