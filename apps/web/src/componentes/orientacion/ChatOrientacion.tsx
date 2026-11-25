@@ -18,6 +18,10 @@ import { enlaceInterno } from './enlacesOrientacion';
 
 const LARGO_MAXIMO = 500;
 
+/** FR-016: se muestra cuando el servidor quitó un dato personal de la pregunta o del historial. */
+const AVISO_DATO_PERSONAL =
+  'Por su seguridad, quitamos sus datos personales de la pregunta. No hace falta escribirlos aquí.';
+
 const EJEMPLOS = [
   '¿Qué licencia necesito para una bodega?',
   '¿Cuánto cuesta y cuánto demora?',
@@ -132,6 +136,9 @@ export function ChatOrientacion({ conversacion, alCambiar, alCerrar }: Propiedad
               <p className="chat-orientacion__texto">{mensaje.texto}</p>
               {mensaje.aclaracion && (
                 <p className="chat-orientacion__aclaracion">{mensaje.aclaracion}</p>
+              )}
+              {mensaje.datoPersonalQuitado && (
+                <p className="chat-orientacion__aviso-dato">{AVISO_DATO_PERSONAL}</p>
               )}
               {mensaje.enlaces && mensaje.enlaces.length > 0 && (
                 <ul className="chat-orientacion__enlaces">

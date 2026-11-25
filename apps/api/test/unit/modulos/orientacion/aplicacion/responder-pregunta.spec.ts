@@ -10,6 +10,7 @@ import type {
 import { MARCA_DATO_PERSONAL } from '../../../../../src/modulos/orientacion/dominio/quitar-datos-personales';
 import {
   ACLARACION_ORIENTACION,
+  TEXTO_CONSULTA_TRAMITE,
   TEXTO_SIN_INFORMACION,
 } from '../../../../../src/modulos/orientacion/dominio/mensajes-orientacion';
 import { LICENCIAS, TEMAS } from '../dominio/licencias-de-prueba';
@@ -290,5 +291,54 @@ describe('ResponderPregunta: nunca datos inventados (US2)', () => {
         TEXTO_SIN_INFORMACION,
       );
     });
+  });
+});
+
+describe('ResponderPregunta: los datos personales no salen (US3)', () => {
+  it('CONSULTA_TRAMITE → texto fijo y enlace CONSULTA', async () => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.modelo({ tipo: 'CONSULTA_TRAMITE', texto: 'Su expediente está en evaluación.' });
+
+    const salida = await preguntar('¿cómo va mi expediente?');
+
+    expect(salida.respuesta).toEqual({
+      resultado: 'CONSULTA_TRAMITE',
+      texto: TEXTO_CONSULTA_TRAMITE,
+      enlaces: [{ tipo: 'CONSULTA' }],
+      aclaracion: null,
+      datoPersonalQuitado: false,
+    });
+    expect(salida.desenlace).toBe('CONSULTA_TRAMITE');
+  });
+
+  it('un número de expediente no es un dato personal: llega al proveedor tal cual', async () => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.modelo({ tipo: 'CONSULTA_TRAMITE', texto: 'x' });
+
+    const salida = await preguntar('¿cómo va el EXP-2026-000123?');
+
+    expect(proveedor.texto()).toContain('EXP-2026-000123');
+    expect(salida.respuesta.datoPersonalQuitado).toBe(false);
+    // El caso de uso no tiene ningún puerto de trámites: nunca trae datos de un expediente.
+    expect(salida.respuesta.texto).toBe(TEXTO_CONSULTA_TRAMITE);
+  });
+
+  it('avisa que quitó un dato aunque esté solo en el historial', async () => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.modelo({ tipo: 'RESPONDIDA', texto: 'En caja.' });
+
+    const salida = await preguntar('¿Cómo pago?', [
+      { rol: 'PERSONA', texto: 'escríbanme a ana.perez@correo.pe' },
+    ]);
+
+    expect(salida.respuesta.datoPersonalQuitado).toBe(true);
+    expect(proveedor.texto()).not.toContain('ana.perez@correo.pe');
+  });
+
+  it('sin datos personales, datoPersonalQuitado es false', async () => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.modelo({ tipo: 'RESPONDIDA', texto: 'En caja.' });
+
+    expect((await preguntar('¿Cómo pago?')).respuesta.datoPersonalQuitado).toBe(false);
   });
 });

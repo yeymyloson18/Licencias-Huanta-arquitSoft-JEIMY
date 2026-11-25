@@ -186,3 +186,66 @@ describe('ChatOrientacion: nunca datos inventados (US2)', () => {
     expect(screen.queryByText(/Esta es una orientación/)).not.toBeInTheDocument();
   });
 });
+
+describe('ChatOrientacion: los datos personales no salen (US3)', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('el saludo dice que no hace falta escribir el DNI, el RUC, el celular ni el correo', () => {
+    simularApi({});
+    montar();
+
+    expect(
+      screen.getByText(/no hace falta que escriba su DNI, RUC, celular ni correo/),
+    ).toBeInTheDocument();
+  });
+
+  it('si se quitó un dato personal, lo avisa', async () => {
+    simularApi({
+      'POST /orientacion/preguntas': () => json(respuesta({ datoPersonalQuitado: true })),
+    });
+    const usuario = montar();
+
+    await escribirYEnviar(usuario, 'mi DNI es 40000001, ¿cuánto cuesta?');
+
+    expect(
+      await screen.findByText(
+        'Por su seguridad, quitamos sus datos personales de la pregunta. No hace falta escribirlos aquí.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('sin datos personales no muestra el aviso', async () => {
+    simularApi({ 'POST /orientacion/preguntas': () => json(respuesta()) });
+    const usuario = montar();
+
+    await escribirYEnviar(usuario, '¿cuánto cuesta?');
+
+    await screen.findByText('La licencia de riesgo medio cuesta S/ 177.10.');
+    expect(screen.queryByText(/Por su seguridad/)).not.toBeInTheDocument();
+  });
+
+  it('con CONSULTA_TRAMITE el enlace "Consultar mi trámite" va a /consulta', async () => {
+    simularApi({
+      'POST /orientacion/preguntas': () =>
+        json(
+          respuesta({
+            resultado: 'CONSULTA_TRAMITE',
+            texto:
+              "Para ver el estado de su trámite use 'Consultar mi trámite' con su número de expediente y su DNI o RUC. Por aquí no puedo ver expedientes.",
+            enlaces: [{ tipo: 'CONSULTA' }],
+            aclaracion: null,
+          }),
+        ),
+    });
+    const usuario = montar();
+
+    await escribirYEnviar(usuario, '¿cómo va mi trámite?');
+
+    expect(await screen.findByRole('link', { name: 'Consultar mi trámite' })).toHaveAttribute(
+      'href',
+      '/consulta',
+    );
+  });
+});

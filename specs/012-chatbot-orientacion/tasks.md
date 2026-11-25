@@ -377,7 +377,7 @@ datos ficticios no los entrega al proveedor y los registros capturados no los co
 
 ### Pruebas de la historia 3 ⚠️
 
-- [ ] T031 [P] [US3] Caso `privacidad-012` en `apps/api/test/integracion/datos-personales.e2e-spec.ts`
+- [X] T031 [P] [US3] Caso `privacidad-012` en `apps/api/test/integracion/datos-personales.e2e-spec.ts`
       (primero `limpiarClavesSeguridad(redis)`). La pregunta es "mi DNI es 40000001, RUC
       20123456789, cel 987 654 321, correo ana.perez@correo.pe, ¿cómo va mi trámite?", con un
       historial que también tiene datos. Comprobar:
@@ -387,27 +387,33 @@ datos ficticios no los entrega al proveedor y los registros capturados no los co
   - (c) ninguna línea de `LoggerCapturador` contiene los datos, el texto de la pregunta, `127.0.0.1`
     ni la clave ficticia;
   - (d) `redis.keys('lim:orientacion:*')` no contiene la IP.
-- [ ] T032 [P] [US3] Ampliar `responder-pregunta.spec.ts`:
+- [X] T032 [P] [US3] Ampliar `responder-pregunta.spec.ts`:
   - el modelo responde `CONSULTA_TRAMITE` → texto fijo y enlace `CONSULTA`;
   - una pregunta con `EXP-2026-000123` llega al proveedor con el número (no es un dato personal),
     pero la respuesta nunca trae datos de expedientes: el caso de uso no tiene ningún puerto de
     trámites.
-- [ ] T033 [P] [US3] Ampliar `ChatOrientacion.test.tsx`:
+- [X] T033 [P] [US3] Ampliar `ChatOrientacion.test.tsx`:
   - con `datoPersonalQuitado: true` se ve "Por su seguridad, quitamos sus datos personales…";
   - con `CONSULTA_TRAMITE`, el enlace "Consultar mi trámite" va a `/consulta`;
   - el saludo dice que no hace falta escribir el DNI, el RUC, el celular ni el correo.
 
 ### Implementación de la historia 3
 
-- [ ] T034 [US3] En `ResponderPregunta`, propagar `datoPersonalQuitado` (de la pregunta o de
+- [X] T034 [US3] En `ResponderPregunta`, propagar `datoPersonalQuitado` (de la pregunta o de
       cualquier turno) y mapear `CONSULTA_TRAMITE`. Revisar `orientacion.controller.ts` y
       `compartido/presentacion/filtro-problema.ts`: ningún registro ni Problema incluye el cuerpo
       de la petición. Deben pasar T031 y T032.
-- [ ] T035 [US3] Portal: aviso de dato personal y enlace `CONSULTA` en `ChatOrientacion.tsx`. Debe
+- [X] T035 [US3] Portal: aviso de dato personal y enlace `CONSULTA` en `ChatOrientacion.tsx`. Debe
       pasar T033.
 
 **Punto de control**: las tres historias P1 en verde. **El MVP se puede probar con la clave real
 recién aquí.**
+
+**Estado al cierre de la fase 5**: las pruebas de US3 de la API pasaron sin cambios de código, porque
+quitar los datos personales (T009) y el mapeo de `CONSULTA_TRAMITE` (T021) ya estaban hechos. T034 fue
+una revisión: el controlador registra solo resultado, desenlace, duración, modelo y
+`datoPersonalQuitado`, y `FiltroProblema` no registra el cuerpo. La parte (d) de T031 (claves
+`lim:orientacion:*` sin la IP) recién tiene claves que revisar cuando exista el límite (US5).
 
 ---
 
