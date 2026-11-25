@@ -16,6 +16,7 @@ import type {
   Reloj,
 } from '../dominio/puertos';
 import { quitarDatosPersonales } from '../dominio/quitar-datos-personales';
+import { revisarCifras } from '../dominio/revisar-cifras';
 import type {
   Desenlace,
   Enlace,
@@ -137,6 +138,10 @@ export class ResponderPregunta {
     }
     if (modelo.tipo !== 'RESPONDIDA') {
       return terminar(FIJAS[modelo.tipo], modelo.tipo);
+    }
+    // FR-005: un monto o un plazo que no está en el CONTEXTO nunca llega al administrado.
+    if (!revisarCifras(modelo.texto, contexto.cifrasPermitidas).aprobada) {
+      return terminar(FIJAS.SIN_INFORMACION, 'RECHAZADA_POR_REVISION');
     }
     return terminar(
       {

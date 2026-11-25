@@ -143,3 +143,46 @@ describe('ChatOrientacion (US1)', () => {
     });
   });
 });
+
+describe('ChatOrientacion: nunca datos inventados (US2)', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('muestra la aclaración debajo de una respuesta', async () => {
+    simularApi({ 'POST /orientacion/preguntas': () => json(respuesta()) });
+    const usuario = montar();
+
+    await escribirYEnviar(usuario, '¿Cuánto cuesta?');
+
+    const aclaracion = await screen.findByText(
+      'Esta es una orientación. Lo oficial es la ficha de cada licencia y la Municipalidad.',
+    );
+    expect(aclaracion).toHaveClass('chat-orientacion__aclaracion');
+  });
+
+  it('con SIN_INFORMACION muestra el texto y el enlace a la lista de licencias', async () => {
+    simularApi({
+      'POST /orientacion/preguntas': () =>
+        json(
+          respuesta({
+            resultado: 'SIN_INFORMACION',
+            texto:
+              'No tengo esa información. Le recomiendo consultar en Mesa de partes de la Municipalidad Provincial de Huanta.',
+            enlaces: [{ tipo: 'LICENCIAS' }],
+            aclaracion: null,
+          }),
+        ),
+    });
+    const usuario = montar();
+
+    await escribirYEnviar(usuario, '¿Cuánto cuesta un permiso de anuncios?');
+
+    expect(await screen.findByText(/No tengo esa información/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ver la lista de licencias' })).toHaveAttribute(
+      'href',
+      '/',
+    );
+    expect(screen.queryByText(/Esta es una orientación/)).not.toBeInTheDocument();
+  });
+});

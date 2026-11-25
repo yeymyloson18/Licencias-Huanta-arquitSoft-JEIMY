@@ -8,6 +8,10 @@ import type {
   ResultadoProveedor,
 } from '../../../../../src/modulos/orientacion/dominio/puertos';
 import { MARCA_DATO_PERSONAL } from '../../../../../src/modulos/orientacion/dominio/quitar-datos-personales';
+import {
+  ACLARACION_ORIENTACION,
+  TEXTO_SIN_INFORMACION,
+} from '../../../../../src/modulos/orientacion/dominio/mensajes-orientacion';
 import { LICENCIAS, TEMAS } from '../dominio/licencias-de-prueba';
 
 // ResponderPregunta (012, research R-04 a R-07), con dobles de los puertos: nunca el proveedor real.
@@ -184,5 +188,107 @@ describe('ResponderPregunta: camino principal (US1)', () => {
 
     await expect(preguntar('   ')).rejects.toBeInstanceOf(ErrorPreguntaInvalida);
     expect(proveedor.llamadas).toHaveLength(0);
+  });
+});
+
+describe('ResponderPregunta: nunca datos inventados (US2)', () => {
+  it('una cifra que no está en el CONTEXTO → SIN_INFORMACION con el texto fijo (RECHAZADA_POR_REVISION)', async () => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.modelo({
+      tipo: 'RESPONDIDA',
+      texto: 'La de riesgo medio cuesta S/ 999.99 y demora 30 días.',
+      codigosReceta: ['LIC-02'],
+    });
+
+    const salida = await preguntar('¿Cuánto cuesta la de riesgo medio?');
+
+    expect(salida.respuesta).toEqual({
+      resultado: 'SIN_INFORMACION',
+      texto: TEXTO_SIN_INFORMACION,
+      enlaces: [{ tipo: 'LICENCIAS' }],
+      aclaracion: null,
+      datoPersonalQuitado: false,
+    });
+    expect(salida.desenlace).toBe('RECHAZADA_POR_REVISION');
+    expect(JSON.stringify(salida)).not.toContain('999.99');
+  });
+
+  it('las cifras del catálogo pasan la revisión (también las de otras licencias de la tabla)', async () => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.modelo({
+      tipo: 'RESPONDIDA',
+      texto: 'La de riesgo medio cuesta S/ 177.10; la de riesgo alto, S/ 305.90 y 8 días hábiles.',
+      codigosReceta: ['LIC-02', 'LIC-03'],
+    });
+
+    const salida = await preguntar('¿Cuál es más barata, la de riesgo medio o la de riesgo alto?');
+
+    expect(salida.respuesta.resultado).toBe('RESPONDIDA');
+    expect(salida.desenlace).toBe('RESPONDIDA');
+  });
+
+  it('SIN_INFORMACION del modelo → el texto fijo del sistema, no el del modelo', async () => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.modelo({ tipo: 'SIN_INFORMACION', texto: 'Creo que cuesta S/ 50, no estoy seguro.' });
+
+    const salida = await preguntar('¿Cuánto cuesta un permiso de anuncios?');
+
+    expect(salida.respuesta.texto).toBe(TEXTO_SIN_INFORMACION);
+    expect(salida.respuesta.enlaces).toEqual([{ tipo: 'LICENCIAS' }]);
+    expect(salida.desenlace).toBe('SIN_INFORMACION');
+  });
+
+  it.each([
+    ['SIN_INFORMACION', { tipo: 'SIN_INFORMACION', texto: 'x' }],
+    ['FUERA_DE_TEMA', { tipo: 'FUERA_DE_TEMA', texto: 'x' }],
+    ['CONSULTA_TRAMITE', { tipo: 'CONSULTA_TRAMITE', texto: 'x' }],
+  ])('la aclaración (FR-008) es null con %s', async (_tipo, modelo) => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.modelo(modelo);
+
+    expect((await preguntar('hola')).respuesta.aclaracion).toBeNull();
+  });
+
+  it('la aclaración acompaña a toda respuesta RESPONDIDA', async () => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.modelo({ tipo: 'RESPONDIDA', texto: 'En caja.' });
+
+    expect((await preguntar('¿Cómo pago?')).respuesta.aclaracion).toBe(ACLARACION_ORIENTACION);
+  });
+
+  describe('trámites que no se atienden en este sistema (I2 del análisis)', () => {
+    it('la pregunta lleva al CONTEXTO el tema de trámites no atendidos', async () => {
+      const { proveedor, preguntar } = preparar();
+      proveedor.modelo({ tipo: 'RESPONDIDA', texto: 'x' });
+
+      await preguntar('¿Cómo hago la transferencia de mi licencia?');
+
+      expect(proveedor.texto()).toContain('Tema: tramites-no-atendidos');
+    });
+
+    it('si el modelo lo responde con el texto del tema (sin cifras), se muestra con LICENCIAS', async () => {
+      const { proveedor, preguntar } = preparar();
+      proveedor.modelo({
+        tipo: 'RESPONDIDA',
+        texto: 'La transferencia no se atiende en este sistema. Consulte en Mesa de partes.',
+      });
+
+      const salida = await preguntar('¿Cómo hago la transferencia de mi licencia?');
+
+      expect(salida.respuesta).toMatchObject({
+        resultado: 'RESPONDIDA',
+        texto: 'La transferencia no se atiende en este sistema. Consulte en Mesa de partes.',
+        enlaces: [{ tipo: 'LICENCIAS' }],
+      });
+    });
+
+    it('si el modelo responde SIN_INFORMACION, se usa el texto fijo', async () => {
+      const { proveedor, preguntar } = preparar();
+      proveedor.modelo({ tipo: 'SIN_INFORMACION', texto: 'x' });
+
+      expect((await preguntar('¿Cómo hago la transferencia de mi licencia?')).respuesta.texto).toBe(
+        TEXTO_SIN_INFORMACION,
+      );
+    });
   });
 });

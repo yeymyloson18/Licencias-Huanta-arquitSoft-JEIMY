@@ -332,7 +332,7 @@ muestra la respuesta de `SIN_INFORMACION`, no la del proveedor.
 
 ### Pruebas de la historia 2 ⚠️
 
-- [ ] T025 [P] [US2] `apps/api/test/unit/modulos/orientacion/dominio/revisar-cifras.spec.ts`
+- [X] T025 [P] [US2] `apps/api/test/unit/modulos/orientacion/dominio/revisar-cifras.spec.ts`
       (research R-06):
   - detecta `S/ 123.45`, `S/. 123`, `S/123`, `123.45 soles`, `15 días`, `15 días hábiles`,
     `30 días calendario` y `12 meses`;
@@ -340,7 +340,7 @@ muestra la respuesta de `SIN_INFORMACION`, no la del proveedor.
   - `S/ 177.1` equivale a `177.10`;
   - un texto sin cifras → aprobado;
   - números que no son montos ni plazos ("LIC-02", "2024", "paso 3") → no cuentan.
-- [ ] T026 [P] [US2] Ampliar `responder-pregunta.spec.ts`:
+- [X] T026 [P] [US2] Ampliar `responder-pregunta.spec.ts`:
   - el modelo responde una cifra ajena → `resultado SIN_INFORMACION`, el texto fijo, el enlace
     `LICENCIAS` y `desenlace RECHAZADA_POR_REVISION`;
   - el modelo responde `SIN_INFORMACION` → el texto fijo del sistema, no el del modelo;
@@ -348,18 +348,18 @@ muestra la respuesta de `SIN_INFORMACION`, no la del proveedor.
   - una pregunta por "transferencia de licencia" lleva al CONTEXTO el tema `tramites-no-atendidos`;
     si el modelo responde `RESPONDIDA` con ese texto (sin cifras), pasa la revisión y se muestra con
     el enlace `LICENCIAS`; si responde `SIN_INFORMACION`, se usa el texto fijo.
-- [ ] T027 [P] [US2] Ampliar `apps/api/test/integracion/orientacion.e2e-spec.ts`: con un proveedor
+- [X] T027 [P] [US2] Ampliar `apps/api/test/integracion/orientacion.e2e-spec.ts`: con un proveedor
       simulado que responde "La tasa es S/ 999.99", la respuesta HTTP **no** contiene `999.99` y
       tiene `resultado: SIN_INFORMACION`.
-- [ ] T028 [P] [US2] Ampliar `ChatOrientacion.test.tsx`: con `aclaracion`, se ve "Esta es una
+- [X] T028 [P] [US2] Ampliar `ChatOrientacion.test.tsx`: con `aclaracion`, se ve "Esta es una
       orientación…"; con `SIN_INFORMACION`, se ve el texto y el enlace "Ver la lista de licencias".
 
 ### Implementación de la historia 2
 
-- [ ] T029 [US2] Implementar `apps/api/src/modulos/orientacion/dominio/revisar-cifras.ts`, puro, e
+- [X] T029 [US2] Implementar `apps/api/src/modulos/orientacion/dominio/revisar-cifras.ts`, puro, e
       integrarlo en `ResponderPregunta` después de `interpretarRespuesta`. Usar los textos fijos y
       la aclaración de `mensajes-orientacion.ts`. Deben pasar T025 a T027.
-- [ ] T030 [US2] Portal: mostrar `aclaracion` en letra secundaria debajo de la respuesta, en
+- [X] T030 [US2] Portal: mostrar `aclaracion` en letra secundaria debajo de la respuesta, en
       `ChatOrientacion.tsx`, con su estilo en `apps/web/src/estilos/global.css`. Debe pasar T028.
 
 **Punto de control**: US1 y US2 en verde; ninguna cifra ajena llega al portal.

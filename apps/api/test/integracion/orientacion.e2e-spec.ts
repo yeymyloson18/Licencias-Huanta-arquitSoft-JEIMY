@@ -111,6 +111,27 @@ describe('POST /orientacion/preguntas (012)', () => {
     });
   });
 
+  describe('US2: nunca datos inventados', () => {
+    it('una tasa inventada por el modelo nunca llega: SIN_INFORMACION', async () => {
+      proveedor.responderCon({
+        tipo: 'RESPONDIDA',
+        texto: 'La tasa es S/ 999.99.',
+        codigosReceta: ['LIC-02'],
+      });
+
+      const respuesta = await preguntar({ pregunta: '¿Cuánto cuesta la de riesgo medio?' });
+
+      expect(respuesta.status).toBe(200);
+      await esperarCumpleContrato('post', '/orientacion/preguntas', respuesta);
+      expect(respuesta.text).not.toContain('999.99');
+      expect(respuesta.body).toMatchObject({
+        resultado: 'SIN_INFORMACION',
+        enlaces: [{ tipo: 'LICENCIAS' }],
+        aclaracion: null,
+      });
+    });
+  });
+
   describe('validación (422)', () => {
     it.each([
       ['sin pregunta', {}],

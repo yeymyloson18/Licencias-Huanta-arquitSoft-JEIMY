@@ -130,6 +130,9 @@ export function ChatOrientacion({ conversacion, alCambiar, alCerrar }: Propiedad
                 {mensaje.autor === 'PERSONA' ? 'Usted' : 'Orientador'}
               </p>
               <p className="chat-orientacion__texto">{mensaje.texto}</p>
+              {mensaje.aclaracion && (
+                <p className="chat-orientacion__aclaracion">{mensaje.aclaracion}</p>
+              )}
               {mensaje.enlaces && mensaje.enlaces.length > 0 && (
                 <ul className="chat-orientacion__enlaces">
                   {mensaje.enlaces.map((enlace) => {
