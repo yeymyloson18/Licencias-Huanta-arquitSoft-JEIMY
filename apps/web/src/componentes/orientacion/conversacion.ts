@@ -16,11 +16,24 @@ export interface MensajeChat {
 export const MAXIMO_TURNOS = 6;
 const LARGO_MAXIMO_TURNO = 1200;
 
+const MAXIMO_CODIGOS = 4;
+
+/**
+ * Turnos que se envían como contexto. Cada respuesta del chat lleva los códigos de las fichas que
+ * enlazó, para que una pregunta de seguimiento ("¿cuáles son esos documentos?") sepa de qué licencia
+ * se habla (corrección de la 012, FR-027).
+ */
 export const historialDe = (conversacion: readonly MensajeChat[]): TurnoOrientacion[] =>
-  conversacion.slice(-MAXIMO_TURNOS).map((mensaje) => ({
-    rol: mensaje.autor,
-    texto: mensaje.texto.slice(0, LARGO_MAXIMO_TURNO),
-  }));
+  conversacion.slice(-MAXIMO_TURNOS).map((mensaje) => {
+    const codigos = (mensaje.enlaces ?? []).flatMap((enlace) =>
+      enlace.tipo === 'FICHA' && enlace.codigoReceta ? [enlace.codigoReceta] : [],
+    );
+    return {
+      rol: mensaje.autor,
+      texto: mensaje.texto.slice(0, LARGO_MAXIMO_TURNO),
+      ...(codigos.length > 0 ? { codigosReceta: codigos.slice(0, MAXIMO_CODIGOS) } : {}),
+    };
+  });
 
 export const siguienteId = (conversacion: readonly MensajeChat[]): number =>
   conversacion.reduce((maximo, mensaje) => Math.max(maximo, mensaje.id), 0) + 1;

@@ -1,11 +1,15 @@
 import { clavePlazo, extraerCifras, normalizar, normalizarMonto } from './cifras';
 import type { TurnoConversacion } from './pregunta-orientacion';
 import type { LicenciaVigente, TemaGuia } from './puertos';
+import { expandirSinonimos } from './sinonimos';
 
 // Selección del contexto que se envía al proveedor (012, research R-04). Siempre van todas las
 // licencias vigentes en una tabla compacta; según la pregunta (y las anteriores de la conversación),
 // hasta 2 recetas con sus requisitos y hasta 4 temas de la guía, por coincidencia de palabras. Así se
 // cuida la cuota del nivel gratuito y se prueba sin red.
+//
+// Corrección de la 012 (FR-027 y FR-028): también cuentan las licencias que el chat ya nombró en sus
+// respuestas anteriores (la más reciente primero) y los sinónimos en español sencillo.
 
 export const MAXIMO_RECETAS_DETALLE = 2;
 export const MAXIMO_TEMAS = 4;
@@ -19,7 +23,12 @@ export interface ContextoOrientacion {
   readonly temaPrincipal: TemaGuia | null;
   /** Montos y plazos que una respuesta puede mencionar (research R-06). */
   readonly cifrasPermitidas: ReadonlySet<string>;
+  /** La pregunta actual pide requisitos o documentos (FR-029). */
+  readonly pideRequisitos: boolean;
 }
+
+/** Turno de la conversación tal como lo usa la selección (sin datos personales). */
+export type TurnoContexto = Pick<TurnoConversacion, 'rol' | 'texto' | 'codigosReceta'>;
 
 /** Palabras que no ayudan a elegir: artículos, preguntas y las que tienen todas las licencias. */
 const VACIAS = new Set([
@@ -67,21 +76,43 @@ const raiz = (palabra: string): string =>
 
 const palabras = (texto: string): Set<string> =>
   new Set(
-    normalizar(texto)
+    expandirSinonimos(texto)
       .split(' ')
       .filter((palabra) => palabra.length > 0 && !VACIAS.has(palabra))
       .map(raiz),
   );
 
-const puntajeReceta = (licencia: LicenciaVigente, consulta: string, buscadas: Set<string>) => {
+const mencionaCodigo = (licencia: LicenciaVigente, consulta: string): boolean => {
   const codigo = normalizar(licencia.codigo);
-  if (consulta.includes(codigo) || consulta.includes(codigo.replace(' ', ''))) {
-    return 1000;
-  }
+  return consulta.includes(` ${codigo} `) || consulta.includes(` ${codigo.replace(' ', '')} `);
+};
+
+/** Coincidencia por palabras: gana la que coincide más y le sobran menos ("alto" prefiere "riesgo
+ * alto" a "muy alto"). 0 si no coincide ninguna. */
+const coincidencia = (licencia: LicenciaVigente, buscadas: Set<string>): number => {
   const propias = palabras(licencia.nombre);
   const coinciden = [...propias].filter((palabra) => buscadas.has(palabra)).length;
-  // Gana la que coincide más y le sobran menos palabras ("alto" prefiere "riesgo alto" a "muy alto").
   return coinciden === 0 ? 0 : coinciden * 10 - (propias.size - coinciden);
+};
+
+const CODIGO_EN_TEXTO = /\bLIC-\d{2}\b/gi;
+
+/**
+ * Cuán reciente es la última respuesta del chat que nombró cada código (por sus `codigosReceta` o
+ * por un `LIC-xx` en su texto): mayor es más reciente.
+ */
+const recenciaDeCodigos = (historial: readonly TurnoContexto[]): Map<string, number> => {
+  const recencia = new Map<string, number>();
+  historial.forEach((turno, indice) => {
+    if (turno.rol !== 'ORIENTADOR') {
+      return;
+    }
+    const enTexto = turno.texto.match(CODIGO_EN_TEXTO) ?? [];
+    for (const codigo of [...(turno.codigosReceta ?? []), ...enTexto]) {
+      recencia.set(codigo.toUpperCase(), indice);
+    }
+  });
+  return recencia;
 };
 
 const puntajeTema = (tema: TemaGuia, consulta: string, buscadas: Set<string>): number =>
@@ -109,22 +140,37 @@ const cifrasDeLicencia = (licencia: LicenciaVigente): string[] => [
 
 export const seleccionarContexto = (
   pregunta: string,
-  historial: readonly TurnoConversacion[],
+  historial: readonly TurnoContexto[],
   licencias: readonly LicenciaVigente[],
   temas: readonly TemaGuia[],
 ): ContextoOrientacion => {
-  const textoConsulta = [
-    pregunta,
-    ...historial.filter((turno) => turno.rol === 'PERSONA').map((turno) => turno.texto),
-  ].join(' ');
-  const consulta = ` ${normalizar(textoConsulta)} `;
+  const anterioresPersona = historial
+    .filter((turno) => turno.rol === 'PERSONA')
+    .map((turno) => turno.texto)
+    .join(' ');
+  const textoConsulta = `${pregunta} ${anterioresPersona}`;
+  const consulta = ` ${expandirSinonimos(textoConsulta)} `;
   const buscadas = palabras(textoConsulta);
+  const enPregunta = palabras(pregunta);
+  const enAnteriores = palabras(anterioresPersona);
+  const recencia = recenciaDeCodigos(historial);
+  const consultaPregunta = ` ${normalizar(pregunta)} `;
 
-  const detalle = mejores(
-    licencias,
-    (licencia) => puntajeReceta(licencia, consulta, buscadas),
-    MAXIMO_RECETAS_DETALLE,
-  );
+  // Orden de prioridad (FR-027): un código en la pregunta actual; las palabras de la pregunta actual;
+  // las licencias de las respuestas anteriores del chat, la más reciente primero; y las palabras de
+  // las preguntas anteriores de la persona.
+  const puntaje = (licencia: LicenciaVigente): number => {
+    const deLaPregunta = coincidencia(licencia, enPregunta);
+    const reciente = recencia.get(licencia.codigo);
+    const deAnteriores = coincidencia(licencia, enAnteriores);
+    return (
+      (mencionaCodigo(licencia, consultaPregunta) ? 1000 : 0) +
+      (deLaPregunta > 0 ? 300 + deLaPregunta : 0) +
+      (reciente === undefined ? 0 : 100 + reciente) +
+      Math.max(0, deAnteriores)
+    );
+  };
+  const detalle = mejores(licencias, puntaje, MAXIMO_RECETAS_DETALLE);
   const coincidentes = mejores(
     temas,
     (tema) => puntajeTema(tema, consulta, buscadas),
@@ -147,5 +193,6 @@ export const seleccionarContexto = (
     temas: elegidos,
     temaPrincipal: coincidentes[0] ?? null,
     cifrasPermitidas,
+    pideRequisitos: enPregunta.has('requisito'),
   };
 };

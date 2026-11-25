@@ -1,5 +1,6 @@
 import { extraerCifras, normalizar } from '../../../../../src/modulos/orientacion/dominio/cifras';
 import { seleccionarContexto } from '../../../../../src/modulos/orientacion/dominio/seleccionar-contexto';
+import { GuiaOrientacionArchivo } from '../../../../../src/modulos/orientacion/infraestructura/guia-orientacion-archivo';
 import { LICENCIAS, TEMAS } from './licencias-de-prueba';
 
 // research R-04 de la 012: el contexto que se envía al proveedor es acotado (cuota del nivel
@@ -126,4 +127,107 @@ describe('extraerCifras', () => {
       expect(extraerCifras(texto)).toEqual([]);
     },
   );
+});
+
+// Corrección de la 012 (FR-027 a FR-030): la conversación real que falló el 2026-11-24.
+describe('seleccionarContexto: conversación real (corrección de la 012)', () => {
+  interface Turno {
+    rol: 'PERSONA' | 'ORIENTADOR';
+    texto: string;
+    codigosReceta?: string[];
+  }
+  const detalleDe = (pregunta: string, historial: Turno[]) =>
+    seleccionarContexto(pregunta, historial, LICENCIAS, TEMAS).detalle.map((l) => l.codigo);
+
+  const conversacion: Turno[] = [
+    { rol: 'PERSONA', texto: 'que documentos tengo que presentar' },
+    {
+      rol: 'ORIENTADOR',
+      texto: '¿Para qué tipo de negocio es? Con eso le digo los requisitos de su licencia.',
+    },
+    { rol: 'PERSONA', texto: 'par ala categoria mas basica' },
+    {
+      rol: 'ORIENTADOR',
+      texto: 'La más básica es la licencia de funcionamiento de riesgo bajo.',
+      codigosReceta: ['LIC-01'],
+    },
+  ];
+
+  it('"par ala categoria mas basica" se entiende como riesgo bajo (LIC-01)', () => {
+    expect(detalleDe('par ala categoria mas basica', conversacion.slice(0, 2))[0]).toBe('LIC-01');
+  });
+
+  it('"cuales son esos documento requeridos" usa la licencia de la respuesta anterior (codigosReceta)', () => {
+    expect(detalleDe('cuales son esos documento requeridos', conversacion)[0]).toBe('LIC-01');
+  });
+
+  it('también reconoce un código LIC-xx escrito en el texto de una respuesta anterior', () => {
+    const historial: Turno[] = [
+      { rol: 'PERSONA', texto: 'hola' },
+      { rol: 'ORIENTADOR', texto: 'Le corresponde la LIC-06, para cesionarios.' },
+    ];
+
+    expect(detalleDe('¿y qué papeles piden?', historial)[0]).toBe('LIC-06');
+  });
+
+  it('entre dos respuestas anteriores gana la más reciente', () => {
+    const historial: Turno[] = [
+      { rol: 'ORIENTADOR', texto: 'Esa es la de riesgo medio.', codigosReceta: ['LIC-02'] },
+      { rol: 'PERSONA', texto: '¿y la otra?' },
+      { rol: 'ORIENTADOR', texto: 'Esa es la de riesgo alto.', codigosReceta: ['LIC-03'] },
+    ];
+
+    expect(detalleDe('¿qué requisitos tiene?', historial)[0]).toBe('LIC-03');
+  });
+
+  it('la pregunta actual que nombra otra licencia gana a las respuestas anteriores', () => {
+    const historial: Turno[] = [
+      { rol: 'ORIENTADOR', texto: 'Es la de riesgo bajo.', codigosReceta: ['LIC-01'] },
+    ];
+
+    expect(detalleDe('¿y para una bodega?', historial)[0]).toBe('LIC-09');
+  });
+
+  it('ignora los códigos que no son licencias vigentes', () => {
+    const historial: Turno[] = [
+      { rol: 'ORIENTADOR', texto: 'Vea la TRF-01.', codigosReceta: ['TRF-01', 'LIC-99'] },
+    ];
+
+    expect(detalleDe('¿qué requisitos tiene?', historial)).toEqual([]);
+  });
+
+  it.each(['tienda', 'abarrotes', 'tiendita de abarrotes'])('"%s" → bodega (LIC-09)', (texto) => {
+    expect(detalleDe(`licencia para una ${texto}`, [])).toContain('LIC-09');
+  });
+
+  it.each(['mas simple', 'pequeño negocio', 'la más básica'])(
+    '"%s" → riesgo bajo (LIC-01)',
+    (texto) => {
+      expect(detalleDe(`quiero la ${texto}`, [])[0]).toBe('LIC-01');
+    },
+  );
+
+  it.each([
+    'que documentos tengo que presentar',
+    'cuales son esos documento requeridos',
+    '¿qué papeles piden?',
+    '¿cuáles son los requisitos?',
+  ])('"%s" pide requisitos', (pregunta) => {
+    expect(seleccionarContexto(pregunta, [], LICENCIAS, TEMAS).pideRequisitos).toBe(true);
+  });
+
+  it.each(['¿cuánto cuesta?', 'que es el tupa', '¿cómo pago?'])(
+    '"%s" no pide requisitos',
+    (pregunta) => {
+      expect(seleccionarContexto(pregunta, [], LICENCIAS, TEMAS).pideRequisitos).toBe(false);
+    },
+  );
+
+  it('con la guía real, "que es el tupa" tiene como tema principal "¿Qué es el TUPA?"', () => {
+    const temas = new GuiaOrientacionArchivo().temas();
+
+    expect(seleccionarContexto('que es el tupa', [], LICENCIAS, temas).temaPrincipal?.id).toBe(
+      'tupa',
+    );
+  });
 });

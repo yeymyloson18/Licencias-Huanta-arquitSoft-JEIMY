@@ -2,6 +2,25 @@
   "fuente": "TUPA 2024 de la Municipalidad Provincial de Huanta (docs/fuentes/tupa-2024.pdf, docs/01-analisis-de-sistema/09-validacion-del-tupa.md) y el funcionamiento de este sistema. Las tasas, plazos y requisitos de cada licencia NO van aquí: salen del catálogo vigente. Pendiente de revisión por la Municipalidad.",
   "temas": [
     {
+      "id": "tupa",
+      "titulo": "¿Qué es el TUPA?",
+      "palabrasClave": [
+        "tupa",
+        "que es el tupa",
+        "texto unico",
+        "procedimientos administrativos",
+        "ordenanza",
+        "este sistema",
+        "este portal",
+        "esta pagina",
+        "para que sirve",
+        "que hace este chat",
+        "que puedo preguntar"
+      ],
+      "respuesta": "El TUPA (Texto Único de Procedimientos Administrativos) es el documento oficial de la Municipalidad Provincial de Huanta que lista cada trámite con sus requisitos, su tasa, su plazo y quién lo aprueba. El vigente es el TUPA 2024, aprobado por la Ordenanza Municipal N.° 001-2024-MPH/CM. Este sistema usa el TUPA para las licencias de funcionamiento: le dice qué licencia le corresponde, qué documentos presentar, cuánto pagar y cuánto demora, y le permite presentar y consultar su trámite en línea. Este chat solo orienta; lo oficial es la ficha de cada licencia y la Municipalidad.",
+      "enlaces": ["ASISTENTE", "LICENCIAS"]
+    },
+    {
       "id": "rutas",
       "titulo": "Rutas A, B y C del trámite",
       "palabrasClave": [

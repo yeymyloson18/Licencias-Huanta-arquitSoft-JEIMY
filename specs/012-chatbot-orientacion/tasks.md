@@ -417,6 +417,58 @@ una revisión: el controlador registra solo resultado, desenlace, duración, mod
 
 ---
 
+## Corrección de la 012: conversación real que falló (2026-11-24)
+
+**Conversación**: "que es el tupa" → FUERA_DE_TEMA; "que documentos tengo que presentar" → "par ala
+categoria mas basica" (la IA respondió LIC-01) → "cuales son esos documento requeridos" →
+SIN_INFORMACION. Causa: `seleccionarContexto` solo miraba los turnos PERSONA y "basica" no coincidía
+con "riesgo bajo", así que los requisitos de LIC-01 nunca llegaron al proveedor. Requisitos nuevos:
+FR-027 a FR-030 de `spec.md`.
+
+- [X] T062 [US1] **Pruebas primero** con esa conversación exacta (deben fallar):
+  - `apps/api/test/unit/modulos/orientacion/dominio/seleccionar-contexto.spec.ts`:
+    - "par ala categoria mas basica" → LIC-01 en `detalle`;
+    - "cuales son esos documento requeridos" con la respuesta anterior del chat que nombró LIC-01
+      (por `codigosReceta` y por `LIC-01` en el texto) → LIC-01 primero en `detalle`;
+    - entre dos respuestas anteriores con LIC-02 y LIC-03, gana la más reciente (LIC-03), salvo que
+      la pregunta actual nombre otra licencia;
+    - "tienda", "abarrotes" → LIC-09; "papeles", "documentos" → `pideRequisitos`;
+    - con la guía real, "que es el tupa" → tema principal `tupa`;
+  - `apps/api/test/unit/modulos/orientacion/aplicacion/responder-pregunta.spec.ts`:
+    - "que documentos tengo que presentar" sin licencia → pregunta por el tipo de negocio, enlace
+      `ASISTENTE`, desenlace `PREGUNTA_TIPO_NEGOCIO` y **sin** llamar al proveedor;
+    - la conversación completa: en el tercer paso el CONTEXTO lleva los requisitos de LIC-01;
+    - las reglas dicen que el TUPA, la Municipalidad y este sistema son del tema;
+  - `apps/api/test/integracion/orientacion.e2e-spec.ts`: la misma conversación contra el catálogo
+    sembrado (los requisitos reales de LIC-01 llegan al proveedor simulado) y un turno ORIENTADOR con
+    `codigosReceta` inválido → 422;
+  - `apps/web/src/componentes/orientacion/ChatOrientacion.test.tsx`: el historial que envía el
+    portal incluye los `codigosReceta` de los enlaces a fichas de cada respuesta.
+- [X] T063 Contrato primero: `TurnoConversacion` admite `codigosReceta` opcional (`maxItems: 4`, items
+      `CodigoReceta`; solo tiene sentido en turnos ORIENTADOR) en `docs/06-contrato-api/openapi.yaml`,
+      `contracts/api-orientacion.md`; `npm run generar`; esquema zod en
+      `presentacion/esquemas-orientacion.ts`.
+- [X] T064 [US1] Dominio (FR-027 y FR-028): `dominio/sinonimos.ts` con el mapa de sinónimos en
+      español sencillo, y `seleccionarContexto` con puntajes: un código en la pregunta actual (1000),
+      palabras de la pregunta actual (300 + coincidencia), códigos de las respuestas anteriores del
+      chat (100 + recencia; los de `codigosReceta` y los `LIC-xx` del texto) y palabras de los turnos
+      PERSONA anteriores. Agrega `pideRequisitos` al contexto.
+- [X] T065 [US1] Caso de uso (FR-029): si `pideRequisitos` y no hay licencia en `detalle`, responde
+      el texto fijo que pregunta por el tipo de negocio (`RESPONDIDA`, enlace `ASISTENTE`, desenlace
+      `PREGUNTA_TIPO_NEGOCIO`) sin llamar al proveedor.
+- [X] T066 [US1] Guía y reglas (FR-030): tema `tupa` ("¿Qué es el TUPA?") en
+      `infraestructura/guia/guia-orientacion.json`; regla nueva en `REGLAS_ORIENTACION`: el TUPA, la
+      Municipalidad y este sistema son del tema; si piden requisitos sin licencia clara, preguntar el
+      tipo de negocio. Portal: `historialDe` envía los `codigosReceta` de las fichas de cada respuesta.
+- [X] T067 Conjunto EQ-08: crear `tests/orientacion/preguntas-prueba.json` con las 4 preguntas de esta
+      conversación (con su historial y lo esperado). T057 lo completa hasta 30 o más.
+
+**Estado**: las pruebas con la conversación exacta fallaron antes de corregir (2 unitarias de la guía,
+los tipos nuevos y 4 de integración) y pasan después. Los sinónimos quedaron en un mapa del dominio
+(`dominio/sinonimos.ts`), no en la guía, porque también sirven para elegir recetas.
+
+---
+
 ## Fase 6: Historia de usuario 4 - El chat sigue siendo útil aunque el proveedor falle (Prioridad: P2)
 
 **Objetivo**: ante tiempo agotado, error, cuota agotada, respuesta inválida o falta de clave, el

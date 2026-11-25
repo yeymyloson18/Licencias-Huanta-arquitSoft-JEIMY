@@ -5,6 +5,7 @@ import {
   TEXTO_CONSULTA_TRAMITE,
   TEXTO_FUERA_DE_TEMA,
   TEXTO_NO_DISPONIBLE,
+  TEXTO_PREGUNTA_TIPO_NEGOCIO,
   TEXTO_SIN_INFORMACION,
 } from '../dominio/mensajes-orientacion';
 import { PreguntaOrientacion, type TurnoRecibido } from '../dominio/pregunta-orientacion';
@@ -115,6 +116,7 @@ export class ResponderPregunta {
     const historial = pregunta.historial.map((turno) => ({
       rol: turno.rol,
       ...quitarDatosPersonales(turno.texto),
+      codigosReceta: turno.codigosReceta,
     }));
     const datoPersonalQuitado = limpia.quitados || historial.some((turno) => turno.quitados);
 
@@ -126,6 +128,19 @@ export class ResponderPregunta {
 
     const licencias = await this.d.catalogo.licenciasVigentes();
     const contexto = seleccionarContexto(limpia.texto, historial, licencias, this.d.guia.temas());
+    // FR-029: pide requisitos sin una licencia identificada → se pregunta el tipo de negocio, sin
+    // gastar una llamada al proveedor.
+    if (contexto.pideRequisitos && contexto.detalle.length === 0) {
+      return terminar(
+        {
+          resultado: 'RESPONDIDA',
+          texto: TEXTO_PREGUNTA_TIPO_NEGOCIO,
+          enlaces: [{ tipo: 'ASISTENTE' }],
+          aclaracion: ACLARACION_ORIENTACION,
+        },
+        'PREGUNTA_TIPO_NEGOCIO',
+      );
+    }
     const resultado = await this.d.proveedor.responder(
       armarMensajes(contexto, historial, limpia.texto),
     );

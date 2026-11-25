@@ -132,6 +132,82 @@ describe('POST /orientacion/preguntas (012)', () => {
     });
   });
 
+  describe('conversación real que falló (corrección de la 012, FR-027 a FR-030)', () => {
+    it('"que documentos tengo que presentar" pregunta por el tipo de negocio sin llamar al proveedor', async () => {
+      const respuesta = await preguntar({ pregunta: 'que documentos tengo que presentar' });
+
+      expect(respuesta.status).toBe(200);
+      await esperarCumpleContrato('post', '/orientacion/preguntas', respuesta);
+      expect(proveedor.llamadas).toHaveLength(0);
+      expect(respuesta.body).toMatchObject({
+        resultado: 'RESPONDIDA',
+        enlaces: [{ tipo: 'ASISTENTE' }],
+      });
+      expect((respuesta.body as RespuestaApi).texto).toMatch(/tipo de negocio/);
+    });
+
+    it('"cuales son esos documento requeridos" lleva al proveedor los requisitos reales de LIC-01', async () => {
+      proveedor.responderCon({
+        tipo: 'RESPONDIDA',
+        texto: 'Debe presentar la solicitud con declaración jurada.',
+        codigosReceta: ['LIC-01'],
+      });
+
+      const respuesta = await preguntar({
+        pregunta: 'cuales son esos documento requeridos',
+        historial: [
+          { rol: 'PERSONA', texto: 'que documentos tengo que presentar' },
+          { rol: 'ORIENTADOR', texto: '¿Para qué tipo de negocio es?' },
+          { rol: 'PERSONA', texto: 'par ala categoria mas basica' },
+          {
+            rol: 'ORIENTADOR',
+            texto: 'La más básica es la licencia de funcionamiento de riesgo bajo.',
+            codigosReceta: ['LIC-01'],
+          },
+        ],
+      });
+
+      expect(respuesta.status).toBe(200);
+      await esperarCumpleContrato('post', '/orientacion/preguntas', respuesta);
+      const sistema = proveedor.llamadas[0]?.[0]?.contenido ?? '';
+      expect(sistema).toContain('Requisitos de LIC-01');
+      expect(sistema).toContain('Declaración jurada de condiciones de seguridad');
+      expect(respuesta.body).toMatchObject({ resultado: 'RESPONDIDA' });
+    });
+
+    it('"par ala categoria mas basica" lleva el detalle de LIC-01', async () => {
+      proveedor.responderCon({ tipo: 'RESPONDIDA', texto: 'x', codigosReceta: ['LIC-01'] });
+
+      await preguntar({
+        pregunta: 'par ala categoria mas basica',
+        historial: [
+          { rol: 'PERSONA', texto: 'que documentos tengo que presentar' },
+          { rol: 'ORIENTADOR', texto: '¿Para qué tipo de negocio es?' },
+        ],
+      }).expect(200);
+
+      expect(proveedor.llamadas[0]?.[0]?.contenido).toContain('Requisitos de LIC-01');
+    });
+
+    it('"que es el tupa" lleva el tema del TUPA al CONTEXTO', async () => {
+      proveedor.responderCon({ tipo: 'RESPONDIDA', texto: 'El TUPA es el documento oficial.' });
+
+      await preguntar({ pregunta: 'que es el tupa' }).expect(200);
+
+      expect(proveedor.llamadas[0]?.[0]?.contenido).toContain('Tema: ¿Qué es el TUPA?');
+    });
+
+    it('un turno con un código de receta inválido responde 422', async () => {
+      const respuesta = await preguntar({
+        pregunta: '¿y los requisitos?',
+        historial: [{ rol: 'ORIENTADOR', texto: 'x', codigosReceta: ['NO-VALE'] }],
+      });
+
+      expect(respuesta.status).toBe(422);
+      expect(proveedor.llamadas).toHaveLength(0);
+    });
+  });
+
   describe('validación (422)', () => {
     it.each([
       ['sin pregunta', {}],

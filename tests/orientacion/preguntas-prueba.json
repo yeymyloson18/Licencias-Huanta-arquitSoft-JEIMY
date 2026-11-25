@@ -1,0 +1,72 @@
+{
+  "descripcion": "Conjunto de preguntas de prueba del escenario EQ-08 (exactitud de la orientación, 012). Lo usa tests/orientacion/evaluar.mjs (T058) contra el proveedor real, a pedido y fuera de CI. Datos FICTICIOS. T057 lo completa hasta 30 o más preguntas.",
+  "preguntas": [
+    {
+      "id": "conversacion-real-1",
+      "origen": "Conversación real que falló el 2026-11-24 (corrección de la 012)",
+      "pregunta": "que es el tupa",
+      "historial": [],
+      "resultadoEsperado": "RESPONDIDA",
+      "codigosReceta": [],
+      "textoContiene": ["TUPA"],
+      "cifrasEsperadas": []
+    },
+    {
+      "id": "conversacion-real-2",
+      "origen": "Conversación real que falló el 2026-11-24 (corrección de la 012)",
+      "pregunta": "que documentos tengo que presentar",
+      "historial": [],
+      "resultadoEsperado": "RESPONDIDA",
+      "codigosReceta": [],
+      "textoContiene": ["tipo de negocio"],
+      "cifrasEsperadas": []
+    },
+    {
+      "id": "conversacion-real-3",
+      "origen": "Conversación real que falló el 2026-11-24 (corrección de la 012)",
+      "pregunta": "par ala categoria mas basica",
+      "historial": [
+        {
+          "rol": "PERSONA",
+          "texto": "que documentos tengo que presentar"
+        },
+        {
+          "rol": "ORIENTADOR",
+          "texto": "¿Para qué tipo de negocio es? Por ejemplo: una bodega, una tienda de ropa, un restaurante o un taller. Con eso le digo los requisitos de su licencia. También puede usar el asistente '¿Qué licencia necesito?'."
+        }
+      ],
+      "resultadoEsperado": "RESPONDIDA",
+      "codigosReceta": ["LIC-01"],
+      "textoContiene": [],
+      "cifrasEsperadas": []
+    },
+    {
+      "id": "conversacion-real-4",
+      "origen": "Conversación real que falló el 2026-11-24 (corrección de la 012)",
+      "pregunta": "cuales son esos documento requeridos",
+      "historial": [
+        {
+          "rol": "PERSONA",
+          "texto": "que documentos tengo que presentar"
+        },
+        {
+          "rol": "ORIENTADOR",
+          "texto": "¿Para qué tipo de negocio es? Por ejemplo: una bodega, una tienda de ropa, un restaurante o un taller. Con eso le digo los requisitos de su licencia. También puede usar el asistente '¿Qué licencia necesito?'."
+        },
+        {
+          "rol": "PERSONA",
+          "texto": "par ala categoria mas basica"
+        },
+        {
+          "rol": "ORIENTADOR",
+          "texto": "La más básica es la licencia de funcionamiento de riesgo bajo.",
+          "codigosReceta": ["LIC-01"]
+        }
+      ],
+      "resultadoEsperado": "RESPONDIDA",
+      "codigosReceta": ["LIC-01"],
+      "textoContiene": ["declaración jurada"],
+      "cifrasEsperadas": []
+    }
+  ]
+}

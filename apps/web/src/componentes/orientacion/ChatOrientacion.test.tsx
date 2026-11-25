@@ -249,3 +249,39 @@ describe('ChatOrientacion: los datos personales no salen (US3)', () => {
     );
   });
 });
+
+describe('ChatOrientacion: conversación real (corrección de la 012, FR-027)', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('el historial incluye los códigos de receta de las fichas de cada respuesta', async () => {
+    const llamadas = simularApi({ 'POST /orientacion/preguntas': () => json(respuesta()) });
+    const usuario = montar([
+      { id: 1, autor: 'PERSONA', texto: 'par ala categoria mas basica' },
+      {
+        id: 2,
+        autor: 'ORIENTADOR',
+        texto: 'La más básica es la de riesgo bajo.',
+        enlaces: [{ tipo: 'FICHA', codigoReceta: 'LIC-01' }, { tipo: 'ASISTENTE' }],
+      },
+    ]);
+
+    await escribirYEnviar(usuario, 'cuales son esos documento requeridos');
+
+    await waitFor(() => {
+      expect(llamadas).toHaveLength(1);
+    });
+    expect(llamadas[0]?.cuerpo).toEqual({
+      pregunta: 'cuales son esos documento requeridos',
+      historial: [
+        { rol: 'PERSONA', texto: 'par ala categoria mas basica' },
+        {
+          rol: 'ORIENTADOR',
+          texto: 'La más básica es la de riesgo bajo.',
+          codigosReceta: ['LIC-01'],
+        },
+      ],
+    });
+  });
+});

@@ -8,6 +8,11 @@ const esquemaTurno = z
   .object({
     rol: z.enum(['PERSONA', 'ORIENTADOR']),
     texto: z.string().min(1).max(1200),
+    // Corrección de la 012 (FR-027): las licencias que nombró esa respuesta del chat.
+    codigosReceta: z
+      .array(z.string().regex(/^(LIC-0[1-9]|TRF-01|CGI-01|DUP-01)$/))
+      .max(4)
+      .optional(),
   })
   .strict();
 
@@ -22,7 +27,9 @@ export type CuerpoPreguntaOrientacion = z.infer<typeof esquemaPreguntaOrientacio
 
 const MENSAJES: Readonly<Record<string, string>> = {
   pregunta: 'Debe tener entre 1 y 500 caracteres',
-  historial: 'Hasta 6 turnos, cada uno con rol PERSONA u ORIENTADOR y entre 1 y 1,200 caracteres',
+  historial:
+    'Hasta 6 turnos, cada uno con rol PERSONA u ORIENTADOR, entre 1 y 1,200 caracteres y hasta 4 ' +
+    'códigos de receta',
 };
 
 export const leerPreguntaOrientacion = (cuerpo: unknown): CuerpoPreguntaOrientacion => {

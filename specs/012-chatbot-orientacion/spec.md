@@ -63,7 +63,16 @@ de esa receta, y un enlace a su ficha.
 6. **Dado** una conversación en curso, **cuando** hace una pregunta de seguimiento ("¿y si además
    vendo licor?"), **entonces** la respuesta tiene en cuenta las preguntas anteriores de esa misma
    conversación.
-7. **Dado** el chat abierto, **cuando** envía una pregunta, **entonces** ve que la respuesta se
+7. **Dado** la conversación real que falló el 2026-11-24 (corrección de la 012): "que es el tupa",
+   "que documentos tengo que presentar", "par ala categoria mas basica" y "cuales son esos documento
+   requeridos", **entonces**:
+   - "que es el tupa" se responde como parte del tema (no es FUERA_DE_TEMA);
+   - "que documentos tengo que presentar", sin una licencia identificada, responde preguntando para
+     qué tipo de negocio es;
+   - "par ala categoria mas basica" se entiende como la licencia de riesgo bajo (LIC-01);
+   - "cuales son esos documento requeridos" usa la licencia de la respuesta anterior del chat
+     (LIC-01) y sus requisitos llegan al proveedor, en lugar de terminar en SIN_INFORMACION.
+8. **Dado** el chat abierto, **cuando** envía una pregunta, **entonces** ve que la respuesta se
    está preparando y, al llegar, se anuncia a los lectores de pantalla.
 
 ---
@@ -320,6 +329,23 @@ respuesta y cerrarlo solo con teclado, sin desplazamiento horizontal.
   teclado (foco al abrir y regreso al cerrar, Escape para cerrar) y con lector de pantalla
   (respuestas y errores anunciados), y con áreas táctiles de al menos 44 px.
 
+**Corrección por una conversación real (2026-11-24)**
+
+- **FR-027**: En una pregunta de seguimiento, el sistema DEBE tener en cuenta las licencias que el
+  chat ya nombró en sus respuestas anteriores: los códigos de receta de esas respuestas (los que el
+  portal recibió en sus enlaces a fichas) y los códigos `LIC-xx` escritos en su texto. La más
+  reciente tiene prioridad, salvo que la pregunta actual nombre otra licencia.
+- **FR-028**: El sistema DEBE entender sinónimos en español sencillo: "básica", "más simple",
+  "pequeño negocio" → riesgo bajo; "documentos", "papeles", "requisitos" → requisitos; "tienda",
+  "abarrotes" → bodega. También con faltas de ortografía comunes de espacios ("par ala").
+- **FR-029**: Si la persona pide requisitos o documentos y no hay ninguna licencia identificada (ni
+  en la pregunta ni en la conversación), el chat DEBE responder preguntando para qué tipo de negocio
+  es (con el asistente "¿Qué licencia necesito?" como alternativa), en lugar de una respuesta vaga o
+  de "no tengo esa información". Esta respuesta no necesita al proveedor.
+- **FR-030**: Las preguntas sobre el TUPA, la Municipalidad Provincial de Huanta y este sistema de
+  licencias DEBEN tratarse como parte del tema (no FUERA_DE_TEMA). La guía DEBE tener el tema "¿Qué
+  es el TUPA?".
+
 ### Entidades clave
 
 - **Pregunta de orientación**: el texto que escribe el administrado (máximo 500 caracteres), con
@@ -343,7 +369,8 @@ respuesta y cerrarlo solo con teclado, sin desplazamiento horizontal.
 
 - **SC-001**: En el conjunto de preguntas de prueba (al menos 30 preguntas que cubren las 9
   licencias, el proceso, preguntas sin información, fuera del tema, datos personales y consulta de
-  expedientes), al menos el 90 % de las respuestas coincide con la respuesta esperada.
+  expedientes, más las 4 de la conversación real de FR-027 a FR-030), al menos el 90 % de las
+  respuestas coincide con la respuesta esperada.
 - **SC-002**: El 100 % de las tasas y plazos que aparecen en las respuestas del conjunto de prueba
   coincide con el catálogo vigente; ninguna respuesta mostrada tiene una cifra inventada.
 - **SC-003**: El 100 % de las preguntas fuera del tema y de manipulación del conjunto recibe la

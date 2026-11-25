@@ -38,4 +38,6 @@ export type Desenlace =
   | 'FALLA'
   | 'RESPUESTA_INVALIDA'
   | 'NO_CONFIGURADO'
-  | 'CATALOGO_NO_DISPONIBLE';
+  | 'CATALOGO_NO_DISPONIBLE'
+  /** FR-029: pidió requisitos sin una licencia identificada; se le pregunta el tipo de negocio. */
+  | 'PREGUNTA_TIPO_NEGOCIO';

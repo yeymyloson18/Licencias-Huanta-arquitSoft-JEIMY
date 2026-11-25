@@ -21,6 +21,7 @@ FR-017). Usa dos tipos de datos:
 | --- | --- | --- |
 | `rol` | `'PERSONA' \| 'ORIENTADOR'` | — |
 | `texto` | string | De 1 a 1,200 caracteres. Se le quitan los datos personales igual que a la pregunta. |
+| `codigosReceta` | string[] | Opcional, hasta 4, con el formato de `CodigoReceta`. Las licencias que nombró esa respuesta del chat (FR-027); solo eligen el contexto. |
 
 ### `TextoSinDatosPersonales` (resultado de `quitarDatosPersonales`)
 
@@ -36,6 +37,7 @@ FR-017). Usa dos tipos de datos:
 | `licencias` | `LicenciaResumen[]` | Todas las vigentes. |
 | `detalle` | `RecetaVigente[]` | Hasta 2, con requisitos. |
 | `temas` | `TemaGuia[]` | Hasta 4. |
+| `pideRequisitos` | boolean | La pregunta actual pide requisitos o documentos, también con sinónimos (FR-029). |
 | `cifrasPermitidas` | `Set<string>` | Montos normalizados (`177.10`) y plazos (`15 dias`, `12 meses`) de **todas las licencias de la tabla**, de las recetas en detalle y de los temas elegidos; los usa `revisarCifras`. |
 
 Cada `LicenciaResumen` tiene `codigo`, `nombre`, `ruta`, `tasa`, `plazoDias`, `tipoPlazo`,
@@ -72,7 +74,7 @@ Cada `LicenciaResumen` tiene `codigo`, `nombre`, `ruta`, `tasa`, `plazoDias`, `t
 Además, para los registros (nunca para la respuesta HTTP), el caso de uso devuelve `desenlace`
 (`RESPONDIDA`, `SIN_INFORMACION`, `FUERA_DE_TEMA`, `CONSULTA_TRAMITE`, `RECHAZADA_POR_REVISION`,
 `TIEMPO_AGOTADO`, `CUOTA_AGOTADA`, `CLAVE_INVALIDA`, `FALLA`, `RESPUESTA_INVALIDA`,
-`NO_CONFIGURADO` o `CATALOGO_NO_DISPONIBLE`) y `duracionMs`.
+`NO_CONFIGURADO`, `CATALOGO_NO_DISPONIBLE` o `PREGUNTA_TIPO_NEGOCIO`) y `duracionMs`.
 
 ### Transiciones del resultado
 

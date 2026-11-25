@@ -2208,6 +2208,13 @@ components:
       properties:
         rol: { type: string, enum: [PERSONA, ORIENTADOR] }
         texto: { type: string, minLength: 1, maxLength: 1200 }
+        codigosReceta:
+          type: array
+          description: >-
+            Licencias que nombró esa respuesta del chat (los enlaces a fichas que recibió el portal).
+            Solo ayudan a entender una pregunta de seguimiento; se cruzan con las licencias vigentes.
+          maxItems: 4
+          items: { $ref: '#/components/schemas/CodigoReceta' }
     ResultadoOrientacion:
       type: string
       enum: [RESPONDIDA, SIN_INFORMACION, FUERA_DE_TEMA, CONSULTA_TRAMITE, NO_DISPONIBLE]

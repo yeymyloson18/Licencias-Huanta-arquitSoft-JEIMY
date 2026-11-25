@@ -83,6 +83,23 @@ Decisiones de la fase 0. Cada una con lo decidido, el motivo y las alternativas 
   - enviar todo: más preciso, pero gasta la cuota (se puede activar por configuración si el
     proveedor lo permite).
 
+- **Corrección por una conversación real (2026-11-24, FR-027 a FR-030)**: "que documentos tengo que
+  presentar" → "par ala categoria mas basica" → "cuales son esos documento requeridos" terminó en
+  SIN_INFORMACION porque la selección solo miraba los turnos PERSONA y "basica" no coincidía con
+  "riesgo bajo". Ahora:
+  - el puntaje de cada licencia suma, en este orden de peso, un código en la pregunta actual (1000),
+    las palabras de la pregunta actual (300 + coincidencia), las licencias que nombraron las
+    respuestas anteriores del chat (100 + recencia; por los `codigosReceta` del turno, que el portal
+    toma de los enlaces a fichas, o por un `LIC-xx` en el texto) y las palabras de las preguntas
+    anteriores;
+  - `dominio/sinonimos.ts` agrega equivalencias en español sencillo ("básica", "más simple",
+    "pequeño negocio" → bajo; "documentos", "papeles" → requisitos; "tienda", "abarrotes" →
+    bodega);
+  - si la pregunta pide requisitos y no hay licencia identificada, el caso de uso pregunta por el
+    tipo de negocio sin llamar al proveedor;
+  - la guía tiene el tema "¿Qué es el TUPA?" y las reglas dicen que el TUPA, la Municipalidad y este
+    sistema son del tema.
+
 ## R-05. Adaptador del proveedor: `fetch` nativo y `AbortController`
 
 - **Decisión**: `ProveedorIaCompatibleOpenAI` en `infraestructura/` implementa el puerto

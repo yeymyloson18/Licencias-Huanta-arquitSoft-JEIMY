@@ -33,6 +33,11 @@ properties:
       properties:
         rol: { type: string, enum: [PERSONA, ORIENTADOR] }
         texto: { type: string, minLength: 1, maxLength: 1200 }
+        # Corrección de la 012 (FR-027): licencias que nombró esa respuesta del chat.
+        codigosReceta:
+          type: array
+          maxItems: 4
+          items: { $ref: '#/components/schemas/CodigoReceta' }
 ```
 
 Una pregunta que solo tiene espacios responde 422, igual que una vacía.

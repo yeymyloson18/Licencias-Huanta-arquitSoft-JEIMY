@@ -10,13 +10,27 @@ export type RolTurno = 'PERSONA' | 'ORIENTADOR';
 export interface TurnoConversacion {
   readonly rol: RolTurno;
   readonly texto: string;
+  /**
+   * Licencias que nombró esa respuesta del chat (los enlaces a fichas que recibió el portal). Solo se
+   * usan para elegir el contexto de una pregunta de seguimiento (FR-027); nunca se confía en ellos
+   * para mostrar datos: se cruzan con las licencias vigentes.
+   */
+  readonly codigosReceta?: readonly string[];
 }
 
 /** Turno tal como llega del portal (no confiable). */
 export interface TurnoRecibido {
   readonly rol: string;
   readonly texto: string;
+  readonly codigosReceta?: readonly string[];
 }
+
+export const MAXIMO_CODIGOS_TURNO = 4;
+const CODIGO_RECETA = /^[A-Z]{3}-\d{2}$/;
+
+const codigosValidos = (codigos: readonly string[] | undefined): boolean =>
+  codigos === undefined ||
+  (codigos.length <= MAXIMO_CODIGOS_TURNO && codigos.every((codigo) => CODIGO_RECETA.test(codigo)));
 
 export class ErrorPreguntaInvalida extends Error {
   constructor(
@@ -52,13 +66,25 @@ export class PreguntaOrientacion {
     }
     const turnos = historial.map((turno): TurnoConversacion => {
       const textoTurno = turno.texto.trim();
-      if (!esRol(turno.rol) || textoTurno.length === 0 || textoTurno.length > LARGO_MAXIMO_TURNO) {
+      if (
+        !esRol(turno.rol) ||
+        textoTurno.length === 0 ||
+        textoTurno.length > LARGO_MAXIMO_TURNO ||
+        !codigosValidos(turno.codigosReceta)
+      ) {
         throw new ErrorPreguntaInvalida(
           'historial',
-          `Cada turno tiene un rol válido y entre 1 y ${String(LARGO_MAXIMO_TURNO)} caracteres`,
+          `Cada turno tiene un rol válido, entre 1 y ${String(LARGO_MAXIMO_TURNO)} caracteres y ` +
+            `hasta ${String(MAXIMO_CODIGOS_TURNO)} códigos de receta`,
         );
       }
-      return { rol: turno.rol, texto: textoTurno };
+      return {
+        rol: turno.rol,
+        texto: textoTurno,
+        ...(turno.codigosReceta && turno.codigosReceta.length > 0
+          ? { codigosReceta: [...turno.codigosReceta] }
+          : {}),
+      };
     });
     return new PreguntaOrientacion(limpio, turnos);
   }

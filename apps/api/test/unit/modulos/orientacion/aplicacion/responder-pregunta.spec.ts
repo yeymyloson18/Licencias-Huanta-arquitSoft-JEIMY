@@ -6,13 +6,17 @@ import type {
   MensajeProveedor,
   ProveedorOrientacion,
   ResultadoProveedor,
+  TemaGuia,
 } from '../../../../../src/modulos/orientacion/dominio/puertos';
 import { MARCA_DATO_PERSONAL } from '../../../../../src/modulos/orientacion/dominio/quitar-datos-personales';
 import {
   ACLARACION_ORIENTACION,
+  REGLAS_ORIENTACION,
   TEXTO_CONSULTA_TRAMITE,
+  TEXTO_PREGUNTA_TIPO_NEGOCIO,
   TEXTO_SIN_INFORMACION,
 } from '../../../../../src/modulos/orientacion/dominio/mensajes-orientacion';
+import { GuiaOrientacionArchivo } from '../../../../../src/modulos/orientacion/infraestructura/guia-orientacion-archivo';
 import { LICENCIAS, TEMAS } from '../dominio/licencias-de-prueba';
 
 // ResponderPregunta (012, research R-04 a R-07), con dobles de los puertos: nunca el proveedor real.
@@ -37,13 +41,16 @@ class ProveedorDoble implements ProveedorOrientacion {
   }
 }
 
-const preparar = (licencias: readonly LicenciaVigente[] = LICENCIAS) => {
+const preparar = (
+  licencias: readonly LicenciaVigente[] = LICENCIAS,
+  temas: readonly TemaGuia[] = TEMAS,
+) => {
   const proveedor = new ProveedorDoble();
   const catalogo: FuenteCatalogo = { licenciasVigentes: () => Promise.resolve(licencias) };
   let ahora = 1_000;
   const caso = new ResponderPregunta({
     catalogo,
-    guia: { temas: () => TEMAS },
+    guia: { temas: () => temas },
     proveedor,
     reloj: {
       ahora: () => {
@@ -52,8 +59,10 @@ const preparar = (licencias: readonly LicenciaVigente[] = LICENCIAS) => {
       },
     },
   });
-  const preguntar = (pregunta: string, historial: { rol: string; texto: string }[] = []) =>
-    caso.ejecutar({ pregunta, historial });
+  const preguntar = (
+    pregunta: string,
+    historial: { rol: string; texto: string; codigosReceta?: string[] }[] = [],
+  ) => caso.ejecutar({ pregunta, historial });
   return { proveedor, preguntar };
 };
 
@@ -340,5 +349,93 @@ describe('ResponderPregunta: los datos personales no salen (US3)', () => {
     proveedor.modelo({ tipo: 'RESPONDIDA', texto: 'En caja.' });
 
     expect((await preguntar('¿Cómo pago?')).respuesta.datoPersonalQuitado).toBe(false);
+  });
+});
+
+// Corrección de la 012 (FR-027 a FR-030): la conversación real que falló el 2026-11-24.
+describe('ResponderPregunta: conversación real (corrección de la 012)', () => {
+  it('"que documentos tengo que presentar" sin licencia → pregunta por el tipo de negocio, sin proveedor', async () => {
+    const { proveedor, preguntar } = preparar();
+
+    const salida = await preguntar('que documentos tengo que presentar');
+
+    expect(proveedor.llamadas).toHaveLength(0);
+    expect(salida.respuesta).toEqual({
+      resultado: 'RESPONDIDA',
+      texto: TEXTO_PREGUNTA_TIPO_NEGOCIO,
+      enlaces: [{ tipo: 'ASISTENTE' }],
+      aclaracion: ACLARACION_ORIENTACION,
+      datoPersonalQuitado: false,
+    });
+    expect(salida.respuesta.texto).toMatch(/tipo de negocio/);
+    expect(salida.desenlace).toBe('PREGUNTA_TIPO_NEGOCIO');
+  });
+
+  it('con una licencia identificada, los requisitos sí van al proveedor', async () => {
+    const { proveedor, preguntar } = preparar();
+    proveedor.modelo({ tipo: 'RESPONDIDA', texto: 'x', codigosReceta: ['LIC-09'] });
+
+    await preguntar('¿qué documentos pide la bodega?');
+
+    expect(proveedor.llamadas).toHaveLength(1);
+    expect(proveedor.texto()).toContain('Requisitos de LIC-09');
+  });
+
+  it('la conversación completa: en el tercer paso el CONTEXTO lleva los requisitos de LIC-01', async () => {
+    const conRequisitos = LICENCIAS.map((licencia) =>
+      licencia.codigo === 'LIC-01'
+        ? { ...licencia, requisitos: ['Declaración jurada de condiciones de seguridad'] }
+        : licencia,
+    );
+    const { proveedor, preguntar } = preparar(conRequisitos);
+
+    const paso1 = await preguntar('que documentos tengo que presentar');
+    proveedor.modelo({
+      tipo: 'RESPONDIDA',
+      texto: 'La más básica es la licencia de riesgo bajo.',
+      codigosReceta: ['LIC-01'],
+    });
+    const historial2 = [
+      { rol: 'PERSONA', texto: 'que documentos tengo que presentar' },
+      { rol: 'ORIENTADOR', texto: paso1.respuesta.texto },
+    ];
+    const paso2 = await preguntar('par ala categoria mas basica', historial2);
+    expect(paso2.respuesta.enlaces).toEqual([{ tipo: 'FICHA', codigoReceta: 'LIC-01' }]);
+    expect(proveedor.texto()).toContain('Requisitos de LIC-01');
+
+    proveedor.modelo({
+      tipo: 'RESPONDIDA',
+      texto: 'Debe presentar la declaración jurada de condiciones de seguridad.',
+      codigosReceta: ['LIC-01'],
+    });
+    const paso3 = await preguntar('cuales son esos documento requeridos', [
+      ...historial2,
+      { rol: 'PERSONA', texto: 'par ala categoria mas basica' },
+      { rol: 'ORIENTADOR', texto: paso2.respuesta.texto, codigosReceta: ['LIC-01'] },
+    ]);
+
+    expect(proveedor.texto()).toContain(
+      'Requisitos de LIC-01 (Licencia de funcionamiento – riesgo bajo):\n- Declaración jurada de condiciones de seguridad',
+    );
+    expect(paso3.respuesta.resultado).toBe('RESPONDIDA');
+    expect(paso3.desenlace).toBe('RESPONDIDA');
+  });
+
+  it('las reglas dicen que el TUPA, la Municipalidad y este sistema son del tema', () => {
+    expect(REGLAS_ORIENTACION).toMatch(
+      /TUPA, la Municipalidad Provincial de Huanta y este sistema/,
+    );
+    expect(REGLAS_ORIENTACION).toMatch(/SÍ son del tema/);
+    expect(REGLAS_ORIENTACION).toMatch(/tipo de negocio/);
+  });
+
+  it('"que es el tupa" lleva al CONTEXTO el tema del TUPA de la guía real', async () => {
+    const { proveedor, preguntar } = preparar(LICENCIAS, new GuiaOrientacionArchivo().temas());
+    proveedor.modelo({ tipo: 'RESPONDIDA', texto: 'El TUPA es el documento oficial.' });
+
+    const salida = await preguntar('que es el tupa');
+
+    expect(proveedor.texto()).toContain('Tema: ¿Qué es el TUPA?');
+    expect(salida.respuesta.resultado).toBe('RESPONDIDA');
   });
 });
