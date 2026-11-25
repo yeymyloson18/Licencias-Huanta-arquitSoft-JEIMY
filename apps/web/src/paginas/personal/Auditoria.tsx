@@ -7,6 +7,7 @@ import {
 } from '../../servicios/clienteApi';
 import { formatearFecha } from './Expedientes';
 import { TablaAdaptable } from '../../componentes/TablaAdaptable';
+import { Paginacion } from '../../componentes/Paginacion';
 
 // Auditoría de pagos para la jefatura (historia 6 de la 005, contracts/portal-evaluacion-pago.md):
 // filtro por fechas, paginación y "Corregir recibo" con motivo.
@@ -239,31 +240,14 @@ export function Auditoria() {
         )}
 
         {carga.tipo === 'lista' && paginas > 1 && (
-          <nav className="paginacion" aria-label="Páginas">
-            <button
-              type="button"
-              className="boton boton--claro"
-              disabled={pagina <= 1}
-              onClick={() => {
-                setPagina(pagina - 1);
-              }}
-            >
-              Anterior
-            </button>
-            <span>
-              Página {pagina} de {paginas}
-            </span>
-            <button
-              type="button"
-              className="boton boton--claro"
-              disabled={pagina >= paginas}
-              onClick={() => {
-                setPagina(pagina + 1);
-              }}
-            >
-              Siguiente
-            </button>
-          </nav>
+          <Paginacion
+            etiqueta="Páginas"
+            pagina={pagina}
+            total={paginas}
+            alCambiar={(n) => {
+              setPagina(n);
+            }}
+          />
         )}
 
         {corrigiendo !== null && (

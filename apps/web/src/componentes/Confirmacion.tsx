@@ -52,10 +52,20 @@ export function Confirmacion({
         <p id={`${id}-mensaje`}>{mensaje}</p>
         {children}
         <div className="formulario__acciones">
-          <button ref={cancelar} type="button" className="boton boton--claro" onClick={onCancelar}>
+          <button
+            ref={cancelar}
+            type="button"
+            className="btn btn-light boton boton--claro"
+            onClick={onCancelar}
+          >
             Cancelar
           </button>
-          <button type="button" className="boton" disabled={enviando} onClick={onConfirmar}>
+          <button
+            type="button"
+            className="btn btn-primary boton"
+            disabled={enviando}
+            onClick={onConfirmar}
+          >
             {textoConfirmar}
           </button>
         </div>

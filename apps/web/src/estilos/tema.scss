@@ -32,5 +32,7 @@
 @use '@coreui/coreui/scss/utilities/api';
 // Estilos propios (los que CoreUI no reemplaza; se recortan en T035).
 @use 'global';
+// Clases propias con el aspecto de CoreUI (013, US5).
+@use 'puente';
 // Diseño del portal ligero (013, US2).
 @use 'disenos';

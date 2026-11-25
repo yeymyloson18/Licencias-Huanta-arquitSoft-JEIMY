@@ -492,19 +492,19 @@ cambiar textos ni etiquetas.
 **Prueba independiente**: todas las pruebas actuales en verde. El ingreso, la solicitud, la ficha
 de un usuario y la caja se ven con el mismo estilo.
 
-- [ ] T031 [P] [US5] **Prueba primero**, ampliando `apps/web/src/componentes/CampoFormulario.test.tsx`:
+- [X] T031 [P] [US5] **Prueba primero**, ampliando `apps/web/src/componentes/CampoFormulario.test.tsx`:
   - el control tiene `form-control` (o `form-select` si es un `<select>`);
   - la etiqueta tiene `form-label`;
   - la ayuda, `form-text`;
   - con error, el control tiene `is-invalid` y el error `invalid-feedback`, y siguen
     `aria-invalid` y `aria-describedby` como hoy.
-- [ ] T032 [US5] `apps/web/src/componentes/CampoFormulario.tsx`: las clases de CoreUI **por
+- [X] T032 [US5] `apps/web/src/componentes/CampoFormulario.tsx`: las clases de CoreUI **por
       dentro**, sin cambiar `id`, etiqueta, ayuda, error ni atributos `aria`. Deben pasar T031 y
       todas las pruebas que usan formularios.
-- [ ] T033 [US5] `componentes/Confirmacion.tsx` y la paginación de `Expedientes.tsx`,
+- [X] T033 [US5] `componentes/Confirmacion.tsx` y la paginación de `Expedientes.tsx`,
       `Auditoria.tsx`, `Usuarios.tsx` y `AuditoriaSeguridad.tsx` (no los pasos del asistente): los botones con `btn` y la paginación con `pagination` y
       `aria-current="page"` en la actual. Mismos textos. Deben pasar sus pruebas.
-- [ ] T034 [US5] `apps/web/src/estilos/_puente.scss` (research R-02), importado desde `tema.scss`
+- [X] T034 [US5] `apps/web/src/estilos/_puente.scss` (research R-02), importado desde `tema.scss`
       después de `global.css`:
   - `.boton` → `btn btn-primary`;
   - `.boton--secundario` → `btn-outline-primary`;
@@ -518,7 +518,7 @@ de un usuario y la caja se ven con el mismo estilo.
 
   Todo con `@extend` y sin tocar las pantallas. Se mantienen 44 px de alto y el foco
   `--color-foco`.
-- [ ] T035 [US5] Retirar de `apps/web/src/estilos/global.css` **solo** los bloques de research R-03
+- [X] T035 [US5] Retirar de `apps/web/src/estilos/global.css` **solo** los bloques de research R-03
       que CoreUI ya reemplaza: reinicio, `.boton*`, `.aviso*`, `.tarjeta`, `.campo__*`, `.menu*`,
       `.acceso-personal*`, tablas y paginación propias.
   - Mapear `--color-fondo`, `--color-superficie`, `--color-texto`, `--color-texto-suave`,
@@ -528,6 +528,23 @@ de un usuario y la caja se ven con el mismo estilo.
 - [ ] T036 [US5] Correr todas las pruebas del portal: las 497 originales más las nuevas, en verde.
       Revisar a 360 px (en Playwright o a mano) el ingreso, la solicitud, la caja y la ficha de un
       usuario.
+
+**Estado al cierre de la fase 7 (2026-11-25)**:
+
+- **Pruebas**: 610/610 en el portal; lint, tipos, formato y build en verde.
+- **T036 queda abierta**: falta la revisión a 360 px del ingreso, la solicitud, la caja y la ficha
+  de un usuario con el puente aplicado. No se hizo por falta de tiempo en la sesión.
+- **`Paginacion`** (nuevo, con prueba): reemplaza las cuatro copias de la paginación. Mismos textos y
+  `aria-current="page"` en "Página X de Y".
+- **`CampoFormulario`**: agrega las clases de CoreUI y conserva las propias.
+- **`_puente.scss`**: además de las clases de la tarea, toma `.boton--claro` (mantiene su
+  `margin-top`) y los campos escritos a mano (`input`, `textarea` y `select.campo__entrada`). Aplica
+  44 px a `.btn` y `.page-link`, y el anillo doble del foco en modo claro (#083d6d con #f2a900).
+- **Retirado de `global.css`**: box-sizing y el margen de `body` (lo trae el reboot), `.aviso`,
+  `.aviso--error` y `.aviso--info`, todos los `.boton*`, `.tarjeta`, `.campo__etiqueta`,
+  `.campo__entrada`, `.campo__ayuda`, `.campo__error`, `.tabla`, `.bandeja__tabla th/td`,
+  `.paginacion` y `.grafico__tabla`. Se conservan `.campo`, `.campo__clave` y `.campo__ojo`, que
+  CoreUI no reemplaza.
 
 ---
 

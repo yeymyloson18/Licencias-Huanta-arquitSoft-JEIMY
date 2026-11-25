@@ -12,6 +12,7 @@ import {
   type PaginaAuditoriaSeguridad,
   type Usuario,
 } from '../../servicios/clienteApi';
+import { Paginacion } from '../../componentes/Paginacion';
 
 // Auditoría de seguridad del administrador (HU2 de la 009, contracts/portal-administrador.md).
 // Los filtros de usuario son listas que envían el identificador interno: ningún texto libre que
@@ -247,31 +248,14 @@ export function AuditoriaSeguridad() {
         {carga.tipo === 'lista' && carga.pagina.datos.length > 0 && (
           <>
             <TablaEventos eventos={carga.pagina.datos} etiqueta="Eventos de la auditoría" />
-            <nav className="paginacion" aria-label="Páginas de la auditoría">
-              <button
-                type="button"
-                className="boton boton--claro"
-                disabled={pagina <= 1}
-                onClick={() => {
-                  aplicar(filtro, pagina - 1);
-                }}
-              >
-                Anterior
-              </button>
-              <span>
-                Página {pagina} de {totalPaginas}
-              </span>
-              <button
-                type="button"
-                className="boton boton--claro"
-                disabled={pagina >= totalPaginas}
-                onClick={() => {
-                  aplicar(filtro, pagina + 1);
-                }}
-              >
-                Siguiente
-              </button>
-            </nav>
+            <Paginacion
+              etiqueta="Páginas de la auditoría"
+              pagina={pagina}
+              total={totalPaginas}
+              alCambiar={(n) => {
+                aplicar(filtro, n);
+              }}
+            />
           </>
         )}
       </main>

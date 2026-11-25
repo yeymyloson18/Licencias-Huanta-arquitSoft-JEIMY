@@ -9,6 +9,7 @@ import {
 import { ESTADOS } from '../../componentes/estados';
 import { InsigniaEstado } from '../../componentes/InsigniaEstado';
 import { TablaAdaptable } from '../../componentes/TablaAdaptable';
+import { Paginacion } from '../../componentes/Paginacion';
 
 // Bandeja del personal (historia 4 de la 004, contracts/portal-tramite.md): todos los expedientes,
 // tarjetas en el celular y tabla en pantallas anchas. Los filtros van en la URL (no son datos
@@ -222,31 +223,14 @@ export function Expedientes() {
               </table>
             </TablaAdaptable>
 
-            <nav className="paginacion" aria-label="Páginas">
-              <button
-                type="button"
-                className="boton boton--secundario"
-                disabled={pagina <= 1}
-                onClick={() => {
-                  irAPagina(pagina - 1);
-                }}
-              >
-                Anterior
-              </button>
-              <span>
-                Página {pagina} de {totalPaginas}
-              </span>
-              <button
-                type="button"
-                className="boton boton--secundario"
-                disabled={pagina >= totalPaginas}
-                onClick={() => {
-                  irAPagina(pagina + 1);
-                }}
-              >
-                Siguiente
-              </button>
-            </nav>
+            <Paginacion
+              etiqueta="Páginas"
+              pagina={pagina}
+              total={totalPaginas}
+              alCambiar={(n) => {
+                irAPagina(n);
+              }}
+            />
           </>
         )}
       </main>

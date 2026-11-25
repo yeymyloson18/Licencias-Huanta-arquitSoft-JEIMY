@@ -48,7 +48,8 @@ export function CampoFormulario({ etiqueta, error, ayuda, type, ...entrada }: Pr
       {...entrada}
       type={esClave && visible ? 'text' : type}
       id={id}
-      className="campo__entrada"
+      // 013 (US5): clases de CoreUI por dentro; las propias quedan para el diseño del campo de clave.
+      className={`form-control campo__entrada${error ? ' is-invalid' : ''}`}
       aria-invalid={error ? true : undefined}
       aria-describedby={descripciones === '' ? undefined : descripciones}
     />
@@ -56,7 +57,7 @@ export function CampoFormulario({ etiqueta, error, ayuda, type, ...entrada }: Pr
 
   return (
     <div className="campo">
-      <label className="campo__etiqueta" htmlFor={id}>
+      <label className="form-label campo__etiqueta" htmlFor={id}>
         {etiqueta}
       </label>
       {esClave ? (
@@ -81,12 +82,12 @@ export function CampoFormulario({ etiqueta, error, ayuda, type, ...entrada }: Pr
         campo
       )}
       {ayuda && (
-        <p className="campo__ayuda" id={idAyuda}>
+        <p className="form-text campo__ayuda" id={idAyuda}>
           {ayuda}
         </p>
       )}
       {error && (
-        <p className="campo__error" id={idError}>
+        <p className="invalid-feedback d-block campo__error" id={idError}>
           {error}
         </p>
       )}
