@@ -3,6 +3,7 @@ import { EnviadorOtpBuzon } from './infraestructura/enviador-otp-buzon';
 import { CerrarSesionesDeUsuario } from './aplicacion/cerrar-sesiones-de-usuario';
 import { DesbloquearCuenta } from './aplicacion/desbloquear-cuenta';
 import { ObtenerFichaUsuario } from './aplicacion/obtener-ficha-usuario';
+import { ObtenerMiPerfil } from './aplicacion/obtener-mi-perfil';
 import { ObtenerPanel } from './aplicacion/obtener-panel';
 import type { BloqueosCuentas } from './dominio/puertos/bloqueos-cuentas';
 import type { ConsultaPanel } from './dominio/puertos/consulta-panel';
@@ -79,6 +80,7 @@ import { RepositorioUsuariosPostgres } from './infraestructura/repositorio-usuar
 import { AuthController } from './presentacion/auth.controller';
 import { JwtAuthGuard } from './presentacion/jwt-auth.guard';
 import { RolesGuard } from './presentacion/roles.guard';
+import { PerfilController } from './presentacion/perfil.controller';
 import { UsuariosController } from './presentacion/usuarios.controller';
 import {
   ALMACEN_VERSION_SEGURIDAD,
@@ -104,7 +106,13 @@ import {
 // módulo sin que este importe el interior de `seguridad` (contracts/control-permisos.md).
 @Global()
 @Module({
-  controllers: [AuthController, UsuariosController, IdentidadController, AdministradorController],
+  controllers: [
+    AuthController,
+    UsuariosController,
+    IdentidadController,
+    AdministradorController,
+    PerfilController,
+  ],
   providers: [
     // ---------------------------------------------------------------- adaptadores
     { provide: HASHER_CLAVES, useFactory: (): HasherClaves => new HasherClavesArgon2() },
@@ -234,6 +242,17 @@ import {
         auditoria: RepositorioAuditoria,
         reloj: Reloj,
       ) => new ObtenerFichaUsuario({ usuarios, consulta, bloqueos, auditoria, reloj }),
+    },
+    {
+      // Mi perfil (011): mismos puertos que la ficha, sin bloqueos, historial ni eventos.
+      provide: ObtenerMiPerfil,
+      inject: [REPOSITORIO_USUARIOS, CONSULTA_PANEL, REPOSITORIO_AUDITORIA, RELOJ],
+      useFactory: (
+        usuarios: RepositorioUsuarios,
+        consulta: ConsultaPanel,
+        auditoria: RepositorioAuditoria,
+        reloj: Reloj,
+      ) => new ObtenerMiPerfil({ usuarios, consulta, auditoria, reloj }),
     },
     {
       provide: CerrarSesionesDeUsuario,

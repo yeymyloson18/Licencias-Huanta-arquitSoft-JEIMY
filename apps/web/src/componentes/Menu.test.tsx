@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { json, problema, sesionDePrueba, simularApi } from '../pruebas/api-simulada';
 import { montarEn } from '../pruebas/montar';
 import { obtenerSesion, reiniciarSesion } from '../sesion/almacen-sesion';
+import { inicioDe } from '../sesion/inicio';
 
 const conSesion = (roles: string[]) => ({
   'POST /auth/renovar': () => json(sesionDePrueba({ roles })),
@@ -220,5 +221,96 @@ describe('Menú del personal', () => {
     expect(await screen.findByLabelText('Correo')).toBeInTheDocument();
     expect(llamadas.some((l) => l.clave === 'POST /auth/cerrar-sesion')).toBe(true);
     expect(obtenerSesion()).toBeNull();
+  });
+
+  const PERFIL = {
+    nombreCompleto: 'Persona de Prueba',
+    correo: 'persona@ejemplo.pe',
+    celularEnmascarado: '9*****321',
+    roles: ['CAJA'],
+    ultimoIngreso: null,
+    sesionesAbiertas: 1,
+  };
+
+  it.each([
+    [['ADMINISTRADOR']],
+    [['MESA_PARTES']],
+    [['EVALUADOR']],
+    [['INSPECTOR']],
+    [['CAJA']],
+    [['JEFATURA']],
+    [[]],
+  ])('con roles %j muestra "Mi perfil" junto al nombre (011)', async (roles) => {
+    simularApi(conSesion(roles));
+    montarEn('/');
+
+    const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+    const nombre = within(menu).getByText('Persona de Prueba');
+    const perfil = within(menu).getByRole('link', { name: 'Mi perfil' });
+
+    expect(perfil).toHaveAttribute('href', '/perfil');
+    expect(perfil).not.toHaveAttribute('aria-current');
+    // Junto al nombre: es lo siguiente después de él en el menú.
+    expect(nombre.nextElementSibling).toBe(perfil);
+  });
+
+  it('en /perfil, "Mi perfil" lleva aria-current="page" (011)', async () => {
+    simularApi({ ...conSesion(['CAJA']), 'GET /perfil': () => json(PERFIL) });
+    montarEn('/perfil');
+
+    const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+
+    expect(within(menu).getByRole('link', { name: 'Mi perfil' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
+  it('sin sesión no hay "Mi perfil" (el administrado no tiene cuenta, 011)', async () => {
+    simularApi({
+      'POST /auth/renovar': () => problema(401, 'no-autenticado'),
+      'GET /catalogo/recetas': () => json([]),
+    });
+    montarEn('/');
+
+    await screen.findByRole('heading', { level: 1 });
+    expect(screen.queryByRole('link', { name: 'Mi perfil' })).not.toBeInTheDocument();
+  });
+
+  it.each<[string[], string, string]>([
+    [['ADMINISTRADOR'], 'Panel', '/admin'],
+    [['MESA_PARTES'], 'Expedientes', '/personal/expedientes'],
+    [['EVALUADOR'], 'Expedientes', '/personal/expedientes'],
+    [['CAJA'], 'Caja', '/personal/caja'],
+    [['INSPECTOR'], 'Inspecciones', '/personal/inspecciones'],
+    [['JEFATURA'], 'Tablero', '/personal/tablero'],
+    [['INSPECTOR', 'CAJA'], 'Caja', '/personal/caja'],
+    [[], 'Mi perfil', '/perfil'],
+  ])(
+    'con roles %j no hay "Inicio"; su pantalla es la opción "%s" (%s) y nada va a "/" (011, FR-020)',
+    async (roles, opcion, pantalla) => {
+      simularApi(conSesion(roles));
+      montarEn('/');
+
+      const menu = await screen.findByRole('navigation', { name: 'Menú del personal' });
+
+      expect(within(menu).queryByRole('link', { name: 'Inicio' })).not.toBeInTheDocument();
+      expect(within(menu).getByRole('link', { name: opcion })).toHaveAttribute('href', pantalla);
+      // Es la misma pantalla a la que llega al ingresar.
+      expect(inicioDe(roles)).toBe(pantalla);
+      const destinos = within(menu)
+        .getAllByRole('link')
+        .map((enlace) => enlace.getAttribute('href'));
+      expect(destinos).not.toContain('/');
+    },
+  );
+
+  it('con sesión, el portal público sigue abierto sin redirigir (011, FR-020)', async () => {
+    simularApi(conSesion(['CAJA']));
+    montarEn('/');
+
+    await screen.findByRole('navigation', { name: 'Menú del personal' });
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/licencia/i);
+    expect(screen.queryByRole('heading', { level: 1, name: 'Caja' })).not.toBeInTheDocument();
   });
 });

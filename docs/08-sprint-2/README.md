@@ -77,6 +77,7 @@ GitHub Actions y dejan sus resultados como archivos descargables (artefactos).
 | 007 Tablero y despliegue | HU10 | Tablero, reporte de licencias en CSV, E2E y producción preparada |
 | 008 Cierre del Sprint 2 | — (entregables de la guía) | Swagger, Postman, cobertura publicada, carga hasta 2,000 usuarios y estos documentos |
 | 009 Panel del administrador | HU15 ampliada | Panel, auditoría de seguridad con CSV, ficha con cerrar sesiones y desbloquear, y buzón de pruebas en desarrollo |
+| 011 Mi perfil e inicio por rol | HU15 ampliada | Cada rol llega a su pantalla al ingresar, Mi perfil con sus propios datos y cambio de clave voluntario |
 
 ## 5. Pruebas y cobertura
 
@@ -85,8 +86,8 @@ GitHub Actions y dejan sus resultados como archivos descargables (artefactos).
 | Unitarias de la API (Jest) | 1,107 | Job `pruebas` y `cobertura` del CI, y en local |
 | Integración de la API (Jest + Supertest, PostgreSQL y Redis reales) | 580 en verde en la última ejecución local completa, más las nuevas de la 007 y la 008 que corren en el CI | Job `pruebas` del CI |
 | Portal (Jest + Testing Library) | 303 | Job `pruebas` del CI y en local |
-| Extremo a extremo (Playwright, celular y escritorio) | 2 recorridos × 2 tamaños | Flujo `E2E` |
-| Humo de la API (Postman y Newman) | 16 peticiones (13 de la 008 y 3 de la 009) | Flujo `Postman` |
+| Extremo a extremo (Playwright, celular y escritorio) | 3 recorridos × 2 tamaños (rutas A y B, y Mi perfil de la 011) | Flujo `E2E` |
+| Humo de la API (Postman y Newman) | 17 peticiones (13 de la 008, 3 de la 009 y 1 de la 011) | Flujo `Postman` |
 | Carga (k6) | 387,235 peticiones hasta 2,000 usuarios: p95 6 ms, 0 % de errores | Flujo `Carga Sprint 2`, [`evidencias/carga-2000-despues.txt`](evidencias/carga-2000-despues.txt) |
 
 **Cobertura** (pruebas unitarias; el reporte navegable está en el artefacto `cobertura` de cada
@@ -138,3 +139,34 @@ privacidad (`privacidad-009`), además de una prueba con 10,000 eventos para el 
 La funcionalidad 010 ([`specs/010-codigo-enviado/`](../../specs/010-codigo-enviado/)) suma a la
 auditoría cada **código enviado** (con el destino enmascarado y cómo terminó el intento) y el límite
 de códigos, y la tarjeta "Códigos enviados" del panel; el administrador nunca ve el código.
+
+## 8. Mejora posterior al cierre: Mi perfil y pantalla de inicio por rol (011)
+
+La funcionalidad 011 ([`specs/011-mi-perfil-inicio-rol/`](../../specs/011-mi-perfil-inicio-rol/))
+vuelve a ampliar la HU15:
+
+- **Pantalla de llegada por rol**: administrador → panel; mesa de partes y evaluador → Expedientes;
+  caja → Caja; inspector → Inspecciones; jefatura → Tablero; sin roles → Mi perfil. El regreso a la
+  pantalla pedida antes de ingresar solo acepta rutas internas permitidas para el rol (prueba con 22
+  entradas de redirección abierta).
+- **Mi perfil** (`GET /perfil`, `Cache-Control: no-store`): solo los datos de quien tiene la sesión,
+  con el celular enmascarado. El servicio no recibe ningún id.
+- **Cambiar mi clave** cuando se quiera, con las reglas de la 002, cierre de las demás sesiones y
+  "Clave cambiada" en la auditoría de seguridad.
+- El menú del personal ya no tiene "Inicio" ni enlaza al portal público, y las páginas públicas
+  muestran "Acceso del personal" cuando no hay sesión.
+
+Evidencia de EQ-04: `matriz-permisos-011` (6 roles, sin sesión, clave temporal, sesión cerrada,
+usuario desactivado e id ajeno) y el caso de la 011 en `datos-personales` (respuesta y registros sin
+datos personales).
+
+**Evidencia de EQ-05 (accesibilidad a 360 px con sesión)**:
+
+| Medida | Pantallas | Resultado |
+| --- | --- | --- |
+| Sin desplazamiento horizontal (Playwright, proyecto `celular`, 360×740) | `/perfil` y `/cambiar-clave` con un error visible | `tests/e2e/perfil.spec.ts` en el flujo `E2E`. **Pendiente de la primera corrida en GitHub Actions** (no se ejecutó en local) |
+| Lighthouse móvil, accesibilidad ≥ 0.9 (`@lhci/cli@0.14.0`, 360×740) | `/perfil` | **Pendiente de medir**: corre en el flujo `E2E` (artefacto `lighthouse-011`); no se pudo correr en local |
+| Lighthouse móvil, accesibilidad ≥ 0.9 (`@lhci/cli@0.14.0`, 360×740) | `/cambiar-clave` (cambio voluntario) | **Pendiente de medir**, igual que la anterior |
+
+Cuando el flujo `E2E` corra en el PR, se anotan aquí el puntaje de cada pantalla y el enlace a la
+corrida.

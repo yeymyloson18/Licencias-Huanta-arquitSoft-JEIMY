@@ -134,6 +134,35 @@ intentos fallidos con el mismo correo o desde la misma IP, el ingreso se bloquea
 El administrador gestiona al personal en <http://localhost:8080/admin/usuarios>: alta con clave
 temporal, edición, roles, desactivación y asignación de una clave temporal a quien olvidó la suya.
 
+### Mi perfil y pantalla de llegada por rol (funcionalidad 011)
+
+Al ingresar, cada persona llega a la pantalla principal de su rol:
+
+| Rol                        | Pantalla de llegada                                        |
+| -------------------------- | ---------------------------------------------------------- |
+| Administrador              | Panel (`/admin`)                                           |
+| Mesa de partes y evaluador | Expedientes (`/personal/expedientes`)                      |
+| Caja                       | Caja (`/personal/caja`)                                    |
+| Inspector                  | Inspecciones (`/personal/inspecciones`)                    |
+| Jefatura                   | Tablero (`/personal/tablero`)                              |
+| Sin roles                  | Mi perfil, con el aviso "Todavía no tiene un rol asignado" |
+
+Con varios roles, llega a la primera según ese orden. Si quiso abrir una pantalla antes de ingresar,
+vuelve a ella solo si es una ruta interna del portal permitida para su rol; nunca a una dirección
+externa.
+
+- **Mi perfil** (`/perfil`): enlace en el menú, junto al nombre, para cualquier persona del
+  personal. Muestra solo sus propios datos: nombre, correo, celular enmascarado (`9*****321`), roles,
+  último ingreso y sesiones abiertas. Nunca la clave ni el código, y nadie puede ver el perfil de
+  otra persona (`GET /api/v1/perfil` no recibe ningún id y responde con `Cache-Control: no-store`).
+- **Cambiar mi clave**: desde el perfil, con la clave actual y la nueva dos veces, con las reglas de
+  la 002. Cierra las demás sesiones, queda "Clave cambiada" en la auditoría de seguridad y vuelve al
+  perfil con el aviso "Su clave se cambió".
+- El menú no tiene "Inicio": cada rol vuelve a su pantalla con su propia opción. Sin sesión, las
+  páginas públicas muestran el enlace **Acceso del personal**, que lleva a `/ingresar`.
+
+Especificación, plan y tareas: [`specs/011-mi-perfil-inicio-rol/`](specs/011-mi-perfil-inicio-rol/).
+
 ## Panel del administrador, auditoría de seguridad y buzón (funcionalidad 009)
 
 Al ingresar, el administrador llega directo a **su panel** (<http://localhost:8080/admin>):
@@ -171,7 +200,8 @@ pública para crear administradores sería un riesgo).
 1. `docker compose -f infra/docker-compose.yml up -d --build`
 2. `docker compose -f infra/docker-compose.yml exec api npm run crear-administrador`
 3. Abra <http://localhost:8080/ingresar>, escriba correo y clave, y lea el código en
-   <http://localhost:8025>. Cambie la clave temporal: llega al **panel**.
+   <http://localhost:8025>. Cambie la clave temporal: llega al **panel** (cada rol llega a su
+   pantalla, 011).
 4. En **Usuarios**, cree al personal (un usuario por rol) y entréguele su clave temporal.
 5. Cada persona ingresa con su correo y su clave; el código llega al mismo buzón.
 6. Pruebe el control: equivóquese 5 veces con la clave de un usuario, vea "Cuentas bloqueadas: 1" en

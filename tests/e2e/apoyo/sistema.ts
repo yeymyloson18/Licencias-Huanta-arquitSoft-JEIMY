@@ -67,6 +67,18 @@ export const usuario = (rol: Rol): UsuarioDemo & { readonly clave: string } => {
   return { ...encontrado, clave: encontrado.clave };
 };
 
+/**
+ * Guarda la clave nueva de un usuario de demostración después de cambiarla (011, Mi perfil), para que
+ * los recorridos siguientes y el otro tamaño de pantalla ingresen con ella.
+ */
+export const guardarClave = (rol: Rol, clave: string): void => {
+  const usuarios = JSON.parse(readFileSync(ARCHIVO_USUARIOS, 'utf8')) as UsuarioDemo[];
+  writeFileSync(
+    ARCHIVO_USUARIOS,
+    JSON.stringify(usuarios.map((u) => (u.rol === rol ? { ...u, clave } : u))),
+  );
+};
+
 /** Código simulado (`dev:otp:<id>`), con reintentos mientras llega. */
 export const leerOtp = async (clave: string): Promise<string> => {
   for (let intento = 0; intento < 20; intento += 1) {

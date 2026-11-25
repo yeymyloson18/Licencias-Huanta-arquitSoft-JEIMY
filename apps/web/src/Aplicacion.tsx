@@ -1,4 +1,6 @@
-import { Outlet, Route, Routes, useLocation } from 'react-router';
+import { Outlet, Route, Routes } from 'react-router';
+import { AccesoPersonal } from './componentes/AccesoPersonal';
+import { AvisoNavegacion } from './componentes/AvisoNavegacion';
 import { Menu } from './componentes/Menu';
 import { RutaProtegida } from './componentes/RutaProtegida';
 import { AuditoriaSeguridad } from './paginas/admin/AuditoriaSeguridad';
@@ -23,6 +25,7 @@ import { ResultadoInspeccion } from './paginas/personal/ResultadoInspeccion';
 import { DetalleExpediente } from './paginas/personal/DetalleExpediente';
 import { Expedientes } from './paginas/personal/Expedientes';
 import { MesaPartes } from './paginas/personal/MesaPartes';
+import { MiPerfil } from './paginas/personal/MiPerfil';
 import { Comprobante } from './paginas/tramite/Comprobante';
 import { Identidad } from './paginas/tramite/Identidad';
 import { Solicitud } from './paginas/tramite/Solicitud';
@@ -32,25 +35,15 @@ import { useSesion } from './sesion/ProveedorSesion';
 import { ProveedorMesaPartes } from './tramite/ContextoMesaPartes';
 import { ProveedorTramite } from './tramite/ContextoTramite';
 
-interface EstadoNavegacion {
-  readonly aviso?: string;
-}
-
 /** Diseño común: menú del personal y aviso pendiente (cierre por inactividad, clave cambiada…). */
 function Diseno() {
   const { aviso } = useSesion();
-  const ubicacion = useLocation();
-  const avisoNavegacion = (ubicacion.state as EstadoNavegacion | null)?.aviso;
-  const mensaje = avisoNavegacion ?? aviso;
 
   return (
     <>
       <Menu />
-      {mensaje && (
-        <p className="aviso aviso--info" role="status">
-          {mensaje}
-        </p>
-      )}
+      <AccesoPersonal />
+      <AvisoNavegacion respaldo={aviso} />
       <Outlet />
     </>
   );
@@ -201,6 +194,15 @@ export function RutasAplicacion() {
               element={
                 <RutaProtegida roles={['MESA_PARTES']}>
                   <MesaPartes />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/perfil"
+              element={
+                // Cualquier usuario del personal con sesión, también sin roles (011).
+                <RutaProtegida>
+                  <MiPerfil />
                 </RutaProtegida>
               }
             />

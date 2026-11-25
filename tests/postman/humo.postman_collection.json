@@ -443,6 +443,39 @@
               }
             }
           ]
+        },
+        {
+          "name": "Mi perfil sin sesión (011)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/perfil",
+              "host": ["{{baseUrl}}"],
+              "path": ["perfil"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Mi perfil sin sesión (011): responde 401', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('responde en menos de 2 s (EQ-01)', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

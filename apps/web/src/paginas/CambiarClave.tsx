@@ -1,5 +1,5 @@
 import { type SyntheticEvent, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { inicioDe } from '../sesion/inicio';
 import { CampoFormulario } from '../componentes/CampoFormulario';
 import { cambiarClave } from '../servicios/clienteApi';
@@ -10,9 +10,14 @@ type Errores = Partial<Record<Campo, string>>;
 
 const POLITICA = 'Al menos 12 caracteres, con letras y números.';
 
-/** Cambio de clave; obligatorio con clave temporal (FR-022, contracts/portal-seguridad.md). */
+/**
+ * Cambio de clave: obligatorio con clave temporal (FR-022, contracts/portal-seguridad.md) y
+ * voluntario desde Mi perfil (011, HU3), con las mismas reglas y mensajes.
+ */
 export function CambiarClave() {
-  const { entrar } = useSesion();
+  const { sesion, entrar } = useSesion();
+  // Se fija al abrir la pantalla: después del cambio la sesión ya no tiene clave temporal.
+  const [voluntario] = useState(() => sesion?.debeCambiarClave !== true);
   const navegar = useNavigate();
   const [claveActual, setClaveActual] = useState('');
   const [claveNueva, setClaveNueva] = useState('');
@@ -39,9 +44,18 @@ export function CambiarClave() {
         setClaveNueva('');
         setRepetir('');
         entrar(resultado.datos);
+        if (voluntario) {
+          // Cambio voluntario: vuelve a Mi perfil con el aviso (011, FR-011).
+          void navegar('/perfil', { replace: true, state: { aviso: 'Su clave se cambió' } });
+          return;
+        }
+        // Clave temporal: la pantalla principal de sus roles (011); sin roles, su perfil (FR-014).
         void navegar(inicioDe(resultado.datos.usuario.roles), {
           replace: true,
-          state: { aviso: 'Su clave se cambió' },
+          state: {
+            aviso: 'Su clave se cambió',
+            ...(resultado.datos.usuario.roles.length === 0 ? { sinRol: true } : {}),
+          },
         });
         return;
       case 'invalido': {
@@ -69,7 +83,11 @@ export function CambiarClave() {
       <header className="cabecera">
         <p className="cabecera__entidad">Municipalidad Provincial de Huanta</p>
         <h1 className="cabecera__titulo">Cambiar clave</h1>
-        <p className="cabecera__descripcion">Defina su nueva clave para continuar.</p>
+        <p className="cabecera__descripcion">
+          {voluntario
+            ? 'Escriba su clave actual y la nueva dos veces.'
+            : 'Defina su nueva clave para continuar.'}
+        </p>
       </header>
 
       <main className="contenido">
@@ -118,6 +136,11 @@ export function CambiarClave() {
               Cambiar clave
             </button>
           </form>
+          {voluntario && (
+            <p>
+              <Link to="/perfil">Volver a mi perfil</Link>
+            </p>
+          )}
         </section>
       </main>
     </>

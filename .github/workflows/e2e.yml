@@ -40,6 +40,19 @@ jobs:
         run: docker compose -f infra/docker-compose.yml up -d --build --wait
       - name: Recorridos de las rutas A y B (celular y escritorio)
         run: npm run e2e
+      # 011 (T035, FR-018 y EQ-05): Lighthouse móvil a 360×740 en pantallas con sesión, con la misma
+      # medida de calidad-produccion.yml (accesibilidad ≥ 0.9). El puppeteerScript ingresa con el código
+      # simulado, que en producción llega por SMS. puppeteer se usa con npx y una versión fija (no va
+      # al package.json); usa el Chrome del runner.
+      - name: Lighthouse móvil con sesión (/perfil y /cambiar-clave)
+        if: ${{ !cancelled() }}
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+        run: |
+          lhci() { npx --yes -p @lhci/cli@0.14.0 -p puppeteer@23.11.1 lhci "$@" --config=tests/e2e/lighthouserc.json; }
+          lhci collect
+          lhci upload
+          lhci assert
       - name: Registros del sistema si falla
         if: failure()
         run: docker compose -f infra/docker-compose.yml logs --no-color api web > sistema.log
@@ -53,6 +66,15 @@ jobs:
             tests/e2e/resultados
             sistema.log
           retention-days: 7
+      - name: Informes de Lighthouse
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-011
+          path: |
+            tests/e2e/lighthouse
+            .lighthouseci
+          retention-days: 90
       - name: Bajar el sistema
         if: always()
         run: docker compose -f infra/docker-compose.yml down -v

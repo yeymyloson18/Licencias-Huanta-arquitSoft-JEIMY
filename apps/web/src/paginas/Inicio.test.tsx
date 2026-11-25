@@ -2,6 +2,9 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { components } from '@licencias/contracts';
 import { MemoryRouter } from 'react-router';
+import { json, problema, sesionDePrueba, simularApi } from '../pruebas/api-simulada';
+import { montarEn } from '../pruebas/montar';
+import { reiniciarSesion } from '../sesion/almacen-sesion';
 import { Inicio } from './Inicio';
 
 type RecetaResumen = components['schemas']['RecetaResumen'];
@@ -193,5 +196,57 @@ describe('Página de inicio del catálogo', () => {
     expect(await screen.findAllByRole('listitem')).toHaveLength(9);
     expect(fetchSimulado).toHaveBeenCalledTimes(2);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+describe('Acceso del personal en las páginas públicas (011, FR-021)', () => {
+  const sinSesion = {
+    'POST /auth/renovar': () => problema(401, 'no-autenticado'),
+    'GET /catalogo/recetas': () => json([]),
+  };
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    reiniciarSesion();
+  });
+
+  it('sin sesión, la portada muestra "Acceso del personal" y lleva a /ingresar', async () => {
+    simularApi(sinSesion);
+    montarEn('/');
+
+    const enlace = await screen.findByRole('link', { name: 'Acceso del personal' });
+    expect(enlace).toHaveAttribute('href', '/ingresar');
+
+    await userEvent.setup().click(enlace);
+    expect(await screen.findByLabelText('Correo')).toBeInTheDocument();
+  });
+
+  it('sin sesión también aparece en otra página pública (/consulta)', async () => {
+    simularApi(sinSesion);
+    montarEn('/consulta');
+
+    expect(await screen.findByRole('link', { name: 'Acceso del personal' })).toHaveAttribute(
+      'href',
+      '/ingresar',
+    );
+  });
+
+  it('con sesión no aparece: el menú ya lleva a su pantalla', async () => {
+    simularApi({
+      'POST /auth/renovar': () => json(sesionDePrueba({ roles: ['CAJA'] })),
+      'GET /catalogo/recetas': () => json([]),
+    });
+    montarEn('/');
+
+    await screen.findByRole('navigation', { name: 'Menú del personal' });
+    expect(screen.queryByRole('link', { name: 'Acceso del personal' })).not.toBeInTheDocument();
+  });
+
+  it('no aparece en la propia pantalla de ingreso', async () => {
+    simularApi(sinSesion);
+    montarEn('/ingresar');
+
+    expect(await screen.findByLabelText('Correo')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Acceso del personal' })).not.toBeInTheDocument();
   });
 });

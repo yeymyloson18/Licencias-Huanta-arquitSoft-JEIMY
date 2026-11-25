@@ -1,0 +1,30 @@
+{
+  "ci": {
+    "collect": {
+      "url": ["http://localhost:8080/perfil", "http://localhost:8080/cambiar-clave"],
+      "numberOfRuns": 1,
+      "puppeteerScript": "./tests/e2e/apoyo/lighthouse-ingreso.cjs",
+      "puppeteerLaunchOptions": { "args": ["--no-sandbox"] },
+      "settings": {
+        "formFactor": "mobile",
+        "screenEmulation": {
+          "mobile": true,
+          "width": 360,
+          "height": 740,
+          "deviceScaleFactor": 2,
+          "disabled": false
+        },
+        "disableStorageReset": true
+      }
+    },
+    "assert": {
+      "assertions": {
+        "categories:accessibility": ["error", { "minScore": 0.9 }]
+      }
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": "./tests/e2e/lighthouse"
+    }
+  }
+}

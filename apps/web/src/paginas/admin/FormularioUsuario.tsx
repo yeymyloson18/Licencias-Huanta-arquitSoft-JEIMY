@@ -9,7 +9,7 @@ import {
   type Rol,
   type Usuario,
 } from '../../servicios/clienteApi';
-import { ROLES } from './roles';
+import { ROLES } from '../../componentes/roles';
 
 type Errores = Partial<Record<string, string>>;
 

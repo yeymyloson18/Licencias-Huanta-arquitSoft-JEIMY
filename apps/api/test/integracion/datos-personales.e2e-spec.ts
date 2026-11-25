@@ -302,4 +302,56 @@ describe('Datos personales fuera de respuestas, URLs y logs (SC-007)', () => {
     expect(fila.clave_hash).not.toContain(persona.claveTemporal2);
     // Recorre todos los flujos (unas diez operaciones argon2): más que los 5 s por defecto.
   }, 60_000);
+
+  it('Mi perfil y el cambio de clave voluntario no filtran datos personales (011)', async () => {
+    // La prueba anterior bloqueó esta IP por fuerza bruta: se limpian los contadores.
+    await limpiarClavesSeguridad(redis);
+    const claveNueva = `ClaveVoluntaria${sufijo}E5`;
+    const usuario = await crearUsuarioDePrueba(prisma, { roles: ['JEFATURA'] });
+    const desde = intercambios.length;
+    const lineasAntes = logger.lineas.length;
+    const { accessToken } = await iniciarSesionDePrueba(app, redis, usuario);
+
+    const primero = await pedir('get', '/perfil', { token: accessToken });
+    expect(primero.status).toBe(200);
+    const cambio = await pedir('post', '/auth/cambiar-clave', {
+      token: accessToken,
+      cuerpo: { claveActual: usuario.clave, claveNueva },
+    });
+    expect(cambio.status).toBe(200);
+    const tokenNuevo = (cambio.body as { accessToken: string }).accessToken;
+    const errado = await pedir('post', '/auth/cambiar-clave', {
+      token: tokenNuevo,
+      cuerpo: { claveActual: usuario.clave, claveNueva: `${claveNueva}X` },
+    });
+    expect(errado.status).toBe(401);
+    const segundo = await pedir('get', '/perfil', { token: tokenNuevo });
+    expect(segundo.status).toBe(200);
+
+    // La respuesta del perfil: sin id, huella ni celular, y ningún número de 9 dígitos seguidos.
+    for (const respuesta of [primero, segundo]) {
+      const cuerpo = respuesta.body as Record<string, unknown>;
+      for (const clave of ['id', 'claveHash', 'celular']) {
+        expect(cuerpo).not.toHaveProperty(clave);
+      }
+      expect(respuesta.text).not.toMatch(/\d{9}/);
+    }
+
+    const secretos = [usuario.celular, usuario.clave, claveNueva, `${claveNueva}X`];
+    const todos = [...secretos, usuario.correo, usuario.nombre];
+    const contiene = (texto: string, valores: readonly string[]) =>
+      valores.filter((valor) => texto.toLowerCase().includes(valor.toLowerCase()));
+
+    for (const { url, respuesta } of intercambios.slice(desde)) {
+      expect({ url, filtrados: contiene(url, todos) }).toEqual({ url, filtrados: [] });
+      const prohibidos = respuesta.status >= 400 ? todos : secretos;
+      expect({ url, filtrados: contiene(respuesta.text, prohibidos) }).toEqual({
+        url,
+        filtrados: [],
+      });
+    }
+    for (const linea of logger.lineas.slice(lineasAntes)) {
+      expect({ linea, filtrados: contiene(linea, todos) }).toEqual({ linea, filtrados: [] });
+    }
+  }, 60_000);
 });

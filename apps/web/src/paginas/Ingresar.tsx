@@ -7,7 +7,7 @@ import {
   type ResultadoAuth,
   verificarOtp,
 } from '../servicios/clienteApi';
-import { inicioDe } from '../sesion/inicio';
+import { destinoDespuesDeIngresar } from '../sesion/inicio';
 import { useSesion } from '../sesion/ProveedorSesion';
 
 const MENSAJE_CREDENCIALES = 'Correo, clave o código incorrectos.';
@@ -15,18 +15,6 @@ const MENSAJE_NO_DISPONIBLE =
   'El inicio de sesión no está disponible en este momento. Inténtelo en unos minutos.';
 
 const dosDigitos = (numero: number) => String(numero).padStart(2, '0');
-
-/**
- * Solo rutas internas del personal: nunca una URL externa ni `//otro-sitio`. Sin destino guardado,
- * el inicio de sus roles: el administrador va a su panel (009).
- */
-const destinoSeguro = (estado: unknown, roles: readonly string[]): string => {
-  const volverA = (estado as { volverA?: unknown } | null)?.volverA;
-  return typeof volverA === 'string' &&
-    /^\/(admin|personal|cambiar-clave)(\/[\w-]+)*$/.test(volverA)
-    ? volverA
-    : inicioDe(roles);
-};
 
 /** Mensaje para la persona; nunca dice qué dato falló ni repite el correo (FR-005). */
 const mensajeDeError = (resultado: Exclude<ResultadoAuth<unknown>, { tipo: 'ok' }>): string => {
@@ -55,14 +43,17 @@ export function Ingresar() {
   const [enviando, setEnviando] = useState(false);
 
   if (sesion !== null) {
+    if (sesion.debeCambiarClave) {
+      return <Navigate to="/cambiar-clave" replace />;
+    }
+    // Solo rutas internas permitidas para sus roles; si no, su pantalla principal (011, FR-015).
+    const volverA = (ubicacion.state as { volverA?: unknown } | null)?.volverA;
+    const { roles } = sesion.usuario;
     return (
       <Navigate
-        to={
-          sesion.debeCambiarClave
-            ? '/cambiar-clave'
-            : destinoSeguro(ubicacion.state, sesion.usuario.roles)
-        }
+        to={destinoDespuesDeIngresar(volverA, roles)}
         replace
+        state={roles.length === 0 ? { sinRol: true } : undefined}
       />
     );
   }

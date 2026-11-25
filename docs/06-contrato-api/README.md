@@ -90,6 +90,7 @@ Cada celda marcada es una prueba automática que debe responder 2xx; cada celda 
 | Gestionar usuarios y roles (RF22)                                         |                |           |                  |      |          |   ✓    |                                  |
 | Panel del administrador y auditoría de seguridad, con CSV (009)           |                |           |                  |      |          |   ✓    |                                  |
 | Ficha del usuario, cerrar sus sesiones y desbloquear su cuenta (009)      |                |           |                  |      |          |   ✓    |                                  |
+| Ver mi perfil y cambiar mi clave, solo los propios (011)                  |       ✓        |     ✓     |        ✓         |  ✓   |    ✓     |   ✓    |                                  |
 | Ver feriados del año                                                      |       ✓        |     ✓     |        ✓         |  ✓   |    ✓     |   ✓    |                                  |
 | Registrar y eliminar feriados (RF23)                                      |                |           |                  |      |          |   ✓    |                                  |
 | Presentar solicitud y subir documentos                                    |       ✓        |           |                  |      |          |        |          tokenIdentidad          |
@@ -117,11 +118,22 @@ decisiones). Ninguno ve la auditoría del otro. Las 5 operaciones de la 009 se p
 `apps/api/test/integracion/matriz-permisos-009.e2e-spec.ts`: sin sesión 401 y con cada uno de los
 otros 5 roles 403.
 
+Mi perfil (011): `GET /perfil` y `POST /auth/cambiar-clave` sirven a cualquier usuario del personal,
+también sin roles, y siempre sobre la cuenta de la sesión (ningún identificador elige a otra
+persona).
+
+| Operación                  | Sin token | Clave temporal           | Cualquier rol | Sin roles   |
+| -------------------------- | :-------: | :----------------------: | :-----------: | :---------: |
+| `GET /perfil`              |    401    | 403 `debe-cambiar-clave` | 200 (propio)  | 200 (propio) |
+| `POST /auth/cambiar-clave` |    401    | 200 (obligatorio)        | 200 (voluntario) | 200 (voluntario) |
+
+Se prueban en `apps/api/test/integracion/matriz-permisos-011.e2e-spec.ts`.
+
 ## Operaciones por módulo
 
 | Módulo               | Operaciones                                                                                                                                                                                                                                                                                                  |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Seguridad y Usuarios | `iniciarSesion`, `verificarOtpPersonal`, `renovarSesion`, `cerrarSesion`, `verificarIdentidadAdministrado`, `verificarOtpAdministrado`, `cambiarClave`, `listarUsuarios`, `buscarUsuarios`, `crearUsuario`, `actualizarUsuario`, `asignarRoles`, `asignarClaveTemporal`, `obtenerFichaUsuario`, `cerrarSesionesDeUsuario`, `desbloquearUsuario`, `obtenerPanelAdministrador`, `consultarAuditoriaSeguridad` |
+| Seguridad y Usuarios | `iniciarSesion`, `verificarOtpPersonal`, `renovarSesion`, `cerrarSesion`, `verificarIdentidadAdministrado`, `verificarOtpAdministrado`, `cambiarClave`, `obtenerMiPerfil`, `listarUsuarios`, `buscarUsuarios`, `crearUsuario`, `actualizarUsuario`, `asignarRoles`, `asignarClaveTemporal`, `obtenerFichaUsuario`, `cerrarSesionesDeUsuario`, `desbloquearUsuario`, `obtenerPanelAdministrador`, `consultarAuditoriaSeguridad` |
 | Catálogo y Asistente | `listarRecetas`, `obtenerReceta`, `actualizarReceta`, `listarRecetasAdmin`, `obtenerRecetaAdmin`, `obtenerPreguntasAsistente`, `proponerLicencia`                                                                                                                                                            |
 | Trámites             | `subirDocumento`, `presentarSolicitud`, `listarExpedientes`, `consultarEstado`, `obtenerExpediente`, `obtenerTitularParaCaja`, `iniciarEvaluacion`, `confirmarNivelRiesgo`, `aprobarEvaluacion`, `observarExpediente`, `denegarExpediente`, `subsanarObservacion`, `auditoriaTramites`, `descargarDocumento` |
 | Pagos en caja        | `consultarEsquela`, `descargarEsquela`, `registrarPagoEnCaja`, `corregirNumeroRecibo`, `auditoriaPagos`                                                                                                                                                                                                      |
