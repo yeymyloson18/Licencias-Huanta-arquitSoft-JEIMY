@@ -3,6 +3,7 @@ import { CampoFormulario } from '../../componentes/CampoFormulario';
 import { formatearTasa } from '../../componentes/formato';
 import { GraficoBarras } from '../../componentes/GraficoBarras';
 import { ReporteLicencias } from '../../componentes/ReporteLicencias';
+import { TarjetaIndicador } from '../../componentes/TarjetaIndicador';
 import { obtenerTablero, type Tablero as DatosTablero } from '../../servicios/clienteApi';
 import { ESTADOS } from './Expedientes';
 
@@ -133,6 +134,15 @@ export function Tablero() {
             {totalExpedientes === 0 &&
               tablero.ingresos.total === '0.00' &&
               conAtencion.length === 0 && <p className="aviso">No hay datos en este rango.</p>}
+            {/* 013 (US3): los totales de hoy, en tarjetas de indicador. */}
+            <div className="indicadores">
+              <TarjetaIndicador nombre="Expedientes presentados" valor={totalExpedientes} />
+              <TarjetaIndicador
+                nombre="Total de ingresos en caja"
+                variante="success"
+                valor={formatearTasa(tablero.ingresos.total)}
+              />
+            </div>
             <section className="tarjeta" aria-labelledby="titulo-estados">
               <h2 id="titulo-estados" className="ficha__nombre">
                 Expedientes por estado
@@ -206,9 +216,7 @@ export function Tablero() {
               <h2 id="titulo-ingresos" className="ficha__nombre">
                 Ingresos en caja
               </h2>
-              <p className="tablero__total">
-                Total: <strong>{formatearTasa(tablero.ingresos.total)}</strong>
-              </p>
+              {/* 013: el total pasó a la tarjeta "Total de ingresos en caja", arriba. */}
               <GraficoBarras
                 titulo="Ingresos por licencia"
                 columnas={['Licencia', 'Monto']}

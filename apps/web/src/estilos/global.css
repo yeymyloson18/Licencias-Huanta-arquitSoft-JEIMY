@@ -950,21 +950,23 @@ video {
 
 .grafico__etiqueta {
   font-size: 12px;
-  fill: var(--color-texto);
+  fill: var(--cui-body-color);
 }
 
 .grafico__barra {
-  fill: var(--color-primario);
+  /* 013 (T026): el color de enlace del tema es #0b5394 en claro y un tinte claro en oscuro, así la
+     barra contrasta con el fondo en los dos modos. */
+  fill: var(--cui-link-color);
 }
 
 .grafico__marca {
-  stroke: var(--color-error-borde);
+  stroke: var(--cui-danger);
   stroke-width: 2;
 }
 
 .grafico__resumen {
   margin: 0.5rem 0;
-  color: var(--color-texto-suave);
+  color: var(--cui-secondary-color);
   font-size: 0.9375rem;
 }
 
@@ -984,10 +986,6 @@ video {
   border-bottom: 1px solid var(--color-borde);
   text-align: left;
   white-space: nowrap;
-}
-
-.tablero__total {
-  font-size: 1.25rem;
 }
 
 /* Administrador (009): tabla de eventos apilable, tarjetas del panel, ficha y confirmación. */
@@ -1018,19 +1016,6 @@ video {
     content: attr(data-etiqueta) ': ';
     font-weight: 600;
   }
-}
-
-.panel__tarjetas {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
-  margin: 1rem 0;
-}
-
-.panel__cifra {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin: 0.25rem 0;
 }
 
 .panel__lista {

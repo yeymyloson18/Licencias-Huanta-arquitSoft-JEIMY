@@ -378,25 +378,46 @@ pie y "Pregúntanos", sin menú lateral ni desplazamiento horizontal.
 **Prueba independiente**: con los datos de prueba de hoy, cada número del tablero y del panel está
 en una tarjeta con su nombre. `Tablero.test.tsx` y `Panel.test.tsx` siguen en verde.
 
-- [ ] T022 [P] [US3] **Prueba primero** `apps/web/src/componentes/TarjetaIndicador.test.tsx`:
+- [X] T022 [P] [US3] **Prueba primero** `apps/web/src/componentes/TarjetaIndicador.test.tsx`:
   - el número y el nombre se leen juntos (por ejemplo, `aria-labelledby` o un texto agrupado);
   - con `ruta`, la tarjeta es un enlace con el nombre del indicador;
   - sin `ruta`, no es interactiva.
-- [ ] T023 [US3] `apps/web/src/componentes/TarjetaIndicador.tsx`: `CCard` con el valor grande, el
+- [X] T023 [US3] `apps/web/src/componentes/TarjetaIndicador.tsx`: `CCard` con el valor grande, el
       nombre y un acento de color del tema (`variante`: `primary`, `success`, `warning`, `danger`
       o `info`).
-- [ ] T024 [US3] `apps/web/src/paginas/personal/Tablero.tsx`:
+- [X] T024 [US3] `apps/web/src/paginas/personal/Tablero.tsx`:
   - los totales e indicadores (los mismos datos de hoy) en una grilla de `TarjetaIndicador`: una
     columna a 360 px y varias desde 768 px;
   - las secciones con `GraficoBarras` y la tabla de tiempos se mantienen.
 
   Deben pasar `Tablero.test.tsx` y `ReporteLicencias.test.tsx`.
-- [ ] T025 [US3] `apps/web/src/paginas/admin/Panel.tsx`: sus indicadores en `TarjetaIndicador`, y los
+- [X] T025 [US3] `apps/web/src/paginas/admin/Panel.tsx`: sus indicadores en `TarjetaIndicador`, y los
       que hoy son enlaces (por ejemplo, "Cuentas bloqueadas") siguen yendo a la misma pantalla. Debe
       pasar `Panel.test.tsx`.
-- [ ] T026 [P] [US3] `apps/web/src/componentes/GraficoBarras.tsx` y su CSS: los colores de las barras
+- [X] T026 [P] [US3] `apps/web/src/componentes/GraficoBarras.tsx` y su CSS: los colores de las barras
       y del texto, con variables del tema (legibles en ambos modos). Sin bibliotecas de gráficos.
       Debe pasar `GraficoBarras.test.tsx`.
+
+**Estado al cierre de la fase 5 (2026-11-25)**:
+
+- **Pruebas**: 587/587 en el portal. `Tablero.test.tsx`, `Panel.test.tsx`, `ReporteLicencias.test.tsx`
+  y `GraficoBarras.test.tsx` pasan sin cambios. A 360 px y en escritorio, el tablero y el panel no
+  tienen desplazamiento horizontal (revisado con capturas en el compose aislado).
+- **`TarjetaIndicador`** es un `<section>` con las clases `card` y `card-body`, porque `CCard`
+  siempre es un `<div>`. Así cada tarjeta es una región con el nombre del indicador, que es lo que ya
+  buscaban las pruebas del panel. Sin valor (por ejemplo, bloqueos no disponibles) solo muestra el
+  detalle.
+- **Panel**: las seis tarjetas de hoy pasan a `TarjetaIndicador`, con los mismos datos y textos. El
+  único enlace de hoy, "Ver los códigos enviados", sigue en su tarjeta y va a la misma pantalla. No
+  se agregaron enlaces nuevos: `ruta` queda disponible y probada, sin uso por ahora.
+- **Tablero**: una grilla con "Expedientes presentados" y "Total de ingresos en caja" (los mismos
+  totales de hoy). El total dejó de repetirse en la sección "Ingresos en caja". Los gráficos y las
+  tablas siguen igual.
+- **T026**: la barra usa `--cui-link-color` (#0b5394 en claro, tinte claro en oscuro), la marca
+  `--cui-danger` y los textos `--cui-body-color` y `--cui-secondary-color`.
+- **Estilos** de las tarjetas en `tema-personal.scss`: una columna a 360 px y varias desde 768 px. Se
+  quitaron de `global.css` las clases que ya no se usan (`panel__tarjetas`, `panel__cifra` y
+  `tablero__total`).
 
 ---
 

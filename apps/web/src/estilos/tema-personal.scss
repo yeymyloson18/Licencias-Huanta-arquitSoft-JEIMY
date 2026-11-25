@@ -165,6 +165,83 @@
   font-size: 0.875rem;
 }
 
+// ---- Tarjetas de indicador del tablero y del panel (013, US3; T023) ----
+
+// Una columna a 360 px; varias desde 768 px.
+.indicadores {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+@media (min-width: 768px) {
+  .indicadores {
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  }
+}
+
+.tarjeta-indicador {
+  position: relative;
+  border-top: 0.25rem solid var(--tarjeta-acento, var(--cui-primary));
+}
+
+.tarjeta-indicador--primary {
+  --tarjeta-acento: var(--cui-primary);
+}
+
+.tarjeta-indicador--success {
+  --tarjeta-acento: var(--cui-success);
+}
+
+.tarjeta-indicador--warning {
+  --tarjeta-acento: var(--cui-warning);
+}
+
+.tarjeta-indicador--danger {
+  --tarjeta-acento: var(--cui-danger);
+}
+
+.tarjeta-indicador--info {
+  --tarjeta-acento: var(--cui-info);
+}
+
+.tarjeta-indicador__nombre {
+  margin: 0 0 0.25rem;
+  color: var(--cui-secondary-color);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.tarjeta-indicador__valor {
+  margin: 0;
+  color: var(--cui-emphasis-color);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.tarjeta-indicador__detalle {
+  margin-top: 0.5rem;
+
+  p {
+    margin: 0.25rem 0 0;
+  }
+
+  // Sus enlaces quedan por encima del enlace que cubre la tarjeta.
+  a {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+// Con ruta, el enlace del nombre cubre toda la tarjeta (área táctil amplia).
+.tarjeta-indicador__enlace::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+}
+
 @media (prefers-reduced-motion: reduce) {
   .diseno-personal .sidebar,
   .sidebar-backdrop {
