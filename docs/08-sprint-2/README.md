@@ -9,24 +9,24 @@ GitHub Actions y dejan sus resultados como archivos descargables (artefactos).
 
 | N.° | Actividad de la guía | Qué se hizo | Evidencia |
 | --- | --- | --- | --- |
-| 1 | Implementar el estilo arquitectónico | Monolito modular: 9 módulos de negocio en un solo proceso y una base con un esquema por módulo (ADR-001) | [`apps/api/src/modulos/`](../../apps/api/src/modulos/), [base-de-datos.md](base-de-datos.md) §1 |
+| 1 | Implementar el estilo arquitectónico | Monolito modular: 10 módulos en un solo proceso (los 9 del trámite y Orientación, enmienda 1.1.0 de la constitución) y una base con un esquema por módulo (ADR-001) | [`apps/api/src/modulos/`](../../apps/api/src/modulos/), [base-de-datos.md](base-de-datos.md) §1 |
 | 2 | Aplicar Clean Architecture | Cada módulo con dominio, aplicación, infraestructura y presentación; un módulo solo usa a otro por su fachada; regla verificada en cada PR | [solid-y-patrones.md](solid-y-patrones.md) §1, [`.dependency-cruiser.cjs`](../../.dependency-cruiser.cjs) |
-| 3 | Especificaciones SDD con criterios de aceptación y tareas | Una carpeta por funcionalidad (001 a 008) con especificación, aclaraciones, plan, investigación, contratos, tareas y guía de validación | [`specs/`](../../specs/) |
+| 3 | Especificaciones SDD con criterios de aceptación y tareas | Una carpeta por funcionalidad (001 a 013) con especificación, aclaraciones, plan, investigación, contratos, tareas y guía de validación | [`specs/`](../../specs/) |
 | 4 | Endpoints REST documentados con OpenAPI/Swagger | Contrato único `openapi.yaml`; Swagger UI interactivo en `/api/docs` generado desde ese archivo; colección de Postman | [`docs/06-contrato-api/`](../06-contrato-api/), [`tests/postman/`](../../tests/postman/) |
 | 5 | Analizar la base de datos y la caché | Esquemas, índices, planes de consulta con 10,000 expedientes, bloqueos y conexiones; claves de Redis, TTL, invalidación, fallos y medición | [base-de-datos.md](base-de-datos.md), [cache.md](cache.md) |
 | 6 | Aplicar SOLID y patrones | Un ejemplo real por principio y 11 patrones con su archivo, verificados por un script | [solid-y-patrones.md](solid-y-patrones.md) |
 | 7 | Pruebas automatizadas con Jest en CI/CD | 5 checks obligatorios en cada PR (compilación, pruebas, cobertura, regla de dependencia y contrato) más E2E, Postman y despliegue | [`.github/workflows/`](../../.github/workflows/) |
-| 8 | Pruebas de los escenarios de calidad (hasta 2,000 usuarios) | k6 progresivo hasta 2,000 usuarios con 2 réplicas, Newman, matrices de permisos, privacidad, reloj con 2 instancias y Lighthouse | [atributos-de-calidad.md](atributos-de-calidad.md) |
+| 8 | Pruebas de los escenarios de calidad (hasta 2,000 usuarios) | k6 progresivo hasta 2,000 usuarios con 2 réplicas, Newman, matrices de permisos, privacidad, reloj con 2 instancias, Lighthouse y la evaluación del chat (EQ-08) | [atributos-de-calidad.md](atributos-de-calidad.md); evaluación de la arquitectura en [evaluacion-arquitectura.md](evaluacion-arquitectura.md) |
 
 ## 2. Entregables
 
 | Entregable | Dónde está |
 | --- | --- |
-| Código organizado según la arquitectura | [`apps/api/src/modulos/`](../../apps/api/src/modulos/) (9 módulos × 4 capas), [`apps/web/`](../../apps/web/) (portal) y [`packages/contracts/`](../../packages/contracts/) (tipos generados desde el contrato) |
+| Código organizado según la arquitectura | [`apps/api/src/modulos/`](../../apps/api/src/modulos/) (10 módulos × 4 capas), [`apps/web/`](../../apps/web/) (portal) y [`packages/contracts/`](../../packages/contracts/) (tipos generados desde el contrato) |
 | Primera versión funcional | Recorrido completo de una licencia (rutas A, B y C): asistente, identidad con código, solicitud, evaluación, pago en caja, inspección, licencia con QR, verificación pública, plazos, avisos y tablero. Se levanta con `docker compose -f infra/docker-compose.yml up -d --build` ([README principal](../../README.md)) |
 | Documentación de la API con OpenAPI/Swagger | [`docs/06-contrato-api/openapi.yaml`](../06-contrato-api/openapi.yaml) y Swagger UI en `http://localhost:8080/api/docs/` |
 | Pruebas con Jest y reporte de cobertura | §4 de este informe; artefacto `cobertura` del job del mismo nombre en cada ejecución del CI |
-| Evidencias de los atributos de calidad | [atributos-de-calidad.md](atributos-de-calidad.md); artefactos `carga-sprint2`, `planes-bd` y `newman` |
+| Evidencias de los atributos de calidad | [atributos-de-calidad.md](atributos-de-calidad.md) y [evaluacion-arquitectura.md](evaluacion-arquitectura.md) (ATAM simplificado); artefactos `carga-sprint2`, `planes-bd` y `newman` |
 
 ## 3. Arquitectura en una página
 
@@ -43,10 +43,11 @@ GitHub Actions y dejan sus resultados como archivos descargables (artefactos).
   | API | NestJS sobre Node.js 24 con TypeScript estricto |
   | Base de datos | PostgreSQL 16 |
   | Caché y contadores de seguridad | Redis 7 |
-  | Portal | React con Vite |
+  | Portal | React 19 con Vite y CoreUI 5 (ADR-009 y ADR-012) |
+  | Chat de orientación | Proveedor de IA compatible con OpenAI, por defecto Groq (ADR-011) |
   | Ejecución | Docker Compose |
 
-- **Los 9 módulos**:
+- **Los 10 módulos**:
 
   | Módulo | Qué hace |
   | --- | --- |
@@ -59,6 +60,7 @@ GitHub Actions y dejan sus resultados como archivos descargables (artefactos).
   | `plazos` | Feriados, días hábiles y alertas |
   | `notificaciones` | Avisos al administrado |
   | `reportes` | Tablero y reportes de la jefatura |
+  | `orientacion` | Chat "Pregúntanos" con el catálogo y la guía (012) |
 
 - **Comunicación entre módulos**:
   - síncrona, solo por `fachada.ts`;
@@ -77,27 +79,34 @@ GitHub Actions y dejan sus resultados como archivos descargables (artefactos).
 | 007 Tablero y despliegue | HU10 | Tablero, reporte de licencias en CSV, E2E y producción preparada |
 | 008 Cierre del Sprint 2 | — (entregables de la guía) | Swagger, Postman, cobertura publicada, carga hasta 2,000 usuarios y estos documentos |
 | 009 Panel del administrador | HU15 ampliada | Panel, auditoría de seguridad con CSV, ficha con cerrar sesiones y desbloquear, y buzón de pruebas en desarrollo |
+| 010 Código enviado | HU15 ampliada | Cada código de verificación enviado queda en la auditoría de seguridad, con el destino enmascarado y cómo terminó el intento |
 | 011 Mi perfil e inicio por rol | HU15 ampliada | Cada rol llega a su pantalla al ingresar, Mi perfil con sus propios datos y cambio de clave voluntario |
 | 012 Chat de orientación | HU01 y HU03 ampliadas | "Pregúntanos" responde preguntas libres sobre licencias solo con el catálogo y la guía, sin datos personales hacia el proveedor de IA (ADR-011) |
+| 013 Diseño con CoreUI | — (criterio 7) | Área del personal con menú lateral por rol, portal ligero del ciudadano, tableros con indicadores y modo claro u oscuro, sin cambiar rutas, sesión ni API (ADR-012) |
 
 ## 5. Pruebas y cobertura
 
+Cifras de la corrida del CI sobre `main` en el commit `7076895` (con la 011, la 012 y la 013), del
+2026-11-25. La cobertura se volvió a calcular con los mismos comandos sobre ese commit el 2026-11-26.
+
 | Tipo | Cantidad | Dónde corre |
 | --- | --- | --- |
-| Unitarias de la API (Jest) | 1,107 | Job `pruebas` y `cobertura` del CI, y en local |
-| Integración de la API (Jest + Supertest, PostgreSQL y Redis reales) | 580 en verde en la última ejecución local completa, más las nuevas de la 007 y la 008 que corren en el CI | Job `pruebas` del CI |
-| Portal (Jest + Testing Library) | 303 | Job `pruebas` del CI y en local |
-| Extremo a extremo (Playwright, celular y escritorio) | 4 recorridos × 2 tamaños (rutas A y B, Mi perfil de la 011 y el chat de orientación de la 012) | Flujo `E2E` |
-| Humo de la API (Postman y Newman) | 18 peticiones (13 de la 008, 3 de la 009, 1 de la 011 y 1 de la 012) | Flujo `Postman` |
+| Unitarias de la API (Jest) | **1,463** pruebas en 135 archivos | Jobs `pruebas` y `cobertura` del CI, y en local |
+| Integración de la API (Jest + Supertest, PostgreSQL y Redis reales) | **748** pruebas en 66 archivos | Job `pruebas` del CI |
+| Portal (Jest + Testing Library) | **668** pruebas en 61 archivos | Job `pruebas` del CI y en local |
+| Extremo a extremo (Playwright, celular 360×740 y escritorio) | **31** casos en verde: rutas A y B, Mi perfil (011), chat de orientación (012) y diseño (013: menú por rol, modo oscuro sin destello). 15 casos se omiten a propósito: las capturas no corren en el CI y algunos casos son solo de celular o solo de escritorio | Flujo `E2E` |
+| Humo de la API (Postman y Newman) | **18** peticiones y **41** aserciones, 0 fallas | Flujo `Postman` |
 | Carga (k6) | 387,235 peticiones hasta 2,000 usuarios: p95 6 ms, 0 % de errores | Flujo `Carga Sprint 2`, [`evidencias/carga-2000-despues.txt`](evidencias/carga-2000-despues.txt) |
+| Lighthouse (móvil 360×740) | Accesibilidad **100** en claro y en oscuro en las pantallas medidas, y con el chat abierto | Flujo `E2E` y [`evidencias/diseno-013/despues.md`](evidencias/diseno-013/despues.md) |
 
 **Cobertura** (pruebas unitarias; el reporte navegable está en el artefacto `cobertura` de cada
 ejecución del CI):
 
 | Parte | Líneas | Ramas | Umbral |
 | --- | --- | --- | --- |
-| Dominio y aplicación de la API (todos los módulos) | **99.3 %** | **96.4 %** | 80 % por archivo (obligatorio) |
-| Portal | 91.1 % | 79.4 % | Sin umbral |
+| Dominio y aplicación de la API (todos los módulos) | **99.4 %** | **97.0 %** | 80 % por archivo (obligatorio) |
+| Toda la API (incluye infraestructura y presentación) | 59.8 % | 70.0 % | Sin umbral (ver la nota) |
+| Portal | 92.3 % | 81.3 % | Sin umbral |
 
 La tabla completa por módulo y capa sale de `node tests/analisis/resumen-cobertura.mjs` y se publica
 en el resumen del job `cobertura`.
@@ -165,12 +174,12 @@ datos personales).
 
 | Medida | Pantallas | Resultado |
 | --- | --- | --- |
-| Sin desplazamiento horizontal (Playwright, proyecto `celular`, 360×740) | `/perfil` y `/cambiar-clave` con un error visible | `tests/e2e/perfil.spec.ts` en el flujo `E2E`. **Pendiente de la primera corrida en GitHub Actions** (no se ejecutó en local) |
-| Lighthouse móvil, accesibilidad ≥ 0.9 (`@lhci/cli@0.14.0`, 360×740) | `/perfil` | **Pendiente de medir**: corre en el flujo `E2E` (artefacto `lighthouse-011`); no se pudo correr en local |
-| Lighthouse móvil, accesibilidad ≥ 0.9 (`@lhci/cli@0.14.0`, 360×740) | `/cambiar-clave` (cambio voluntario) | **Pendiente de medir**, igual que la anterior |
+| Sin desplazamiento horizontal (Playwright, proyecto `celular`, 360×740) | `/perfil` y `/cambiar-clave` con un error visible | `tests/e2e/perfil.spec.ts` en el flujo `E2E`: **en verde** en celular y escritorio ([corrida 45706187541](https://github.com/yeymyloson18/Licencias-Huanta-arquitSoft-JEIMY/actions/runs/45706187541), `main` en `7076895`) |
+| Lighthouse móvil, accesibilidad ≥ 0.9 (`@lhci/cli@0.14.0`, 360×740) | `/perfil` | **Cumple**: la aserción ≥ 0.9 de `lhci assert` pasa en el flujo `E2E` (misma corrida; informe en el artefacto de Lighthouse) |
+| Lighthouse móvil, accesibilidad ≥ 0.9 (`@lhci/cli@0.14.0`, 360×740) | `/cambiar-clave` (cambio voluntario) | **Cumple**, igual que la anterior |
 
-Cuando el flujo `E2E` corra en el PR, se anotan aquí el puntaje de cada pantalla y el enlace a la
-corrida.
+La aserción de Lighthouse hace fallar el flujo si alguna de estas pantallas baja de 0.9; el puntaje
+exacto queda en el informe del artefacto.
 
 ## 9. Mejora posterior al cierre: chat de orientación (012)
 
@@ -206,8 +215,10 @@ Detalle:
 [`evidencias/orientacion-eq08.md`](evidencias/orientacion-eq08.md) y
 [`evidencias/lighthouse-chat-012.md`](evidencias/lighthouse-chat-012.md).
 
-**Pendientes**: la primera corrida en GitHub Actions del E2E del chat y del paso de Lighthouse en
-modo snapshot. La Municipalidad debe revisar la guía de preguntas frecuentes y aprobar el uso del
+**En GitHub Actions** ([corrida 45706187541](https://github.com/yeymyloson18/Licencias-Huanta-arquitSoft-JEIMY/actions/runs/45706187541)): el E2E del chat pasa en celular y escritorio, y Lighthouse da
+accesibilidad **1** con el chat abierto (modo snapshot) y en la portada, en claro y en oscuro.
+
+**Pendiente**: la Municipalidad debe revisar la guía de preguntas frecuentes y aprobar el uso del
 proveedor en producción (ADR-011).
 
 
@@ -267,4 +278,4 @@ Línea base: [`evidencias/diseno-013/linea-base.md`](evidencias/diseno-013/linea
   `public/modo-inicial.js` en el `<head>` aplica la elección antes del primer pintado, sin cambiar la
   CSP. El E2E lo exige. Cuesta de 1 a 3 puntos de rendimiento (medida 4).
 - **Rendimiento**: recuperar los puntos que faltan, recortando más el Sass de CoreUI.
-- **CI**: la primera corrida en GitHub Actions del Lighthouse del chat en los dos modos.
+- **CI: resuelto.** En la [corrida 45706187541](https://github.com/yeymyloson18/Licencias-Huanta-arquitSoft-JEIMY/actions/runs/45706187541), el Lighthouse del chat da accesibilidad 1 en claro y en oscuro.

@@ -703,13 +703,14 @@ debe llenarlas la usuaria con el nombre del criterio.
 El informe del Sprint 2 está en **[`docs/08-sprint-2/`](docs/08-sprint-2/README.md)**, con las 8
 actividades y los 5 entregables de la guía y el enlace a la evidencia de cada uno.
 
-| Documento                                                        | Contenido                                                                                  |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| [Informe del Sprint 2](docs/08-sprint-2/README.md)               | Actividades, entregables, arquitectura, funcionalidades, pruebas, cobertura y limitaciones |
-| [Atributos de calidad](docs/08-sprint-2/atributos-de-calidad.md) | EQ-01 a EQ-07: medida esperada, herramienta, resultado, evidencia y estado                 |
-| [Base de datos](docs/08-sprint-2/base-de-datos.md)               | Esquemas, índices, planes con 10,000 expedientes, bloqueos y conexiones                    |
-| [Caché](docs/08-sprint-2/cache.md)                               | Claves de Redis, TTL, invalidación, qué pasa si falla y medición                           |
-| [SOLID y patrones](docs/08-sprint-2/solid-y-patrones.md)         | Un ejemplo real por principio y los patrones con su archivo                                |
+| Documento                                                                    | Contenido                                                                                  |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| [Informe del Sprint 2](docs/08-sprint-2/README.md)                           | Actividades, entregables, arquitectura, funcionalidades, pruebas, cobertura y limitaciones |
+| [Atributos de calidad](docs/08-sprint-2/atributos-de-calidad.md)             | EQ-01 a EQ-08: medida esperada, herramienta, resultado, evidencia y estado                 |
+| [Evaluación de la arquitectura](docs/08-sprint-2/evaluacion-arquitectura.md) | ATAM simplificado: árbol de utilidad, decisiones por escenario, compromisos y riesgos      |
+| [Base de datos](docs/08-sprint-2/base-de-datos.md)                           | Esquemas, índices, planes con 10,000 expedientes, bloqueos y conexiones                    |
+| [Caché](docs/08-sprint-2/cache.md)                                           | Claves de Redis, TTL, invalidación, qué pasa si falla y medición                           |
+| [SOLID y patrones](docs/08-sprint-2/solid-y-patrones.md)                     | Un ejemplo real por principio y los patrones con su archivo                                |
 
 - **Documentación interactiva de la API**: con el sistema levantado, abra
   <http://localhost:8080/api/docs/>. Es Swagger UI generado desde
